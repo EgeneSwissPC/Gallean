@@ -66,6 +66,29 @@ internal sealed partial class BattleRenderer
     [ThreadStatic]
     private static BackgroundCache? backgroundCache;
 
+    private int activeOperations;
+
+    public void AddOperation()
+    {
+        Interlocked.Increment(ref activeOperations);
+    }
+
+    public void RemoveOperation()
+    {
+        if (Interlocked.Decrement(ref activeOperations) == 0)
+        {
+            ReleaseBackgroundCache();
+        }
+    }
+
+    // Draw operations are disposed by the compositor on the render thread once they are replaced, so this releases
+    // the render thread's cache when the last battle frame is gone instead of keeping it alive until the next battle.
+    private static void ReleaseBackgroundCache()
+    {
+        backgroundCache?.Dispose();
+        backgroundCache = null;
+    }
+
     public void Render(
         SKCanvas canvas,
         BattleRenderContent content,
