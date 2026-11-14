@@ -2,7 +2,9 @@ namespace Gallean.Configuration;
 
 public static class AppDirectories
 {
-    private static string LocalApplicationData { get; } = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+    // Without SpecialFolderOption.Create, .NET on Linux returns "" when ~/.local/share does not exist yet (fresh
+    // accounts, minimal window managers), which made Root the relative path "Gallean" under the working directory.
+    private static string LocalApplicationData { get; } = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create);
 
     public static string Root { get; } = Path.Combine(LocalApplicationData, "Gallean");
     public static string Assets { get; } = Path.Combine(Root, "Assets");
