@@ -7,6 +7,8 @@ internal sealed partial class WorldRenderContentProvider
         private IReadOnlySet<AtlasTexture.RegionKey>? cachedRegions;
         private AtlasTexture? cachedTexture;
 
+        public AtlasTexture? CachedTexture => cachedTexture;
+
         public AtlasTexture Resolve(
             IReadOnlySet<AtlasTexture.RegionKey> regions,
             Func<IReadOnlySet<AtlasTexture.RegionKey>, AtlasTexture> buildFunc)

@@ -377,4 +377,65 @@ public sealed class WorldScreenSnapshotWorkerTests
 
         Assert.That(animationLoads, Is.Empty);
     }
+
+    private static (WorldScreenSnapshotWorker Worker, TestAssetProvider Assets) StartWorker()
+    {
+        TestAssetProviderBuilder builder = new();
+        Sprite ground = builder.CreateSprite(SKColors.Gray, 64, 32);
+        Sprite feature = builder.CreateSprite(SKColors.Red, 8, 8);
+        Animation animation = builder.CreateAnimation(
+            new AssetAnimationMetadata(FrameCount: 1, Width: 8, Height: 8, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null),
+            [feature]);
+        TestAssetProvider assets = builder
+            .ResolveSprite(key => key is AssetSpriteKey.Ground ? ground : feature)
+            .ResolveAnimation(_ => animation)
+            .ResolveSound(_ => null)
+            .Build();
+
+        WorldScreenSnapshotWorker worker = new(assets, new TestGameDefinitionProviderBuilder().Build(), GameScenarioProvider.Empty, new DiagnosticsRecorder());
+
+        worker.Request(BuildRequest(BuildWorldState([".."])));
+
+        SpinWait.SpinUntil(() => worker.Current is not null, TimeSpan.FromSeconds(30));
+
+        return (worker, assets);
+    }
+
+    private static List<AtlasTexture> GetTextures(WorldRenderContent content)
+    {
+        return [content.CoastAtlas.Texture, content.BorderAtlas.Texture, content.RoadAtlas.Texture, content.ObjectAtlas.Texture];
+    }
+
+    [Test]
+    public void ReleaseTexturesOnDisposeTest()
+    {
+        (WorldScreenSnapshotWorker worker, TestAssetProvider assets) = StartWorker();
+        using TestAssetProvider assetsScope = assets;
+
+        List<AtlasTexture> textures = GetTextures(Assert.NotNull(worker.Current).WorldContent);
+
+        Assert.That(textures.Select(texture => texture.Image.Handle), Has.All.Not.EqualTo(IntPtr.Zero));
+
+        worker.Dispose();
+
+        Assert.That(textures.Select(texture => texture.Image.Handle), Has.All.EqualTo(IntPtr.Zero));
+    }
+
+    [Test]
+    public void KeepLeasedTexturesTest()
+    {
+        (WorldScreenSnapshotWorker worker, TestAssetProvider assets) = StartWorker();
+        using TestAssetProvider assetsScope = assets;
+
+        WorldScreenSnapshot snapshot = Assert.NotNull(worker.AcquireCurrent(out IDisposable? lease));
+        List<AtlasTexture> textures = GetTextures(snapshot.WorldContent);
+
+        worker.Dispose();
+
+        Assert.That(textures.Select(texture => texture.Image.Handle), Has.All.Not.EqualTo(IntPtr.Zero));
+
+        Assert.NotNull(lease).Dispose();
+
+        Assert.That(textures.Select(texture => texture.Image.Handle), Has.All.EqualTo(IntPtr.Zero));
+    }
 }

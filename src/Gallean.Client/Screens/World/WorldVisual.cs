@@ -582,7 +582,7 @@ internal sealed partial class WorldVisual : AbstractAnimatedVisual
     {
         base.Render(context);
 
-        WorldScreenSnapshot? snapshot = snapshotWorker.Current;
+        WorldScreenSnapshot? snapshot = snapshotWorker.AcquireCurrent(out IDisposable? contentLease);
 
         if (snapshot is null)
         {
@@ -613,7 +613,8 @@ internal sealed partial class WorldVisual : AbstractAnimatedVisual
             terrainExpansionTime,
             settings.RenderResolutionRatio,
             IsHitboxOverlayVisible,
-            Diagnostics));
+            Diagnostics,
+            contentLease));
     }
 
     private void RegisterAnimation(WorldScreenSnapshot? snapshot, TimeSpan now)

@@ -15,6 +15,8 @@ internal sealed class SpriteAtlas(
 {
     public SpriteAtlasSource Source { get; } = source;
 
+    public AtlasTexture Texture => texture;
+
     public int SpriteCount => sources.Length;
 
     public void UpdateAnimations(int frameIndex, Rect visible)

@@ -19,7 +19,8 @@ internal sealed class WorldRenderOperation(
     TimeSpan terrainExpansionTime,
     float renderResolution,
     bool hitboxOverlay,
-    DiagnosticsRecorder diagnostics) : ICustomDrawOperation
+    DiagnosticsRecorder diagnostics,
+    IDisposable? contentLease = null) : ICustomDrawOperation
 {
     private readonly SKMatrix skiaTransform = transform.ToSKMatrix();
 
@@ -37,6 +38,9 @@ internal sealed class WorldRenderOperation(
 
     public void Dispose()
     {
+        // Avalonia disposes a draw operation once its render data has been replaced, so the content (and its atlas
+        // textures) is no longer drawn after this point.
+        contentLease?.Dispose();
     }
 
     public void Render(ImmediateDrawingContext context)

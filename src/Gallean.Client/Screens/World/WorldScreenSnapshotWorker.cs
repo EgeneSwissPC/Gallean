@@ -13,6 +13,7 @@ internal sealed class WorldScreenSnapshotWorker(
     private readonly WorldRenderComposer composer = new(definitions, scenario, assets);
     private readonly Lock locker = new();
     private readonly WorldRenderContentProvider worldContentProvider = new();
+    private readonly Dictionary<WorldRenderContent, int> leasedContents = new(ReferenceEqualityComparer.Instance);
     private volatile WorldScreenSnapshot? current;
     private bool disposed;
     private volatile Exception? exception;
@@ -39,6 +40,69 @@ internal sealed class WorldScreenSnapshotWorker(
         }
 
         activeTask.Wait();
+        ReleaseUnusedTextures();
+    }
+
+    // Returns the current snapshot and keeps its atlas textures alive until the lease is disposed. Render
+    // operations that draw the content must hold a lease: replaced and abandoned atlases are disposed as soon as
+    // no lease references them.
+    public WorldScreenSnapshot? AcquireCurrent(out IDisposable? lease)
+    {
+        lock (locker)
+        {
+            WorldScreenSnapshot? snapshot = current;
+
+            if (snapshot is null)
+            {
+                lease = null;
+                return null;
+            }
+
+            leasedContents[snapshot.WorldContent] = leasedContents.GetValueOrDefault(snapshot.WorldContent) + 1;
+            lease = new ContentLease(this, snapshot.WorldContent);
+
+            return snapshot;
+        }
+    }
+
+    private void Release(WorldRenderContent content)
+    {
+        lock (locker)
+        {
+            int count = leasedContents[content] - 1;
+
+            if (count > 0)
+            {
+                leasedContents[content] = count;
+            }
+            else
+            {
+                leasedContents.Remove(content);
+            }
+        }
+
+        ReleaseUnusedTextures();
+    }
+
+    private void ReleaseUnusedTextures()
+    {
+        // When a build holds the provider, it releases the unused textures itself once it has published its snapshot.
+        worldContentProvider.TryReleaseUnusedTextures(GetDrawableContents);
+    }
+
+    private (IReadOnlyList<WorldRenderContent> DrawableContents, bool KeepCached) GetDrawableContents()
+    {
+        lock (locker)
+        {
+            List<WorldRenderContent> drawableContents = [.. leasedContents.Keys];
+
+            if (!disposed && current is { } snapshot)
+            {
+                drawableContents.Add(snapshot.WorldContent);
+            }
+
+            return (drawableContents, !disposed);
+        }
     }
 
     public void Request(WorldRenderRequest request)
@@ -100,8 +164,13 @@ internal sealed class WorldScreenSnapshotWorker(
                 return;
             }
 
-            current = snapshot;
+            lock (locker)
+            {
+                current = snapshot;
+            }
+
             built = input;
+            ReleaseUnusedTextures();
         }
     }
 
@@ -147,6 +216,19 @@ internal sealed class WorldScreenSnapshotWorker(
         }
 
         return new WorldScreenSnapshot(request, worldContent, state);
+    }
+
+    private sealed class ContentLease(WorldScreenSnapshotWorker worker, WorldRenderContent content) : IDisposable
+    {
+        private int disposed;
+
+        public void Dispose()
+        {
+            if (Interlocked.Exchange(ref disposed, 1) == 0)
+            {
+                worker.Release(content);
+            }
+        }
     }
 
     private async Task PreloadAssetsAsync(WorldRenderState state)

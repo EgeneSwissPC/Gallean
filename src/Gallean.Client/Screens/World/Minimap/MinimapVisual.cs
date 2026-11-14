@@ -120,7 +120,8 @@ internal sealed class MinimapVisual : AbstractAnimatedVisual
     {
         base.Render(context);
 
-        WorldScreenSnapshot? snapshot = snapshotWorker.Current;
+        // The lease keeps the snapshot's atlas textures alive until the render operation that draws it is disposed.
+        WorldScreenSnapshot? snapshot = snapshotWorker.AcquireCurrent(out IDisposable? contentLease);
 
         if (snapshot is null)
         {
@@ -131,12 +132,13 @@ internal sealed class MinimapVisual : AbstractAnimatedVisual
 
         if (layout is null)
         {
+            contentLease?.Dispose();
             return;
         }
 
         IReadOnlyList<Point> viewportCells = ComputeViewportCells();
 
-        context.Custom(new MinimapRenderOperation(new Rect(Bounds.Size), snapshot.WorldContent, snapshot.WorldState.Minimap, layout.Value, viewportCells, renderer));
+        context.Custom(new MinimapRenderOperation(new Rect(Bounds.Size), snapshot.WorldContent, snapshot.WorldState.Minimap, layout.Value, viewportCells, renderer, contentLease));
     }
 
     private MinimapLayout? ComputeLayout(WorldMap map)
