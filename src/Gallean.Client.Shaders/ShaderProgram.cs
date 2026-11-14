@@ -79,8 +79,10 @@ internal sealed class ShaderProgram(ShaderKey key)
         }
     }
 
-    private readonly SKRuntimeShaderBuilder builder = new(ShaderLibrary.Compile(key));
+    private readonly SKRuntimeShaderBuilder builder = new(ShaderLibrary.GetEffect(key));
     private readonly Lock locker = new();
+
+    public SKRuntimeEffect Effect => builder.Effect;
 
     public Editor Edit()
     {

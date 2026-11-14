@@ -37,6 +37,24 @@ public sealed class ShaderLibraryTests
     }
 
     [Test]
+    public void EffectCacheTest()
+    {
+        foreach (ShaderKey key in ShaderKeys.All)
+        {
+            Assert.That(ShaderLibrary.GetEffect(key), Is.SameAs(ShaderLibrary.GetEffect(key)));
+        }
+    }
+
+    [Test]
+    public void ProgramsShareEffectTest()
+    {
+        ShaderProgram first = new(ShaderKeys.All[0]);
+        ShaderProgram second = new(ShaderKeys.All[0]);
+
+        Assert.That(first.Effect, Is.SameAs(second.Effect));
+    }
+
+    [Test]
     public void MissingResourceTest()
     {
         Assert.Throws<KeyNotFoundException>(() => new ShaderProgram(new ShaderKey("Missing", "Missing.sksl")));
