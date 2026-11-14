@@ -76,6 +76,7 @@ internal sealed partial class WorldRenderContentProvider
 
             SKImageInfo info = new(width, height, SKColorType.Alpha8, SKAlphaType.Premul);
             SKImage image = SKImage.FromPixelCopy(info, pixels);
+            SkiaMemoryPressure.TrackImage(image);
             SKMatrix transform = SKMatrix.CreateTranslation(left, top);
 
             return image.ToShader(SKShaderTileMode.Decal, SKShaderTileMode.Decal, RenderSamplingOptions.Nearest, transform);

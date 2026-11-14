@@ -196,7 +196,7 @@ internal sealed partial class WorldRenderContentProvider
             indexes.AddRange([top, right, bottom, top, bottom, left]);
         }
 
-        return SKVertices.CreateCopy(SKVertexMode.Triangles, [.. positions], null, null, [.. indexes]);
+        return SkiaMemoryPressure.CreateVertices([.. positions], indexes: [.. indexes]);
 
         ushort Corner(int x, int y)
         {
@@ -406,7 +406,7 @@ internal sealed partial class WorldRenderContentProvider
 
         SKPoint[] positions = [top, right, bottom, top, bottom, left];
 
-        return SKVertices.CreateCopy(SKVertexMode.Triangles, positions, null, null);
+        return SkiaMemoryPressure.CreateVertices(positions);
     }
 
     private SpriteAtlas BuildCoastAtlas(MapTerrain terrain, IAssetProvider assets)
@@ -488,7 +488,7 @@ internal sealed partial class WorldRenderContentProvider
         Point south = WorldTransform.ToWorldPoint(map.Width - 1, map.Height - 1);
         Point west = WorldTransform.ToWorldPoint(0, map.Height - 1);
 
-        SKPathBuilder builder = new();
+        using SKPathBuilder builder = new();
         builder.MoveTo((float)north.X, (float)(north.Y - WorldTransform.TileHalfHeight));
         builder.LineTo((float)(east.X + WorldTransform.TileHalfWidth), (float)east.Y);
         builder.LineTo((float)south.X, (float)(south.Y + WorldTransform.TileHalfHeight));
@@ -959,7 +959,7 @@ internal sealed partial class WorldRenderContentProvider
     {
         float halfWidth = (float)(layout.HalfWidth + MinimapTileOverlap);
         float halfHeight = (float)(layout.HalfHeight + (MinimapTileOverlap / 2.0));
-        SKPathBuilder builder = new();
+        using SKPathBuilder builder = new();
 
         foreach (WorldPosition position in minimap.HiddenPositions)
         {
