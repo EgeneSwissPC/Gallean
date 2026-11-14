@@ -6,10 +6,10 @@ public sealed record GameFiles(string Root)
 {
     public static GameFiles Original { get; } = new(AppDirectories.OriginalAssets);
 
-    public string ImagesRoot => Path.Combine(Root, "Imgs");
-    public string InterfaceRoot => Path.Combine(Root, "Interf");
-    public string SoundsRoot => Path.Combine(Root, "Sounds");
-    public string MusicRoot => Path.Combine(Root, "Music");
-    public string BriefingRoot => Path.Combine(Root, "Briefing");
-    public string ScenarioDataRoot => Path.Combine(Root, "ScenData");
+    public string ImagesRoot => GamePath.Resolve(Root, "Imgs");
+    public string InterfaceRoot => GamePath.Resolve(Root, "Interf");
+    public string SoundsRoot => GamePath.Resolve(Root, "Sounds");
+    public string MusicRoot => GamePath.Resolve(Root, "Music");
+    public string BriefingRoot => GamePath.Resolve(Root, "Briefing");
+    public string ScenarioDataRoot => GamePath.Resolve(Root, "ScenData");
 }
