@@ -226,6 +226,9 @@ public sealed partial class VisualTests
         editor.BeginStroke(new WorldPosition(18, 18));
         editor.BeginStroke(new WorldPosition(14, 24));
         editor.Army.SelectedOwner = editor.Army.Owners.Single(owner => owner.Value == WorldRace.Human);
+        Assert.That(editor.Army.IsValid, Is.False, "A level 1 human leader cannot lead the titan.");
+        top.SelectedOption = top.Options[0];
+        Assert.That(editor.Army.IsValid, Is.True, editor.Army.Status);
         editor.BeginStroke(new WorldPosition(16, 12));
 
         Assert.That(editor.Map.Stacks, Has.Count.EqualTo(3));
