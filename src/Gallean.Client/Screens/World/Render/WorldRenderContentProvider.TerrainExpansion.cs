@@ -55,29 +55,29 @@ internal sealed partial class WorldRenderContentProvider
 
     private static SKVertices BuildTerrainExpansionMask(TerrainExpansionAnimation terrainExpansion)
     {
-        Dictionary<(int X, int Y), ushort> corners = [];
+        Dictionary<(int X, int Y), int> corners = [];
         List<SKPoint> positions = [];
         List<SKColor> colors = [];
-        List<ushort> indexes = [];
+        List<int> indexes = [];
 
         foreach (TerrainExpansionTile tile in terrainExpansion.Tiles)
         {
-            ushort top = Corner(tile.Position.X, tile.Position.Y, tile.TopStart);
-            ushort right = Corner(tile.Position.X + 1, tile.Position.Y, tile.RightStart);
-            ushort bottom = Corner(tile.Position.X + 1, tile.Position.Y + 1, tile.BottomStart);
-            ushort left = Corner(tile.Position.X, tile.Position.Y + 1, tile.LeftStart);
+            int top = Corner(tile.Position.X, tile.Position.Y, tile.TopStart);
+            int right = Corner(tile.Position.X + 1, tile.Position.Y, tile.RightStart);
+            int bottom = Corner(tile.Position.X + 1, tile.Position.Y + 1, tile.BottomStart);
+            int left = Corner(tile.Position.X, tile.Position.Y + 1, tile.LeftStart);
 
             indexes.AddRange([top, right, bottom, top, bottom, left]);
         }
 
-        return SkiaMemoryPressure.CreateVertices([.. positions], [.. colors], [.. indexes]);
+        return TileMeshVertices.Create(positions, indexes, colors);
 
-        ushort Corner(int x, int y, TimeSpan start)
+        int Corner(int x, int y, TimeSpan start)
         {
-            if (!corners.TryGetValue((x, y), out ushort index))
+            if (!corners.TryGetValue((x, y), out int index))
             {
                 Point point = WorldTransform.ToWorldPoint(x - 0.5, y - 0.5);
-                index = (ushort)positions.Count;
+                index = positions.Count;
                 positions.Add(point.ToSKPoint());
                 colors.Add(new SKColor((byte)Math.Round(255.0 * (start / terrainExpansion.Duration)), 0, 0, 255));
                 corners[(x, y)] = index;
