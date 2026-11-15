@@ -17,14 +17,8 @@ internal static class ScenarioMapDecoder
 
         foreach ((Db.ScenarioId _, Db.Id blockId, string blockData) in blocksList)
         {
-            if (blockId.Value.Length >= 10)
+            if (TryGetBlockPosition(blockId.Value, out int xPos, out int yPos))
             {
-                string yyStr = blockId.Value[6..8];
-                string xxStr = blockId.Value[8..10];
-
-                int yPos = Convert.ToInt32(yyStr, 16);
-                int xPos = Convert.ToInt32(xxStr, 16);
-
                 int[] tiles = DecodeBlock(blockData);
 
                 for (int by = 0; by < BlockHeight; by++)
@@ -44,6 +38,31 @@ internal static class ScenarioMapDecoder
         }
 
         return map;
+    }
+
+    // Original block IDs hold the block position as two hex digits per axis ("S216MB" + yy + xx), which limits maps to
+    // 256 tiles. Larger maps use three hex digits per axis ("S900MB" + yyy + xxx, up to 4096 tiles).
+    private static bool TryGetBlockPosition(string blockId, out int x, out int y)
+    {
+        int digits = blockId.Length switch
+        {
+            >= 12 => 3,
+            >= 10 => 2,
+            _ => 0
+        };
+
+        if (digits == 0)
+        {
+            x = 0;
+            y = 0;
+
+            return false;
+        }
+
+        y = Convert.ToInt32(blockId.Substring(6, digits), 16);
+        x = Convert.ToInt32(blockId.Substring(6 + digits, digits), 16);
+
+        return true;
     }
 
     private static int[] DecodeBlock(string data)
