@@ -74,28 +74,28 @@ internal sealed partial class WorldRenderContentProvider
 
         private static SKVertices BuildMesh(IReadOnlyList<WorldPosition> fogPositions)
         {
-            Dictionary<(int X, int Y), ushort> corners = [];
+            Dictionary<(int X, int Y), int> corners = [];
             List<SKPoint> positions = [];
-            List<ushort> indexes = [];
+            List<int> indexes = [];
 
             foreach (WorldPosition fogPosition in fogPositions)
             {
-                ushort top = Corner(fogPosition.X, fogPosition.Y);
-                ushort right = Corner(fogPosition.X + 1, fogPosition.Y);
-                ushort bottom = Corner(fogPosition.X + 1, fogPosition.Y + 1);
-                ushort left = Corner(fogPosition.X, fogPosition.Y + 1);
+                int top = Corner(fogPosition.X, fogPosition.Y);
+                int right = Corner(fogPosition.X + 1, fogPosition.Y);
+                int bottom = Corner(fogPosition.X + 1, fogPosition.Y + 1);
+                int left = Corner(fogPosition.X, fogPosition.Y + 1);
 
                 indexes.AddRange([top, right, bottom, top, bottom, left]);
             }
 
-            return SkiaMemoryPressure.CreateVertices([.. positions], indexes: [.. indexes]);
+            return TileMeshVertices.Create(positions, indexes);
 
-            ushort Corner(int x, int y)
+            int Corner(int x, int y)
             {
-                if (!corners.TryGetValue((x, y), out ushort index))
+                if (!corners.TryGetValue((x, y), out int index))
                 {
                     Point point = WorldTransform.ToWorldPoint(x - 0.5, y - 0.5);
-                    index = (ushort)positions.Count;
+                    index = positions.Count;
                     positions.Add(point.ToSKPoint());
                     corners[(x, y)] = index;
                 }

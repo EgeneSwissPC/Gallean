@@ -244,16 +244,16 @@ internal sealed partial class WorldRenderContentProvider
 
     private static SKVertices BuildTileMesh(IReadOnlyList<WorldPosition> tiles, int bleed)
     {
-        Dictionary<(int X, int Y), ushort> corners = [];
+        Dictionary<(int X, int Y), int> corners = [];
         List<SKPoint> positions = [];
-        List<ushort> indexes = [];
+        List<int> indexes = [];
 
         foreach (WorldPosition tile in tiles)
         {
-            ushort top = Corner(tile.X, tile.Y);
-            ushort right = Corner(tile.X + 1, tile.Y);
-            ushort bottom = Corner(tile.X + 1, tile.Y + 1);
-            ushort left = Corner(tile.X, tile.Y + 1);
+            int top = Corner(tile.X, tile.Y);
+            int right = Corner(tile.X + 1, tile.Y);
+            int bottom = Corner(tile.X + 1, tile.Y + 1);
+            int left = Corner(tile.X, tile.Y + 1);
 
             positions[top] += new SKPoint(0, -bleed / 2.0f);
             positions[right] += new SKPoint(bleed, 0);
@@ -263,14 +263,14 @@ internal sealed partial class WorldRenderContentProvider
             indexes.AddRange([top, right, bottom, top, bottom, left]);
         }
 
-        return SkiaMemoryPressure.CreateVertices([.. positions], indexes: [.. indexes]);
+        return TileMeshVertices.Create(positions, indexes);
 
-        ushort Corner(int x, int y)
+        int Corner(int x, int y)
         {
-            if (!corners.TryGetValue((x, y), out ushort index))
+            if (!corners.TryGetValue((x, y), out int index))
             {
                 Point point = WorldTransform.ToWorldPoint(x - 0.5, y - 0.5);
-                index = (ushort)positions.Count;
+                index = positions.Count;
                 positions.Add(point.ToSKPoint());
                 corners[(x, y)] = index;
             }
