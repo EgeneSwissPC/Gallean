@@ -105,6 +105,53 @@ public sealed class VisualTests
         return cleanupList.Add(new GameModel(session, texts, NullLog.Instance, SynchronousTaskScheduler.Instance));
     }
 
+    // Registers each item with every definition the item details view looks up for it.
+    private static void AddItemDefinitions(TestWorldEngineBuilder builder, IEnumerable<ItemDefinition> itemDefinitions, IGameDefinitionProvider definitions)
+    {
+        foreach (ItemDefinition itemDefinition in itemDefinitions)
+        {
+            builder.WithDefinition(itemDefinition);
+
+            if (itemDefinition.EquipmentModifierId is { } equipmentModifierId)
+            {
+                builder.WithDefinition(definitions.GetUnitModifier(equipmentModifierId));
+            }
+
+            UnitAttackDefinitionId? attackId = itemDefinition.Effect is AttackItemEffect attackEffect ? attackEffect.AttackId : itemDefinition.EquipmentAttackId;
+
+            if (attackId is { } id)
+            {
+                UnitAttackDefinition attack = definitions.GetAttack(id);
+                builder.WithDefinition(attack);
+
+                foreach (UnitDefinitionId unitId in attack.SummonUnitIds)
+                {
+                    builder.WithDefinition(definitions.GetUnit(unitId));
+                }
+            }
+
+            switch (itemDefinition.Effect)
+            {
+                case TemporaryBoostItemEffect effect:
+                    builder.WithDefinition(definitions.GetUnitModifier(effect.ModifierId));
+                    break;
+                case PermanentBoostItemEffect effect:
+                    builder.WithDefinition(definitions.GetUnitModifier(effect.ModifierId));
+                    break;
+                case SpellItemEffect effect:
+                    WorldSpellDefinition spell = definitions.GetSpell(effect.SpellId);
+                    builder.WithDefinition(spell);
+
+                    if (spell.Effect is WorldSummonStackSpellEffect summon)
+                    {
+                        builder.WithDefinition(definitions.GetUnit(summon.Unit));
+                    }
+
+                    break;
+            }
+        }
+    }
+
     private static BattleUnit MakeBattleUnit(int id, UnitDefinitionId definitionId, BattleSide side, GameModel gameModel)
     {
         UnitDefinition definition = gameModel.Definitions.GetUnit(definitionId);
@@ -2927,15 +2974,7 @@ public sealed class VisualTests
             .WithStack(stack)
             .WithSubrace(TestHelpers.NeutralSubrace);
 
-        foreach (ItemDefinition itemDefinition in itemDefinitions)
-        {
-            builder.WithDefinition(itemDefinition);
-
-            if (itemDefinition.EquipmentModifierId is { } modifierId)
-            {
-                builder.WithDefinition(scenarioModel.Definitions.GetUnitModifier(modifierId));
-            }
-        }
+        AddItemDefinitions(builder, itemDefinitions, scenarioModel.Definitions);
 
         (GameSession session, _) = builder.BuildSession();
 
@@ -3788,15 +3827,7 @@ public sealed class VisualTests
             .WithStack(stack)
             .WithSubrace(TestHelpers.NeutralSubrace);
 
-        foreach (ItemDefinition itemDefinition in itemDefinitions)
-        {
-            builder.WithDefinition(itemDefinition);
-
-            if (itemDefinition.EquipmentModifierId is { } modifierId)
-            {
-                builder.WithDefinition(scenarioModel.Definitions.GetUnitModifier(modifierId));
-            }
-        }
+        AddItemDefinitions(builder, itemDefinitions, scenarioModel.Definitions);
 
         (GameSession session, _) = builder.BuildSession();
 
@@ -4087,15 +4118,7 @@ public sealed class VisualTests
             .WithStack(otherStack)
             .WithSubrace(TestHelpers.NeutralSubrace);
 
-        foreach (ItemDefinition itemDefinition in itemDefinitions)
-        {
-            builder.WithDefinition(itemDefinition);
-
-            if (itemDefinition.EquipmentModifierId is { } modifierId)
-            {
-                builder.WithDefinition(scenarioModel.Definitions.GetUnitModifier(modifierId));
-            }
-        }
+        AddItemDefinitions(builder, itemDefinitions, scenarioModel.Definitions);
 
         (GameSession session, _) = builder.BuildSession();
 
