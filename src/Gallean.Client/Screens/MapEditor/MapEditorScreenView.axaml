@@ -34,10 +34,10 @@
     <Border Grid.Column="1" Classes="editor-panel">
       <DockPanel>
         <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
-          <Panel Width="220" Height="220" HorizontalAlignment="Center">
-            <local:MinimapVisual x:Name="Minimap" Width="220" Height="220" MapScale="1" />
+          <Panel Width="170" Height="170" HorizontalAlignment="Center">
+            <local:MinimapVisual x:Name="Minimap" Width="170" Height="170" MapScale="1" />
           </Panel>
-          <TextBlock Text="{local:Text 'Left button: paint · Right button: drag map · Wheel: zoom · Ctrl+Z: undo'}"
+          <TextBlock Text="{local:Text 'Left button: paint · Right button or WASD: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save'}"
                      Classes="caption"
                      TextWrapping="Wrap"
                      Foreground="{StaticResource SecondaryTextBrush}" />
@@ -95,6 +95,57 @@
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}"
                          Margin="0,6,0,0" />
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsArmyTool}">
+              <StackPanel DataContext="{Binding Army}" x:DataType="local:MapEditorArmyViewModel">
+                <local:OutlinedTextBlock Text="{local:Text 'Owner'}" Classes="caption field-label" />
+                <ComboBox x:Name="OwnerBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Owners}" SelectedItem="{Binding SelectedOwner}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="local:MapEditorLabeled">
+                      <TextBlock Text="{Binding Label}" Classes="body" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+
+                <local:OutlinedTextBlock Text="{local:Text 'Units'}" Classes="caption field-label" />
+                <ItemsControl x:Name="SlotGrid" ItemsSource="{Binding Slots}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:MapEditorSlotViewModel">
+                      <Grid ColumnDefinitions="92,*" Margin="0,2">
+                        <TextBlock Grid.Column="0" Text="{Binding Label}" Classes="caption" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <ComboBox Grid.Column="1"
+                                HorizontalAlignment="Stretch"
+                                ItemsSource="{Binding Options}"
+                                SelectedItem="{Binding SelectedOption}"
+                                IsEnabled="{Binding IsEnabled}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="local:MapEditorLabeled">
+                            <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <TextBlock Text="{Binding Status}"
+                           Classes="caption"
+                           TextWrapping="Wrap"
+                           Foreground="{StaticResource SecondaryTextBrush}"
+                           Margin="0,6,0,0" />
+              </StackPanel>
+
+              <TextBlock Text="{local:Text 'Click free land to place this army. Click an army to select it, then change it or delete it.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,6,0,0" />
+              <Grid Classes="pill-group" ColumnDefinitions="*,*" Margin="0,8,0,0">
+                <Button x:Name="ApplyArmyButton" Grid.Column="0" Classes="pill" local:PlateChrome.TextureSeed="5" Content="{local:Text 'Apply'}" Command="{Binding ApplyArmyCommand}" />
+                <Button x:Name="DeleteArmyButton" Grid.Column="1" Classes="pill" local:PlateChrome.TextureSeed="6" Content="{local:Text 'Delete army'}" Command="{Binding DeleteArmyCommand}" />
+              </Grid>
             </StackPanel>
 
             <StackPanel IsVisible="{Binding HasBrush}">

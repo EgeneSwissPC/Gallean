@@ -26,15 +26,18 @@ internal sealed partial class GameViewModel
 
         try
         {
-            (CustomMap map, Scenario preview, IGameDefinitionProvider definitions) = await RunAsync(() =>
+            Language language = Settings.EffectiveLanguage;
+            (CustomMap map, Scenario preview, IGameDefinitionProvider definitions, IReadOnlyList<MapEditorUnitOption> units) = await RunAsync(() =>
             {
                 IGameDefinitionProvider definitions = gameLoader.CreateDefinitions();
+                IGameTextProvider texts = gameLoader.LoadGlobalTexts(language);
                 CustomMap map = createMap(definitions);
+                IReadOnlyList<MapEditorUnitOption> units = MapEditorUnitOption.Create(store.ListUnits(definitions), texts);
 
-                return (map, store.BuildPreview(map, definitions), definitions);
+                return (map, store.BuildPreview(map, definitions), definitions, units);
             });
 
-            ShowScreen(new MapEditorScreenViewModel(this, store, definitions, map, preview));
+            ShowScreen(new MapEditorScreenViewModel(this, store, definitions, map, preview, units));
         }
         catch (Exception ex)
         {

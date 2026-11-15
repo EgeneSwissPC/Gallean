@@ -114,6 +114,15 @@ internal sealed class GameLoader(IRandomProvider random, string? customMapsDirec
         return customMapsDirectory is null ? null : new CustomMapStore(customMapsDirectory, globalDatabase.Value, campaignDatabase.Value);
     }
 
+    public IGameTextProvider LoadGlobalTexts(Language language)
+    {
+        LanguageDatabase languageDatabase = LanguageDatabaseLoader.LoadIndex(
+            RiseOfTheElves.GetLanguageGlobalDatabasePath(language.Code),
+            RiseOfTheElves.GetLanguageScenarioDatabasePath(language.Code));
+
+        return new GameTextProvider(globalDatabaseIndex.Value, scenarioDatabaseIndex.Value, [], languageDatabase);
+    }
+
     public IGameDefinitionProvider CreateDefinitions()
     {
         return new GameDefinitionProvider(globalDatabase.Value);

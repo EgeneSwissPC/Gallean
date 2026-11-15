@@ -10,8 +10,8 @@ using Gallean.Configuration;
 namespace Gallean.Client;
 
 // The map editor's map view: renders the edited world with the game's world renderer (WorldScreenSnapshotWorker,
-// WorldRenderOperation). Left button paints, right or middle button drags the map, the wheel zooms and the arrow
-// keys scroll.
+// WorldRenderOperation). Left button paints, right or middle button drags the map, the wheel zooms and WASD or the
+// arrow keys scroll, as in the game.
 internal sealed class MapEditorVisual : AbstractAnimatedVisual
 {
     private const double CameraSpeed = 2000.0;
@@ -57,7 +57,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
 
         if (topLevel is not null)
         {
-            cleanup.Add(topLevel.AddDisposableHandler(KeyDownEvent, OnTopLevelKeyDown, RoutingStrategies.Bubble, true));
+            cleanup.Add(topLevel.AddDisposableHandler(KeyDownEvent, OnTopLevelKeyDown, RoutingStrategies.Tunnel));
             cleanup.Add(topLevel.AddDisposableHandler(KeyUpEvent, OnTopLevelKeyUp, RoutingStrategies.Bubble, true));
             topLevel.LostFocus += OnLostFocus;
             cleanup.Add(new ActionDisposable(() => topLevel.LostFocus -= OnLostFocus));
@@ -116,6 +116,9 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
 
         PointerPoint point = e.GetCurrentPoint(this);
         Point worldPoint = GetWorldPoint(e);
+
+        // Take keyboard focus away from the panel, so WASD moves the map instead of typing into a field.
+        Focus();
 
         if (point.Properties.IsLeftButtonPressed)
         {
@@ -199,21 +202,45 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         return camera.ScreenToWorld(e.GetPosition(this));
     }
 
+    private static bool IsPanKey(Key key)
+    {
+        return key is Key.W or Key.A or Key.S or Key.D or Key.Up or Key.Down or Key.Left or Key.Right;
+    }
+
+    // Runs before the focused control sees the key, so a focused list or combo box does not swallow the camera keys.
     private void OnTopLevelKeyDown(object? sender, KeyEventArgs e)
     {
-        if (e.Source is TextBox)
+        if (!ViewModel.IsActive || TopLevel.GetTopLevel(this)?.FocusManager?.GetFocusedElement() is TextBox)
         {
             return;
         }
 
-        if (e.Key == Key.Z && e.KeyModifiers == KeyModifiers.Control && ViewModel.UndoCommand.CanExecute(null))
+        if (e.KeyModifiers == KeyModifiers.Control)
         {
-            ViewModel.UndoCommand.Execute(null);
+            if (e.Key == Key.Z && ViewModel.UndoCommand.CanExecute(null))
+            {
+                ViewModel.UndoCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.S && ViewModel.SaveCommand.CanExecute(null))
+            {
+                ViewModel.SaveCommand.Execute(null);
+                e.Handled = true;
+            }
+
+            return;
+        }
+
+        if (e.Key == Key.Delete && ViewModel.DeleteArmyCommand.CanExecute(null))
+        {
+            ViewModel.DeleteArmyCommand.Execute(null);
             e.Handled = true;
-            return;
         }
-
-        pressedKeys.Add(e.Key);
+        else if (IsPanKey(e.Key) && e.KeyModifiers == KeyModifiers.None)
+        {
+            pressedKeys.Add(e.Key);
+            e.Handled = true;
+        }
     }
 
     private void OnTopLevelKeyUp(object? sender, KeyEventArgs e)
@@ -277,8 +304,8 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
 
     private bool UpdateCamera(TimeSpan delta)
     {
-        double directionX = (pressedKeys.Contains(Key.Right) ? 1 : 0) - (pressedKeys.Contains(Key.Left) ? 1 : 0);
-        double directionY = (pressedKeys.Contains(Key.Down) ? 1 : 0) - (pressedKeys.Contains(Key.Up) ? 1 : 0);
+        double directionX = (IsPressed(Key.Right, Key.D) ? 1 : 0) - (IsPressed(Key.Left, Key.A) ? 1 : 0);
+        double directionY = (IsPressed(Key.Down, Key.S) ? 1 : 0) - (IsPressed(Key.Up, Key.W) ? 1 : 0);
         bool moved = false;
 
         if (directionX != 0 || directionY != 0)
@@ -288,6 +315,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         }
 
         return camera.Animate(delta) || moved;
+    }
+
+    private bool IsPressed(Key arrow, Key letter)
+    {
+        return pressedKeys.Contains(arrow) || pressedKeys.Contains(letter);
     }
 
     public override void Render(DrawingContext context)
