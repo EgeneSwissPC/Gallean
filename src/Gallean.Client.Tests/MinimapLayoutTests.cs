@@ -45,4 +45,22 @@ public sealed class MinimapLayoutTests
         Assert.That(layout.Contains(new Point(100, -100)), Is.False);
         Assert.That(layout.Contains(new Point(100, 220)), Is.False);
     }
+
+    [TestCase(144)]
+    [TestCase(512)]
+    [TestCase(1024)]
+    public void LargeMapTest(int size)
+    {
+        // The in-game minimap box is about 205 x 102 pixels: fewer pixels than the map has tiles.
+        Rect box = new(10, 20, 205, 102.5);
+        MinimapLayout layout = MinimapLayout.Create(size, size, box);
+        Rect inflated = box.Inflate(0.5);
+
+        Assert.That(inflated.Contains(layout.CellToScreen(0, 0)), Is.True);
+        Assert.That(inflated.Contains(layout.CellToScreen(size - 1, 0)), Is.True);
+        Assert.That(inflated.Contains(layout.CellToScreen(0, size - 1)), Is.True);
+        Assert.That(inflated.Contains(layout.CellToScreen(size - 1, size - 1)), Is.True);
+        Assert.That(layout.CellToScreen(size / 2.0, size / 2.0).X, Is.EqualTo(box.Center.X).Within(1));
+        Assert.That(layout.ToCell(layout.CellToScreen(size / 2, size / 3)), Is.EqualTo(new WorldPosition(size / 2, size / 3)));
+    }
 }
