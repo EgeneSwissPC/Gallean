@@ -102,7 +102,7 @@ internal sealed partial class MapEditorMenuScreenViewModel : AbstractScreenViewM
         foreach (Db.ScenarioInfo info in store.List())
         {
             int players = new[] { info.Player1, info.Player2, info.Player3, info.Player4, info.Player5, info.Player6, info.Player7 }.Count(race => race is >= 0 and < 99) - 1;
-            Maps.Add(new MapEditorMapItem(info.ScenarioId.Value, info.Name, Tr("{0} × {0}, {1} players", info.MapSize, players)));
+            Maps.Add(new MapEditorMapItem(info.ScenarioId.Value, info.Name, Tr("{0} × {0}, players: {1}", info.MapSize, players)));
         }
 
         SelectedMap = Maps.FirstOrDefault();

@@ -833,6 +833,6 @@
     "Undead land": "Undead land",
     "Undo": "Undo",
     "Your maps": "Your maps",
-    "{0} × {0}, {1} players": "{0} × {0}, {1} players"
+    "{0} × {0}, players: {1}": "{0} × {0}, players: {1}"
   }
 }
