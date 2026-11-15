@@ -64,6 +64,60 @@ public sealed class WorldEngineAiOrderTests
     }
 
     [Test]
+    public void ForgetRemovedStacksTest()
+    {
+        WorldMap map = TestHelpers.BuildMap([
+            "^^^^^^",
+            "^^^^^^",
+            "^^^^^^",
+            "^^^^^^",
+            "^^^^.^",
+            "......"
+        ]);
+
+        UnitDefinition leaderDefinition = TestHelpers.SimpleLeaderDefinition(
+            TestHelpers.SimpleUnitDefinition("leader", maxHitpoints: 100, initiative: 50, damage: 10),
+            movementPoints: 6, leadership: 3);
+
+        WorldPlayer aiPlayer = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with
+        {
+            IsAi = true,
+            Resources = WorldResourceSet.Empty
+        };
+        WorldPlayer humanPlayer = TestHelpers.SimplePlayer(new WorldPlayerId(2), WorldRace.Heretic, map);
+
+        WorldStack stack = TestHelpers.SimpleStack(
+            new WorldStackId("Stack1"),
+            aiPlayer.Id,
+            new WorldPosition(0, 5),
+            new UnitGrid<WorldUnit>.Builder()
+                .Place(TestHelpers.SimpleUnit(new WorldUnitId("leader"), leaderDefinition) with { Hitpoints = 30 }, GridPosition.FrontBottom, false)
+                .Build(),
+            movementPoints: 2);
+
+        WorldAiMemory memory = new WorldAiMemory(
+                new WorldAiTurnMemory(1, aiPlayer.Id, 1, 0, 0, []))
+            .WithStackMemory(stack.Id, new WorldAiStackMemory(WorldStackOrder.Heal.Instance, null))
+            .WithStackMemory(new WorldStackId("Destroyed"), new WorldAiStackMemory(WorldStackOrder.Heal.Instance, null));
+
+        WorldEngine engine = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(leaderDefinition)
+            .WithDefinition(TestHelpers.SimpleLord(aiPlayer.LordId, aiPlayer.Race, LordCategory.Warrior))
+            .WithPlayer(aiPlayer)
+            .WithDefinition(TestHelpers.SimpleLord(humanPlayer.LordId, humanPlayer.Race, LordCategory.Warrior))
+            .WithPlayer(humanPlayer)
+            .WithCapital(TestHelpers.SimpleCapital(new WorldFortificationId("cap"), aiPlayer.Id, new WorldPosition(4, 4), UnitGrid<WorldUnit>.Empty))
+            .WithStack(stack)
+            .WithAiMemory(aiPlayer.Id, memory)
+            .Build();
+
+        Assert.That(engine.DispatchCommand(new WorldAiActionCommand()).Error, Is.Null);
+
+        Assert.That(engine.State.AiMemories[aiPlayer.Id].Stacks.Keys, Is.EqualTo([stack.Id]));
+    }
+
+    [Test]
     public void AttackTargetGoneTest()
     {
         WorldMap map = TestHelpers.SimpleMap(2, 1);
