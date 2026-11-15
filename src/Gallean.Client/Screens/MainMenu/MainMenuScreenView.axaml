@@ -81,6 +81,11 @@
                   Content="{local:Text 'Tutorial'}"
                   Command="{Binding Game.StartGameCommand}"
                   CommandParameter="{Binding TutorialConfiguration}" />
+          <Button x:Name="MapEditor"
+                  Classes="plate"
+                  local:PlateChrome.TextureSeed="8"
+                  Content="{local:Text 'Map editor'}"
+                  Command="{Binding Game.ShowMapEditorCommand}" />
           <Button x:Name="Settings"
                   Classes="plate"
                   local:PlateChrome.TextureSeed="6"

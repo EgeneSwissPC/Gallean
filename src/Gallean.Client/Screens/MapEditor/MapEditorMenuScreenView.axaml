@@ -1,0 +1,136 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorMenuScreenView"
+             x:DataType="local:MapEditorMenuScreenViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.menu-overlay.wide">
+      <Setter Property="Width" Value="1180" />
+      <Setter Property="Background">
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+          <GradientStop Offset="0" Color="{x:Static local:Theme+Artwork.OverlayColor}" />
+          <GradientStop Offset="0.7" Color="{x:Static local:Theme+Artwork.OverlayColor}" />
+          <GradientStop Offset="1" Color="{x:Static local:Theme+Artwork.OverlayFadeColor}" />
+        </LinearGradientBrush>
+      </Setter>
+    </Style>
+    <Style Selector=":is(TextBlock).field-label">
+      <Setter Property="Margin" Value="0,16,0,6" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Background="{StaticResource ScenarioSelectBackdropBrush}" ClipToBounds="True">
+
+    <local:CoverBoxDecorator Classes="menu-background" DataContext="{Binding Background}">
+      <local:MainMenuBackgroundView />
+    </local:CoverBoxDecorator>
+
+    <Border Classes="menu-overlay wide" />
+
+    <Grid MaxHeight="820"
+          Margin="56,32,0,32"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Center"
+          ColumnDefinitions="440,56,400"
+          RowDefinitions="Auto,Auto,Auto,*,Auto">
+
+      <local:OutlinedTextBlock Grid.Row="0" Grid.Column="0" Text="{local:Text 'Map editor'}" Classes="h1" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+
+      <Border Grid.Row="1"
+              Grid.Column="0"
+              Width="72"
+              Height="1"
+              HorizontalAlignment="Left"
+              Background="{StaticResource ScenarioSelectDividerBrush}"
+              Margin="0,10,0,20" />
+
+      <local:OutlinedTextBlock Grid.Row="2" Grid.Column="0" Text="{local:Text 'Your maps'}" Classes="label" Margin="14,0,0,8" />
+
+      <ListBox x:Name="MapList"
+               Grid.Row="3"
+               Grid.Column="0"
+               Classes="select-list"
+               ItemsSource="{Binding Maps}"
+               SelectedItem="{Binding SelectedMap}"
+               DoubleTapped="OnMapDoubleTapped">
+        <local:Blankslate.Content>
+          <TextBlock Text="{local:Text 'No custom maps yet. Create one on the right.'}"
+                     Classes="body"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource SecondaryTextBrush}"
+                     Margin="14,8" />
+        </local:Blankslate.Content>
+        <ListBox.ItemTemplate>
+          <DataTemplate x:DataType="local:MapEditorMapItem">
+            <Border Classes="row">
+              <Grid ColumnDefinitions="*,Auto">
+                <TextBlock Grid.Column="0" Text="{Binding Name}" Classes="row-title" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1" Text="{Binding Details}" Classes="row-author" Margin="16,0,16,0" VerticalAlignment="Center" />
+              </Grid>
+            </Border>
+          </DataTemplate>
+        </ListBox.ItemTemplate>
+      </ListBox>
+
+      <Grid Grid.Row="4" Grid.Column="0" Classes="focus-group pill-group" ColumnDefinitions="*,*,*" Margin="0,20,0,0">
+        <Button x:Name="BackButton" Grid.Column="0" Classes="pill" local:PlateChrome.TextureSeed="1" Content="{local:Text 'Back'}" Command="{Binding BackCommand}" />
+        <Button x:Name="DeleteButton" Grid.Column="1" Classes="pill" local:PlateChrome.TextureSeed="2" Content="{local:Text 'Delete'}" Command="{Binding DeleteCommand}" />
+        <Button x:Name="OpenButton" Grid.Column="2" Classes="pill primary" local:PlateChrome.TextureSeed="3" Content="{local:Text 'Edit'}" Command="{Binding OpenCommand}" />
+      </Grid>
+
+      <local:OutlinedTextBlock Grid.Row="2" Grid.Column="2" Text="{local:Text 'New map'}" Classes="label" Margin="0,0,0,8" />
+
+      <StackPanel Grid.Row="3" Grid.Column="2">
+        <local:OutlinedTextBlock Text="{local:Text 'Name'}" Classes="caption field-label" Margin="0,0,0,6" />
+        <TextBox x:Name="NameBox" Text="{Binding Name}" MaxLength="{Binding NameLength}" />
+
+        <local:OutlinedTextBlock Text="{local:Text 'Size'}" Classes="caption field-label" />
+        <ComboBox x:Name="SizeBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Sizes}" SelectedItem="{Binding SelectedSize}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="local:MapEditorLabeled">
+              <TextBlock Text="{Binding Label}" Classes="body" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <local:OutlinedTextBlock Text="{local:Text 'Fill with'}" Classes="caption field-label" />
+        <ComboBox x:Name="TerrainBox" HorizontalAlignment="Stretch" ItemsSource="{Binding BaseTerrains}" SelectedItem="{Binding SelectedBaseTerrain}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="local:MapEditorLabeled">
+              <TextBlock Text="{Binding Label}" Classes="body" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+
+        <local:OutlinedTextBlock Text="{local:Text 'Players'}" Classes="caption field-label" />
+        <ItemsControl ItemsSource="{Binding Races}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:MapEditorRaceOption">
+              <CheckBox IsChecked="{Binding IsSelected}" Margin="0,2">
+                <TextBlock Text="{Binding Label}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+              </CheckBox>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <TextBlock Text="{local:Text 'Maps are saved in your data folder and appear under New quest.'}"
+                   Classes="caption"
+                   TextWrapping="Wrap"
+                   Foreground="{StaticResource SecondaryTextBrush}"
+                   Margin="0,16,0,0" />
+      </StackPanel>
+
+      <Button x:Name="CreateButton"
+              Grid.Row="4"
+              Grid.Column="2"
+              Classes="pill primary"
+              local:PlateChrome.TextureSeed="4"
+              Margin="0,20,0,0"
+              HorizontalAlignment="Stretch"
+              Content="{local:Text 'Create map'}"
+              Command="{Binding CreateCommand}" />
+    </Grid>
+  </Grid>
+
+</UserControl>

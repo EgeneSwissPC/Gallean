@@ -81,7 +81,7 @@ internal sealed class App(ILog log, GCMemoryInfo memoryInfo) : Application
         }
 
         FreeThreadedRandomProvider random = new();
-        GameLoader gameLoader = new(random);
+        GameLoader gameLoader = new(random, AppDirectories.Maps);
         GameSaveStore gameSaveStore = new(AppDirectories.Saves, gameSettings.AutoSaveLimit);
         LeaderStore leaderStore = new(AppDirectories.Leaders);
         AssetPreloader assetPreloader = new(assetProvider);

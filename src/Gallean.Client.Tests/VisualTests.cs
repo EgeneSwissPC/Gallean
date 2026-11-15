@@ -25,7 +25,7 @@ namespace Gallean.Client.Tests;
 [Explicit]
 [NonParallelizable]
 [Category("Visual")]
-public sealed class VisualTests
+public sealed partial class VisualTests
 {
     private const int BaseWidth = 1366;
     private const int BaseHeight = 768;
