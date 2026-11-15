@@ -4,7 +4,7 @@ namespace Gallean.Client;
 
 internal sealed partial class BattleRenderer
 {
-    private sealed class BackgroundCache
+    private sealed class BackgroundCache : IDisposable
     {
         private readonly record struct State(
             BattleBackgroundShaderProgram Program,
@@ -41,6 +41,16 @@ internal sealed partial class BattleRenderer
                 Reset(currentState, currentUniforms);
                 DrawDirect(canvas, editor);
             }
+        }
+
+        public void Dispose()
+        {
+            image?.Dispose();
+            uniforms?.Dispose();
+
+            image = null;
+            uniforms = null;
+            state = default;
         }
 
         private void Reset(State currentState, SKData currentUniforms)

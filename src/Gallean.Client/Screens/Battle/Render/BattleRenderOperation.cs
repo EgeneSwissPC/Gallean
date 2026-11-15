@@ -25,6 +25,8 @@ internal sealed class BattleRenderOperation(
     DiagnosticsRecorder diagnostics) : ICustomDrawOperation
 {
     private readonly SKMatrix skiaTransform = transform.ToSKMatrix();
+    private readonly BattleRenderer registeredRenderer = Register(renderer);
+    private int disposed;
 
     public Rect Bounds => bounds;
 
@@ -40,6 +42,10 @@ internal sealed class BattleRenderOperation(
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref disposed, 1) == 0)
+        {
+            registeredRenderer.RemoveOperation();
+        }
     }
 
     public void Render(ImmediateDrawingContext context)
@@ -62,5 +68,12 @@ internal sealed class BattleRenderOperation(
         {
             diagnostics.AddDraw(Stopwatch.GetElapsedTime(renderStartTimestamp));
         }
+    }
+
+    private static BattleRenderer Register(BattleRenderer renderer)
+    {
+        renderer.AddOperation();
+
+        return renderer;
     }
 }
