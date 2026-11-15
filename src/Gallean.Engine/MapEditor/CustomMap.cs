@@ -32,6 +32,7 @@ public sealed class CustomMap
     private readonly WorldMapCell[] cells;
     private readonly List<CustomMapMountain> mountains;
     private readonly List<CustomMapPlayer> players;
+    private readonly List<CustomMapStack> stacks;
 
     public CustomMap(
         string id,
@@ -40,7 +41,8 @@ public sealed class CustomMap
         int size,
         IEnumerable<WorldMapCell> cells,
         IEnumerable<CustomMapMountain> mountains,
-        IEnumerable<CustomMapPlayer> players)
+        IEnumerable<CustomMapPlayer> players,
+        IEnumerable<CustomMapStack>? stacks = null)
     {
         if (size is < MinSize or > MaxSize)
         {
@@ -54,6 +56,7 @@ public sealed class CustomMap
         this.cells = [.. cells];
         this.mountains = [.. mountains];
         this.players = [.. players];
+        this.stacks = [.. stacks ?? []];
 
         if (this.cells.Length != size * size)
         {
@@ -68,6 +71,7 @@ public sealed class CustomMap
     public IReadOnlyList<WorldMapCell> Cells => cells;
     public IReadOnlyList<CustomMapMountain> Mountains => mountains;
     public IReadOnlyList<CustomMapPlayer> Players => players;
+    public IReadOnlyList<CustomMapStack> Stacks => stacks;
 
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
@@ -100,7 +104,7 @@ public sealed class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks);
     }
 
     public WorldMapCell GetCell(WorldPosition position)
@@ -145,7 +149,7 @@ public sealed class CustomMap
 
         foreach (WorldPosition position in GetBrushArea(center, radius))
         {
-            if (!IsValidPosition(position) || IsUnderCapital(position))
+            if (!IsValidPosition(position) || IsUnderCapital(position) || (brush == CustomMapBrush.Water && GetStackAt(position) is not null))
             {
                 continue;
             }
@@ -196,6 +200,11 @@ public sealed class CustomMap
             return false;
         }
 
+        if (stacks.Any(stack => footprint.Contains(stack.Position)))
+        {
+            return false;
+        }
+
         foreach (CustomMapPlayer other in players)
         {
             if (other.Race != race && other.Capital is { } capital && Overlaps(new WorldFootprint(capital, CapitalSize, CapitalSize), footprint))
@@ -214,6 +223,82 @@ public sealed class CustomMap
         }
 
         return true;
+    }
+
+    public CustomMapStack? GetStackAt(WorldPosition position)
+    {
+        return stacks.FirstOrDefault(stack => stack.Position == position);
+    }
+
+    public bool IsValidOwner(WorldRace owner)
+    {
+        return owner == WorldRace.Neutral || players.Any(player => player.Race == owner);
+    }
+
+    // Places a new army; returns its ID or the reason it cannot stand there.
+    public (CustomMapStack? Stack, CustomMapStackError? Error) PlaceStack(WorldPosition position, WorldRace owner, IReadOnlyList<CustomMapUnit?> slots)
+    {
+        if (CheckStack(position, owner, slots, ignoreId: null) is { } error)
+        {
+            return (null, error);
+        }
+
+        int id = stacks.Count == 0 ? 1 : stacks.Max(stack => stack.Id) + 1;
+        CustomMapStack stack = new(id, position, owner, [.. slots]);
+        stacks.Add(stack);
+
+        return (stack, null);
+    }
+
+    public CustomMapStackError? UpdateStack(int id, WorldRace owner, IReadOnlyList<CustomMapUnit?> slots)
+    {
+        int index = stacks.FindIndex(stack => stack.Id == id);
+
+        if (index < 0)
+        {
+            return CustomMapStackError.OutsideMap;
+        }
+
+        if (CheckStack(stacks[index].Position, owner, slots, ignoreId: id) is { } error)
+        {
+            return error;
+        }
+
+        stacks[index] = stacks[index] with { Owner = owner, Slots = [.. slots] };
+
+        return null;
+    }
+
+    public bool RemoveStack(int id)
+    {
+        return stacks.RemoveAll(stack => stack.Id == id) > 0;
+    }
+
+    private CustomMapStackError? CheckStack(WorldPosition position, WorldRace owner, IReadOnlyList<CustomMapUnit?> slots, int? ignoreId)
+    {
+        if (!IsValidPosition(position))
+        {
+            return CustomMapStackError.OutsideMap;
+        }
+
+        WorldMapCell cell = GetCell(position);
+
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderCapital(position))
+        {
+            return CustomMapStackError.Blocked;
+        }
+
+        if (stacks.Any(stack => stack.Position == position && stack.Id != ignoreId))
+        {
+            return CustomMapStackError.Occupied;
+        }
+
+        if (!IsValidOwner(owner))
+        {
+            return CustomMapStackError.UnknownOwner;
+        }
+
+        return CustomMapStack.ValidateSlots(slots);
     }
 
     public IReadOnlyList<string> Validate()
@@ -257,7 +342,7 @@ public sealed class CustomMap
 
         foreach (WorldPosition position in footprint.EnumerateTiles())
         {
-            if (!IsValidPosition(position) || IsUnderCapital(position))
+            if (!IsValidPosition(position) || IsUnderCapital(position) || GetStackAt(position) is not null)
             {
                 return false;
             }

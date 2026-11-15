@@ -89,7 +89,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         Db.ScenarioInfo info = List().Single(candidate => string.Equals(candidate.ScenarioId.Value, mapId, StringComparison.OrdinalIgnoreCase));
         Scenario scenario = ScenarioLoader.Load(globalDb, LoadDatabase(mapId), campaignDb, new ScenarioId(info.ScenarioId.Value), definitions, new GlobalVariables());
 
-        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State);
+        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions);
     }
 
     // Builds the world state the editor renders by saving the map to a scratch folder and loading it through the
@@ -150,7 +150,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         };
     }
 
-    public static CustomMap FromState(string mapId, string name, string description, WorldState state)
+    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions)
     {
         if (state.Map.Width != state.Map.Height)
         {
@@ -184,6 +184,51 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
                 mountain.Variant.Value))
         ];
 
-        return new CustomMap(mapId, name, description, state.Map.Width, state.Map.Cells, mountains, players);
+        WorldFootprint[] capitals = [.. state.Fortifications.Values.OfType<WorldCapital>().Select(capital => capital.Footprint)];
+        List<CustomMapStack> stacks = [];
+
+        foreach (WorldStack stack in state.Stacks.Values)
+        {
+            // Capital garrisons belong to the capitals; everything else is an army placed in the editor.
+            if (capitals.Any(footprint => footprint.Contains(stack.Position)))
+            {
+                continue;
+            }
+
+            CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
+
+            foreach ((WorldUnit unit, GridPosition position) in stack.Units.GetUnits())
+            {
+                UnitDefinition definition = definitions.GetUnit(unit.DefinitionId);
+                int slot = definition.IsLarge ? GridPosition.AtFrontLine(position.Flank).ToIndex() : position.ToIndex();
+                slots[slot] = CustomMapUnit.From(definition) with { Level = unit.Level, Hitpoints = unit.Hitpoints };
+            }
+
+            string idText = stack.Id.Value;
+            int id = idText.Length == 10 && int.TryParse(idText.AsSpan(6), System.Globalization.NumberStyles.HexNumber, null, out int number) && number > CustomMapWriter.FirstArmyNumber
+                ? number - CustomMapWriter.FirstArmyNumber
+                : stacks.Count + 1;
+            stacks.Add(new CustomMapStack(id, stack.Position, state.Players[stack.OwnerId].Race, [.. slots]));
+        }
+
+        return new CustomMap(mapId, name, description, state.Map.Width, state.Map.Cells, mountains, players, stacks);
+    }
+
+    // Units the editor offers for armies: regular and neutral soldiers and leaders that can walk on land.
+    public IReadOnlyList<UnitDefinition> ListUnits(IGameDefinitionProvider definitions)
+    {
+        List<UnitDefinition> result = [];
+
+        foreach (Db.Id id in globalDb.Units.Keys)
+        {
+            UnitDefinition? definition = definitions.TryGetUnit(new UnitDefinitionId(id.Value));
+
+            if (definition is { IsWaterOnly: false, Category: UnitCategory.Soldier or UnitCategory.Leader or UnitCategory.NeutralSoldier or UnitCategory.NeutralLeader })
+            {
+                result.Add(definition);
+            }
+        }
+
+        return result;
     }
 }

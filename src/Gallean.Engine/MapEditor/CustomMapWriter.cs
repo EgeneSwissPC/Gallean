@@ -15,6 +15,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     private const int BlockWidth = 8;
     private const int BlockHeight = 4;
     private const int BlockDataLength = 171;
+    // Army IDs start after the capitals' (one per player slot): stack KC0100 + n, units UN0600 + 6n + k.
+    internal const int FirstArmyNumber = 0x100;
 
     public void Write(CustomMap map, string mapsDirectory)
     {
@@ -58,6 +60,12 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         index.Add(BuildInfo(map, scenarioId, prefix, rows.PlayerRaces));
         index.Sort((a, b) => string.CompareOrdinal(a.ScenarioId.Value, b.ScenarioId.Value));
         WriteTable(mapsDirectory, IndexFileName, index);
+    }
+
+    // The world stack ID an army gets in the saved scenario.
+    public static string GetArmyStackId(string mapId, int armyId)
+    {
+        return MakeId(mapId[..4], "KC", FirstArmyNumber + armyId).Value;
     }
 
     public static void Delete(string mapsDirectory, string mapId)
@@ -224,6 +232,11 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             rows.Texts.Add(Text(scenarioId, capitalId, Db.TextScenario.NameTextId, $"{GetPlayerName(raceType)} Capital"));
         }
 
+        foreach (CustomMapStack stack in map.Stacks)
+        {
+            AddArmy(rows, map, stack, scenarioId, prefix);
+        }
+
         for (int i = 0; i < rows.PlayerRaces.Count; i++)
         {
             for (int j = i + 1; j < rows.PlayerRaces.Count; j++)
@@ -233,6 +246,97 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         }
 
         return rows;
+    }
+
+    private static void AddArmy(Rows rows, CustomMap map, CustomMapStack stack, Db.ScenarioId scenarioId, string prefix)
+    {
+        int playerIndex = stack.Owner == WorldRace.Neutral
+            ? 0
+            : 1 + map.Players.Select(player => player.Race).ToList().IndexOf(stack.Owner);
+
+        if (playerIndex < 0)
+        {
+            throw new InvalidOperationException($"Army {stack.Id} belongs to {stack.Owner}, who is not on the map.");
+        }
+
+        int number = FirstArmyNumber + stack.Id;
+        Db.Id stackId = MakeId(prefix, "KC", number);
+        Db.Id playerId = MakeId(prefix, "PL", playerIndex);
+        Db.Id subraceId = MakeId(prefix, "SR", playerIndex);
+        List<Db.Id> unitIds = [];
+        Dictionary<CustomMapUnit, int> unitIndexes = new(ReferenceEqualityComparer.Instance);
+        Db.Id? leaderId = null;
+
+        for (int slot = 0; slot < GridPosition.Count; slot++)
+        {
+            if (stack.Slots[slot] is not { } unit)
+            {
+                continue;
+            }
+
+            Db.Id unitId = MakeId(prefix, "UN", (FirstArmyNumber * 6) + (stack.Id * GridPosition.Count) + slot);
+            unitIndexes[unit] = unitIds.Count;
+            unitIds.Add(unitId);
+            rows.Units.Add(new Db.ScenarioUnit(scenarioId, unitId, unit.Hitpoints, 0, unit.Level, new Db.Id(unit.TypeId.Value), 1, false, false));
+
+            if (unit.IsLeader)
+            {
+                leaderId = unitId;
+            }
+        }
+
+        // Group positions use the database layout: position p is line p % 2, flank p / 2; a large unit fills both lines.
+        int[] positions = new int[GridPosition.Count];
+
+        for (int p = 0; p < GridPosition.Count; p++)
+        {
+            GridPosition position = new(p % GridPosition.LineCount, p / GridPosition.LineCount);
+            CustomMapUnit? unit = stack.Slots[position.ToIndex()];
+
+            if (unit is null && position.IsBackLine && stack.Slots[GridPosition.AtFrontLine(position.Flank).ToIndex()] is { IsLarge: true } large)
+            {
+                unit = large;
+            }
+
+            positions[p] = unit is not null ? unitIndexes[unit] : -1;
+        }
+
+        Db.Id? Unit(int index) => index < unitIds.Count ? unitIds[index] : null;
+
+        rows.UnitGroups.Add(new Db.ScenarioUnitGroup(
+            scenarioId, stackId, Unit(0), Unit(1), Unit(2), Unit(3), Unit(4), Unit(5),
+            positions[0], positions[1], positions[2], positions[3], positions[4], positions[5]));
+        rows.Stacks.Add(new Db.ScenarioStack(
+            scenarioId,
+            stackId,
+            SourceTemplateId: null,
+            stack.Position.X,
+            stack.Position.Y,
+            leaderId ?? throw new InvalidOperationException($"Army {stack.Id} has no leader."),
+            LeaderAlive: true,
+            Morale: 0,
+            Move: stack.Leader.MovementPoints,
+            Facing: stack.Id % 8,
+            BannerId: null,
+            TomeId: null,
+            Battle1Id: null,
+            Battle2Id: null,
+            Artifact1Id: null,
+            Artifact2Id: null,
+            BootsId: null,
+            playerId,
+            subraceId,
+            null,
+            Invisible: false,
+            UpgradeCount: 0,
+            AiIgnore: false,
+            AiPriority: 3,
+            stack.Owner == WorldRace.Neutral ? Db.OrderType.Stand : Db.OrderType.Normal,
+            OrderTargetId: null,
+            CreationLevel: 1,
+            NumberOfBattles: 0,
+            Db.OrderType.Normal,
+            AiOrderTargetId: null));
     }
 
     private static Db.ScenarioInfo BuildInfo(CustomMap map, Db.ScenarioId scenarioId, string prefix, List<Db.RaceType> playerRaces)

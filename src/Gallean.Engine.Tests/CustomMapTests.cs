@@ -237,4 +237,126 @@ public sealed class CustomMapTests
         Assert.That(custom.PlayableRaces.Select(race => race.Race), Is.EquivalentTo(new[] { WorldRace.Human, WorldRace.Elf }));
         Assert.That(skirmish.Scenarios.Count, Is.EqualTo(ScenarioLoader.EnumerateCampaigns(GlobalDatabaseLoader.LoadIndex(RiseOfTheElves.GlobalDatabasePath), bundled, campaignDb).Single(campaign => campaign.IsSkirmish).Scenarios.Count + 1));
     }
+
+    private IReadOnlyList<UnitDefinition> Units => new CustomMapStore(mapsDirectory, globalDb, campaignDb).ListUnits(definitions);
+
+    private CustomMapUnit FindUnit(Func<UnitDefinition, bool> predicate)
+    {
+        return CustomMapUnit.From(Units.Where(predicate).OrderBy(unit => unit.Id.Value, StringComparer.Ordinal).First());
+    }
+
+    private CustomMapUnit NeutralLeader => FindUnit(unit => unit is { Category: UnitCategory.Leader, Race: WorldRace.Neutral, IsLarge: false, Leadership: >= 4 });
+    private CustomMapUnit NeutralSoldier => FindUnit(unit => unit is { Category: UnitCategory.Soldier, Race: WorldRace.Neutral, IsLarge: false });
+    private CustomMapUnit LargeSoldier => FindUnit(unit => unit is { Category: UnitCategory.Soldier, Race: WorldRace.Neutral, IsLarge: true });
+    private CustomMapUnit HumanLeader => FindUnit(unit => unit is { Category: UnitCategory.Leader, Race: WorldRace.Human, IsLarge: false });
+
+    private static CustomMapUnit?[] Slots(params (GridPosition Position, CustomMapUnit Unit)[] units)
+    {
+        CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
+
+        foreach ((GridPosition position, CustomMapUnit unit) in units)
+        {
+            slots[position.ToIndex()] = unit;
+        }
+
+        return slots;
+    }
+
+    [Test]
+    public void StackRulesTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapUnit?[] guard = Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.BackCenter, NeutralSoldier));
+
+        Assert.That(CustomMapStack.ValidateSlots(guard), Is.Null);
+        Assert.That(CustomMapStack.ValidateSlots(Slots((GridPosition.FrontCenter, NeutralSoldier))), Is.EqualTo(CustomMapStackError.NoLeader));
+        Assert.That(CustomMapStack.ValidateSlots(Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.FrontTop, HumanLeader))), Is.EqualTo(CustomMapStackError.MultipleLeaders));
+        Assert.That(CustomMapStack.ValidateSlots(Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.BackTop, LargeSoldier))), Is.EqualTo(CustomMapStackError.InvalidSlot), "Large units stand in the front slot.");
+        Assert.That(CustomMapStack.ValidateSlots(Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.FrontTop, LargeSoldier), (GridPosition.BackTop, NeutralSoldier))), Is.EqualTo(CustomMapStackError.InvalidSlot), "A large unit fills both lines.");
+
+        CustomMapUnit?[] full = [.. Enumerable.Repeat<CustomMapUnit?>(NeutralSoldier, GridPosition.Count)];
+        full[GridPosition.FrontCenter.ToIndex()] = HumanLeader with { Leadership = 3 };
+        Assert.That(CustomMapStack.ValidateSlots(full), Is.EqualTo(CustomMapStackError.LeadershipExceeded));
+
+        Assert.That(map.PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, guard).Error, Is.Null);
+        Assert.That(map.PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Occupied));
+        Assert.That(map.PlaceStack(new WorldPosition(24, 24), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Blocked), "Water.");
+        Assert.That(map.PlaceStack(new WorldPosition(5, 5), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Blocked), "Capital.");
+        Assert.That(map.PlaceStack(new WorldPosition(21, 40), WorldRace.Dwarf, guard).Error, Is.EqualTo(CustomMapStackError.UnknownOwner));
+        Assert.That(map.PlaceStack(new WorldPosition(60, 40), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.OutsideMap));
+
+        // Armies block water and mountains under them, and capitals cannot be moved onto them.
+        Random random = new(1);
+        map.Paint(new WorldPosition(20, 40), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        map.Paint(new WorldPosition(20, 40), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
+        Assert.That(map.GetCell(new WorldPosition(20, 40)), Is.EqualTo(new WorldMapCell(WorldMapTerrain.Neutral, WorldMapFeature.None, new WorldObjectVariant(0))));
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(18, 38)), Is.False);
+
+        int id = map.Stacks.Single().Id;
+        Assert.That(map.UpdateStack(id, WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))), Is.Null);
+        Assert.That(map.Stacks.Single().Owner, Is.EqualTo(WorldRace.Human));
+        Assert.That(map.RemoveStack(id), Is.True);
+        Assert.That(map.Stacks, Is.Empty);
+    }
+
+    [Test]
+    public void StackSaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+
+        Assert.That(map.PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, Slots((GridPosition.BackCenter, NeutralLeader), (GridPosition.FrontTop, LargeSoldier), (GridPosition.FrontBottom, NeutralSoldier))).Error, Is.Null);
+        Assert.That(map.PlaceStack(new WorldPosition(12, 6), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))).Error, Is.Null);
+        store.Save(map);
+
+        WorldState state = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        WorldStack guard = state.Stacks.Values.Single(stack => stack.Position == new WorldPosition(20, 40));
+        WorldStack human = state.Stacks.Values.Single(stack => stack.Position == new WorldPosition(12, 6));
+
+        Assert.That(state.Players[guard.OwnerId].Race, Is.EqualTo(WorldRace.Neutral));
+        Assert.That(state.Players[human.OwnerId].Race, Is.EqualTo(WorldRace.Human));
+        Assert.That(guard.Units[GridPosition.BackCenter]!.DefinitionId, Is.EqualTo(NeutralLeader.TypeId));
+        Assert.That(guard.Units[GridPosition.FrontTop]!.DefinitionId, Is.EqualTo(LargeSoldier.TypeId));
+        Assert.That(guard.Units[GridPosition.BackTop], Is.SameAs(guard.Units[GridPosition.FrontTop]), "The large unit fills both lines.");
+        Assert.That(guard.Units[GridPosition.FrontBottom]!.DefinitionId, Is.EqualTo(NeutralSoldier.TypeId));
+        Assert.That(guard.GetLeader(definitions).Unit.DefinitionId, Is.EqualTo(NeutralLeader.TypeId));
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Stacks, Is.EquivalentTo(map.Stacks));
+        Assert.That(reopened.Players, Is.EqualTo(map.Players), "Capital garrisons are not read back as armies.");
+    }
+
+    [Test]
+    public void StackPlayTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+
+        // A neutral guard next to each capital and a human raiding party in the middle.
+        map.PlaceStack(new WorldPosition(10, 6), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.FrontTop, NeutralSoldier)));
+        map.PlaceStack(new WorldPosition(36, 8), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.FrontBottom, LargeSoldier)));
+        map.PlaceStack(new WorldPosition(14, 18), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader)));
+        store.Save(map);
+
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState aiState = scenario.State with
+        {
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = true })))
+        };
+        GameSession session = new(context, aiState);
+
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        TestWorldAiRunner runner = new(session, context);
+
+        for (int i = 0; i < 12; i++)
+        {
+            runner.PlayTurn();
+        }
+
+        Assert.That(session.World.State.TurnInfo.TurnNumber, Is.GreaterThanOrEqualTo(4));
+    }
 }

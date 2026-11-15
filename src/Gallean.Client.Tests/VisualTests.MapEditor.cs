@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
+using Avalonia.Input.Raw;
 using Avalonia.VisualTree;
 using Gallean.Common;
 using Gallean.Configuration;
@@ -129,6 +130,31 @@ public sealed partial class VisualTests
         Assert.That(editor.Map.GetCell(new WorldPosition(18, 22)).Terrain, Is.EqualTo(WorldMapTerrain.Water));
         Assert.That(editor.CanUndo, Is.True);
 
+        // WASD moves the camera like in the game, also when a panel control has focus.
+        view.GetVisualDescendants().OfType<Avalonia.Controls.ListBox>().First().Focus();
+        Point before = view.Camera.Center;
+        window.KeyPress(Key.S, RawInputModifiers.None, PhysicalKey.S, "s");
+        await SkipFramesAsync(15);
+        window.KeyRelease(Key.S, RawInputModifiers.None, PhysicalKey.S, "s");
+        window.KeyPress(Key.D, RawInputModifiers.None, PhysicalKey.D, "d");
+        await SkipFramesAsync(5);
+        window.KeyRelease(Key.D, RawInputModifiers.None, PhysicalKey.D, "d");
+        await SkipFramesAsync(10);
+        Point moved = view.Camera.Center;
+        TestContext.Out.WriteLine($"camera before {before} after {moved} zoom {view.Camera.Zoom} focused {Avalonia.Controls.TopLevel.GetTopLevel(view)?.FocusManager?.GetFocusedElement()}");
+        Assert.That(moved.X, Is.GreaterThan(before.X), "D moves right.");
+        Assert.That(moved.Y, Is.GreaterThan(before.Y), "S moves down.");
+        window.KeyPress(Key.A, RawInputModifiers.None, PhysicalKey.A, "a");
+        window.KeyPress(Key.W, RawInputModifiers.None, PhysicalKey.W, "w");
+        await SkipFramesAsync(5);
+        window.KeyRelease(Key.A, RawInputModifiers.None, PhysicalKey.A, "a");
+        window.KeyRelease(Key.W, RawInputModifiers.None, PhysicalKey.W, "w");
+        await SkipFramesAsync(10);
+        Assert.That(view.Camera.Center.X, Is.LessThan(moved.X), "A moves left.");
+        Assert.That(view.Camera.Center.Y, Is.LessThan(moved.Y), "W moves up.");
+        Assert.That(editor.SelectedTool.Value, Is.EqualTo(MapEditorTool.Water), "The tool list did not react to the keys.");
+        view.Camera.LookAt(before);
+
         await SkipFramesAsync(10);
 
         await CaptureAsync(window, "2");
@@ -180,5 +206,45 @@ public sealed partial class VisualTests
         Assert.That(gameModel.ScenarioName, Is.EqualTo("Two kingdoms"));
 
         await CaptureAsync(window);
+    }
+
+    [AvaloniaTest]
+    public async Task MapEditorArmyTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        await WaitForMapEditorAsync(window);
+
+        editor.SelectTool(MapEditorTool.Army);
+        MapEditorSlotViewModel top = editor.Army.Slots.Single(slot => slot.Position == GridPosition.FrontTop);
+        top.SelectedOption = top.Options.First(option => option.Unit is { IsLarge: true, IsLeader: false });
+        editor.BeginStroke(new WorldPosition(18, 18));
+        editor.BeginStroke(new WorldPosition(14, 24));
+        editor.Army.SelectedOwner = editor.Army.Owners.Single(owner => owner.Value == WorldRace.Human);
+        Assert.That(editor.Army.IsValid, Is.False, "A level 1 human leader cannot lead the titan.");
+        top.SelectedOption = top.Options[0];
+        Assert.That(editor.Army.IsValid, Is.True, editor.Army.Status);
+        editor.BeginStroke(new WorldPosition(16, 12));
+
+        Assert.That(editor.Map.Stacks, Has.Count.EqualTo(3));
+
+        MapEditorScreenView view = window.GetVisualDescendants().OfType<MapEditorScreenView>().First();
+        await WaitUntilAsync(() => view.SnapshotWorker?.Current?.RenderRequest.State.Stacks.Count == 5);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(16, 18)));
+        view.GetVisualDescendants().OfType<Avalonia.Controls.ScrollViewer>().First().ScrollToEnd();
+        await SkipFramesAsync(10);
+
+        await CaptureAsync(window, "1");
+
+        view.Camera.SetZoom(1.5);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(17, 18)));
+        await SkipFramesAsync(10);
+
+        await CaptureAsync(window, "2");
     }
 }
