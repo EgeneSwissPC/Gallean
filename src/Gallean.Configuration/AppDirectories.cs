@@ -6,7 +6,9 @@ public static class AppDirectories
     // accounts, minimal window managers), which made Root the relative path "Gallean" under the working directory.
     private static string LocalApplicationData { get; } = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.Create);
 
-    public static string Root { get; } = Path.Combine(LocalApplicationData, "Gallean");
+    // gallean-upgrade keeps its settings, saves, leaders, logs and asset packs apart from the official game
+    // (~/.local/share/Gallean), so both can be installed side by side without sharing data.
+    public static string Root { get; } = Path.Combine(LocalApplicationData, "GalleanUpgrade");
     public static string Assets { get; } = Path.Combine(Root, "Assets");
     public static string Downloads { get; } = Path.Combine(Root, "Downloads");
     public static string EnhanceCache { get; } = Path.Combine(Root, "Enhance", "Cache");
