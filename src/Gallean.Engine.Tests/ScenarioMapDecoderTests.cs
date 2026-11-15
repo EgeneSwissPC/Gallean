@@ -55,4 +55,20 @@ public sealed class ScenarioMapDecoderTests
             "0/0/0 0/0/0 0/0/0 0/0/0 0/0/0 0/0/0 0/0/0 0/0/0"
         ]));
     }
+
+    [Test]
+    public void BlockPositionTest()
+    {
+        string data = "B\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!\"$!!P1!1W!!!B";
+        ScenarioMapDecoder.TileInfo first = new(4, 16, 0);
+
+        // Original IDs: two hex digits per axis (yy, xx).
+        ScenarioMapDecoder.TileInfo[] small = ScenarioMapDecoder.DecodeMap(16, [new Db.ScenarioMapBlock(new Db.ScenarioId("S216SC0000"), "S216MB0408", data)]);
+        // Maps larger than 256 tiles: three hex digits per axis (yyy, xxx).
+        ScenarioMapDecoder.TileInfo[] large = ScenarioMapDecoder.DecodeMap(512, [new Db.ScenarioMapBlock(new Db.ScenarioId("S900SC0000"), "S900MB1fc1f8", data)]);
+
+        Assert.That(small[4 * 16 + 8], Is.EqualTo(first));
+        Assert.That(large[508 * 512 + 504], Is.EqualTo(first));
+        Assert.That(large[511 * 512 + 511], Is.Not.EqualTo(new ScenarioMapDecoder.TileInfo(0, 0, 0)));
+    }
 }
