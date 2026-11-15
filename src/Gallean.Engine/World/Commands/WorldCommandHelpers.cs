@@ -182,6 +182,8 @@ internal static class WorldCommandHelpers
         throw new InvalidOperationException($"Player '{playerId.Value}' has no subrace.");
     }
 
+    // A scenario can have several neutral players. The first one (lowest player ID) is the primary neutral player:
+    // it takes over the stacks of defeated players and owns neutral summons that have no caster.
     public static WorldPlayerId GetNeutralPlayerId(WorldState state)
     {
         foreach (WorldPlayer player in state.Players.Values)

@@ -52,13 +52,26 @@ public sealed class LargeMapBenchmarkTests
         TestWorldAiRunner runner = new(session, context);
         Dictionary<WorldPlayerId, List<long>> turnTimes = [];
         int startTurn = session.World.State.TurnInfo.TurnNumber;
+        SortedDictionary<string, int> battles = [];
 
         while (session.World.State.TurnInfo.TurnNumber < startTurn + turnCount)
         {
             WorldPlayerId playerId = session.World.State.TurnInfo.CurrentPlayerId;
+            Dictionary<WorldPosition, WorldPlayerId> ownersBefore = session.World.State.Stacks.Values
+                .GroupBy(stack => stack.Position)
+                .ToDictionary(group => group.Key, group => group.First().OwnerId);
             Stopwatch turn = Stopwatch.StartNew();
             IReadOnlyList<TestWorldAiRunner.Trace> traces = runner.PlayTurn();
             turn.Stop();
+
+            foreach (TestWorldAiRunner.Trace trace in traces)
+            {
+                if (trace is { Battle: not null, Plan.Command: WorldAiMoveStackCommand move } && ownersBefore.TryGetValue(move.TargetPosition, out WorldPlayerId defenderId))
+                {
+                    string key = $"{FormatPlayer(session.World.State, playerId)} -> {FormatPlayer(session.World.State, defenderId)}";
+                    battles[key] = battles.GetValueOrDefault(key) + 1;
+                }
+            }
 
             if (!turnTimes.TryGetValue(playerId, out List<long>? times))
             {
@@ -66,7 +79,7 @@ public sealed class LargeMapBenchmarkTests
             }
 
             times.Add(turn.ElapsedMilliseconds);
-            TestContext.Out.WriteLine($"  turn {session.World.State.TurnInfo.TurnNumber,3} player {playerId.Value} ({session.World.State.Players[playerId].Race}): {turn.ElapsedMilliseconds,6} ms, {traces.Count} actions");
+            TestContext.Out.WriteLine($"  turn {session.World.State.TurnInfo.TurnNumber,3} {FormatPlayer(session.World.State, playerId)}: {turn.ElapsedMilliseconds,6} ms, {traces.Count} actions");
         }
 
         foreach ((WorldPlayerId playerId, List<long> times) in turnTimes)
@@ -74,7 +87,17 @@ public sealed class LargeMapBenchmarkTests
             TestContext.Out.WriteLine($"  player {playerId.Value}: avg {times.Average():F0} ms, max {times.Max()} ms over {times.Count} turns");
         }
 
+        foreach ((string pair, int count) in battles)
+        {
+            TestContext.Out.WriteLine($"  battles {pair}: {count}");
+        }
+
         TestContext.Out.WriteLine($"  managed heap after turns +{(GetManagedMemory() - memoryBefore) / 1024 / 1024} MB, process RSS {Environment.WorkingSet / 1024 / 1024} MB");
+    }
+
+    private static string FormatPlayer(WorldState state, WorldPlayerId playerId)
+    {
+        return $"P{playerId.Value} {state.Players[playerId].Race}";
     }
 
     private static long GetManagedMemory()
