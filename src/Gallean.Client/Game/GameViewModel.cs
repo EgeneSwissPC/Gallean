@@ -25,6 +25,7 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
     private readonly TaskScheduler scheduler;
     private readonly ScreenStack screens;
     private GameModel? activeGame;
+    private WorldScreenViewModel? pendingWorldScreen;
     private WorldState? savedState;
 
     public GameViewModel(
@@ -841,6 +842,11 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
         {
             log.Error("Failed to load world.", ex);
 
+            if (ReferenceEquals(pendingWorldScreen, worldScreen))
+            {
+                pendingWorldScreen = null;
+            }
+
             CloseScreen(worldScreen);
             StopGame();
             ShowScreen(new ErrorScreenViewModel(Tr("Failed to load world.\n{0}", ex.Message), Tr("Back"), ShowMainMenuAsync));
@@ -848,6 +854,12 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
             return false;
         }
 
+        if (!ReferenceEquals(pendingWorldScreen, worldScreen))
+        {
+            return false;
+        }
+
+        pendingWorldScreen = null;
         ShowScreen(worldScreen);
 
         return true;
@@ -857,12 +869,17 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
     {
         StopGame();
         activeGame = gameModel;
+        pendingWorldScreen = new WorldScreenViewModel(gameModel, this, random);
 
-        return new WorldScreenViewModel(gameModel, this, random);
+        return pendingWorldScreen;
     }
 
     private void StopGame()
     {
+        WorldScreenViewModel? worldScreen = pendingWorldScreen;
+        pendingWorldScreen = null;
+        worldScreen?.Dispose();
+
         GameModel? gameModel = activeGame;
 
         if (gameModel is null)

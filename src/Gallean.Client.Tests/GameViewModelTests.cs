@@ -2397,4 +2397,67 @@ public sealed class GameViewModelTests
         Assert.That(gameViewModel.Screens, Is.EqualTo<AbstractScreenViewModel>([world, secondPrompt]));
         Assert.That(sb.GetTree(), Is.EquivalentTo(["saves/", "saves/save-1.json.gz", "saves/save-2.json.gz"]));
     }
+
+    [Test]
+    public async Task LeaveBriefingReleasesWorldScreenTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        using GameViewModel gameViewModel = new TestGameViewModelBuilder().WithSaveStore(new GameSaveStore(sb.GetPath("saves"), 10)).Build();
+        await gameViewModel.ShowMainMenuCommand.ExecuteAsync(null);
+
+        await gameViewModel.StartGameCommand.ExecuteAsync(new GameConfiguration("S137SC0000", Configuration: null));
+
+        Assert.That(gameViewModel.TopScreen, Is.InstanceOf<BriefingScreenViewModel>());
+        Assert.That(CountWorldScreenSubscribers(gameViewModel), Is.EqualTo(1));
+
+        await gameViewModel.ShowMainMenuCommand.ExecuteAsync(null);
+
+        Assert.That(gameViewModel.TopScreen, Is.InstanceOf<MainMenuScreenViewModel>());
+        Assert.That(CountWorldScreenSubscribers(gameViewModel), Is.Zero);
+    }
+
+    [Test]
+    public async Task QuickLoadFromBriefingReleasesWorldScreenTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        GameLoader gameLoader = new(new RandomProvider(0));
+        (GameSession session, _) = gameLoader.LoadScenario("S137SC0000", worldState: null, Language.English);
+        GameSaveMetadata metadata = new("Quick save", GameSaveType.Quick, "S137SC0000", "Conquest of Thelena", 1, new DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero), "0.1.0+2d40300");
+        GameSaveStore saveStore = new(sb.GetPath("saves"), 10);
+
+        await saveStore.SaveAsync(new GameSaveId(1), metadata, session.World.State);
+
+        using GameViewModel gameViewModel = new TestGameViewModelBuilder().WithGameLoader(gameLoader).WithSaveStore(saveStore).Build();
+        await gameViewModel.ShowMainMenuCommand.ExecuteAsync(null);
+
+        await gameViewModel.StartGameCommand.ExecuteAsync(new GameConfiguration("S137SC0000", Configuration: null));
+
+        Assert.That(gameViewModel.TopScreen, Is.InstanceOf<BriefingScreenViewModel>());
+
+        await gameViewModel.QuickLoadCommand.ExecuteAsync(null);
+
+        ConfirmPromptViewModel prompt = Assert.IsOfType<ConfirmPromptViewModel>(gameViewModel.TopScreen);
+        await prompt.ConfirmCommand.ExecuteAsync(null);
+
+        WorldScreenViewModel world = Assert.IsOfType<WorldScreenViewModel>(gameViewModel.RootScreen);
+
+        Assert.That(CountWorldScreenSubscribers(gameViewModel), Is.EqualTo(1));
+        Assert.That(GetWorldScreenSubscribers(gameViewModel), Is.EqualTo([world]));
+    }
+
+    private static List<WorldScreenViewModel> GetWorldScreenSubscribers(GameViewModel gameViewModel)
+    {
+        System.Reflection.FieldInfo field = typeof(CommunityToolkit.Mvvm.ComponentModel.ObservableObject)
+            .GetField("PropertyChanged", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+        Delegate? handlers = (Delegate?)field.GetValue(gameViewModel);
+
+        return handlers?.GetInvocationList().Select(handler => handler.Target).OfType<WorldScreenViewModel>().Distinct().ToList() ?? [];
+    }
+
+    private static int CountWorldScreenSubscribers(GameViewModel gameViewModel)
+    {
+        return GetWorldScreenSubscribers(gameViewModel).Count;
+    }
 }
