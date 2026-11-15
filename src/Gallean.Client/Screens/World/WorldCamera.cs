@@ -44,6 +44,8 @@ internal sealed class WorldCamera
 
     public Point Center => currentState.Center;
     public Point Target => currentState.Target;
+    // The map editor lets the camera zoom further out than the game.
+    public double MinZoom { get; init; } = MinimumZoom;
     public double Zoom => currentState.Zoom;
     public double TargetZoom => currentState.TargetZoom;
 
@@ -125,14 +127,14 @@ internal sealed class WorldCamera
     {
         return SetState(currentState with
         {
-            TargetZoom = Math.Clamp(zoom, MinimumZoom, MaximumZoom),
+            TargetZoom = Math.Clamp(zoom, MinZoom, MaximumZoom),
             ZoomAnchor = anchor
         });
     }
 
     public bool SetZoom(double zoom)
     {
-        zoom = Math.Clamp(zoom, MinimumZoom, MaximumZoom);
+        zoom = Math.Clamp(zoom, MinZoom, MaximumZoom);
 
         return SetState(currentState with
         {

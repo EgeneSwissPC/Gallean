@@ -34,7 +34,10 @@ public static class ScenarioLoader
                 .ToDictionary(entry => entry.ScenarioId, entry => entry.ScenarioNumber!.Value);
 
             List<ScenarioMetadata> scenarios = [];
-            foreach (Db.ScenarioInfo info in group.OrderBy(info => scenarioOrder[info.ScenarioId]))
+            // Scenarios without a campaign entry (custom maps) come last, ordered by ID.
+            foreach (Db.ScenarioInfo info in group
+                .OrderBy(info => scenarioOrder.GetValueOrDefault(info.ScenarioId, int.MaxValue))
+                .ThenBy(info => info.ScenarioId.Value, StringComparer.OrdinalIgnoreCase))
             {
                 scenarios.Add(new ScenarioMetadata(
                     new ScenarioId(info.ScenarioId.Value),

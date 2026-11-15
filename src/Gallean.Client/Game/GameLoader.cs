@@ -5,7 +5,8 @@ using Gallean.Entities.GameData;
 
 namespace Gallean.Client;
 
-internal sealed class GameLoader(IRandomProvider random)
+// customMapsDirectory holds the map editor's maps; null disables custom maps (tests).
+internal sealed class GameLoader(IRandomProvider random, string? customMapsDirectory = null)
 {
     private delegate Scenario ScenarioLoadFunc(
         ScenarioDatabase scenarioDatabase,
@@ -21,14 +22,15 @@ internal sealed class GameLoader(IRandomProvider random)
 
     public (IReadOnlyList<GameCampaign> Campaigns, IGameTextProvider Texts, IGameDefinitionProvider Definitions) LoadCampaigns(Language language)
     {
+        ScenarioDatabaseIndex scenarioIndex = CreateMapStore()?.MergeInto(scenarioDatabaseIndex.Value) ?? scenarioDatabaseIndex.Value;
         IReadOnlyList<ScenarioCampaign> campaigns = ScenarioLoader.EnumerateCampaigns(
             globalDatabaseIndex.Value,
-            scenarioDatabaseIndex.Value,
+            scenarioIndex,
             campaignDatabase.Value);
         LanguageDatabase languageDatabase = LanguageDatabaseLoader.LoadIndex(
             RiseOfTheElves.GetLanguageGlobalDatabasePath(language.Code),
             RiseOfTheElves.GetLanguageScenarioDatabasePath(language.Code));
-        IGameTextProvider texts = new GameTextProvider(globalDatabaseIndex.Value, scenarioDatabaseIndex.Value, [], languageDatabase);
+        IGameTextProvider texts = new GameTextProvider(globalDatabaseIndex.Value, scenarioIndex, [], languageDatabase);
         IGameDefinitionProvider definitions = new GameDefinitionProvider(globalDatabase.Value);
 
         List<GameCampaign> result = [];
@@ -107,9 +109,32 @@ internal sealed class GameLoader(IRandomProvider random)
             language);
     }
 
+    public CustomMapStore? CreateMapStore()
+    {
+        return customMapsDirectory is null ? null : new CustomMapStore(customMapsDirectory, globalDatabase.Value, campaignDatabase.Value);
+    }
+
+    public IGameDefinitionProvider CreateDefinitions()
+    {
+        return new GameDefinitionProvider(globalDatabase.Value);
+    }
+
+    // Custom maps (S600-S899) are read from the map editor's folder, everything else from the game data.
+    private string GetScenarioDirectory(string scenarioId)
+    {
+        if (customMapsDirectory is not null &&
+            CustomMapStore.IsCustomMapId(scenarioId) &&
+            Directory.Exists(Path.Combine(customMapsDirectory, scenarioId)))
+        {
+            return customMapsDirectory;
+        }
+
+        return RiseOfTheElves.ScenarioDatabasePath;
+    }
+
     public IGameTextProvider LoadTexts(string scenarioId, Language language)
     {
-        ScenarioDatabase scenarioDatabase = ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, scenarioId);
+        ScenarioDatabase scenarioDatabase = ScenarioDatabaseLoader.Load(GetScenarioDirectory(scenarioId), scenarioId);
 
         return CreateTextProvider(scenarioDatabase, scenarioId, language);
     }
@@ -121,7 +146,7 @@ internal sealed class GameLoader(IRandomProvider random)
         Language language)
     {
         IGameDefinitionProvider definitions = new GameDefinitionProvider(globalDatabase.Value);
-        ScenarioDatabase scenarioDatabase = ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, scenarioId);
+        ScenarioDatabase scenarioDatabase = ScenarioDatabaseLoader.Load(GetScenarioDirectory(scenarioId), scenarioId);
         IGameTextProvider texts = CreateTextProvider(scenarioDatabase, scenarioId, language);
         GlobalVariables globals = new();
         Scenario scenario = loadFunc(scenarioDatabase, definitions, globals);

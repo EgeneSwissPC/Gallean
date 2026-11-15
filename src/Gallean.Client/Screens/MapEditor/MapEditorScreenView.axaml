@@ -1,0 +1,116 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorScreenView"
+             x:DataType="local:MapEditorScreenViewModel">
+
+  <UserControl.Styles>
+    <Style Selector=":is(TextBlock).field-label">
+      <Setter Property="Margin" Value="0,14,0,6" />
+    </Style>
+    <Style Selector="ListBox.tools > ListBoxItem">
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Border.editor-panel">
+      <Setter Property="Background" Value="{StaticResource ModalBackdropBrush}" />
+      <Setter Property="Width" Value="340" />
+      <Setter Property="Padding" Value="20,16" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid ColumnDefinitions="*,Auto" Background="Black">
+    <local:MapEditorVisual x:Name="Map" Grid.Column="0" />
+
+    <local:OutlinedTextBlock Grid.Column="0"
+                             Text="{Binding HoverText}"
+                             Classes="caption"
+                             Foreground="{StaticResource PrimaryTextBrush}"
+                             HorizontalAlignment="Left"
+                             VerticalAlignment="Bottom"
+                             Margin="12,8"
+                             IsHitTestVisible="False" />
+
+    <Border Grid.Column="1" Classes="editor-panel">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
+          <Panel Width="220" Height="220" HorizontalAlignment="Center">
+            <local:MinimapVisual x:Name="Minimap" Width="220" Height="220" MapScale="1" />
+          </Panel>
+          <TextBlock Text="{local:Text 'Left button: paint · Right button: drag map · Wheel: zoom · Ctrl+Z: undo'}"
+                     Classes="caption"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource SecondaryTextBrush}" />
+          <Grid Classes="focus-group pill-group" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" >
+            <Button x:Name="UndoButton" Grid.Row="0" Grid.Column="0" Classes="pill" local:PlateChrome.TextureSeed="1" Content="{local:Text 'Undo'}" Command="{Binding UndoCommand}" />
+            <Button x:Name="SaveButton" Grid.Row="0" Grid.Column="1" Classes="pill primary" local:PlateChrome.TextureSeed="2" Content="{local:Text 'Save'}" Command="{Binding SaveCommand}" />
+            <Button x:Name="BackButton" Grid.Row="1" Grid.Column="0" Classes="pill" local:PlateChrome.TextureSeed="3" Content="{local:Text 'Back'}" Command="{Binding BackCommand}" Margin="0,8,0,0" />
+            <Button x:Name="PlayButton" Grid.Row="1" Grid.Column="1" Classes="pill" local:PlateChrome.TextureSeed="4" Content="{local:Text 'Save and play'}" Command="{Binding PlayCommand}" Margin="0,8,0,0" />
+          </Grid>
+        </StackPanel>
+
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+          <StackPanel>
+            <local:OutlinedTextBlock Text="{local:Text 'Map editor'}" Classes="h4" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+
+            <local:OutlinedTextBlock Text="{local:Text 'Name'}" Classes="caption field-label" />
+            <TextBox x:Name="NameBox" Text="{Binding Name}" MaxLength="{Binding NameLength}" />
+
+            <local:OutlinedTextBlock Text="{local:Text 'Tool'}" Classes="caption field-label" />
+            <ListBox x:Name="ToolList" Classes="tools" ItemsSource="{Binding Tools}" SelectedItem="{Binding SelectedTool}">
+              <ListBox.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <UniformGrid Columns="2" />
+                </ItemsPanelTemplate>
+              </ListBox.ItemsPanel>
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorLabeled">
+                  <TextBlock Text="{Binding Label}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" Margin="8,4" />
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+
+            <StackPanel IsVisible="{Binding IsLandTool}">
+              <local:OutlinedTextBlock Text="{local:Text 'Land type'}" Classes="caption field-label" />
+              <ComboBox x:Name="LandBox" HorizontalAlignment="Stretch" ItemsSource="{Binding LandTerrains}" SelectedItem="{Binding SelectedLandTerrain}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsCapitalTool}">
+              <local:OutlinedTextBlock Text="{local:Text 'Capital of'}" Classes="caption field-label" />
+              <ComboBox x:Name="CapitalBox" HorizontalAlignment="Stretch" ItemsSource="{Binding CapitalRaces}" SelectedItem="{Binding SelectedCapitalRace}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{local:Text 'Click where the capital should stand. Placing it again moves it.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,6,0,0" />
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding HasBrush}">
+              <local:OutlinedTextBlock Text="{local:Text 'Brush size'}" Classes="caption field-label" />
+              <Slider x:Name="BrushSlider" Minimum="0" Maximum="{Binding MaxBrush}" Value="{Binding BrushRadius}" IsSnapToTickEnabled="True" TickFrequency="1" />
+            </StackPanel>
+
+            <local:OutlinedTextBlock Text="{local:Text 'Status'}" Classes="caption field-label" />
+            <TextBlock Text="{Binding Status}"
+                       Classes="body"
+                       TextWrapping="Wrap"
+                       Foreground="{StaticResource PrimaryTextBrush}" />
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+  </Grid>
+
+</UserControl>

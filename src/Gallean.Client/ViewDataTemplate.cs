@@ -39,6 +39,8 @@ internal sealed class ViewDataTemplate : IDataTemplate
             LeaderUpgradeViewModel => new LeaderUpgradeView(),
             LoadGameScreenViewModel => new LoadGameScreenView(),
             LoadingScreenViewModel => new LoadingScreenView(),
+            MapEditorMenuScreenViewModel => new MapEditorMenuScreenView(),
+            MapEditorScreenViewModel editor => new MapEditorScreenView(editor.Definitions, editor.Scenario, editor.Game.DevTools.Diagnostics),
             LootScreenViewModel => new LootScreenView(),
             MageTabViewModel => new MageTabView(),
             MainMenuScreenViewModel => new MainMenuScreenView(),
