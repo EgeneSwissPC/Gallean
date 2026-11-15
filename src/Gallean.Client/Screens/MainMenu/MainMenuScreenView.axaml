@@ -105,6 +105,14 @@
                         FontSize="{StaticResource FontSizeSm}"
                         Content="{local:Text 'Support developer'}"
                         NavigateUri="{Binding SupportDeveloperUri}" />
+      <local:OutlinedTextBlock Text="{x:Static local:ClientEdition.Name}"
+                               HorizontalAlignment="Right"
+                               Foreground="{x:Static local:ClientEdition.LabelBrush}"
+                               Outline="{StaticResource MainMenuVersionOutlineBrush}"
+                               OutlineThickness="2"
+                               FontSize="{StaticResource FontSizeXl}"
+                               FontWeight="Bold"
+                               IsHitTestVisible="False" />
       <local:OutlinedTextBlock Text="{Binding Version}"
                                HorizontalAlignment="Right"
                                Foreground="{StaticResource MainMenuVersionTextBrush}"

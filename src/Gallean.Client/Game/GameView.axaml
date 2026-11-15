@@ -3,7 +3,7 @@
         xmlns:local="clr-namespace:Gallean.Client"
         x:Class="Gallean.Client.GameView"
         x:DataType="local:GameViewModel"
-        Title="{local:Text 'Gallean'}"
+        Title="{x:Static local:ClientEdition.Name}"
         IsWindowed="{Binding IsWindowed}"
         TopScreen="{Binding TopScreen}"
         Language="{Binding Language}"
