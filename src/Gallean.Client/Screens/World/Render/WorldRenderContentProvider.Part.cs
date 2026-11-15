@@ -9,6 +9,8 @@ internal sealed partial class WorldRenderContentProvider
         private TSource? cachedSource;
         private TValue? cachedValue;
 
+        public TValue? CachedValue => cachedValue;
+
         public TValue Resolve(TSource source, Func<TSource, TValue> buildFunc)
         {
             if (cachedValue is not null && ReferenceEquals(cachedSource, source))
@@ -32,6 +34,8 @@ internal sealed partial class WorldRenderContentProvider
         private TKey? cachedKey;
         private TSource? cachedSource;
         private TValue? cachedValue;
+
+        public TValue? CachedValue => cachedValue;
 
         public TValue Resolve(TSource source, Func<TSource, TValue> buildFunc)
         {

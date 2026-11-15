@@ -88,7 +88,7 @@ internal sealed partial class WorldRenderContentProvider
                 indexes.AddRange([top, right, bottom, top, bottom, left]);
             }
 
-            return SKVertices.CreateCopy(SKVertexMode.Triangles, [.. positions], null, null, [.. indexes]);
+            return SkiaMemoryPressure.CreateVertices([.. positions], indexes: [.. indexes]);
 
             ushort Corner(int x, int y)
             {

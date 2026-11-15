@@ -34,7 +34,7 @@ internal sealed partial class WorldRenderContentProvider
 
     private static SKPath BuildTerrainExpansionClip(IReadOnlyList<TerrainExpansionTile> tiles)
     {
-        SKPathBuilder builder = new();
+        using SKPathBuilder builder = new();
 
         foreach (TerrainExpansionTile tile in tiles)
         {
@@ -70,7 +70,7 @@ internal sealed partial class WorldRenderContentProvider
             indexes.AddRange([top, right, bottom, top, bottom, left]);
         }
 
-        return SKVertices.CreateCopy(SKVertexMode.Triangles, [.. positions], null, [.. colors], [.. indexes]);
+        return SkiaMemoryPressure.CreateVertices([.. positions], [.. colors], [.. indexes]);
 
         ushort Corner(int x, int y, TimeSpan start)
         {

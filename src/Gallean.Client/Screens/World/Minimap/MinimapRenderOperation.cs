@@ -12,7 +12,8 @@ internal sealed class MinimapRenderOperation(
     MinimapState minimap,
     MinimapLayout layout,
     IReadOnlyList<Point> viewportCells,
-    MinimapRenderer renderer) : ICustomDrawOperation
+    MinimapRenderer renderer,
+    IDisposable? contentLease = null) : ICustomDrawOperation
 {
     public Rect Bounds => bounds;
 
@@ -31,6 +32,7 @@ internal sealed class MinimapRenderOperation(
 
     public void Dispose()
     {
+        contentLease?.Dispose();
     }
 
     public void Render(ImmediateDrawingContext context)

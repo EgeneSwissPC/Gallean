@@ -75,8 +75,75 @@ internal sealed partial class WorldRenderContentProvider
     private readonly WorldHighlightShaderProgram highlightShaderProgram = new();
     private readonly WorldMountainCloudShaderProgram mountainCloudShaderProgram = MountainClouds.BuildProgram();
     private readonly WorldBattleTransitionShaderProgram battleTransitionShaderProgram = new();
+    private readonly Lock buildLock = new();
+    private readonly AtlasTextureTracker textureTracker = new();
 
     public WorldRenderContent Get(WorldRenderState state, IAssetProvider assets)
+    {
+        lock (buildLock)
+        {
+            return Build(state, assets);
+        }
+    }
+
+    // Disposes the atlas textures that are neither cached by this provider (unless the caches are being released)
+    // nor referenced by a content that can still be drawn. The drawable contents are queried while the build lock is
+    // held, so no build can replace a cached texture in between. Skipped while a build is running; the caller retries
+    // after the build.
+    public bool TryReleaseUnusedTextures(Func<(IReadOnlyList<WorldRenderContent> DrawableContents, bool KeepCached)> getDrawableContents)
+    {
+        if (!buildLock.TryEnter())
+        {
+            return false;
+        }
+
+        try
+        {
+            (IReadOnlyList<WorldRenderContent> drawableContents, bool keepCached) = getDrawableContents();
+            List<AtlasTexture> used = [];
+
+            foreach (WorldRenderContent content in drawableContents)
+            {
+                AddTextures(used, content.CoastAtlas, content.BorderAtlas, content.RoadAtlas, content.ObjectAtlas);
+                AddTextures(used, content.TerrainExpansion?.CoastAtlas, content.TerrainExpansion?.BorderAtlas);
+            }
+
+            if (keepCached)
+            {
+                AddTextures(used, coastAtlasPart.CachedValue, borderAtlasPart.CachedValue, roadAtlasPart.CachedValue, objectAtlasPart.CachedValue?.Atlas);
+                AddTextures(used, terrainExpansionPart.CachedValue?.Layer?.CoastAtlas, terrainExpansionPart.CachedValue?.Layer?.BorderAtlas);
+
+                foreach (TexturePart part in (ReadOnlySpan<TexturePart>)[borderAtlasTexturePart, coastAtlasTexturePart, objectAtlasTexturePart, roadAtlasTexturePart])
+                {
+                    if (part.CachedTexture is { } texture)
+                    {
+                        used.Add(texture);
+                    }
+                }
+            }
+
+            textureTracker.ReleaseUnused(used);
+
+            return true;
+        }
+        finally
+        {
+            buildLock.Exit();
+        }
+    }
+
+    private static void AddTextures(List<AtlasTexture> textures, params ReadOnlySpan<SpriteAtlas?> atlases)
+    {
+        foreach (SpriteAtlas? atlas in atlases)
+        {
+            if (atlas is not null)
+            {
+                textures.Add(atlas.Texture);
+            }
+        }
+    }
+
+    private WorldRenderContent Build(WorldRenderState state, IAssetProvider assets)
     {
         Terrains terrains = terrainsPart.Resolve(state, Terrains.Build);
         IReadOnlyDictionary<WorldMapTerrain, TerrainTexture> terrainTextures = terrainTexturesPart.Resolve(terrains, source => BuildTerrainTextures(source, assets));
@@ -196,7 +263,7 @@ internal sealed partial class WorldRenderContentProvider
             indexes.AddRange([top, right, bottom, top, bottom, left]);
         }
 
-        return SKVertices.CreateCopy(SKVertexMode.Triangles, [.. positions], null, null, [.. indexes]);
+        return SkiaMemoryPressure.CreateVertices([.. positions], indexes: [.. indexes]);
 
         ushort Corner(int x, int y)
         {
@@ -247,7 +314,7 @@ internal sealed partial class WorldRenderContentProvider
 
         List<SpriteAtlasSource.AbstractSprite> sprites = [.. GetBorderSprites(terrain.Borders, terrainTextures, assets, leases, landOverlays)];
         SpriteAtlasSource.Plan plan = SpriteAtlasSource.CreatePlan(sprites);
-        AtlasTexture texture = borderAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build);
+        AtlasTexture texture = textureTracker.Add(borderAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build));
 
         return SpriteAtlasSource.FromPlan(plan, texture).CreateAtlas();
     }
@@ -406,7 +473,7 @@ internal sealed partial class WorldRenderContentProvider
 
         SKPoint[] positions = [top, right, bottom, top, bottom, left];
 
-        return SKVertices.CreateCopy(SKVertexMode.Triangles, positions, null, null);
+        return SkiaMemoryPressure.CreateVertices(positions);
     }
 
     private SpriteAtlas BuildCoastAtlas(MapTerrain terrain, IAssetProvider assets)
@@ -415,7 +482,7 @@ internal sealed partial class WorldRenderContentProvider
 
         List<SpriteAtlasSource.AbstractSprite> sprites = [.. GetCoastSprites(terrain.Borders, assets, leases)];
         SpriteAtlasSource.Plan plan = SpriteAtlasSource.CreatePlan(sprites);
-        AtlasTexture texture = coastAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build);
+        AtlasTexture texture = textureTracker.Add(coastAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build));
 
         return SpriteAtlasSource.FromPlan(plan, texture).CreateAtlas();
     }
@@ -451,7 +518,7 @@ internal sealed partial class WorldRenderContentProvider
 
         List<SpriteAtlasSource.AbstractSprite> sprites = [.. GetRoadSprites(terrain.MapTiles, assets, leases)];
         SpriteAtlasSource.Plan plan = SpriteAtlasSource.CreatePlan(sprites);
-        AtlasTexture texture = roadAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build);
+        AtlasTexture texture = textureTracker.Add(roadAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build));
 
         return SpriteAtlasSource.FromPlan(plan, texture).CreateAtlas();
     }
@@ -488,7 +555,7 @@ internal sealed partial class WorldRenderContentProvider
         Point south = WorldTransform.ToWorldPoint(map.Width - 1, map.Height - 1);
         Point west = WorldTransform.ToWorldPoint(0, map.Height - 1);
 
-        SKPathBuilder builder = new();
+        using SKPathBuilder builder = new();
         builder.MoveTo((float)north.X, (float)(north.Y - WorldTransform.TileHalfHeight));
         builder.LineTo((float)(east.X + WorldTransform.TileHalfWidth), (float)east.Y);
         builder.LineTo((float)south.X, (float)(south.Y + WorldTransform.TileHalfHeight));
@@ -525,7 +592,7 @@ internal sealed partial class WorldRenderContentProvider
         }
 
         SpriteAtlasSource.Plan plan = SpriteAtlasSource.CreatePlan(sprites);
-        AtlasTexture texture = objectAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build);
+        AtlasTexture texture = textureTracker.Add(objectAtlasTexturePart.Resolve(plan.Regions, AtlasTexture.Build));
 
         return new ObjectLayer(SpriteAtlasSource.FromPlan(plan, texture).CreateAtlas(), [.. depths], directSprites);
     }
@@ -959,7 +1026,7 @@ internal sealed partial class WorldRenderContentProvider
     {
         float halfWidth = (float)(layout.HalfWidth + MinimapTileOverlap);
         float halfHeight = (float)(layout.HalfHeight + (MinimapTileOverlap / 2.0));
-        SKPathBuilder builder = new();
+        using SKPathBuilder builder = new();
 
         foreach (WorldPosition position in minimap.HiddenPositions)
         {
