@@ -57,7 +57,9 @@ internal sealed class App(ILog log, GCMemoryInfo memoryInfo) : Application
         string? processPath = Environment.ProcessPath;
         ClientVersion clientVersion = ClientVersion.Get();
         UpdateClient updateClient = cleanupList.Add(new UpdateClient(clientVersion, AppDirectories.Downloads, log));
-        Task<UpdateInfo?> updateGetLatestTask = Task.Run(updateClient.TryGetLatestAsync);
+        // gallean-upgrade does not check gallean.org for official releases: installing one would replace this build.
+        // Upstream changes arrive by merging upstream main into the gallean-upgrade branch instead.
+        Task<UpdateInfo?> updateGetLatestTask = Task.FromResult<UpdateInfo?>(null);
         UpdateInstaller updateInstaller = new(AppContext.BaseDirectory);
         Task updateCleanupTask = Task.Run(updateInstaller.Cleanup);
 
