@@ -51,11 +51,11 @@ public sealed class GameAssetSource : IAssetSource<ReadOnlyMemory<byte>>, IGameA
         Stacks = new GameStackSource(units, common, graphicsResolver);
         Battle = new GameBattleSource(battleImages, battleUnits, battleItems, graphicsResolver);
         Cursors = new GameCursorSource(cursors, battleImages);
-        Capitals = new GameCapitalSource(capitalImages, CapitalSceneExtractor.Load(Path.Combine(gameFiles.ImagesRoot, "capital.dat")));
+        Capitals = new GameCapitalSource(capitalImages, CapitalSceneExtractor.Load(GamePath.Resolve(gameFiles.ImagesRoot, "capital.dat")));
         Cities = new GameCitySource(cityImages);
         Portraits = new GamePortraitSource(faces, events, lordFaces, thiefActions, graphicsResolver);
         Icons = new GameIconSource(iconSpells, iconBuildings, iconItems);
-        Interfaces = new GameInterfaceSource(interfaceImages, SceneInterfaceExtractor.Load(Path.Combine(gameFiles.InterfaceRoot, "Interf.dlg")));
+        Interfaces = new GameInterfaceSource(interfaceImages, SceneInterfaceExtractor.Load(GamePath.Resolve(gameFiles.InterfaceRoot, "Interf.dlg")));
         Audio = new GameAudioSource(musicSource, briefingVoiceSource, unitSoundsSource, database);
 
         Descriptors = GameAssetCatalog.ListDescriptors(GameAssetInputs.Load(globalDatabase, scenarioDatabase));

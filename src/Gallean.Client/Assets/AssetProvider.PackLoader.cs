@@ -4,11 +4,18 @@ namespace Gallean.Client;
 
 internal sealed partial class AssetProvider
 {
-    private static class PackLoader
+    internal static class PackLoader
     {
+        private static readonly EnumerationOptions CaseInsensitive = new()
+        {
+            MatchCasing = MatchCasing.CaseInsensitive,
+            RecurseSubdirectories = false,
+            IgnoreInaccessible = true
+        };
+
         public static IReadOnlyList<AssetPack>? Load()
         {
-            return LoadFrom(Path.Combine(AppContext.BaseDirectory, "Assets")) ??
+            return LoadFrom(GetAssetsDirectory(AppContext.BaseDirectory)) ??
                    LoadFrom(AppContext.BaseDirectory) ??
                    LoadFrom(AppDirectories.Assets);
         }
@@ -98,11 +105,24 @@ internal sealed partial class AssetProvider
             }
         }
 
-        private static IEnumerable<string> EnumeratePaths(string directory)
+        // Linux file systems are case-sensitive; accept "assets/" and "*.GalleanPack" as Windows and macOS do.
+        internal static string GetAssetsDirectory(string baseDirectory)
+        {
+            string exact = Path.Combine(baseDirectory, "Assets");
+
+            if (Directory.Exists(exact) || !Directory.Exists(baseDirectory))
+            {
+                return exact;
+            }
+
+            return Directory.EnumerateDirectories(baseDirectory, "Assets", CaseInsensitive).Order(StringComparer.Ordinal).FirstOrDefault() ?? exact;
+        }
+
+        internal static IEnumerable<string> EnumeratePaths(string directory)
         {
             if (Directory.Exists(directory))
             {
-                return Directory.EnumerateFiles(directory, "*.galleanpack");
+                return Directory.EnumerateFiles(directory, "*.galleanpack", CaseInsensitive);
             }
             else
             {

@@ -15,7 +15,7 @@ internal sealed class GameImages
 
     public static GameImages Load(string imagesRoot, string fileName, GameSourceCache cache)
     {
-        string path = Path.Combine(imagesRoot, fileName);
+        string path = GamePath.Resolve(imagesRoot, fileName);
 
         return new GameImages(ImagesExtractor.Load(path), fileName, cache);
     }
