@@ -18,7 +18,8 @@ internal enum MapEditorTool
     Resource,
     Ruin,
     Bag,
-    Site
+    Site,
+    Landmark
 }
 
 // Paints a CustomMap and shows it through the game's world renderer. Terrain strokes update the preview state
@@ -44,6 +45,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     private int previewVersion;
     private GameModel editorGame;
     private readonly MapEditorLibrary library;
+    private readonly IReadOnlyList<MapEditorLandmarkOption> allLandmarks;
 
     public MapEditorScreenViewModel(
         GameViewModel game,
@@ -76,7 +78,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             new MapEditorOption<MapEditorTool>(MapEditorTool.Resource, Tr("Resources")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Ruin, Tr("Ruin")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Bag, Tr("Treasure")),
-            new MapEditorOption<MapEditorTool>(MapEditorTool.Site, Tr("Site"))
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Site, Tr("Site")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Landmark, Tr("Landmark"))
         ];
         SelectedTool = Tools[0];
         LandTerrains =
@@ -109,6 +112,19 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
                 .Select(type => new MapEditorOption<CustomMapSiteType>(type, MapEditorLabels.SiteType(type)))
         ];
         SelectedSiteType = SiteTypes[0];
+        allLandmarks = MapEditorLandmarkOption.Create(library.Landmarks ?? [], editorGame);
+        LandmarkCategories =
+        [
+            .. new[] { WorldLandmarkType.Misc, WorldLandmarkType.Building, WorldLandmarkType.Structure, WorldLandmarkType.Terrain }
+                .Select(type => new MapEditorOption<WorldLandmarkType>(type, MapEditorLabels.LandmarkCategory(type)))
+        ];
+        LandmarkSizes =
+        [
+            new MapEditorOption<int>(0, Tr("Any size")),
+            .. allLandmarks.Select(option => option.Definition.Width).Distinct().Order().Select(size => new MapEditorOption<int>(size, $"{size}x{size}"))
+        ];
+        SelectedLandmarkCategory = LandmarkCategories[0];
+        SelectedLandmarkSize = LandmarkSizes[0];
         Name = map.Name;
         BrushRadius = 1;
         renderRequest = CreateRenderRequest();
@@ -127,6 +143,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public IReadOnlyList<MapEditorOption<int>> VillageLevels { get; }
     public IReadOnlyList<MapEditorOption<WorldResourceType>> ResourceTypes { get; }
     public IReadOnlyList<MapEditorOption<CustomMapSiteType>> SiteTypes { get; }
+    public IReadOnlyList<MapEditorOption<WorldLandmarkType>> LandmarkCategories { get; }
+    public IReadOnlyList<MapEditorOption<int>> LandmarkSizes { get; }
     public MapEditorLibrary Library => library;
     public GameModel EditorGame => editorGame;
     public int MapWidth => map.Size;
@@ -149,8 +167,21 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(IsVillageTool), nameof(IsResourceTool))]
-    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(HasBrush))]
+    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(IsLandmarkTool), nameof(HasBrush))]
     public partial MapEditorOption<MapEditorTool> SelectedTool { get; set; }
+
+    [ObservableProperty]
+    public partial MapEditorOption<WorldLandmarkType> SelectedLandmarkCategory { get; set; }
+
+    [ObservableProperty]
+    public partial MapEditorOption<int> SelectedLandmarkSize { get; set; }
+
+    // The palette: landmarks of the chosen category and size.
+    [ObservableProperty]
+    public partial IReadOnlyList<MapEditorLandmarkOption> Landmarks { get; private set; } = [];
+
+    [ObservableProperty]
+    public partial MapEditorLandmarkOption? SelectedLandmark { get; set; }
 
     [ObservableProperty]
     public partial MapEditorOption<CustomMapSiteType> SelectedSiteType { get; set; }
@@ -204,11 +235,42 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public bool IsRuinTool => SelectedTool.Value == MapEditorTool.Ruin;
     public bool IsBagTool => SelectedTool.Value == MapEditorTool.Bag;
     public bool IsSiteTool => SelectedTool.Value == MapEditorTool.Site;
+    public bool IsLandmarkTool => SelectedTool.Value == MapEditorTool.Landmark;
     public bool HasBrush => SelectedTool.Value is MapEditorTool.Land or MapEditorTool.Water or MapEditorTool.Forest or MapEditorTool.Mountain or MapEditorTool.Clear;
 
     partial void OnSelectedToolChanged(MapEditorOption<MapEditorTool> value)
     {
         renderRequest = CreateRenderRequest();
+    }
+
+    partial void OnSelectedLandmarkCategoryChanged(MapEditorOption<WorldLandmarkType> value)
+    {
+        FilterLandmarks();
+    }
+
+    partial void OnSelectedLandmarkSizeChanged(MapEditorOption<int> value)
+    {
+        FilterLandmarks();
+    }
+
+    // Keeps the chosen landmark when it is still in the palette, otherwise picks the first one shown.
+    private void FilterLandmarks()
+    {
+        if (SelectedLandmarkCategory is null || SelectedLandmarkSize is null)
+        {
+            return;
+        }
+
+        Landmarks =
+        [
+            .. allLandmarks.Where(option => option.Definition.Type == SelectedLandmarkCategory.Value &&
+                                            (SelectedLandmarkSize.Value == 0 || option.Definition.Width == SelectedLandmarkSize.Value))
+        ];
+
+        if (SelectedLandmark is null || !Landmarks.Contains(SelectedLandmark))
+        {
+            SelectedLandmark = Landmarks.Count > 0 ? Landmarks[0] : null;
+        }
     }
 
     partial void OnNameChanged(string value)
@@ -293,6 +355,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         if (SelectedTool.Value == MapEditorTool.Site)
         {
             ClickSite(tile);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Landmark)
+        {
+            ClickLandmark(tile);
             return;
         }
 
@@ -509,6 +577,36 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         CustomMap before = map.Clone();
 
         if (map.PlaceSite(CenterFootprint(tile, CustomMapSite.Size), type, random.Next(CustomMapSite.GetVariantCount(type)), name.Name, name.Greeting).Error is { } error)
+        {
+            Game.ShowError(MapEditorLabels.ObjectError(error));
+            return;
+        }
+
+        CommitArmyChange(before);
+    }
+
+    // Landmark tool: clicking places the landmark chosen in the palette centred on the tile; clicking a landmark
+    // removes it.
+    private void ClickLandmark(WorldPosition tile)
+    {
+        if (map.GetLandmarkAt(tile) is { } existing)
+        {
+            CommitRemoval(current => current.RemoveLandmark(existing.Id));
+            return;
+        }
+
+        if (SelectedLandmark is not { } option)
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+        WorldLandmarkDefinition definition = option.Definition;
+        WorldPosition topLeft = new(
+            Math.Clamp(tile.X - (definition.Width / 2), 0, Math.Max(0, map.Size - definition.Width)),
+            Math.Clamp(tile.Y - (definition.Height / 2), 0, Math.Max(0, map.Size - definition.Height)));
+
+        if (map.PlaceLandmark(topLeft, definition).Error is { } error)
         {
             Game.ShowError(MapEditorLabels.ObjectError(error));
             return;
@@ -835,7 +933,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
                                !previous.Resources.SequenceEqual(map.Resources) ||
                                !previous.Ruins.SequenceEqual(map.Ruins) ||
                                !previous.Bags.SequenceEqual(map.Bags) ||
-                               !previous.Sites.SequenceEqual(map.Sites);
+                               !previous.Sites.SequenceEqual(map.Sites) ||
+                               !previous.Landmarks.SequenceEqual(map.Landmarks);
         map = undoSteps.Pop();
 
         CanUndo = undoSteps.Count > 0;
@@ -994,8 +1093,11 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         string bag = map.GetBagAt(tile) is { } foundBag
             ? Tr(" · treasure ({0} items)", foundBag.Items.Length)
             : string.Empty;
+        string landmark = map.GetLandmarkAt(tile) is { } foundLandmark
+            ? $" · {allLandmarks.FirstOrDefault(option => option.Definition.Id == foundLandmark.Type)?.Name ?? foundLandmark.Type.Value}"
+            : string.Empty;
 
-        return $"{tile.X}, {tile.Y}: {MapEditorLabels.Terrain(cell.Terrain)}{feature}{army}{village}{resource}{ruin}{site}{bag}";
+        return $"{tile.X}, {tile.Y}: {MapEditorLabels.Terrain(cell.Terrain)}{feature}{army}{village}{resource}{ruin}{site}{bag}{landmark}";
     }
 
     private string GetUnitName(UnitDefinitionId typeId)

@@ -111,10 +111,21 @@ internal static class MapEditorLabels
         return error switch
         {
             CustomMapPlacementError.OutsideMap => Tr("It must fit inside the map."),
-            CustomMapPlacementError.Blocked => Tr("It cannot overlap a capital, village, ruin or site, or stand on a mountain."),
+            CustomMapPlacementError.Blocked => Tr("It cannot overlap a capital, village, ruin, site or landmark, or stand on a mountain."),
             CustomMapPlacementError.Occupied => Tr("Move the armies, resources and treasure out of the way first."),
             CustomMapPlacementError.TooManyGoods => Tr("That is more than it can hold."),
             _ => VillageError(error)
+        };
+    }
+
+    public static string LandmarkCategory(WorldLandmarkType type)
+    {
+        return type switch
+        {
+            WorldLandmarkType.Misc => Tr("Misc"),
+            WorldLandmarkType.Building => Tr("Buildings"),
+            WorldLandmarkType.Structure => Tr("Structures"),
+            _ => Tr("Terrain")
         };
     }
 

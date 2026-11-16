@@ -3,13 +3,14 @@ using Gallean.Engine;
 namespace Gallean.Client;
 
 // What the editor can put on a map besides terrain: units for armies and garrisons, items for bags, ruins and
-// merchants, spells for mage towers, and the game's names for new objects.
+// merchants, spells for mage towers, landmarks, and the game's names for new objects.
 internal sealed record MapEditorLibrary(
     IReadOnlyList<UnitDefinition> Units,
     IReadOnlyList<ItemDefinition> Items,
     IReadOnlyList<WorldSpellDefinition> Spells,
     MapEditorNames Names,
-    IReadOnlyDictionary<WorldRace, (CustomMapUnit?[] Garrison, CustomMapUnit?[] Army)>? CapitalDefaults = null)
+    IReadOnlyDictionary<WorldRace, (CustomMapUnit?[] Garrison, CustomMapUnit?[] Army)>? CapitalDefaults = null,
+    IReadOnlyList<WorldLandmarkDefinition>? Landmarks = null)
 {
     public static MapEditorLibrary Empty { get; } = new([], [], [], MapEditorNames.Empty);
 
@@ -22,7 +23,7 @@ internal sealed record MapEditorLibrary(
             capitals[race] = store.GetCapitalDefaults(race, definitions);
         }
 
-        return new MapEditorLibrary(store.ListUnits(definitions), store.ListItems(definitions), store.ListSpells(definitions), MapEditorNames.Load(), capitals);
+        return new MapEditorLibrary(store.ListUnits(definitions), store.ListItems(definitions), store.ListSpells(definitions), MapEditorNames.Load(), capitals, store.ListLandmarks(definitions));
     }
 
     // What a capital holds until changed in the editor: the race's guardian and its first leader (copies).

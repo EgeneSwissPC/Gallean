@@ -700,6 +700,62 @@ public sealed class MapEditorScreenViewModelTests
     }
 
     [Test]
+    public async Task LandmarkTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Landmark);
+        Assert.That((editor.IsLandmarkTool, editor.HasBrush), Is.EqualTo((true, false)));
+        Assert.That(editor.LandmarkCategories.Select(category => category.Value), Is.EqualTo(Enum.GetValues<WorldLandmarkType>()));
+        Assert.That(editor.LandmarkSizes.Select(size => size.Value), Is.EqualTo(new[] { 0, 1, 2, 3, 4, 5 }));
+
+        // The palette shows one category at a time, filtered by size; every landmark of the game is in one.
+        int total = 0;
+
+        foreach (MapEditorOption<WorldLandmarkType> category in editor.LandmarkCategories)
+        {
+            editor.SelectedLandmarkCategory = category;
+            Assert.That(editor.Landmarks.All(option => option.Definition.Type == category.Value), Is.True);
+            Assert.That(editor.SelectedLandmark, Is.EqualTo(editor.Landmarks[0]));
+            total += editor.Landmarks.Count;
+        }
+
+        Assert.That(total, Is.EqualTo(156));
+        editor.SelectedLandmarkCategory = editor.LandmarkCategories[0];
+        editor.SelectedLandmarkSize = editor.LandmarkSizes.Single(size => size.Value == 3);
+        Assert.That(editor.Landmarks.All(option => option.Definition.Width == 3), Is.True);
+        MapEditorLandmarkOption chosen = editor.Landmarks[^1];
+        editor.SelectedLandmark = chosen;
+        Assert.That(chosen.Caption, Does.EndWith("· 3x3"));
+
+        // Click: placed centred on the tile and shown at once; the hover line and right-click name it.
+        editor.BeginStroke(new WorldPosition(20, 20));
+        CustomMapLandmark landmark = editor.Map.Landmarks.Single();
+        Assert.That((landmark.Type, landmark.TopLeft), Is.EqualTo((chosen.Definition.Id, new WorldPosition(19, 19))));
+        Assert.That(editor.State.Landmarks.Values.Single().Footprint, Is.EqualTo(landmark.Footprint));
+        editor.UpdateHover(new WorldPosition(21, 21));
+        Assert.That(editor.HoverText, Does.Contain(chosen.Name));
+        editor.ShowPositionInfo(new WorldPosition(21, 21));
+        Assert.That(Assert.IsOfType<WorldTileInfoViewModel>(editor.PositionInfo).Title, Is.EqualTo(chosen.Name));
+        editor.HidePositionInfo();
+
+        // Not on a capital or another landmark; a click on a landmark removes it, undo brings it back.
+        editor.BeginStroke(new WorldPosition(9, 9));
+        editor.BeginStroke(new WorldPosition(22, 22));
+        Assert.That(editor.Map.Landmarks, Has.Count.EqualTo(1));
+        editor.BeginStroke(new WorldPosition(19, 21));
+        Assert.That((editor.Map.Landmarks.Count, editor.State.Landmarks.Count), Is.EqualTo((0, 0)));
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Landmarks.Single(), Is.EqualTo(landmark));
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions()).Landmarks, Is.EqualTo(editor.Map.Landmarks));
+    }
+
+    [Test]
     public async Task SiteTest()
     {
         using Sandbox sb = Sandbox.Create();

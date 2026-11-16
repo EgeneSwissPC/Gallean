@@ -148,8 +148,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         };
     }
 
-    // Updates terrain, mountains and resources of a preview state in place of a full rebuild; capitals, armies and
-    // villages need BuildPreview.
+    // Updates terrain, mountains, resources and landmarks of a preview state in place of a full rebuild; capitals,
+    // armies and villages need BuildPreview.
     public static WorldState ApplyTerrain(WorldState state, CustomMap map)
     {
         return state with
@@ -160,7 +160,10 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
                 .ToImmutableSortedDictionary(mountain => mountain.Id, mountain => mountain),
             ResourceNodes = map.Resources
                 .Select(resource => new WorldResourceNode(new WorldResourceNodeId(CustomMapWriter.GetResourceId(map.Id, resource.Id)), resource.Position, resource.Type, AiPriority: 3))
-                .ToImmutableSortedDictionary(node => node.Id, node => node)
+                .ToImmutableSortedDictionary(node => node.Id, node => node),
+            Landmarks = map.Landmarks
+                .Select(landmark => new WorldLandmark(new WorldLandmarkId(CustomMapWriter.GetLandmarkId(map.Id, landmark.Id)), landmark.Type, landmark.Footprint))
+                .ToImmutableSortedDictionary(landmark => landmark.Id, landmark => landmark)
         };
     }
 
@@ -297,7 +300,32 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             sites.Add(converted);
         }
 
-        return new CustomMap(mapId, name, description, state.Map.Width, state.Map.Cells, mountains, players, stacks, villages, resources, ruins, bags, sites);
+        List<CustomMapLandmark> landmarks = [];
+        WorldMapCell[] cells = [.. state.Map.Cells];
+
+        foreach (WorldLandmark landmark in state.Landmarks.Values)
+        {
+            int id = ParseObjectNumber(landmark.Id.Value, 0) ?? landmarks.Count + 1;
+            landmarks.Add(new CustomMapLandmark(id, landmark.Footprint.TopLeft, landmark.DefinitionId, landmark.Footprint.Width, landmark.Footprint.Height));
+
+            // The loader turns the tiles of a mountain-type landmark into mountains; the map keeps them free, so the
+            // tiles don't stay blocked once the landmark is removed. The writer marks them again.
+            if (definitions.GetLandmark(landmark.DefinitionId).Mountain)
+            {
+                foreach (WorldPosition tile in landmark.Footprint.EnumerateTiles())
+                {
+                    int index = (tile.Y * state.Map.Width) + tile.X;
+
+                    if (state.Map.IsValidPosition(tile) && cells[index].Feature == WorldMapFeature.Mountain &&
+                        !mountains.Any(mountain => mountain.Footprint.Contains(tile)))
+                    {
+                        cells[index] = cells[index] with { Feature = WorldMapFeature.None, FeatureVariant = new WorldObjectVariant(0) };
+                    }
+                }
+            }
+        }
+
+        return new CustomMap(mapId, name, description, state.Map.Width, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks);
     }
 
     // The editor's object number from a saved ID such as S600KC0101 (first = 0x100 gives 1).
@@ -342,6 +370,12 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
     public IReadOnlyList<ItemDefinition> ListItems(IGameDefinitionProvider definitions)
     {
         return [.. globalDb.Items.Keys.Select(id => definitions.GetItem(new ItemDefinitionId(id.Value)))];
+    }
+
+    // Landmarks the editor offers: every landmark of the game.
+    public IReadOnlyList<WorldLandmarkDefinition> ListLandmarks(IGameDefinitionProvider definitions)
+    {
+        return [.. globalDb.Landmarks.Keys.Select(id => definitions.GetLandmark(new WorldLandmarkDefinitionId(id.Value)))];
     }
 
     // Spells the editor offers for mage towers: every spell of the game.

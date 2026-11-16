@@ -20,7 +20,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     // Village IDs start after the capitals' too: city FT0100 + n, garrison units UN8000 + 6n + k (after the armies').
     internal const int FirstVillageNumber = 0x100;
     internal const int FirstVillageUnitNumber = 0x8000;
-    // Ruin guards: UNA000 + 6n + k. Ruins RU + n, bags BG + n, sites SI + n, scenario items IM + running number.
+    // Ruin guards: UNA000 + 6n + k. Ruins RU + n, bags BG + n, sites SI + n, scenario items IM + running number,
+    // landmarks MM + n (the original scenarios use MM for landmarks too).
     internal const int FirstRuinUnitNumber = 0xA000;
 
     // Capital garrisons set in the editor: units UNB000 + 6i + k for player slot i.
@@ -63,6 +64,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SMerch.json", rows.Merchants);
         WriteTable(stagingDirectory, "SMage.json", rows.Mages);
         WriteTable(stagingDirectory, "SMercs.json", rows.Mercenaries);
+        WriteTable(stagingDirectory, "SLmark.json", BuildLandmarks(map, scenarioId, prefix));
+        WriteTable(stagingDirectory, "SMapEl.json", BuildMapElements(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
         // Original scenarios all ship an event table; custom maps get an empty one so they load the same way.
         WriteTable(stagingDirectory, "SEvent.json", new List<Db.ScenarioEvent>());
@@ -113,6 +116,11 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     public static string GetSiteId(string mapId, int siteId)
     {
         return MakeId(mapId[..4], "SI", siteId).Value;
+    }
+
+    public static string GetLandmarkId(string mapId, int landmarkId)
+    {
+        return MakeId(mapId[..4], "MM", landmarkId).Value;
     }
 
     public static void Delete(string mapsDirectory, string mapId)
@@ -669,6 +677,38 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         }
 
         return blocks;
+    }
+
+    private static List<Db.ScenarioLandmark> BuildLandmarks(CustomMap map, Db.ScenarioId scenarioId, string prefix)
+    {
+        return
+        [
+            .. map.Landmarks.Select(landmark => new Db.ScenarioLandmark(
+                scenarioId,
+                MakeId(prefix, "MM", landmark.Id),
+                new Db.Id(landmark.Type.Value),
+                landmark.TopLeft.X,
+                landmark.TopLeft.Y,
+                DescriptionText: null))
+        ];
+    }
+
+    // Map elements tell the loader which tiles an object covers. It reads them only for landmarks of the mountain
+    // type (their tiles become mountains), so only those are written, one row per tile as in the original scenarios.
+    private List<Db.ScenarioMapElement> BuildMapElements(CustomMap map, Db.ScenarioId scenarioId, string prefix)
+    {
+        List<Db.ScenarioMapElement> elements = [];
+
+        foreach (CustomMapLandmark landmark in map.Landmarks)
+        {
+            if (globalDb.Landmarks.TryGetValue(new Db.Id(landmark.Type.Value), out Db.Landmark? definition) && definition.Mountain == true)
+            {
+                Db.Id landmarkId = MakeId(prefix, "MM", landmark.Id);
+                elements.AddRange(landmark.Footprint.EnumerateTiles().Select(tile => new Db.ScenarioMapElement(scenarioId, tile.X, tile.Y, landmarkId)));
+            }
+        }
+
+        return elements;
     }
 
     private static List<Db.ScenarioMountain> BuildMountains(CustomMap map, Db.ScenarioId scenarioId)

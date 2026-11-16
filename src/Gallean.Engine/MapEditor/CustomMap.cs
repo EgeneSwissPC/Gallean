@@ -55,10 +55,11 @@ public sealed record CustomMapMountain(int Id, WorldPosition TopLeft, int Size, 
 }
 
 // The map editor's document: terrain, mountains, one player per race with its capital, armies, villages, resources,
-// ruins, treasure bags and sites. It is saved as a normal scenario (CustomMapWriter) and read back through the
-// regular scenario loader (CustomMapStore). Capitals, villages, ruins and sites are structures: their tiles are
+// ruins, treasure bags, sites and landmarks. It is saved as a normal scenario (CustomMapWriter) and read back through
+// the regular scenario loader (CustomMapStore). Capitals, villages, ruins and sites are structures: their tiles are
 // protected from brushes and they never overlap. An army may stand on the entrance of a village or capital: it is
-// stationed there and belongs to the owner.
+// stationed there and belongs to the owner. Landmarks overlap nothing either; land and water can be painted under
+// them, forests and mountains can't.
 public sealed class CustomMap
 {
     public const int MinSize = 16;
@@ -77,6 +78,7 @@ public sealed class CustomMap
     private readonly List<CustomMapRuin> ruins;
     private readonly List<CustomMapBag> bags;
     private readonly List<CustomMapSite> sites;
+    private readonly List<CustomMapLandmark> landmarks;
 
     public CustomMap(
         string id,
@@ -91,7 +93,8 @@ public sealed class CustomMap
         IEnumerable<CustomMapResource>? resources = null,
         IEnumerable<CustomMapRuin>? ruins = null,
         IEnumerable<CustomMapBag>? bags = null,
-        IEnumerable<CustomMapSite>? sites = null)
+        IEnumerable<CustomMapSite>? sites = null,
+        IEnumerable<CustomMapLandmark>? landmarks = null)
     {
         if (size is < MinSize or > MaxSize)
         {
@@ -111,6 +114,7 @@ public sealed class CustomMap
         this.ruins = [.. ruins ?? []];
         this.bags = [.. bags ?? []];
         this.sites = [.. sites ?? []];
+        this.landmarks = [.. landmarks ?? []];
 
         if (this.cells.Length != size * size)
         {
@@ -131,6 +135,7 @@ public sealed class CustomMap
     public IReadOnlyList<CustomMapRuin> Ruins => ruins;
     public IReadOnlyList<CustomMapBag> Bags => bags;
     public IReadOnlyList<CustomMapSite> Sites => sites;
+    public IReadOnlyList<CustomMapLandmark> Landmarks => landmarks;
 
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
@@ -163,7 +168,7 @@ public sealed class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks);
     }
 
     public WorldMapCell GetCell(WorldPosition position)
@@ -197,7 +202,8 @@ public sealed class CustomMap
 
     // Applies a brush around center. Capitals and villages are protected: tiles under them are never changed.
     // Resources keep their tile free of water, forest and mountains, but the land under them can be repainted (that
-    // decides who earns from them). Returns true when anything changed.
+    // decides who earns from them). Landmarks keep forests and mountains off their tiles. Returns true when anything
+    // changed.
     public bool Paint(WorldPosition center, int radius, CustomMapBrush brush, WorldMapTerrain landTerrain, Random random)
     {
         if (brush == CustomMapBrush.Mountain)
@@ -211,7 +217,7 @@ public sealed class CustomMap
         {
             if (!IsValidPosition(position) || IsUnderStructure(position) ||
                 (brush == CustomMapBrush.Water && (GetStackAt(position) is not null || GetResourceAt(position) is not null)) ||
-                (brush == CustomMapBrush.Forest && (GetResourceAt(position) is not null || GetBagAt(position) is not null)))
+                (brush == CustomMapBrush.Forest && (GetResourceAt(position) is not null || GetBagAt(position) is not null || GetLandmarkAt(position) is not null)))
             {
                 continue;
             }
@@ -270,7 +276,8 @@ public sealed class CustomMap
             bags.Any(bag => footprint.Contains(bag.Position)) ||
             villages.Any(village => Overlaps(village.Footprint, footprint)) ||
             ruins.Any(ruin => Overlaps(ruin.Footprint, footprint)) ||
-            sites.Any(site => Overlaps(site.Footprint, footprint)))
+            sites.Any(site => Overlaps(site.Footprint, footprint)) ||
+            landmarks.Any(landmark => Overlaps(landmark.Footprint, footprint)))
         {
             return false;
         }
@@ -396,7 +403,8 @@ public sealed class CustomMap
         WorldRace? stationOwner = village?.Owner ?? capital?.Race;
 
         if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain ||
-            (IsUnderStructure(position) && !stationed) || GetResourceAt(position) is not null || GetBagAt(position) is not null)
+            (IsUnderStructure(position) && !stationed) || GetResourceAt(position) is not null || GetBagAt(position) is not null ||
+            GetLandmarkAt(position) is not null)
         {
             return CustomMapStackError.Blocked;
         }
@@ -448,7 +456,8 @@ public sealed class CustomMap
 
         WorldMapCell cell = GetCell(position);
 
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position))
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position) ||
+            GetLandmarkAt(position) is not null)
         {
             return CustomMapPlacementError.Blocked;
         }
@@ -695,7 +704,7 @@ public sealed class CustomMap
 
         WorldMapCell cell = GetCell(position);
 
-        if (cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position))
+        if (cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position) || GetLandmarkAt(position) is not null)
         {
             return (null, CustomMapPlacementError.Blocked);
         }
@@ -741,8 +750,51 @@ public sealed class CustomMap
         return bags.RemoveAll(bag => bag.Id == id) > 0;
     }
 
-    // A new structure must fit inside the map, must not overlap another structure and must not cover an army, a
-    // resource or a bag.
+    public CustomMapLandmark? GetLandmarkAt(WorldPosition position)
+    {
+        return landmarks.FirstOrDefault(landmark => landmark.Footprint.Contains(position));
+    }
+
+    // Places a landmark with its top-left corner at topLeft. It must fit inside the map, overlap no structure,
+    // landmark or mountain and cover no army, resource or bag. Forests under it are cleared; land and water stay.
+    public (CustomMapLandmark? Landmark, CustomMapPlacementError? Error) PlaceLandmark(WorldPosition topLeft, WorldLandmarkDefinition definition)
+    {
+        WorldFootprint footprint = new(topLeft, definition.Width, definition.Height);
+
+        if (CheckStructureSite(footprint) is { } error)
+        {
+            return (null, error);
+        }
+
+        if (footprint.EnumerateTiles().Any(position => GetCell(position).Feature == WorldMapFeature.Mountain))
+        {
+            return (null, CustomMapPlacementError.Blocked);
+        }
+
+        int id = landmarks.Count == 0 ? 1 : landmarks.Max(landmark => landmark.Id) + 1;
+        CustomMapLandmark placed = new(id, topLeft, definition.Id, definition.Width, definition.Height);
+        landmarks.Add(placed);
+
+        foreach (WorldPosition position in footprint.EnumerateTiles())
+        {
+            int index = (position.Y * Size) + position.X;
+
+            if (cells[index].Feature == WorldMapFeature.Forest)
+            {
+                cells[index] = cells[index] with { Feature = WorldMapFeature.None, FeatureVariant = new WorldObjectVariant(0) };
+            }
+        }
+
+        return (placed, null);
+    }
+
+    public bool RemoveLandmark(int id)
+    {
+        return landmarks.RemoveAll(landmark => landmark.Id == id) > 0;
+    }
+
+    // A new structure or landmark must fit inside the map, must not overlap another structure or a landmark and must
+    // not cover an army, a resource or a bag.
     private CustomMapPlacementError? CheckStructureSite(WorldFootprint footprint)
     {
         if (!IsValidPosition(footprint.TopLeft) ||
@@ -751,7 +803,8 @@ public sealed class CustomMap
             return CustomMapPlacementError.OutsideMap;
         }
 
-        if (GetStructureFootprints().Any(other => Overlaps(other, footprint)))
+        if (GetStructureFootprints().Any(other => Overlaps(other, footprint)) ||
+            landmarks.Any(landmark => Overlaps(landmark.Footprint, footprint)))
         {
             return CustomMapPlacementError.Blocked;
         }
@@ -857,7 +910,7 @@ public sealed class CustomMap
         foreach (WorldPosition position in footprint.EnumerateTiles())
         {
             if (!IsValidPosition(position) || IsUnderStructure(position) || GetStackAt(position) is not null ||
-                GetResourceAt(position) is not null || GetBagAt(position) is not null)
+                GetResourceAt(position) is not null || GetBagAt(position) is not null || GetLandmarkAt(position) is not null)
             {
                 return false;
             }

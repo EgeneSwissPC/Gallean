@@ -806,6 +806,102 @@ public sealed class CustomMapTests
         Assert.That(reopened.Stacks, Is.Empty, "Ruin guards are not read back as armies.");
     }
 
+    // A landmark of the given size; mountain picks a landmark of the mountain type.
+    private WorldLandmarkDefinition Landmark(int size, bool mountain = false)
+    {
+        return globalDb.Landmarks.Keys
+            .Select(id => definitions.GetLandmark(new WorldLandmarkDefinitionId(id.Value)))
+            .OrderBy(definition => definition.Id.Value, StringComparer.OrdinalIgnoreCase)
+            .First(definition => definition.Width == size && definition.Height == size && definition.Mountain == mountain);
+    }
+
+    [Test]
+    public void LandmarkRulesTest()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(1);
+        WorldLandmarkDefinition big = Landmark(3);
+        WorldLandmarkDefinition small = Landmark(1);
+
+        // On land, on the lake and half in it; the forest under one is cleared.
+        CustomMapLandmark landmark = map.PlaceLandmark(new WorldPosition(14, 14), big).Landmark!;
+        Assert.That((landmark.Id, landmark.Type, landmark.Footprint), Is.EqualTo((1, big.Id, new WorldFootprint(new WorldPosition(14, 14), 3, 3))));
+        Assert.That(map.PlaceLandmark(new WorldPosition(23, 23), small).Error, Is.Null, "Water.");
+        Assert.That(map.GetCell(new WorldPosition(23, 23)).Terrain, Is.EqualTo(WorldMapTerrain.Water), "The water stays.");
+        Assert.That(map.PlaceLandmark(new WorldPosition(9, 29), big).Error, Is.Null);
+        Assert.That(new WorldFootprint(new WorldPosition(9, 29), 3, 3).EnumerateTiles().All(tile => map.GetCell(tile).Feature == WorldMapFeature.None), Is.True);
+
+        // Nothing overlaps a landmark, and it overlaps nothing.
+        Assert.That(map.PlaceLandmark(new WorldPosition(16, 16), small).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Landmark.");
+        Assert.That(map.PlaceLandmark(new WorldPosition(5, 5), small).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Capital.");
+        Assert.That(map.PlaceLandmark(new WorldPosition(36, 10), small).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Mountain.");
+        Assert.That(map.PlaceLandmark(new WorldPosition(46, 46), big).Error, Is.EqualTo(CustomMapPlacementError.OutsideMap));
+        Assert.That(map.PlaceRuin(new WorldPosition(12, 12), 0, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceVillage(new WorldPosition(15, 16), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.False);
+        Assert.That(map.PlaceStack(new WorldPosition(15, 15), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
+        Assert.That(map.PlaceResource(new WorldPosition(15, 15), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceBag(new WorldPosition(15, 15), 0).Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        map.PlaceBag(new WorldPosition(30, 14), 0);
+        Assert.That(map.PlaceLandmark(new WorldPosition(29, 13), big).Error, Is.EqualTo(CustomMapPlacementError.Occupied), "Bag.");
+
+        // Land and water can be painted under it; forests and mountains can't.
+        Assert.That(map.Paint(new WorldPosition(15, 15), 0, CustomMapBrush.Land, WorldMapTerrain.Undead, random), Is.True);
+        Assert.That(map.GetCell(new WorldPosition(15, 15)).Terrain, Is.EqualTo(WorldMapTerrain.Undead));
+        Assert.That(map.Paint(new WorldPosition(15, 15), 0, CustomMapBrush.Forest, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.Paint(new WorldPosition(15, 15), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.GetLandmarkAt(new WorldPosition(16, 16)), Is.EqualTo(landmark));
+
+        CustomMap copy = map.Clone();
+        Assert.That(map.RemoveLandmark(landmark.Id), Is.True);
+        Assert.That(map.GetLandmarkAt(new WorldPosition(16, 16)), Is.Null);
+        Assert.That((map.Landmarks.Count, copy.Landmarks.Count), Is.EqualTo((2, 3)));
+        Assert.That(map.PlaceLandmark(new WorldPosition(14, 14), small).Landmark!.Id, Is.EqualTo(4), "IDs are not reused.");
+    }
+
+    [Test]
+    public void LandmarkSaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        WorldLandmarkDefinition big = Landmark(3);
+        WorldLandmarkDefinition small = Landmark(1);
+        WorldLandmarkDefinition mountain = Landmark(3, mountain: true);
+
+        map.PlaceLandmark(new WorldPosition(14, 14), big);
+        map.PlaceLandmark(new WorldPosition(23, 23), small);
+        int rocky = map.PlaceLandmark(new WorldPosition(20, 40), mountain).Landmark!.Id;
+        store.Save(map);
+
+        ScenarioDatabase database = store.LoadDatabase(map.Id);
+        WorldState state = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+
+        Assert.That(state.Landmarks.Values.Select(landmark => (landmark.Id.Value, landmark.DefinitionId, landmark.Footprint)), Is.EquivalentTo(new[]
+        {
+            ("S600MM0001", big.Id, new WorldFootprint(new WorldPosition(14, 14), 3, 3)),
+            ("S600MM0002", small.Id, new WorldFootprint(new WorldPosition(23, 23), 1, 1)),
+            (CustomMapWriter.GetLandmarkId(map.Id, rocky), mountain.Id, new WorldFootprint(new WorldPosition(20, 40), 3, 3))
+        }));
+
+        // In the game landmarks block armies; the mountain type also turns its tiles into mountains.
+        WorldPlan plan = WorldPlan.For(state);
+        Assert.That(plan.IsObstacleAt(new WorldPosition(15, 15)), Is.True);
+        Assert.That(plan.GetLandmarkAt(new WorldPosition(23, 23))!.DefinitionId, Is.EqualTo(small.Id));
+        Assert.That(state.Map.GetCellAt(new WorldPosition(21, 41)).Feature, Is.EqualTo(WorldMapFeature.Mountain));
+        Assert.That(state.Map.GetCellAt(new WorldPosition(15, 15)).Feature, Is.EqualTo(WorldMapFeature.None));
+
+        // Reopened, the map is the same, with the mountain-type landmark's tiles free again.
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Landmarks, Is.EquivalentTo(map.Landmarks));
+        Assert.That(reopened.Cells, Is.EqualTo(map.Cells));
+        Assert.That(reopened.RemoveLandmark(rocky), Is.True);
+        Assert.That(reopened.PlaceStack(new WorldPosition(21, 41), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.Null);
+
+        // The editor's quick preview update shows landmarks too.
+        WorldState preview = CustomMapStore.ApplyTerrain(state with { Landmarks = System.Collections.Immutable.ImmutableSortedDictionary<WorldLandmarkId, WorldLandmark>.Empty }, map);
+        Assert.That(preview.Landmarks.Values.Select(landmark => landmark.Footprint), Is.EquivalentTo(state.Landmarks.Values.Select(landmark => landmark.Footprint)));
+    }
+
     [Test]
     public void VillagePlayTest()
     {
@@ -835,7 +931,13 @@ public sealed class CustomMapTests
         int camp = map.PlaceSite(new WorldPosition(20, 20), CustomMapSiteType.Mercenaries, 0, "Camp", "").Site!.Id;
         map.UpdateSite(camp, 0, "Camp", "", [], [], [new CustomMapMercenary(NeutralSoldier.TypeId, 1)]);
         map.PlaceSite(new WorldPosition(30, 20), CustomMapSiteType.Trainer, 0, "Trainer", "");
-        Assert.That((map.Stacks.Count, map.Ruins.Count, map.Bags.Count, map.Sites.Count), Is.EqualTo((1, 1, 1, 4)));
+
+        // Landmarks in the way, one of the mountain type, and one in the lake.
+        map.PlaceLandmark(new WorldPosition(20, 4), Landmark(3));
+        map.PlaceLandmark(new WorldPosition(16, 16), Landmark(1));
+        map.PlaceLandmark(new WorldPosition(26, 28), Landmark(3, mountain: true));
+        map.PlaceLandmark(new WorldPosition(24, 24), Landmark(1));
+        Assert.That((map.Stacks.Count, map.Ruins.Count, map.Bags.Count, map.Sites.Count, map.Landmarks.Count), Is.EqualTo((1, 1, 1, 4, 4)));
         store.Save(map);
 
         ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
