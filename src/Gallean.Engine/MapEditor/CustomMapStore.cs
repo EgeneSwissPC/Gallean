@@ -87,9 +87,14 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
     public CustomMap Open(string mapId, IGameDefinitionProvider definitions)
     {
         Db.ScenarioInfo info = List().Single(candidate => string.Equals(candidate.ScenarioId.Value, mapId, StringComparison.OrdinalIgnoreCase));
-        Scenario scenario = ScenarioLoader.Load(globalDb, LoadDatabase(mapId), campaignDb, new ScenarioId(info.ScenarioId.Value), definitions, new GlobalVariables());
+        ScenarioDatabase database = LoadDatabase(mapId);
+        Scenario scenario = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(info.ScenarioId.Value), definitions, new GlobalVariables());
+        Dictionary<string, string> names = database.TextScenariosByScenario[info.ScenarioId]
+            .Where(text => text.IdString == Db.TextScenario.NameTextId && text.Text is not null)
+            .GroupBy(text => text.IdObject.Value, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().Text!, StringComparer.OrdinalIgnoreCase);
 
-        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions);
+        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, names.GetValueOrDefault);
     }
 
     // Builds the world state the editor renders by saving the map to a scratch folder and loading it through the
@@ -143,7 +148,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         };
     }
 
-    // Updates terrain and mountains of a preview state in place of a full rebuild; capitals need BuildPreview.
+    // Updates terrain, mountains and resources of a preview state in place of a full rebuild; capitals, armies and
+    // villages need BuildPreview.
     public static WorldState ApplyTerrain(WorldState state, CustomMap map)
     {
         return state with
@@ -151,11 +157,15 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             Map = map.ToWorldMap(),
             Mountains = map.Mountains
                 .Select(mountain => new WorldMountain(new WorldMountainId(mountain.Id), mountain.Footprint, WorldRace.Neutral, new WorldObjectVariant(mountain.Variant)))
-                .ToImmutableSortedDictionary(mountain => mountain.Id, mountain => mountain)
+                .ToImmutableSortedDictionary(mountain => mountain.Id, mountain => mountain),
+            ResourceNodes = map.Resources
+                .Select(resource => new WorldResourceNode(new WorldResourceNodeId(CustomMapWriter.GetResourceId(map.Id, resource.Id)), resource.Position, resource.Type, AiPriority: 3))
+                .ToImmutableSortedDictionary(node => node.Id, node => node)
         };
     }
 
-    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions)
+    // getName returns the scenario name text of an object (by its scenario ID), when known.
+    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions, Func<string, string?>? getName = null)
     {
         if (state.Map.Width != state.Map.Height)
         {
@@ -200,23 +210,50 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
                 continue;
             }
 
-            CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
-
-            foreach ((WorldUnit unit, GridPosition position) in stack.Units.GetUnits())
-            {
-                UnitDefinition definition = definitions.GetUnit(unit.DefinitionId);
-                int slot = definition.IsLarge ? GridPosition.AtFrontLine(position.Flank).ToIndex() : position.ToIndex();
-                slots[slot] = CustomMapUnit.From(definition) with { Level = unit.Level, Hitpoints = unit.Hitpoints };
-            }
-
-            string idText = stack.Id.Value;
-            int id = idText.Length == 10 && int.TryParse(idText.AsSpan(6), System.Globalization.NumberStyles.HexNumber, null, out int number) && number > CustomMapWriter.FirstArmyNumber
-                ? number - CustomMapWriter.FirstArmyNumber
-                : stacks.Count + 1;
-            stacks.Add(new CustomMapStack(id, stack.Position, state.Players[stack.OwnerId].Race, [.. slots]));
+            int id = ParseObjectNumber(stack.Id.Value, CustomMapWriter.FirstArmyNumber) ?? stacks.Count + 1;
+            stacks.Add(new CustomMapStack(id, stack.Position, state.Players[stack.OwnerId].Race, [.. ToSlots(stack.Units, definitions)]));
         }
 
-        return new CustomMap(mapId, name, description, state.Map.Width, state.Map.Cells, mountains, players, stacks);
+        List<CustomMapVillage> villages = [];
+
+        foreach (WorldCity city in state.Fortifications.Values.OfType<WorldCity>())
+        {
+            int id = ParseObjectNumber(city.Id.Value, CustomMapWriter.FirstVillageNumber) ?? villages.Count + 1;
+            string villageName = getName?.Invoke(city.Id.Value) ?? string.Empty;
+            villages.Add(new CustomMapVillage(id, city.Footprint.TopLeft, city.DefinitionId.Level, state.Players[city.OwnerId].Race, villageName, [.. ToSlots(city.Garrison, definitions)]));
+        }
+
+        List<CustomMapResource> resources = [];
+
+        foreach (WorldResourceNode node in state.ResourceNodes.Values)
+        {
+            int id = ParseObjectNumber(node.Id.Value, 0) ?? resources.Count + 1;
+            resources.Add(new CustomMapResource(id, node.Position, node.ResourceType));
+        }
+
+        return new CustomMap(mapId, name, description, state.Map.Width, state.Map.Cells, mountains, players, stacks, villages, resources);
+    }
+
+    // The editor's object number from a saved ID such as S600KC0101 (first = 0x100 gives 1).
+    private static int? ParseObjectNumber(string id, int first)
+    {
+        return id.Length == 10 && int.TryParse(id.AsSpan(6), System.Globalization.NumberStyles.HexNumber, null, out int number) && number > first
+            ? number - first
+            : null;
+    }
+
+    private static CustomMapUnit?[] ToSlots(UnitGrid<WorldUnit> units, IGameDefinitionProvider definitions)
+    {
+        CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
+
+        foreach ((WorldUnit unit, GridPosition position) in units.GetUnits())
+        {
+            UnitDefinition definition = definitions.GetUnit(unit.DefinitionId);
+            int slot = definition.IsLarge ? GridPosition.AtFrontLine(position.Flank).ToIndex() : position.ToIndex();
+            slots[slot] = CustomMapUnit.From(definition) with { Level = unit.Level, Hitpoints = unit.Hitpoints };
+        }
+
+        return slots;
     }
 
     // Units the editor offers for armies: regular and neutral soldiers and leaders that can walk on land.

@@ -1,0 +1,117 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorVillageScreenView"
+             x:DataType="local:MapEditorVillageScreenViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.rune.purchase">
+      <Setter Property="ToolTip.Tip" Value="{local:Text 'Add a unit'}" />
+    </Style>
+    <Style Selector="Line.party-divider">
+      <Setter Property="Margin" Value="32,24,32,0" />
+      <Setter Property="Stretch" Value="Fill" />
+      <Setter Property="StartPoint" Value="0,0" />
+      <Setter Property="EndPoint" Value="0,1" />
+      <Setter Property="Stroke" Value="{StaticResource AccentSecondaryBrush}" />
+      <Setter Property="StrokeThickness" Value="1" />
+      <Setter Property="StrokeDashArray" Value="4,3" />
+    </Style>
+    <Style Selector=":is(TextBlock).field-label">
+      <Setter Property="Margin" Value="0,10,0,4" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
+    <ContentControl Classes="ornament-panel"
+                    Background="{StaticResource CapitalScenePanelBodyGradientBrush}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,*,Auto" Margin="28,16">
+        <local:OutlinedTextBlock Grid.Row="0" Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" Margin="0,0,0,8" />
+
+        <Grid Grid.Row="1" ColumnDefinitions="320,Auto,Auto">
+          <!-- Village -->
+          <StackPanel Grid.Column="0" Width="300" VerticalAlignment="Center">
+            <Panel Height="190">
+              <local:SpriteVisual SpriteKey="{Binding ImageKey}" Stretch="Uniform" />
+            </Panel>
+            <local:OutlinedTextBlock Text="{local:Text 'Name'}" Classes="caption field-label" />
+            <TextBox x:Name="VillageNameBox" Text="{Binding Name}" MaxLength="{Binding NameLength}" />
+            <local:OutlinedTextBlock Text="{local:Text 'Owner'}" Classes="caption field-label" />
+            <ComboBox x:Name="VillageOwnerBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Owners}" SelectedItem="{Binding SelectedOwner}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorLabeled">
+                  <TextBlock Text="{Binding Label}" Classes="body" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <local:OutlinedTextBlock Text="{local:Text 'Village level'}" Classes="caption field-label" />
+            <ComboBox x:Name="VillageLevelBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Levels}" SelectedItem="{Binding SelectedLevel}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorLabeled">
+                  <TextBlock Text="{Binding Label}" Classes="body" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+
+          <Line Grid.Column="1" Classes="party-divider" />
+
+          <!-- Garrison -->
+          <StackPanel Grid.Column="2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,0,0,12" ToolTip.Tip="{local:Text 'Garrison size'}">
+              <local:OutlinedTextBlock Text="{local:Text 'Garrison'}" Classes="object-name row" />
+              <local:OutlinedTextBlock Text="{Binding Capacity}" Classes="object-name row" Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+            <Viewbox Classes="unit-grid-container" HorizontalAlignment="Center" VerticalAlignment="Top">
+              <ItemsControl x:Name="GarrisonGrid"
+                            Classes="unit-grid focus-group"
+                            ItemsSource="{Binding UnitGrid.Slots}"
+                            ItemTemplate="{StaticResource UnitGridSlotTemplate}"
+                            ItemContainerTheme="{StaticResource UnitGridSlotContainerTheme}" />
+            </Viewbox>
+            <TextBlock Text="{local:Text 'A village holds as many units as its level; large units count twice. Click + to add a unit, drag units to rearrange them or onto Remove.'}"
+                       Classes="caption"
+                       Width="240"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Margin="0,12,0,0" />
+          </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,0" Spacing="10">
+          <TextBlock Text="{Binding Problem}"
+                     Classes="body"
+                     HorizontalAlignment="Center"
+                     Foreground="{StaticResource AccentBrush}"
+                     IsVisible="{Binding Problem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <StackPanel Classes="focus-group" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+            <Button x:Name="DeleteButton"
+                    Classes="pill"
+                    local:PlateChrome.TextureSeed="4"
+                    MinWidth="140"
+                    Content="{local:Text 'Delete village'}"
+                    Command="{Binding DeleteCommand}" />
+            <Button x:Name="CancelButton"
+                    Classes="pill"
+                    local:PlateChrome.TextureSeed="5"
+                    MinWidth="140"
+                    Content="{local:Text 'Cancel'}"
+                    Command="{Binding CloseCommand}" />
+            <Button x:Name="ConfirmButton"
+                    Classes="pill primary"
+                    local:PlateChrome.TextureSeed="6"
+                    MinWidth="140"
+                    Content="{local:Text 'Save village'}"
+                    Command="{Binding ConfirmCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </ContentControl>
+
+    <ItemsControl Classes="drop-zones" ItemsSource="{Binding DropZones}" Margin="0,12,0,0" />
+  </Grid>
+
+</UserControl>

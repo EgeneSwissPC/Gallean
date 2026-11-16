@@ -18,8 +18,9 @@ public sealed record CustomMapMountain(int Id, WorldPosition TopLeft, int Size, 
     public WorldFootprint Footprint => new(TopLeft, Size, Size);
 }
 
-// The map editor's document: terrain, mountains and one player per race with its capital. It is saved as a normal
-// scenario (CustomMapWriter) and read back through the regular scenario loader (CustomMapStore).
+// The map editor's document: terrain, mountains, one player per race with its capital, armies, villages and
+// resources. It is saved as a normal scenario (CustomMapWriter) and read back through the regular scenario loader
+// (CustomMapStore).
 public sealed class CustomMap
 {
     public const int MinSize = 16;
@@ -33,6 +34,8 @@ public sealed class CustomMap
     private readonly List<CustomMapMountain> mountains;
     private readonly List<CustomMapPlayer> players;
     private readonly List<CustomMapStack> stacks;
+    private readonly List<CustomMapVillage> villages;
+    private readonly List<CustomMapResource> resources;
 
     public CustomMap(
         string id,
@@ -42,7 +45,9 @@ public sealed class CustomMap
         IEnumerable<WorldMapCell> cells,
         IEnumerable<CustomMapMountain> mountains,
         IEnumerable<CustomMapPlayer> players,
-        IEnumerable<CustomMapStack>? stacks = null)
+        IEnumerable<CustomMapStack>? stacks = null,
+        IEnumerable<CustomMapVillage>? villages = null,
+        IEnumerable<CustomMapResource>? resources = null)
     {
         if (size is < MinSize or > MaxSize)
         {
@@ -57,6 +62,8 @@ public sealed class CustomMap
         this.mountains = [.. mountains];
         this.players = [.. players];
         this.stacks = [.. stacks ?? []];
+        this.villages = [.. villages ?? []];
+        this.resources = [.. resources ?? []];
 
         if (this.cells.Length != size * size)
         {
@@ -72,6 +79,8 @@ public sealed class CustomMap
     public IReadOnlyList<CustomMapMountain> Mountains => mountains;
     public IReadOnlyList<CustomMapPlayer> Players => players;
     public IReadOnlyList<CustomMapStack> Stacks => stacks;
+    public IReadOnlyList<CustomMapVillage> Villages => villages;
+    public IReadOnlyList<CustomMapResource> Resources => resources;
 
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
@@ -104,7 +113,7 @@ public sealed class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources);
     }
 
     public WorldMapCell GetCell(WorldPosition position)
@@ -136,8 +145,9 @@ public sealed class CustomMap
         }
     }
 
-    // Applies a brush around center. Capitals are protected: tiles under them are never changed.
-    // Returns true when anything changed.
+    // Applies a brush around center. Capitals and villages are protected: tiles under them are never changed.
+    // Resources keep their tile free of water, forest and mountains, but the land under them can be repainted (that
+    // decides who earns from them). Returns true when anything changed.
     public bool Paint(WorldPosition center, int radius, CustomMapBrush brush, WorldMapTerrain landTerrain, Random random)
     {
         if (brush == CustomMapBrush.Mountain)
@@ -149,7 +159,9 @@ public sealed class CustomMap
 
         foreach (WorldPosition position in GetBrushArea(center, radius))
         {
-            if (!IsValidPosition(position) || IsUnderCapital(position) || (brush == CustomMapBrush.Water && GetStackAt(position) is not null))
+            if (!IsValidPosition(position) || IsUnderFortification(position) ||
+                (brush == CustomMapBrush.Water && (GetStackAt(position) is not null || GetResourceAt(position) is not null)) ||
+                (brush == CustomMapBrush.Forest && GetResourceAt(position) is not null))
             {
                 continue;
             }
@@ -200,7 +212,9 @@ public sealed class CustomMap
             return false;
         }
 
-        if (stacks.Any(stack => footprint.Contains(stack.Position)))
+        if (stacks.Any(stack => footprint.Contains(stack.Position)) ||
+            resources.Any(resource => footprint.Contains(resource.Position)) ||
+            villages.Any(village => Overlaps(village.Footprint, footprint)))
         {
             return false;
         }
@@ -283,7 +297,7 @@ public sealed class CustomMap
 
         WorldMapCell cell = GetCell(position);
 
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderCapital(position))
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderFortification(position) || GetResourceAt(position) is not null)
         {
             return CustomMapStackError.Blocked;
         }
@@ -299,6 +313,151 @@ public sealed class CustomMap
         }
 
         return CustomMapStack.ValidateSlots(slots);
+    }
+
+    public CustomMapResource? GetResourceAt(WorldPosition position)
+    {
+        return resources.FirstOrDefault(resource => resource.Position == position);
+    }
+
+    public CustomMapVillage? GetVillageAt(WorldPosition position)
+    {
+        return villages.FirstOrDefault(village => village.Footprint.Contains(position));
+    }
+
+    // Places a resource, or changes the type of the one already there. Its tile must be free land; a forest on it
+    // is cleared.
+    public CustomMapPlacementError? PlaceResource(WorldPosition position, WorldResourceType type)
+    {
+        if (!IsValidPosition(position))
+        {
+            return CustomMapPlacementError.OutsideMap;
+        }
+
+        int existing = resources.FindIndex(resource => resource.Position == position);
+
+        if (existing >= 0)
+        {
+            resources[existing] = resources[existing] with { Type = type };
+            return null;
+        }
+
+        WorldMapCell cell = GetCell(position);
+
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderFortification(position))
+        {
+            return CustomMapPlacementError.Blocked;
+        }
+
+        if (GetStackAt(position) is not null)
+        {
+            return CustomMapPlacementError.Occupied;
+        }
+
+        int id = resources.Count == 0 ? 1 : resources.Max(resource => resource.Id) + 1;
+        resources.Add(new CustomMapResource(id, position, type));
+        cells[(position.Y * Size) + position.X] = cell with { Feature = WorldMapFeature.None, FeatureVariant = new WorldObjectVariant(0) };
+
+        return null;
+    }
+
+    public bool RemoveResource(WorldPosition position)
+    {
+        return resources.RemoveAll(resource => resource.Position == position) > 0;
+    }
+
+    // Places a village with its top-left corner at topLeft. Like a capital, the land under it becomes the owner's
+    // and loses forests and mountains; it must not overlap a capital, another village, an army or a resource.
+    public (CustomMapVillage? Village, CustomMapPlacementError? Error) PlaceVillage(WorldPosition topLeft, int level, WorldRace owner, string name)
+    {
+        WorldFootprint footprint = new(topLeft, CustomMapVillage.Size, CustomMapVillage.Size);
+
+        if (CheckVillageSite(footprint, ignoreId: null) is { } error)
+        {
+            return (null, error);
+        }
+
+        if (!IsValidOwner(owner))
+        {
+            return (null, CustomMapPlacementError.UnknownOwner);
+        }
+
+        if (level is < CustomMapVillage.MinLevel or > CustomMapVillage.MaxLevel)
+        {
+            return (null, CustomMapPlacementError.InvalidLevel);
+        }
+
+        int id = villages.Count == 0 ? 1 : villages.Max(village => village.Id) + 1;
+        CustomMapVillage placed = new(id, topLeft, level, owner, name, CustomMapVillage.EmptyGarrison);
+        villages.Add(placed);
+        ClaimLand(footprint, owner);
+
+        return (placed, null);
+    }
+
+    public CustomMapPlacementError? UpdateVillage(int id, int level, WorldRace owner, string name, IReadOnlyList<CustomMapUnit?> garrison)
+    {
+        int index = villages.FindIndex(village => village.Id == id);
+
+        if (index < 0)
+        {
+            return CustomMapPlacementError.OutsideMap;
+        }
+
+        if (!IsValidOwner(owner))
+        {
+            return CustomMapPlacementError.UnknownOwner;
+        }
+
+        if (CustomMapVillage.ValidateGarrison(garrison, level) is { } error)
+        {
+            return error;
+        }
+
+        villages[index] = villages[index] with { Level = level, Owner = owner, Name = name, Garrison = [.. garrison] };
+        ClaimLand(villages[index].Footprint, owner);
+
+        return null;
+    }
+
+    public bool RemoveVillage(int id)
+    {
+        return villages.RemoveAll(village => village.Id == id) > 0;
+    }
+
+    private CustomMapPlacementError? CheckVillageSite(WorldFootprint footprint, int? ignoreId)
+    {
+        if (!IsValidPosition(footprint.TopLeft) ||
+            !IsValidPosition(new WorldPosition(footprint.TopLeft.X + footprint.Width - 1, footprint.TopLeft.Y + footprint.Height - 1)))
+        {
+            return CustomMapPlacementError.OutsideMap;
+        }
+
+        bool overlapsCapital = players.Any(player => player.Capital is { } capital && Overlaps(new WorldFootprint(capital, CapitalSize, CapitalSize), footprint));
+        bool overlapsVillage = villages.Any(village => village.Id != ignoreId && Overlaps(village.Footprint, footprint));
+
+        if (overlapsCapital || overlapsVillage)
+        {
+            return CustomMapPlacementError.Blocked;
+        }
+
+        if (stacks.Any(stack => footprint.Contains(stack.Position)) || resources.Any(resource => footprint.Contains(resource.Position)))
+        {
+            return CustomMapPlacementError.Occupied;
+        }
+
+        return null;
+    }
+
+    private void ClaimLand(WorldFootprint footprint, WorldRace owner)
+    {
+        WorldMapTerrain terrain = owner == WorldRace.Neutral ? WorldMapTerrain.Neutral : WorldHelpers.GetNativeTerrain(owner);
+
+        foreach (WorldPosition position in footprint.EnumerateTiles())
+        {
+            RemoveMountainsAt(position);
+            cells[(position.Y * Size) + position.X] = new WorldMapCell(terrain, WorldMapFeature.None, new WorldObjectVariant(0));
+        }
     }
 
     public IReadOnlyList<string> Validate()
@@ -342,7 +501,7 @@ public sealed class CustomMap
 
         foreach (WorldPosition position in footprint.EnumerateTiles())
         {
-            if (!IsValidPosition(position) || IsUnderCapital(position) || GetStackAt(position) is not null)
+            if (!IsValidPosition(position) || IsUnderFortification(position) || GetStackAt(position) is not null || GetResourceAt(position) is not null)
             {
                 return false;
             }
@@ -396,7 +555,7 @@ public sealed class CustomMap
         return changed;
     }
 
-    private bool IsUnderCapital(WorldPosition position)
+    private bool IsUnderFortification(WorldPosition position)
     {
         foreach (CustomMapPlayer player in players)
         {
@@ -406,7 +565,7 @@ public sealed class CustomMap
             }
         }
 
-        return false;
+        return GetVillageAt(position) is not null;
     }
 
     private static bool Overlaps(WorldFootprint a, WorldFootprint b)

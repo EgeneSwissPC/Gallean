@@ -209,6 +209,8 @@ public sealed class CustomMapTests
         map.Paint(new WorldPosition(20, 40), 3, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
         map.Paint(new WorldPosition(24, 24), 1, CustomMapBrush.Land, WorldMapTerrain.Heretic, random);
         map.Paint(new WorldPosition(36, 10), 0, CustomMapBrush.Clear, WorldMapTerrain.Neutral, random);
+        map.PlaceResource(new WorldPosition(14, 20), WorldResourceType.Gold);
+        map.PlaceResource(new WorldPosition(16, 20), WorldResourceType.RuneMana);
 
         WorldState applied = CustomMapStore.ApplyTerrain(before, map);
         WorldState rebuilt = store.BuildPreview(map, definitions).State;
@@ -216,6 +218,8 @@ public sealed class CustomMapTests
         Assert.That(applied.Map, Is.EqualTo(rebuilt.Map));
         Assert.That(applied.Mountains, Is.EqualTo(rebuilt.Mountains));
         Assert.That(applied.Fortifications, Is.EqualTo(rebuilt.Fortifications));
+        Assert.That(applied.ResourceNodes, Is.EqualTo(rebuilt.ResourceNodes));
+        Assert.That(applied.ResourceNodes, Has.Count.EqualTo(2));
     }
 
     [Test]
@@ -387,5 +391,212 @@ public sealed class CustomMapTests
         Assert.That(CustomMapStack.TryPlaceUnit(slots, GridPosition.BackTop, soldier), Is.Null, "The large unit's back slot is taken.");
         Assert.That(CustomMapStack.GetOccupiedLeadership(slots), Is.EqualTo(4));
         Assert.That(CustomMapStack.GetLeadership(slots), Is.EqualTo(leader.Leadership));
+    }
+
+    [Test]
+    public void ResourceRulesTest()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(1);
+        WorldPosition gold = new(20, 20);
+
+        Assert.That(map.PlaceResource(gold, WorldResourceType.Gold), Is.Null);
+        Assert.That(map.GetResourceAt(gold)!.Type, Is.EqualTo(WorldResourceType.Gold));
+        Assert.That(map.PlaceResource(new WorldPosition(24, 24), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Blocked), "Water.");
+        Assert.That(map.PlaceResource(new WorldPosition(36, 10), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Blocked), "Mountain.");
+        Assert.That(map.PlaceResource(new WorldPosition(5, 5), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Blocked), "Capital.");
+        Assert.That(map.PlaceResource(new WorldPosition(48, 5), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.OutsideMap));
+
+        // A forest under a new resource is cleared.
+        Assert.That(map.GetCell(new WorldPosition(10, 30)).Feature, Is.EqualTo(WorldMapFeature.Forest));
+        Assert.That(map.PlaceResource(new WorldPosition(10, 30), WorldResourceType.GroveMana), Is.Null);
+        Assert.That(map.GetCell(new WorldPosition(10, 30)).Feature, Is.EqualTo(WorldMapFeature.None));
+
+        // Placing on a resource changes its type.
+        Assert.That(map.PlaceResource(gold, WorldResourceType.LifeMana), Is.Null);
+        Assert.That(map.Resources, Has.Count.EqualTo(2));
+        Assert.That(map.GetResourceAt(gold)!.Type, Is.EqualTo(WorldResourceType.LifeMana));
+
+        // Armies cannot stand on resources and resources cannot go under armies.
+        CustomMapUnit?[] guard = Slots((GridPosition.FrontCenter, NeutralLeader));
+        Assert.That(map.PlaceStack(gold, WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Blocked));
+        Assert.That(map.PlaceStack(new WorldPosition(30, 30), WorldRace.Neutral, guard).Error, Is.Null);
+        Assert.That(map.PlaceResource(new WorldPosition(30, 30), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Occupied));
+
+        // Water, forests and mountains leave the resource tile alone; repainting the land under it is allowed.
+        map.Paint(gold, 1, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        Assert.That(map.GetCell(gold).Terrain, Is.EqualTo(WorldMapTerrain.Neutral));
+        Assert.That(map.GetCell(new WorldPosition(21, 20)).Terrain, Is.EqualTo(WorldMapTerrain.Water));
+        map.Paint(new WorldPosition(20, 18), 2, CustomMapBrush.Land, WorldMapTerrain.Human, random);
+        map.Paint(gold, 0, CustomMapBrush.Forest, WorldMapTerrain.Neutral, random);
+        Assert.That(map.Paint(gold, 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.GetCell(gold), Is.EqualTo(new WorldMapCell(WorldMapTerrain.Human, WorldMapFeature.None, new WorldObjectVariant(0))));
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(18, 18)), Is.False, "A capital cannot cover a resource.");
+
+        Assert.That(map.RemoveResource(gold), Is.True);
+        Assert.That(map.RemoveResource(gold), Is.False);
+        Assert.That(map.Resources.Select(resource => resource.Type), Is.EqualTo(new[] { WorldResourceType.GroveMana }));
+    }
+
+    [Test]
+    public void VillageRulesTest()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(1);
+
+        (CustomMapVillage? village, CustomMapPlacementError? error) = map.PlaceVillage(new WorldPosition(14, 14), 2, WorldRace.Neutral, "Errgok");
+        Assert.That(error, Is.Null);
+        Assert.That(village!.Footprint, Is.EqualTo(new WorldFootprint(new WorldPosition(14, 14), 4, 4)));
+        Assert.That(map.GetVillageAt(new WorldPosition(17, 17)), Is.EqualTo(village));
+        Assert.That(map.GetVillageAt(new WorldPosition(18, 17)), Is.Null);
+
+        Assert.That(map.PlaceVillage(new WorldPosition(16, 16), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Overlaps a village.");
+        Assert.That(map.PlaceVillage(new WorldPosition(6, 6), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Overlaps a capital.");
+        Assert.That(map.PlaceVillage(new WorldPosition(45, 45), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.OutsideMap));
+        Assert.That(map.PlaceVillage(new WorldPosition(20, 2), 1, WorldRace.Dwarf, "").Error, Is.EqualTo(CustomMapPlacementError.UnknownOwner));
+        Assert.That(map.PlaceVillage(new WorldPosition(20, 2), 6, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.InvalidLevel));
+
+        // The land under a village becomes its owner's and loses forests and mountains.
+        map.Paint(new WorldPosition(30, 18), 1, CustomMapBrush.Forest, WorldMapTerrain.Neutral, random);
+        Assert.That(map.PlaceVillage(new WorldPosition(29, 17), 1, WorldRace.Human, "Ford").Error, Is.Null);
+        Assert.That(map.GetCell(new WorldPosition(30, 18)), Is.EqualTo(new WorldMapCell(WorldMapTerrain.Human, WorldMapFeature.None, new WorldObjectVariant(0))));
+
+        // Villages are protected like capitals and block armies, resources and capitals.
+        Assert.That(map.Paint(new WorldPosition(15, 15), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.Paint(new WorldPosition(15, 15), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.PlaceStack(new WorldPosition(15, 15), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
+        Assert.That(map.PlaceResource(new WorldPosition(15, 15), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.False);
+
+        // Nothing can be built over an army or a resource.
+        map.PlaceResource(new WorldPosition(22, 32), WorldResourceType.Gold);
+        Assert.That(map.PlaceVillage(new WorldPosition(20, 30), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+
+        // Garrisons: no leaders, at most Level units, a large unit counts twice.
+        CustomMapUnit?[] two = Slots((GridPosition.FrontCenter, NeutralSoldier), (GridPosition.BackCenter, NeutralSoldier));
+        Assert.That(CustomMapVillage.ValidateGarrison(two, 2), Is.Null);
+        Assert.That(CustomMapVillage.ValidateGarrison(two, 1), Is.EqualTo(CustomMapPlacementError.GarrisonFull));
+        Assert.That(CustomMapVillage.ValidateGarrison(Slots((GridPosition.FrontTop, LargeSoldier), (GridPosition.FrontCenter, NeutralSoldier)), 2), Is.EqualTo(CustomMapPlacementError.GarrisonFull));
+        Assert.That(CustomMapVillage.ValidateGarrison(Slots((GridPosition.FrontTop, LargeSoldier), (GridPosition.FrontCenter, NeutralSoldier)), 3), Is.Null);
+        Assert.That(CustomMapVillage.ValidateGarrison(Slots((GridPosition.FrontCenter, NeutralLeader)), 5), Is.EqualTo(CustomMapPlacementError.LeaderInGarrison));
+        Assert.That(CustomMapVillage.ValidateGarrison(Slots((GridPosition.BackTop, LargeSoldier)), 5), Is.EqualTo(CustomMapPlacementError.InvalidSlot));
+        Assert.That(CustomMapVillage.ValidateGarrison(two, 0), Is.EqualTo(CustomMapPlacementError.InvalidLevel));
+
+        Assert.That(map.UpdateVillage(village.Id, 1, WorldRace.Neutral, "Errgok", two), Is.EqualTo(CustomMapPlacementError.GarrisonFull));
+        Assert.That(map.UpdateVillage(village.Id, 3, WorldRace.Elf, "Errgok", two), Is.Null);
+        CustomMapVillage updated = map.Villages.Single(candidate => candidate.Id == village.Id);
+        Assert.That((updated.Level, updated.Owner, updated.Garrison.Count(unit => unit is not null)), Is.EqualTo((3, WorldRace.Elf, 2)));
+        Assert.That(map.GetCell(new WorldPosition(15, 15)).Terrain, Is.EqualTo(WorldMapTerrain.Elf), "A new owner claims the land under the village.");
+
+        // Undo snapshots are independent copies.
+        CustomMap copy = map.Clone();
+        Assert.That(map.RemoveVillage(village.Id), Is.True);
+        Assert.That(map.Villages, Has.Count.EqualTo(1));
+        Assert.That(copy.Villages, Has.Count.EqualTo(2));
+    }
+
+    [Test]
+    public void VillageAndResourceSaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Random random = new(1);
+
+        map.Paint(new WorldPosition(14, 20), 2, CustomMapBrush.Land, WorldMapTerrain.Human, random);
+        Assert.That(map.PlaceResource(new WorldPosition(14, 20), WorldResourceType.Gold), Is.Null);
+        Assert.That(map.PlaceResource(new WorldPosition(15, 21), WorldResourceType.LifeMana), Is.Null);
+        Assert.That(map.PlaceResource(new WorldPosition(30, 36), WorldResourceType.DeathMana), Is.Null);
+        Assert.That(map.PlaceResource(new WorldPosition(44, 20), WorldResourceType.InfernalMana), Is.Null);
+        int guarded = map.PlaceVillage(new WorldPosition(20, 30), 3, WorldRace.Neutral, "Errgok").Village!.Id;
+        Assert.That(map.UpdateVillage(guarded, 3, WorldRace.Neutral, "Errgok", Slots((GridPosition.FrontTop, LargeSoldier), (GridPosition.BackCenter, NeutralSoldier))), Is.Null);
+        int human = map.PlaceVillage(new WorldPosition(12, 12), 1, WorldRace.Human, "Ford").Village!.Id;
+        int unnamed = map.PlaceVillage(new WorldPosition(30, 14), 5, WorldRace.Elf, "  ").Village!.Id;
+        store.Save(map);
+
+        ScenarioDatabase database = store.LoadDatabase(map.Id);
+        WorldState state = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+
+        Assert.That(state.ResourceNodes.Values.Select(node => (node.Position, node.ResourceType)), Is.EquivalentTo(map.Resources.Select(resource => (resource.Position, resource.Type))));
+
+        WorldCity[] cities = [.. state.Fortifications.Values.OfType<WorldCity>()];
+        Assert.That(cities.Select(city => (city.Footprint.TopLeft, city.DefinitionId.Level, state.Players[city.OwnerId].Race)), Is.EquivalentTo(new[]
+        {
+            (new WorldPosition(20, 30), 3, WorldRace.Neutral),
+            (new WorldPosition(12, 12), 1, WorldRace.Human),
+            (new WorldPosition(30, 14), 5, WorldRace.Elf)
+        }));
+        WorldCity errgok = cities.Single(city => city.Footprint.TopLeft == new WorldPosition(20, 30));
+        Assert.That(errgok.Garrison[GridPosition.FrontTop]!.DefinitionId, Is.EqualTo(LargeSoldier.TypeId));
+        Assert.That(errgok.Garrison[GridPosition.BackTop], Is.SameAs(errgok.Garrison[GridPosition.FrontTop]));
+        Assert.That(errgok.Garrison[GridPosition.BackCenter]!.DefinitionId, Is.EqualTo(NeutralSoldier.TypeId));
+        Assert.That(cities.Single(city => city.Footprint.TopLeft == new WorldPosition(12, 12)).Garrison.IsEmpty, Is.True);
+        Assert.That(errgok.SubraceId, Is.EqualTo(state.Subraces.Values.Single(subrace => subrace.PlayerId == errgok.OwnerId).Id));
+
+        string? Name(int id) => database.TextScenariosByScenario[new Db.ScenarioId(map.Id)]
+            .Single(text => text.IdObject.Value == CustomMapWriter.GetVillageId(map.Id, id) && text.IdString == Db.TextScenario.NameTextId).Text;
+        Assert.That((Name(guarded), Name(human), Name(unnamed)), Is.EqualTo(("Errgok", "Ford", $"Village {unnamed}")));
+
+        // Gold on Empire land pays the Empire; the neutral land mana source pays nobody.
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldPlayer empire = state.Players.Values.Single(player => player.Race == WorldRace.Human);
+        WorldPlayer elves = state.Players.Values.Single(player => player.Race == WorldRace.Elf);
+        WorldResourceSet empireNodes = PlayerIncomeCalculator.GetIncomeInfo(empire, state, context).ResourceNodes;
+        Assert.That(empireNodes.Gold, Is.GreaterThan(0));
+        Assert.That(empireNodes.LifeMana, Is.GreaterThan(0));
+        Assert.That(empireNodes.InfernalMana, Is.Zero);
+        Assert.That(PlayerIncomeCalculator.GetIncomeInfo(elves, state, context).ResourceNodes, Is.EqualTo(WorldResourceSet.Empty));
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Resources, Is.EquivalentTo(map.Resources));
+        Assert.That(reopened.Villages.Where(village => village.Id != unnamed), Is.EquivalentTo(map.Villages.Where(village => village.Id != unnamed)));
+        Assert.That(reopened.Villages.Single(village => village.Id == unnamed).Name, Is.EqualTo($"Village {unnamed}"));
+        Assert.That(reopened.Cells, Is.EqualTo(map.Cells));
+        Assert.That(reopened.Players, Is.EqualTo(map.Players));
+        Assert.That(reopened.Stacks, Is.Empty, "Village garrisons are not read back as armies.");
+    }
+
+    [Test]
+    public void VillagePlayTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Random random = new(1);
+
+        // Neutral villages between the capitals, a guarded one and a free one, and mines on both sides.
+        int guarded = map.PlaceVillage(new WorldPosition(14, 4), 2, WorldRace.Neutral, "Errgok").Village!.Id;
+        map.UpdateVillage(guarded, 2, WorldRace.Neutral, "Errgok", Slots((GridPosition.FrontCenter, NeutralSoldier)));
+        map.PlaceVillage(new WorldPosition(28, 4), 1, WorldRace.Neutral, "Cusnelle");
+        map.PlaceVillage(new WorldPosition(4, 16), 2, WorldRace.Human, "Ford");
+        map.Paint(new WorldPosition(12, 10), 1, CustomMapBrush.Land, WorldMapTerrain.Human, random);
+        map.PlaceResource(new WorldPosition(12, 10), WorldResourceType.Gold);
+        map.PlaceResource(new WorldPosition(34, 12), WorldResourceType.GroveMana);
+        store.Save(map);
+
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState aiState = scenario.State with
+        {
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = true })))
+        };
+        GameSession session = new(context, aiState);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        WorldPlayer empire = session.World.State.Players.Values.Single(player => player.Race == WorldRace.Human);
+        int goldBefore = empire.Resources.Gold;
+        TestWorldAiRunner runner = new(session, context);
+
+        for (int i = 0; i < 12; i++)
+        {
+            runner.PlayTurn();
+        }
+
+        Assert.That(session.World.State.TurnInfo.TurnNumber, Is.GreaterThanOrEqualTo(4));
+        Assert.That(session.World.State.Fortifications.Values.OfType<WorldCity>().Count(), Is.EqualTo(3));
+        TestContext.Out.WriteLine(string.Join(", ", session.World.State.Fortifications.Values.OfType<WorldCity>().Select(city => $"{city.Id}: {session.World.State.Players[city.OwnerId].Race}")));
+        TestContext.Out.WriteLine($"Turn {session.World.State.TurnInfo.TurnNumber}, Empire gold {goldBefore} -> {session.World.State.Players[empire.Id].Resources.Gold}");
     }
 }
