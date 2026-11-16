@@ -131,7 +131,20 @@ internal partial class WorldEngine
                 }
             }
 
-            return Empty(context.State);
+            ScenarioStackDestination? destination = FindNearestDestination(
+                location.Position.GetAdjacentPositions(),
+                plan,
+                profile,
+                stack.Position);
+
+            if (destination is not null)
+            {
+                return Relocate(stack, destination.Path, destination.Position, finalDirection: null, context.State);
+            }
+            else
+            {
+                return Empty(context.State);
+            }
         }
 
         public ScenarioEventEffectResult Visit(ScenarioEventMoveBesideEffect effect, ScenarioEventEffectContext context)
@@ -779,18 +792,20 @@ internal partial class WorldEngine
                 profile,
                 stack.Position);
 
-            if (destination is null)
+            if (destination is not null)
+            {
+                WorldStackDirection direction = StackStepCalculator.GetDirection(destination.Position, triggerer.Position);
+
+                result = Relocate(stack, destination.Path, destination.Position, direction, state);
+
+                return true;
+            }
+            else
             {
                 result = Empty(state);
 
                 return false;
             }
-
-            WorldStackDirection direction = StackStepCalculator.GetDirection(destination.Position, triggerer.Position);
-
-            result = Relocate(stack, destination.Path, destination.Position, direction, state);
-
-            return true;
         }
 
         private static ScenarioStackDestination? FindNearestDestination(

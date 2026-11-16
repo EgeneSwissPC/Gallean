@@ -172,6 +172,7 @@ internal sealed class WorldEventActionBuilder(
     private WorldEventAction BuildGlobalSpellCast(Entry.GlobalSpellCast spellCast)
     {
         WorldVisibility visibility = WorldVisibility.Create(spellCast.State, ViewPlayerId, fogEnabled);
+        WorldPlan plan = WorldPlan.For(spellCast.State);
 
         if (visibility.IsRevealed(spellCast.Position))
         {
@@ -179,7 +180,6 @@ internal sealed class WorldEventActionBuilder(
         }
         else
         {
-            WorldPlan plan = WorldPlan.For(spellCast.State);
             WorldCapital? capital = plan.GetCapital(ViewPlayerId);
 
             if (capital is not null)
@@ -334,29 +334,31 @@ internal sealed class WorldEventActionBuilder(
 
     private WorldEventAction BuildFortificationEnter(Entry.FortificationEnter enter)
     {
-        WorldPlan plan = WorldPlan.For(snapshot.WorldState);
-        WorldVisibility visibility = WorldVisibility.Create(snapshot.WorldState, ViewPlayerId, fogEnabled);
+        WorldPlan plan = WorldPlan.For(enter.State);
+        WorldVisibility visibility = WorldVisibility.Create(enter.State, ViewPlayerId, fogEnabled);
         WorldFortification? fortification = visibility.GetFortificationAt(plan, enter.Position);
 
         return fortification switch
         {
             WorldCapital => Sound(new AssetSoundKey.CityEnter()),
             WorldCity => Sound(new AssetSoundKey.CityEnter()),
-            _ => WorldEventAction.None
+            WorldRuin => WorldEventAction.None,
+            null => WorldEventAction.None
         };
     }
 
     private WorldEventAction BuildFortificationExit(Entry.FortificationExit exit)
     {
-        WorldState state = snapshot.WorldState;
-        WorldPlan plan = WorldPlan.For(state);
-        WorldVisibility visibility = WorldVisibility.Create(state, ViewPlayerId, fogEnabled);
+        WorldPlan plan = WorldPlan.For(exit.State);
+        WorldVisibility visibility = WorldVisibility.Create(exit.State, ViewPlayerId, fogEnabled);
         WorldFortification? fortification = visibility.GetFortificationAt(plan, exit.Position);
 
         if (fortification is not (WorldCity or WorldCapital))
         {
             return WorldEventAction.None;
         }
+
+        WorldState state = snapshot.WorldState;
 
         if (state.Stacks.TryGetValue(exit.StackId, out WorldStack? stack) && stack.OwnerId == ViewPlayerId)
         {
@@ -370,8 +372,8 @@ internal sealed class WorldEventActionBuilder(
 
     private WorldEventAction BuildRuinLoot(Entry.RuinLoot ruinLoot)
     {
-        WorldPlan plan = WorldPlan.For(snapshot.WorldState);
-        WorldVisibility visibility = WorldVisibility.Create(snapshot.WorldState, ViewPlayerId, fogEnabled);
+        WorldPlan plan = WorldPlan.For(ruinLoot.State);
+        WorldVisibility visibility = WorldVisibility.Create(ruinLoot.State, ViewPlayerId, fogEnabled);
         WorldFortification? fortification = visibility.GetFortificationAt(plan, ruinLoot.Position);
 
         if (fortification is null)

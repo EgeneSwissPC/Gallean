@@ -139,8 +139,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         return bundled with
         {
             ScenarioInfos = infos,
-            ScenarioInfosByScenario = infos.ToLookup(info => info.ScenarioId),
-            ScenariosWithEvents = new HashSet<Db.ScenarioId>(bundled.ScenariosWithEvents.Concat(added.Select(info => info.ScenarioId).Where(custom.ScenariosWithEvents.Contains)))
+            ScenarioInfosByScenario = infos.ToLookup(info => info.ScenarioId)
         };
     }
 

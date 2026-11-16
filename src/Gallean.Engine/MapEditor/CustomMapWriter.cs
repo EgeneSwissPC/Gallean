@@ -44,7 +44,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SMapBlck.json", BuildMapBlocks(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SMounts.json", BuildMountains(map, scenarioId));
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
-        // The quest list only offers scenarios that have an event table, even an empty one.
+        // Original scenarios all ship an event table; custom maps get an empty one so they load the same way.
         WriteTable(stagingDirectory, "SEvent.json", new List<Db.ScenarioEvent>());
 
         if (Directory.Exists(scenarioDirectory))

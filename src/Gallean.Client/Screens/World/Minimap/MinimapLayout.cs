@@ -13,11 +13,9 @@ internal readonly record struct MinimapLayout(
 {
     public static MinimapLayout Create(int mapWidth, int mapHeight, Rect box)
     {
-        // No minimum tile size: on maps wider than the minimap in pixels a tile is smaller than one pixel, and a
-        // clamp would place markers and the viewport outside the minimap image, which always fills the box.
         int span = Math.Max(1, mapWidth + mapHeight);
-        double halfWidth = Math.Min(box.Width, box.Height * 2) / (span + 2);
-        double halfHeight = halfWidth / 2.0;
+        double halfWidth = box.Width / (span + 2);
+        double halfHeight = box.Height / (span + 2);
         double centerX = box.X + box.Width / 2.0 - (mapWidth - mapHeight) / 2.0 * halfWidth;
         double top = box.Y + box.Height / 2.0 - (mapWidth + mapHeight - 2) / 2.0 * halfHeight;
 
