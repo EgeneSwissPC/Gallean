@@ -30,11 +30,17 @@
       <Grid RowDefinitions="Auto,*,Auto" Margin="28,16">
         <local:OutlinedTextBlock Grid.Row="0" Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" Margin="0,0,0,8" />
 
-        <Grid Grid.Row="1" ColumnDefinitions="260,Auto,Auto,Auto,Auto">
+        <Grid Grid.Row="1" ColumnDefinitions="260,Auto,Auto,Auto,Auto" RowDefinitions="*,Auto,*">
           <!-- Capital -->
-          <StackPanel Grid.Column="0" VerticalAlignment="Center">
-            <Panel Height="190">
-              <local:SpriteVisual SpriteKey="{Binding ImageKey}" Stretch="Uniform" />
+          <StackPanel Grid.Column="0" Grid.RowSpan="3" VerticalAlignment="Center">
+            <!-- The art is cut off on the right; a round crop like the city screen hides that. -->
+            <Panel Width="150" Height="150" HorizontalAlignment="Center">
+              <local:SpriteVisual SpriteKey="{Binding ImageKey}" Stretch="UniformToFill">
+                <local:SpriteVisual.Clip>
+                  <EllipseGeometry Rect="0,0,150,150" />
+                </local:SpriteVisual.Clip>
+              </local:SpriteVisual>
+              <Ellipse Stroke="{StaticResource AccentSecondaryBrush}" StrokeThickness="1" />
             </Panel>
             <TextBlock Text="{local:Text 'For a human player, the leader is replaced by the one chosen when the game starts; the rest of the army stays.'}"
                        Classes="caption"
@@ -44,10 +50,10 @@
                        Margin="0,12,0,0" />
           </StackPanel>
 
-          <Line Grid.Column="1" Classes="party-divider" />
+          <Line Grid.Column="1" Grid.RowSpan="3" Classes="party-divider" />
 
           <!-- Garrison -->
-          <StackPanel Grid.Column="2" VerticalAlignment="Top">
+          <StackPanel Grid.Column="2" Grid.Row="1" VerticalAlignment="Top">
             <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,0,0,12" ToolTip.Tip="{local:Text 'Garrison size'}">
               <local:OutlinedTextBlock Text="{local:Text 'Garrison'}" Classes="object-name row" />
               <local:OutlinedTextBlock Text="{Binding Garrison.CapacityText}" Classes="object-name row" Foreground="{StaticResource SecondaryTextBrush}" />
@@ -68,10 +74,10 @@
                        Margin="0,12,0,0" />
           </StackPanel>
 
-          <Line Grid.Column="3" Classes="party-divider" />
+          <Line Grid.Column="3" Grid.RowSpan="3" Classes="party-divider" />
 
           <!-- Stationed army -->
-          <StackPanel Grid.Column="4" VerticalAlignment="Top">
+          <StackPanel Grid.Column="4" Grid.Row="1" VerticalAlignment="Top">
             <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,0,0,12" ToolTip.Tip="{local:Text 'Leadership'}">
               <local:OutlinedTextBlock Text="{local:Text 'Stationed army'}" Classes="object-name row" />
               <local:OutlinedTextBlock Text="{Binding Army.CapacityText}" Classes="object-name row" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding Army.HasLeader}" />

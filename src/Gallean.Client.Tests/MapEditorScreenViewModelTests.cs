@@ -520,6 +520,13 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(capital.Garrison.GetUnits().Select(entry => entry.Unit.Level), Does.Contain(7));
         Assert.That(editor.State.Stacks.Values.Count(stack => stack.OwnerId == humanId), Is.EqualTo(1));
 
+        // Right-click shows the capital as its owner sees it: garrison and stationed army, no spying needed.
+        editor.ShowPositionInfo(new WorldPosition(7, 7));
+        WorldFortificationInfoViewModel capitalInfo = Assert.IsOfType<WorldFortificationInfoViewModel>(editor.PositionInfo);
+        Assert.That(capitalInfo.Note, Is.Null);
+        Assert.That((capitalInfo.Defenses.Units.Count, capitalInfo.VisitingStack.Units.Count), Is.EqualTo((2, 2)));
+        editor.HidePositionInfo();
+
         editor.SaveCommand.Execute(null);
         CustomMap saved = loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions());
         Assert.That(saved.Players, Is.EqualTo(editor.Map.Players));
