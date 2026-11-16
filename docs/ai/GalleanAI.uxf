@@ -1,0 +1,478 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="15.1">
+  <zoom_level>10</zoom_level>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>20</x>
+      <y>10</y>
+      <w>2000</w>
+      <h>40</h>
+    </coordinates>
+    <panel_attributes>fontsize=20
+*Gallean world AI – what happens in one AI turn*</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Text</id>
+    <coordinates>
+      <x>20</x>
+      <y>45</y>
+      <w>2000</w>
+      <h>30</h>
+    </coordinates>
+    <panel_attributes>fontsize=12
+src/Gallean.Engine/World/Ai · one action per call, repeated until the AI ends its turn</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>20</x>
+      <y>100</y>
+      <w>380</w>
+      <h>97</h>
+    </coordinates>
+    <panel_attributes>*Start of the AI's turn*
+--
+the game calls WorldAiController.DecideAction
+once per action; the AI's memory carries
+orders and per-turn counters between calls
+halign=left
+bg=#cfe8cf
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>20</x>
+      <y>250</y>
+      <w>380</w>
+      <h>97</h>
+    </coordinates>
+    <panel_attributes>*Step 1  Set orders*
+(WorldAiOrderPlanner)
+--
+every own army gets an order for this action:
+what it is trying to do right now
+halign=left
+bg=#cfe8cf
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>20</x>
+      <y>400</y>
+      <w>380</w>
+      <h>142</h>
+    </coordinates>
+    <panel_attributes>*Step 2  Spend*
+(playable races only)
+--
+score every economy action, take the best;
+if it can be done → do it, back to Step 1
+if the best one CAN'T be done → nothing is
+bought this step (no fallback to the 2nd best)
+= how the AI saves up
+halign=left
+bg=#cfe8cf
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>20</x>
+      <y>625</y>
+      <w>380</w>
+      <h>127</h>
+    </coordinates>
+    <panel_attributes>*Step 3  Move armies*
+--
+for each own army (not in a rioting city,
+not marked done this turn):
+score every army action under its order,
+take the best that can be done → do it
+nothing to do → army marked done
+halign=left
+bg=#cfe8cf
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>20</x>
+      <y>850</y>
+      <w>380</w>
+      <h>67</h>
+    </coordinates>
+    <panel_attributes>*End turn*
+--
+all armies done, or 100 actions used
+halign=left
+bg=#cfe8cf
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>560</x>
+      <y>100</y>
+      <w>380</w>
+      <h>157</h>
+    </coordinates>
+    <panel_attributes>*Orders the AI gives itself*
+(for armies with the Normal order, first match wins)
+--
+1. Heal: hit points below 80 % (kept until 90 %)
+2. Explore: rod planter or thief leader
+3. Reinforce: party filled below 80 % of the
+    leader's leadership → go to the own city where
+    buying units helps, or stay in the city it is in
+4. Normal: everything else
+halign=left
+bg=#dbe7f6
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>560</x>
+      <y>380</y>
+      <w>380</w>
+      <h>97</h>
+    </coordinates>
+    <panel_attributes>*Orders from the map*
+--
+Stand · Guard · Defend city/location/army
+Move to location · Attack army · Berserk ...
+set in the scenario: kept as they are
+halign=left
+bg=#dbe7f6
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>560</x>
+      <y>540</y>
+      <w>380</w>
+      <h>172</h>
+    </coordinates>
+    <panel_attributes>*Where an army moves*
+(MoveAction, by order)
+--
+Normal: known enemies, ruins, bags;
+    nothing known → explore
+Reinforce: only to its target city
+    (already there → no move)
+Heal: to an own city
+Explore: into unexplored land
+Map orders: follow their own rule
+halign=left
+bg=#dbe7f6
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1100</x>
+      <y>100</y>
+      <w>380</w>
+      <h>217</h>
+    </coordinates>
+    <panel_attributes>*Economy actions*
+(higher priority always wins)
+--
+P4  Cast spell
+P3  Research spell
+P2  Hire leader   wants 1 fighter per own
+    city + 1 explorer, rod planter, thief;
+    short by ≤ 400 gold → 'save up' plan
+P1  Construct building   1 per turn
+    order: healing, guild, units, spells
+P0  Buy unit      1 per turn, into the city
+    garrison (AutoFit then moves it into
+    the army standing in the city)
+halign=left
+bg=#fff0a8
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1100</x>
+      <y>400</y>
+      <w>380</w>
+      <h>97</h>
+    </coordinates>
+    <panel_attributes>*Unit purchase score*
+--
+affordable · melee preferred · not the
+same unit again · free room in the city
+· own army waiting in the city
+halign=left
+bg=#fff0a8
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1640</x>
+      <y>100</y>
+      <w>380</w>
+      <h>187</h>
+    </coordinates>
+    <panel_attributes>*Army actions*
+(higher priority always wins)
+--
+P6  Use item
+P5  Resurrect units (in a city)
+P4  Heal units (in a city)
+P3  AutoFit: garrison units into the party
+P2  Attack · Thief · Rod · Enter city ·
+    Take bag
+P1  Move
+P0  Change order
+halign=left
+bg=#f6dfc4
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1640</x>
+      <y>330</y>
+      <w>380</w>
+      <h>127</h>
+    </coordinates>
+    <panel_attributes>*Attack score*
+--
+only targets it has explored; estimates
+the battle first (WorldAiEstimator) and
+skips fights its power can't win; weighs
+victory, survival, units and XP kept or
+lost, distance, target interest/priority
+halign=left
+bg=#f6dfc4
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1100</x>
+      <y>540</y>
+      <w>380</w>
+      <h>112</h>
+    </coordinates>
+    <panel_attributes>*How a plan is scored*
+--
+WorldAiActionScore = (Priority, Value)
+priority compared first; Value 0–1000 is
+the product of the action's considerations
+(utility curves)
+halign=left
+bg=#e6e6e6
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLClass</id>
+    <coordinates>
+      <x>1640</x>
+      <y>540</y>
+      <w>380</w>
+      <h>127</h>
+    </coordinates>
+    <panel_attributes>*What the AI knows*
+--
+only explored tiles count as targets (fog)
+map goals ('objectives') come only from
+scenario events that win the game, and only
+from turn 60/50/40/30 (easy → very hard)
+custom maps have no events → no goals
+halign=left
+bg=#e6e6e6
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>1640</x>
+      <y>800</y>
+      <w>380</w>
+      <h>110</h>
+    </coordinates>
+    <panel_attributes>Legend
+green = turn loop
+blue = orders and movement
+yellow = spending
+orange = army actions
+grey = scoring and knowledge
+fontsize=12</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>200</x>
+      <y>187</y>
+      <w>20</w>
+      <h>73</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;</panel_attributes>
+    <additional_attributes>10.0;10;10.0;63</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>200</x>
+      <y>337</y>
+      <w>20</w>
+      <h>73</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;</panel_attributes>
+    <additional_attributes>10.0;10;10.0;63</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>200</x>
+      <y>532</y>
+      <w>20</w>
+      <h>103</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;
+nothing bought</panel_attributes>
+    <additional_attributes>10.0;10;10.0;93</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>200</x>
+      <y>742</y>
+      <w>20</w>
+      <h>118</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;
+all done</panel_attributes>
+    <additional_attributes>10.0;10;10.0;108</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>0</x>
+      <y>288</y>
+      <w>30</w>
+      <h>178</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;</panel_attributes>
+    <additional_attributes>20;168.3;10;168.3;10;10.0;20;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>5</x>
+      <y>307</y>
+      <w>25</w>
+      <h>403</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;</panel_attributes>
+    <additional_attributes>15;393.30000000000007;10;393.30000000000007;10;10.0;15;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>390</x>
+      <y>184</y>
+      <w>180</w>
+      <h>114</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;
+decides</panel_attributes>
+    <additional_attributes>10;104.60000000000002;170;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>390</x>
+      <y>198</y>
+      <w>720</w>
+      <h>311</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;
+uses</panel_attributes>
+    <additional_attributes>10;301.5;660;301.5;660;10.0;710;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>390</x>
+      <y>633</y>
+      <w>180</w>
+      <h>52</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;
+moves</panel_attributes>
+    <additional_attributes>10;42.59999999999991;170;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>352</x>
+      <y>183</y>
+      <w>1298</w>
+      <h>598</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;
+uses</panel_attributes>
+    <additional_attributes>10.0;568.5;10.0;588.5;1238.0;588.5;1238.0;10.0;1288.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1280</x>
+      <y>307</y>
+      <w>20</w>
+      <h>103</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;</panel_attributes>
+    <additional_attributes>10.0;10;10.0;93</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1820</x>
+      <y>277</y>
+      <w>20</w>
+      <h>63</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;</panel_attributes>
+    <additional_attributes>10.0;10;10.0;53</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>740</x>
+      <y>247</y>
+      <w>20</w>
+      <h>143</h>
+    </coordinates>
+    <panel_attributes>lt=-&gt;
+or</panel_attributes>
+    <additional_attributes>10.0;10;10.0;133</additional_attributes>
+  </element>
+</diagram>
