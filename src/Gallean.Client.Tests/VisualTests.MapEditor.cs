@@ -577,6 +577,11 @@ public sealed partial class VisualTests
         await CaptureAsync(window, "2-capital");
         capital.ConfirmCommand.Execute(null);
         Assert.That(editor.Map.Players.First(candidate => candidate.Race == player.Race).Garrison.Count(unit => unit is not null), Is.EqualTo(3));
+        editor.ShowPositionInfo(new WorldPosition(player.Capital.Value.X + 2, player.Capital.Value.Y + 2));
+        Assert.IsOfType<WorldFortificationInfoViewModel>(editor.PositionInfo);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "2b-capital-info");
+        editor.HidePositionInfo();
 
         // An army in the field with a level 30 soldier.
         UnitDefinition probeLeader = editor.Library.Units.First(unit => unit is { Category: UnitCategory.Leader, Race: WorldRace.Neutral, IsLarge: false });

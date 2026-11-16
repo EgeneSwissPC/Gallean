@@ -770,15 +770,19 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
         try
         {
+            // The editor shows capitals and villages as their owner sees them: garrison and stationed army,
+            // with no spying needed.
             if (plan.GetFortificationAt(tile) is WorldCapital capital)
             {
+                WorldVisibility ownerView = WorldVisibility.Create(shown, capital.OwnerId, fogEnabled: false);
                 PositionInfo = WorldFortificationInfoViewModel.CreateCapital(
-                    shown, ViewPlayerId, capital, visibility.GetStackAt(plan, capital.Entrance, ViewPlayerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+                    shown, capital.OwnerId, capital, ownerView.GetStackAt(plan, capital.Entrance, capital.OwnerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
             }
             else if (plan.GetFortificationAt(tile) is WorldCity city)
             {
+                WorldVisibility ownerView = WorldVisibility.Create(shown, city.OwnerId, fogEnabled: false);
                 PositionInfo = WorldFortificationInfoViewModel.CreateCity(
-                    shown, ViewPlayerId, city, visibility.GetStackAt(plan, city.Entrance, ViewPlayerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+                    shown, city.OwnerId, city, ownerView.GetStackAt(plan, city.Entrance, city.OwnerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
             }
             else if (visibility.GetStackAt(plan, tile, ViewPlayerId) is { } stack)
             {
