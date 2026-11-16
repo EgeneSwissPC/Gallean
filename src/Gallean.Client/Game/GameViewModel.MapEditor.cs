@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.Input;
 using Gallean.Engine;
+using Gallean.Entities;
 
 namespace Gallean.Client;
 
@@ -26,18 +27,15 @@ internal sealed partial class GameViewModel
 
         try
         {
-            Language language = Settings.EffectiveLanguage;
-            (CustomMap map, Scenario preview, IGameDefinitionProvider definitions, IReadOnlyList<MapEditorUnitOption> units) = await RunAsync(() =>
+            (CustomMap map, GameModel editorGame, IReadOnlyList<UnitDefinition> units) = await RunAsync(() =>
             {
                 IGameDefinitionProvider definitions = gameLoader.CreateDefinitions();
-                IGameTextProvider texts = gameLoader.LoadGlobalTexts(language);
                 CustomMap map = createMap(definitions);
-                IReadOnlyList<MapEditorUnitOption> units = MapEditorUnitOption.Create(store.ListUnits(definitions), texts);
 
-                return (map, store.BuildPreview(map, definitions), definitions, units);
+                return (map, CreateEditorGame(store, map, definitions), store.ListUnits(definitions));
             });
 
-            ShowScreen(new MapEditorScreenViewModel(this, store, definitions, map, preview, units));
+            ShowScreen(new MapEditorScreenViewModel(this, store, editorGame, map, units));
         }
         catch (Exception ex)
         {
@@ -47,8 +45,23 @@ internal sealed partial class GameViewModel
         }
     }
 
-    public Task<Scenario> BuildMapPreviewAsync(CustomMapStore store, CustomMap map, IGameDefinitionProvider definitions)
+    public Task<GameModel> BuildMapPreviewAsync(CustomMapStore store, CustomMap map, IGameDefinitionProvider definitions)
     {
-        return RunAsync(() => store.BuildPreview(map, definitions));
+        return RunAsync(() => CreateEditorGame(store, map, definitions));
+    }
+
+    // The editor's view of its map as a game: the preview scenario loaded by the regular loader, with the first
+    // player human so game screens and info panels can be built from it.
+    private GameModel CreateEditorGame(CustomMapStore store, CustomMap map, IGameDefinitionProvider definitions)
+    {
+        (Scenario preview, ScenarioDatabase database) = store.BuildPreviewWithDatabase(map, definitions);
+        IGameTextProvider texts = gameLoader.CreateTexts(database, map.Id, Settings.EffectiveLanguage);
+        GlobalVariables globals = new();
+        UnitStatsProvider unitStats = new(definitions, globals, preview.Provider.Definition);
+        EngineContext context = new(random, definitions, unitStats, preview.Provider, globals);
+        WorldPlayer human = preview.State.Players.Values.First(player => player.Race != WorldRace.Neutral);
+        WorldState state = preview.State with { Players = preview.State.Players.SetItem(human.Id, human with { IsAi = false }) };
+
+        return new GameModel(new GameSession(context, state), texts, log, scheduler);
     }
 }

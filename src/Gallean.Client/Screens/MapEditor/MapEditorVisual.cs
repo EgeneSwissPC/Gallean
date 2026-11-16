@@ -10,8 +10,8 @@ using Gallean.Configuration;
 namespace Gallean.Client;
 
 // The map editor's map view: renders the edited world with the game's world renderer (WorldScreenSnapshotWorker,
-// WorldRenderOperation). Left button paints, right or middle button drags the map, the wheel zooms and WASD or the
-// arrow keys scroll, as in the game.
+// WorldRenderOperation). Input follows the game: left button paints, right button shows the info popup while held,
+// the middle button drags the map, the wheel zooms, and the screen edges, WASD and the arrow keys scroll.
 internal sealed class MapEditorVisual : AbstractAnimatedVisual
 {
     private const double CameraSpeed = 2000.0;
@@ -22,6 +22,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
     private readonly AnimationClock animationClock = new();
     private readonly HashSet<Key> pressedKeys = [];
     private readonly WorldRenderer renderer = new();
+    private readonly WorldVisual.ScrollHelper scrollHelper = new();
     private WorldScreenSnapshotWorker snapshotWorker = null!;
     private WorldCamera camera = null!;
     private Point? panAnchor;
@@ -83,6 +84,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         cleanupList?.Dispose();
         cleanupList = null;
         pressedKeys.Clear();
+        scrollHelper.HandleInputReleased();
     }
 
     protected override void OnSizeChanged(SizeChangedEventArgs e)
@@ -127,7 +129,12 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.BeginStroke(WorldTransform.FromWorldPoint(worldPoint));
             e.Handled = true;
         }
-        else if (point.Properties.IsRightButtonPressed || point.Properties.IsMiddleButtonPressed)
+        else if (point.Properties.IsRightButtonPressed)
+        {
+            ViewModel.ShowPositionInfo(WorldTransform.FromWorldPoint(worldPoint));
+            e.Handled = true;
+        }
+        else if (point.Properties.IsMiddleButtonPressed)
         {
             panAnchor = worldPoint;
             e.Pointer.Capture(this);
@@ -144,7 +151,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             painting = false;
             ViewModel.EndStroke();
         }
-        else if (e.InitialPressMouseButton is MouseButton.Right or MouseButton.Middle)
+        else if (e.InitialPressMouseButton == MouseButton.Right)
+        {
+            ViewModel.HidePositionInfo();
+        }
+        else if (e.InitialPressMouseButton == MouseButton.Middle)
         {
             panAnchor = null;
         }
@@ -157,6 +168,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         base.OnPointerCaptureLost(e);
 
         panAnchor = null;
+        ViewModel.HidePositionInfo();
 
         if (painting)
         {
@@ -173,6 +185,9 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         {
             return;
         }
+
+        // Edge scrolling only looks at the map view, so the side panel never scrolls the map.
+        scrollHelper.HandlePointerMoved(e.GetPosition(this));
 
         if (panAnchor is not null)
         {
@@ -195,6 +210,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         base.OnPointerExited(e);
 
         ViewModel.UpdateHover(null);
+        scrollHelper.HandlePointerExited();
     }
 
     private Point GetWorldPoint(PointerEventArgs e)
@@ -231,12 +247,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             return;
         }
 
-        if (e.Key == Key.Delete && ViewModel.DeleteArmyCommand.CanExecute(null))
-        {
-            ViewModel.DeleteArmyCommand.Execute(null);
-            e.Handled = true;
-        }
-        else if (IsPanKey(e.Key) && e.KeyModifiers == KeyModifiers.None)
+        if (IsPanKey(e.Key) && e.KeyModifiers == KeyModifiers.None)
         {
             pressedKeys.Add(e.Key);
             e.Handled = true;
@@ -251,6 +262,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
     private void OnLostFocus(object? sender, RoutedEventArgs e)
     {
         pressedKeys.Clear();
+        scrollHelper.HandleInputReleased();
     }
 
     protected override void OnFrame(TimeSpan frameTime)
@@ -307,6 +319,13 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         double directionX = (IsPressed(Key.Right, Key.D) ? 1 : 0) - (IsPressed(Key.Left, Key.A) ? 1 : 0);
         double directionY = (IsPressed(Key.Down, Key.S) ? 1 : 0) - (IsPressed(Key.Up, Key.W) ? 1 : 0);
         bool moved = false;
+
+        if (directionX == 0 && directionY == 0)
+        {
+            Vector edge = scrollHelper.GetDirection(Bounds.Size);
+            directionX = edge.X;
+            directionY = edge.Y;
+        }
 
         if (directionX != 0 || directionY != 0)
         {

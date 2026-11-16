@@ -359,4 +359,33 @@ public sealed class CustomMapTests
 
         Assert.That(session.World.State.TurnInfo.TurnNumber, Is.GreaterThanOrEqualTo(4));
     }
+
+    [Test]
+    public void MoveUnitTest()
+    {
+        CustomMapUnit leader = NeutralLeader;
+        CustomMapUnit soldier = NeutralSoldier;
+        CustomMapUnit large = LargeSoldier;
+        CustomMapUnit?[] slots = Slots((GridPosition.FrontCenter, leader), (GridPosition.BackCenter, soldier), (GridPosition.FrontTop, large));
+
+        // Small unit into a free slot, then swapping two small units.
+        CustomMapUnit?[] moved = CustomMapStack.MoveUnit(slots, GridPosition.BackCenter, GridPosition.BackBottom);
+        Assert.That(moved, Is.EqualTo(Slots((GridPosition.FrontCenter, leader), (GridPosition.BackBottom, soldier), (GridPosition.FrontTop, large))));
+        moved = CustomMapStack.MoveUnit(slots, GridPosition.FrontCenter, GridPosition.BackCenter);
+        Assert.That(moved, Is.EqualTo(Slots((GridPosition.BackCenter, leader), (GridPosition.FrontCenter, soldier), (GridPosition.FrontTop, large))));
+
+        // A large unit swaps rows, also when dropped on its back slot or when a small unit is dropped onto it.
+        moved = CustomMapStack.MoveUnit(slots, GridPosition.BackTop, GridPosition.FrontBottom);
+        Assert.That(moved, Is.EqualTo(Slots((GridPosition.FrontCenter, leader), (GridPosition.BackCenter, soldier), (GridPosition.FrontBottom, large))));
+        moved = CustomMapStack.MoveUnit(slots, GridPosition.BackCenter, GridPosition.BackTop);
+        Assert.That(moved, Is.EqualTo(Slots((GridPosition.FrontTop, leader), (GridPosition.BackTop, soldier), (GridPosition.FrontCenter, large))));
+        Assert.That(CustomMapStack.ValidateSlots(moved), Is.Null);
+
+        // Placing: a large unit needs its whole row.
+        Assert.That(CustomMapStack.TryPlaceUnit(slots, GridPosition.BackBottom, large), Is.EqualTo(Slots((GridPosition.FrontCenter, leader), (GridPosition.BackCenter, soldier), (GridPosition.FrontTop, large), (GridPosition.FrontBottom, large))));
+        Assert.That(CustomMapStack.TryPlaceUnit(slots, GridPosition.FrontCenter, large), Is.Null);
+        Assert.That(CustomMapStack.TryPlaceUnit(slots, GridPosition.BackTop, soldier), Is.Null, "The large unit's back slot is taken.");
+        Assert.That(CustomMapStack.GetOccupiedLeadership(slots), Is.EqualTo(4));
+        Assert.That(CustomMapStack.GetLeadership(slots), Is.EqualTo(leader.Leadership));
+    }
 }

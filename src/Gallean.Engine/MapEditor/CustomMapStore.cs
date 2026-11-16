@@ -96,6 +96,12 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
     // regular scenario loader, so the editor shows exactly what the game will load.
     public Scenario BuildPreview(CustomMap map, IGameDefinitionProvider definitions)
     {
+        return BuildPreviewWithDatabase(map, definitions).Scenario;
+    }
+
+    // Also returns the loaded tables, which hold the scenario texts (player and capital names).
+    public (Scenario Scenario, ScenarioDatabase Database) BuildPreviewWithDatabase(CustomMap map, IGameDefinitionProvider definitions)
+    {
         string previewDirectory = Path.Combine(mapsDirectory, PreviewDirectoryName, Guid.NewGuid().ToString("N"));
 
         try
@@ -105,7 +111,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
 
             ScenarioDatabase database = ScenarioDatabaseLoader.Load(previewDirectory, new Db.ScenarioId(map.Id));
 
-            return ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables());
+            return (ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()), database);
         }
         finally
         {
