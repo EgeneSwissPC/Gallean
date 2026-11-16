@@ -278,4 +278,147 @@ public sealed class MapEditorScreenViewModelTests
         editor.UndoCommand.Execute(null);
         Assert.That(editor.Map.Stacks, Has.Count.EqualTo(1));
     }
+
+    [Test]
+    public async Task ResourceTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf);
+        editor.SelectTool(MapEditorTool.Capital);
+        editor.SelectedCapitalRace = editor.CapitalRaces[0];
+        editor.BeginStroke(new WorldPosition(8, 8));
+        editor.SelectedCapitalRace = editor.CapitalRaces[1];
+        editor.BeginStroke(new WorldPosition(38, 38));
+
+        editor.SelectTool(MapEditorTool.Resource);
+        Assert.That(editor.IsResourceTool, Is.True);
+        Assert.That(editor.HasBrush, Is.False);
+        Assert.That(editor.ResourceTypes.Select(type => type.Value), Is.EquivalentTo(Enum.GetValues<WorldResourceType>()));
+
+        // Click land: a gold mine; click it again: gone; another type changes it.
+        editor.SelectedResourceType = editor.ResourceTypes.Single(type => type.Value == WorldResourceType.Gold);
+        editor.BeginStroke(new WorldPosition(20, 20));
+        Assert.That(editor.Map.Resources.Single().Type, Is.EqualTo(WorldResourceType.Gold));
+        Assert.That(editor.State.ResourceNodes.Values.Single().Position, Is.EqualTo(new WorldPosition(20, 20)));
+        editor.BeginStroke(new WorldPosition(20, 20));
+        Assert.That(editor.Map.Resources, Is.Empty);
+        Assert.That(editor.State.ResourceNodes, Is.Empty);
+        editor.BeginStroke(new WorldPosition(20, 20));
+        editor.SelectedResourceType = editor.ResourceTypes.Single(type => type.Value == WorldResourceType.LifeMana);
+        editor.BeginStroke(new WorldPosition(20, 20));
+        Assert.That(editor.Map.Resources.Single().Type, Is.EqualTo(WorldResourceType.LifeMana));
+
+        // Capitals are blocked; the hover line names the resource.
+        editor.BeginStroke(new WorldPosition(9, 9));
+        Assert.That(editor.Map.Resources, Has.Count.EqualTo(1));
+        editor.UpdateHover(new WorldPosition(20, 20));
+        Assert.That(editor.HoverText, Does.Contain("Life mana crystal"));
+
+        // Right-click shows the game's resource info.
+        editor.ShowPositionInfo(new WorldPosition(20, 20));
+        Assert.That(editor.PositionInfo, Is.InstanceOf<WorldTileInfoViewModel>());
+        editor.HidePositionInfo();
+
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Resources.Single().Type, Is.EqualTo(WorldResourceType.Gold));
+        Assert.That(editor.State.ResourceNodes.Values.Single().ResourceType, Is.EqualTo(WorldResourceType.Gold));
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(editor.IsDirty, Is.False);
+        CustomMap saved = loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions());
+        Assert.That(saved.Resources.Select(resource => (resource.Position, resource.Type)), Is.EqualTo(new[] { (new WorldPosition(20, 20), WorldResourceType.Gold) }));
+    }
+
+    [Test]
+    public async Task VillageTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf);
+        editor.SelectTool(MapEditorTool.Capital);
+        editor.SelectedCapitalRace = editor.CapitalRaces[0];
+        editor.BeginStroke(new WorldPosition(8, 8));
+        editor.SelectedCapitalRace = editor.CapitalRaces[1];
+        editor.BeginStroke(new WorldPosition(38, 38));
+
+        // Click free land: a neutral level 2 village centred on the tile, named from the game's city names.
+        editor.SelectTool(MapEditorTool.Village);
+        Assert.That(editor.IsVillageTool, Is.True);
+        Assert.That(editor.VillageOwners.Select(owner => owner.Value), Is.EqualTo(new[] { WorldRace.Neutral, WorldRace.Human, WorldRace.Dwarf }));
+        editor.SelectedVillageOwner = editor.VillageOwners[0];
+        editor.SelectedVillageLevel = editor.VillageLevels.Single(level => level.Value == 2);
+        editor.BeginStroke(new WorldPosition(24, 24));
+        CustomMapVillage village = editor.Map.Villages.Single();
+        Assert.That((village.TopLeft, village.Level, village.Owner), Is.EqualTo((new WorldPosition(22, 22), 2, WorldRace.Neutral)));
+        Assert.That(village.Name, Is.Not.Empty);
+        Assert.That(MapEditorVillageNames.Load(), Does.Contain(village.Name));
+        Assert.That(editor.State.Fortifications.Values.OfType<WorldCity>().Single().Footprint.TopLeft, Is.EqualTo(new WorldPosition(22, 22)));
+        Assert.That(game.TopScreen, Is.SameAs(editor), "Placing does not open the village screen.");
+
+        // Overlapping another village or a capital is refused.
+        editor.BeginStroke(new WorldPosition(10, 12));
+        Assert.That(editor.Map.Villages, Has.Count.EqualTo(1));
+
+        // Clicking the village opens it: garrison of level-many units, no leaders.
+        editor.BeginStroke(new WorldPosition(25, 25));
+        MapEditorVillageScreenViewModel screen = Assert.IsOfType<MapEditorVillageScreenViewModel>(game.TopScreen);
+        Assert.That(screen.Name, Is.EqualTo(village.Name));
+        Assert.That(screen.Capacity, Is.EqualTo("0 / 2"));
+        Assert.That(screen.ConfirmCommand.CanExecute(null), Is.True, "An empty garrison is fine.");
+        screen.SelectedLevel = screen.Levels.Single(level => level.Value == 3);
+
+        await screen.UnitGrid.Slots.First(slot => slot.Position == GridPosition.FrontCenter).SelectCommand.ExecuteAsync(null);
+        MapEditorUnitPickerViewModel soldiers = Picker(game);
+        Assert.That(soldiers.SelectedFilter.Race, Is.EqualTo(WorldRace.Neutral));
+        Assert.That(soldiers.Options.All(option => option.Definition.Leadership is not > 0), Is.True, "Garrisons take no leaders.");
+        soldiers.Options.First(option => !option.Definition.IsLarge && !option.IsUnavailable).PickCommand.Execute(null);
+        screen.AddUnit(GridPosition.FrontTop);
+        Picker(game).Options.First(option => option.Definition.IsLarge && !option.IsUnavailable).PickCommand.Execute(null);
+        Assert.That(screen.Capacity, Is.EqualTo("3 / 3"));
+        screen.AddUnit(GridPosition.BackBottom);
+        Assert.That(Picker(game).Options.All(option => option.IsUnavailable), Is.True, "The garrison is full.");
+        Picker(game).CloseCommand.Execute(null);
+
+        // Lowering the level below the garrison is flagged.
+        screen.SelectedLevel = screen.Levels.Single(level => level.Value == 2);
+        Assert.That(screen.Problem, Is.Not.Null);
+        Assert.That(screen.ConfirmCommand.CanExecute(null), Is.False);
+        screen.SelectedLevel = screen.Levels.Single(level => level.Value == 3);
+        Assert.That(screen.ConfirmCommand.CanExecute(null), Is.True);
+
+        screen.Name = "Ford";
+        screen.SelectedOwner = screen.Owners.Single(owner => owner.Value == WorldRace.Human);
+        screen.ConfirmCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(editor));
+        village = editor.Map.Villages.Single();
+        Assert.That((village.Name, village.Level, village.Owner, village.Garrison.Count(unit => unit is not null)), Is.EqualTo(("Ford", 3, WorldRace.Human, 2)));
+        WorldCity city = editor.State.Fortifications.Values.OfType<WorldCity>().Single();
+        Assert.That(editor.State.Players[city.OwnerId].Race, Is.EqualTo(WorldRace.Human));
+        Assert.That(editor.Map.GetCell(new WorldPosition(23, 23)).Terrain, Is.EqualTo(WorldMapTerrain.Human), "The owner's land.");
+
+        // Hover and right-click show the village.
+        editor.UpdateHover(new WorldPosition(23, 23));
+        Assert.That(editor.HoverText, Does.Contain("village Ford"));
+        editor.ShowPositionInfo(new WorldPosition(23, 23));
+        WorldFortificationInfoViewModel info = Assert.IsOfType<WorldFortificationInfoViewModel>(editor.PositionInfo);
+        Assert.That(info.Title, Does.Contain("Ford"));
+        editor.HidePositionInfo();
+
+        editor.SaveCommand.Execute(null);
+        CustomMap saved = loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions());
+        Assert.That(saved.Villages, Is.EqualTo(editor.Map.Villages));
+
+        // Delete from the village screen, then undo.
+        editor.BeginStroke(new WorldPosition(23, 23));
+        Assert.IsOfType<MapEditorVillageScreenViewModel>(game.TopScreen).DeleteCommand.Execute(null);
+        Assert.That(editor.Map.Villages, Is.Empty);
+        Assert.That(editor.State.Fortifications.Values.OfType<WorldCity>(), Is.Empty);
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Villages.Single().Name, Is.EqualTo("Ford"));
+    }
 }

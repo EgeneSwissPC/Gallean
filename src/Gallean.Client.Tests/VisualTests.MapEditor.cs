@@ -291,7 +291,7 @@ public sealed partial class VisualTests
         window.MouseUp(armyPoint, MouseButton.Right);
         Assert.That(editor.PositionInfo, Is.Null);
 
-        // Moving the mouse to the edge of the map view scrolls, as in the game.
+        // Moving the mouse to the edge of the map view scrolls, as in the game (checked below).
         Point center = view.Camera.Center;
         Point leftEdge = Assert.NotNull(map.TranslatePoint(new Point(4, map.Bounds.Height / 2), window));
         window.MouseMove(new Point(leftEdge.X + 40, leftEdge.Y));
@@ -299,5 +299,91 @@ public sealed partial class VisualTests
         await SkipFramesAsync(15);
         Assert.That(view.Camera.Center.X, Is.LessThan(center.X), "The left edge scrolls left.");
         window.MouseMove(Assert.NotNull(map.TranslatePoint(new Point(map.Bounds.Width / 2, map.Bounds.Height / 2), window)));
+    }
+
+    [AvaloniaTest]
+    public async Task MapEditorVillagesTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+        MapEditorVisual map = view.GetVisualDescendants().OfType<MapEditorVisual>().First();
+
+        // One village of each level: neutral ones in a row, the last two owned by the players.
+        editor.SelectTool(MapEditorTool.Village);
+        (int X, int Y, int Level, WorldRace Owner)[] villages =
+        [
+            (4, 22, 1, WorldRace.Neutral),
+            (9, 22, 2, WorldRace.Neutral),
+            (14, 22, 3, WorldRace.Neutral),
+            (8, 16, 4, WorldRace.Human),
+            (38, 18, 5, WorldRace.Undead)
+        ];
+
+        foreach ((int x, int y, int level, WorldRace owner) in villages)
+        {
+            editor.SelectedVillageLevel = editor.VillageLevels.Single(option => option.Value == level);
+            editor.SelectedVillageOwner = editor.VillageOwners.Single(option => option.Value == owner);
+            editor.BeginStroke(new WorldPosition(x, y));
+        }
+
+        Assert.That(editor.Map.Villages.Select(village => village.Level), Is.EqualTo(new[] { 1, 2, 3, 4, 5 }));
+
+        // Every resource type next to the villages.
+        editor.SelectTool(MapEditorTool.Resource);
+        WorldResourceType[] types = [WorldResourceType.Gold, WorldResourceType.LifeMana, WorldResourceType.InfernalMana, WorldResourceType.DeathMana, WorldResourceType.RuneMana, WorldResourceType.GroveMana];
+
+        for (int i = 0; i < types.Length; i++)
+        {
+            editor.SelectedResourceType = editor.ResourceTypes.Single(option => option.Value == types[i]);
+            editor.BeginStroke(new WorldPosition(4 + (i * 2), 26));
+        }
+
+        Assert.That(editor.Map.Resources, Has.Count.EqualTo(6));
+        await WaitUntilAsync(() => view.SnapshotWorker?.Current?.RenderRequest.State.Fortifications.Values.OfType<WorldCity>().Count() == 5 &&
+                                   view.SnapshotWorker.Current.RenderRequest.State.ResourceNodes.Count == 6);
+
+        view.Camera.SetZoom(1);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(12, 22)));
+        editor.UpdateHover(new WorldPosition(15, 23));
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "1-map");
+
+        // Right-click a village: the game's city info.
+        Point villagePoint = Assert.NotNull(map.TranslatePoint(WorldTransform.ToWorldPoint(new WorldPosition(15, 23)).Transform(view.Camera.GetViewMatrix()), window));
+        window.MouseMove(villagePoint);
+        window.MouseDown(villagePoint, MouseButton.Right);
+        await SkipFramesAsync(10);
+        Assert.That(editor.PositionInfo, Is.InstanceOf<WorldFortificationInfoViewModel>());
+        await CaptureAsync(window, "2-village-info");
+        window.MouseUp(villagePoint, MouseButton.Right);
+
+        // Right-click a mine.
+        Point minePoint = Assert.NotNull(map.TranslatePoint(WorldTransform.ToWorldPoint(new WorldPosition(4, 26)).Transform(view.Camera.GetViewMatrix()), window));
+        window.MouseMove(minePoint);
+        window.MouseDown(minePoint, MouseButton.Right);
+        await SkipFramesAsync(10);
+        Assert.That(editor.PositionInfo, Is.InstanceOf<WorldTileInfoViewModel>());
+        await CaptureAsync(window, "3-mine-info");
+        window.MouseUp(minePoint, MouseButton.Right);
+
+        // Click the level 3 village: the village screen; fill its garrison.
+        editor.SelectTool(MapEditorTool.Village);
+        editor.BeginStroke(new WorldPosition(15, 23));
+        MapEditorVillageScreenViewModel screen = Assert.IsOfType<MapEditorVillageScreenViewModel>(gameViewModel.TopScreen);
+        screen.AddUnit(GridPosition.FrontTop);
+        Assert.IsOfType<MapEditorUnitPickerViewModel>(gameViewModel.TopScreen).Options.First(option => option.Definition.IsLarge && !option.IsUnavailable).PickCommand.Execute(null);
+        screen.AddUnit(GridPosition.FrontCenter);
+        Assert.IsOfType<MapEditorUnitPickerViewModel>(gameViewModel.TopScreen).Options.First(option => !option.IsUnavailable).PickCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "4-village-screen");
+
+        screen.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Villages.Single(village => village.Level == 3).Garrison.Count(unit => unit is not null), Is.EqualTo(2));
     }
 }

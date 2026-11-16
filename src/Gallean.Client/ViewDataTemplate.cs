@@ -41,6 +41,7 @@ internal sealed class ViewDataTemplate : IDataTemplate
             LoadingScreenViewModel => new LoadingScreenView(),
             MapEditorMenuScreenViewModel => new MapEditorMenuScreenView(),
             MapEditorArmyScreenViewModel => new MapEditorArmyScreenView(),
+            MapEditorVillageScreenViewModel => new MapEditorVillageScreenView(),
             MapEditorUnitPickerViewModel => new MapEditorUnitPickerView(),
             MapEditorScreenViewModel editor => new MapEditorScreenView(editor.Definitions, editor.Scenario, editor.Game.DevTools.Diagnostics),
             LootScreenViewModel => new LootScreenView(),

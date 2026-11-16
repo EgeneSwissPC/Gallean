@@ -13,11 +13,13 @@ internal enum MapEditorTool
     Mountain,
     Clear,
     Capital,
-    Army
+    Army,
+    Village,
+    Resource
 }
 
 // Paints a CustomMap and shows it through the game's world renderer. Terrain strokes update the preview state
-// directly; placing a capital rebuilds the preview through the scenario loader.
+// directly; placing a capital, army, village or resource rebuilds the preview through the scenario loader.
 internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 {
     public const int MaxBrushRadius = 8;
@@ -38,18 +40,21 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     private readonly IReadOnlyList<UnitDefinition> units;
     private int previewVersion;
     private GameModel editorGame;
+    private readonly IReadOnlyList<string> villageNames;
 
     public MapEditorScreenViewModel(
         GameViewModel game,
         CustomMapStore store,
         GameModel editorGame,
         CustomMap map,
-        IReadOnlyList<UnitDefinition> units)
+        IReadOnlyList<UnitDefinition> units,
+        IReadOnlyList<string>? villageNames = null)
     {
         Game = game;
         this.store = store;
         this.editorGame = editorGame;
         this.units = units;
+        this.villageNames = villageNames ?? [];
         definitions = editorGame.Definitions;
         this.map = map;
         Scenario = editorGame.Scenario;
@@ -64,7 +69,9 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             new MapEditorOption<MapEditorTool>(MapEditorTool.Mountain, Tr("Mountains")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Clear, Tr("Clear")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Capital, Tr("Capital")),
-            new MapEditorOption<MapEditorTool>(MapEditorTool.Army, Tr("Army"))
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Army, Tr("Army")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Village, Tr("Village")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Resource, Tr("Resources"))
         ];
         SelectedTool = Tools[0];
         LandTerrains =
@@ -81,6 +88,16 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             .. map.Players.Select(player => new MapEditorOption<WorldRace>(player.Race, MapEditorLabels.Race(player.Race)))
         ];
         SelectedArmyOwner = ArmyOwners[0];
+        VillageOwners = ArmyOwners;
+        SelectedVillageOwner = VillageOwners[0];
+        VillageLevels = MapEditorLabels.VillageLevels();
+        SelectedVillageLevel = VillageLevels[0];
+        ResourceTypes =
+        [
+            .. new[] { WorldResourceType.Gold, WorldResourceType.LifeMana, WorldResourceType.InfernalMana, WorldResourceType.DeathMana, WorldResourceType.RuneMana, WorldResourceType.GroveMana }
+                .Select(type => new MapEditorOption<WorldResourceType>(type, MapEditorLabels.Resource(type)))
+        ];
+        SelectedResourceType = ResourceTypes[0];
         Name = map.Name;
         BrushRadius = 1;
         renderRequest = CreateRenderRequest();
@@ -95,6 +112,9 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public IReadOnlyList<MapEditorOption<WorldMapTerrain>> LandTerrains { get; }
     public IReadOnlyList<MapEditorOption<WorldRace>> CapitalRaces { get; }
     public IReadOnlyList<MapEditorOption<WorldRace>> ArmyOwners { get; }
+    public IReadOnlyList<MapEditorOption<WorldRace>> VillageOwners { get; }
+    public IReadOnlyList<MapEditorOption<int>> VillageLevels { get; }
+    public IReadOnlyList<MapEditorOption<WorldResourceType>> ResourceTypes { get; }
     public GameModel EditorGame => editorGame;
     public int MapWidth => map.Size;
     public int MapHeight => map.Size;
@@ -115,8 +135,17 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public override ScreenMusic Music => ScreenMusic.Tracks(musicQueue);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(HasBrush))]
+    [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(IsVillageTool), nameof(IsResourceTool), nameof(HasBrush))]
     public partial MapEditorOption<MapEditorTool> SelectedTool { get; set; }
+
+    [ObservableProperty]
+    public partial MapEditorOption<WorldRace> SelectedVillageOwner { get; set; }
+
+    [ObservableProperty]
+    public partial MapEditorOption<int> SelectedVillageLevel { get; set; }
+
+    [ObservableProperty]
+    public partial MapEditorOption<WorldResourceType> SelectedResourceType { get; set; }
 
     [ObservableProperty]
     public partial MapEditorOption<WorldMapTerrain> SelectedLandTerrain { get; set; }
@@ -153,7 +182,9 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public bool IsLandTool => SelectedTool.Value == MapEditorTool.Land;
     public bool IsCapitalTool => SelectedTool.Value == MapEditorTool.Capital;
     public bool IsArmyTool => SelectedTool.Value == MapEditorTool.Army;
-    public bool HasBrush => SelectedTool.Value is not (MapEditorTool.Capital or MapEditorTool.Army);
+    public bool IsVillageTool => SelectedTool.Value == MapEditorTool.Village;
+    public bool IsResourceTool => SelectedTool.Value == MapEditorTool.Resource;
+    public bool HasBrush => SelectedTool.Value is not (MapEditorTool.Capital or MapEditorTool.Army or MapEditorTool.Village or MapEditorTool.Resource);
 
     partial void OnSelectedToolChanged(MapEditorOption<MapEditorTool> value)
     {
@@ -206,6 +237,18 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         if (SelectedTool.Value == MapEditorTool.Army)
         {
             ClickArmy(tile);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Village)
+        {
+            ClickVillage(tile);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Resource)
+        {
+            ClickResource(tile);
             return;
         }
 
@@ -354,6 +397,87 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         }
     }
 
+    // Village tool: clicking free land places a village centred on the tile, clicking a village opens it.
+    private void ClickVillage(WorldPosition tile)
+    {
+        if (map.GetVillageAt(tile) is { } existing)
+        {
+            Game.OpenScreen(new MapEditorVillageScreenViewModel(
+                Game,
+                editorGame,
+                units,
+                VillageOwners,
+                existing,
+                (level, owner, name, garrison) => SaveVillage(existing.Id, level, owner, name, garrison),
+                () => DeleteVillage(existing.Id)));
+            return;
+        }
+
+        int offset = CustomMapVillage.Size / 2;
+        WorldPosition topLeft = new(
+            Math.Clamp(tile.X - offset, 0, map.Size - CustomMapVillage.Size),
+            Math.Clamp(tile.Y - offset, 0, map.Size - CustomMapVillage.Size));
+        CustomMap before = map.Clone();
+
+        if (map.PlaceVillage(topLeft, SelectedVillageLevel.Value, SelectedVillageOwner.Value, NextVillageName()).Error is { } error)
+        {
+            Game.ShowError(MapEditorLabels.VillageError(error));
+            return;
+        }
+
+        CommitArmyChange(before);
+    }
+
+    // A name the map does not use yet, from the game's list of city names.
+    private string NextVillageName()
+    {
+        string[] free = [.. villageNames.Where(name => !map.Villages.Any(village => string.Equals(village.Name, name, StringComparison.OrdinalIgnoreCase)))];
+
+        return free.Length > 0 ? free[random.Next(free.Length)] : string.Empty;
+    }
+
+    private string? SaveVillage(int id, int level, WorldRace owner, string name, CustomMapUnit?[] garrison)
+    {
+        CustomMap before = map.Clone();
+
+        if (map.UpdateVillage(id, level, owner, name, garrison) is { } error)
+        {
+            return MapEditorLabels.VillageError(error);
+        }
+
+        CommitArmyChange(before);
+        return null;
+    }
+
+    private void DeleteVillage(int id)
+    {
+        CustomMap before = map.Clone();
+
+        if (map.RemoveVillage(id))
+        {
+            CommitArmyChange(before);
+        }
+    }
+
+    // Resource tool: clicking land places the chosen resource; clicking a resource of that type removes it, one of
+    // another type changes to it.
+    private void ClickResource(WorldPosition tile)
+    {
+        CustomMap before = map.Clone();
+
+        if (map.GetResourceAt(tile) is { } existing && existing.Type == SelectedResourceType.Value)
+        {
+            map.RemoveResource(tile);
+        }
+        else if (map.PlaceResource(tile, SelectedResourceType.Value) is { } error)
+        {
+            Game.ShowError(MapEditorLabels.ResourceError(error));
+            return;
+        }
+
+        CommitArmyChange(before);
+    }
+
     private void CommitArmyChange(CustomMap before)
     {
         undoSteps.Push(before);
@@ -364,31 +488,61 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         RebuildPreviewAsync().FileAndForget();
     }
 
-    // Right-click info, as in the game: armies, capitals and tiles.
+    // Right-click info, as in the game: armies, capitals, villages, resources and tiles.
     public void ShowPositionInfo(WorldPosition tile)
     {
-        if (!state.Map.IsValidPosition(tile))
+        WorldState shown = state;
+
+        if (!shown.Map.IsValidPosition(tile))
         {
             PositionInfo = null;
             return;
         }
 
-        WorldPlan plan = WorldPlan.For(state);
-        WorldVisibility visibility = WorldVisibility.Create(state, ViewPlayerId, fogEnabled: false);
+        WorldPlan plan = WorldPlan.For(shown);
+        WorldVisibility visibility = WorldVisibility.Create(shown, ViewPlayerId, fogEnabled: false);
 
-        if (plan.GetFortificationAt(tile) is WorldCapital capital)
+        try
         {
-            PositionInfo = WorldFortificationInfoViewModel.CreateCapital(
-                state, ViewPlayerId, capital, visibility.GetStackAt(plan, capital.Entrance, ViewPlayerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+            if (plan.GetFortificationAt(tile) is WorldCapital capital)
+            {
+                PositionInfo = WorldFortificationInfoViewModel.CreateCapital(
+                    shown, ViewPlayerId, capital, visibility.GetStackAt(plan, capital.Entrance, ViewPlayerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+            }
+            else if (plan.GetFortificationAt(tile) is WorldCity city)
+            {
+                PositionInfo = WorldFortificationInfoViewModel.CreateCity(
+                    shown, ViewPlayerId, city, visibility.GetStackAt(plan, city.Entrance, ViewPlayerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+            }
+            else if (visibility.GetStackAt(plan, tile, ViewPlayerId) is { } stack)
+            {
+                PositionInfo = WorldStackInfoViewModel.Create(shown, ViewPlayerId, stack, editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+            }
+            else
+            {
+                PositionInfo = WorldTileInfoViewModel.TryCreate(shown, ViewPlayerId, tile, visibility, GetResourceNodeInfo(tile, plan), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+            }
         }
-        else if (visibility.GetStackAt(plan, tile, ViewPlayerId) is { } stack)
+        catch (Exception ex) when (ex is KeyNotFoundException or InvalidDataException)
         {
-            PositionInfo = WorldStackInfoViewModel.Create(state, ViewPlayerId, stack, editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+            // The preview is still being rebuilt for an object placed a moment ago.
+            PositionInfo = null;
         }
-        else
+    }
+
+    // A resource pays whoever owns the land under it; the info shows that income.
+    private WorldGetResourceNodeInfoCommand.Result? GetResourceNodeInfo(WorldPosition tile, WorldPlan plan)
+    {
+        if (plan.GetResourceNodeAt(tile) is null)
         {
-            PositionInfo = WorldTileInfoViewModel.TryCreate(state, ViewPlayerId, tile, visibility, null, editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+            return null;
         }
+
+        WorldPlayerId viewer = plan.GetLandOwner(tile) ?? ViewPlayerId;
+        ICommandResult<WorldCommandError, WorldEvent, WorldGetResourceNodeInfoCommand.Result> result =
+            editorGame.World.DryRunCommand(new WorldGetResourceNodeInfoCommand(viewer, tile));
+
+        return result.Failed ? null : result.Data;
     }
 
     public void HidePositionInfo()
@@ -405,9 +559,11 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         }
 
         CustomMap previous = undoSteps.Peek();
-        bool capitalsChanged = !previous.Players.SequenceEqual(map.Players) || !previous.Stacks.SequenceEqual(map.Stacks);
+        bool capitalsChanged = !previous.Players.SequenceEqual(map.Players) ||
+                               !previous.Stacks.SequenceEqual(map.Stacks) ||
+                               !previous.Villages.SequenceEqual(map.Villages) ||
+                               !previous.Resources.SequenceEqual(map.Resources);
         map = undoSteps.Pop();
-
 
         CanUndo = undoSteps.Count > 0;
         IsDirty = true;
@@ -550,8 +706,14 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         string army = map.GetStackAt(tile) is { } stack
             ? Tr(" · army of {0}: {1}", stack.Owner == WorldRace.Neutral ? Tr("Neutral") : MapEditorLabels.Race(stack.Owner), GetUnitName(stack.Leader.TypeId))
             : string.Empty;
+        string village = map.GetVillageAt(tile) is { } found
+            ? Tr(" · village {0} ({1}, level {2})", found.Name, MapEditorLabels.Owner(found.Owner), found.Level)
+            : string.Empty;
+        string resource = map.GetResourceAt(tile) is { } source
+            ? $" · {MapEditorLabels.Resource(source.Type)}"
+            : string.Empty;
 
-        return $"{tile.X}, {tile.Y}: {MapEditorLabels.Terrain(cell.Terrain)}{feature}{army}";
+        return $"{tile.X}, {tile.Y}: {MapEditorLabels.Terrain(cell.Terrain)}{feature}{army}{village}{resource}";
     }
 
     private string GetUnitName(UnitDefinitionId typeId)

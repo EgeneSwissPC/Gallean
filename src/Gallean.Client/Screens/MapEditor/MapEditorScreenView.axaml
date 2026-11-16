@@ -341,6 +341,46 @@
                          Margin="0,6,0,0" />
             </StackPanel>
 
+            <StackPanel IsVisible="{Binding IsVillageTool}">
+              <local:OutlinedTextBlock Text="{local:Text 'Owner'}" Classes="caption field-label" />
+              <ComboBox x:Name="VillageOwnerBox" HorizontalAlignment="Stretch" ItemsSource="{Binding VillageOwners}" SelectedItem="{Binding SelectedVillageOwner}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <local:OutlinedTextBlock Text="{local:Text 'Village level'}" Classes="caption field-label" />
+              <ComboBox x:Name="VillageLevelBox" HorizontalAlignment="Stretch" ItemsSource="{Binding VillageLevels}" SelectedItem="{Binding SelectedVillageLevel}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{local:Text 'Click free land to found a village. Click a village to change its name, owner, level or garrison, or to delete it.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,6,0,0" />
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsResourceTool}">
+              <local:OutlinedTextBlock Text="{local:Text 'Resource'}" Classes="caption field-label" />
+              <ComboBox x:Name="ResourceBox" HorizontalAlignment="Stretch" ItemsSource="{Binding ResourceTypes}" SelectedItem="{Binding SelectedResourceType}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{local:Text 'Click land to place it; click it again to remove it. A resource pays whoever owns the land under it, so paint race land around it to give it to a player.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,6,0,0" />
+            </StackPanel>
+
             <StackPanel IsVisible="{Binding HasBrush}">
               <local:OutlinedTextBlock Text="{local:Text 'Brush size'}" Classes="caption field-label" />
               <Slider x:Name="BrushSlider" Minimum="0" Maximum="{Binding MaxBrush}" Value="{Binding BrushRadius}" IsSnapToTickEnabled="True" TickFrequency="1" />
