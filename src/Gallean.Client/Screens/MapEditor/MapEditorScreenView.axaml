@@ -318,7 +318,7 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <TextBlock Text="{local:Text 'Click where the capital should stand. Placing it again moves it.'}"
+              <TextBlock Text="{local:Text 'Click free land to place the capital; placing it again moves it. Click the capital to set its garrison and army.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}"
@@ -334,7 +334,7 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <TextBlock Text="{local:Text 'Click free land to set up a new army, or click an army to change or delete it. Click a village to station an army in it. Right-click an army to see it.'}"
+              <TextBlock Text="{local:Text 'Click free land to set up a new army, or click an army to change or delete it. Click a village or capital to set its garrison and army. Right-click an army to see it.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}"

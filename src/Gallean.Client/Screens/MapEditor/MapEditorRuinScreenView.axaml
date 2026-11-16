@@ -87,7 +87,8 @@
           </StackPanel>
         </Grid>
 
-        <StackPanel Grid.Row="2" Margin="0,16,0,0" Spacing="10">
+        <StackPanel Grid.Row="2" Margin="0,12,0,0" Spacing="10">
+          <local:MapEditorUnitLevelBar />
           <TextBlock Text="{Binding Problem}"
                      Classes="body"
                      HorizontalAlignment="Center"

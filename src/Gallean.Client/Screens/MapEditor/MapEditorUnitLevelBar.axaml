@@ -1,0 +1,33 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorUnitLevelBar"
+             x:DataType="local:MapEditorUnitsScreenViewModel">
+
+  <Panel Height="34">
+    <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" IsVisible="{Binding HasSelectedUnit}">
+      <TextBlock Text="{Binding SelectedUnitName}"
+                 Classes="body"
+                 Foreground="{StaticResource PrimaryTextBrush}"
+                 VerticalAlignment="Center"
+                 Margin="0,0,10,0" />
+      <Button x:Name="LevelDownTenButton" Classes="pill" Height="28" Padding="10,0" Content="-10" Command="{Binding LevelDownTenCommand}" />
+      <Button x:Name="LevelDownButton" Classes="pill" Width="28" Height="28" Padding="0" Content="-" Command="{Binding LevelDownCommand}" />
+      <TextBlock Text="{Binding SelectedUnitLevel}"
+                 Classes="body"
+                 MinWidth="96"
+                 TextAlignment="Center"
+                 Foreground="{StaticResource PrimaryTextBrush}"
+                 VerticalAlignment="Center" />
+      <Button x:Name="LevelUpButton" Classes="pill" Width="28" Height="28" Padding="0" Content="+" Command="{Binding LevelUpCommand}" />
+      <Button x:Name="LevelUpTenButton" Classes="pill" Height="28" Padding="10,0" Content="+10" Command="{Binding LevelUpTenCommand}" />
+    </StackPanel>
+    <TextBlock IsVisible="{Binding !HasSelectedUnit}"
+               Text="{local:Text 'Click a unit to change its level.'}"
+               Classes="caption"
+               Foreground="{StaticResource SecondaryTextBrush}"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center" />
+  </Panel>
+
+</UserControl>

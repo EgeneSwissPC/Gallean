@@ -12,7 +12,9 @@ public enum CustomMapPlacementError
     LeaderInGarrison,
     GarrisonFull,
     InvalidSlot,
-    TooManyGoods
+    TooManyGoods,
+    InvalidUnitLevel,
+    Guardian
 }
 
 // A gold mine or mana source. It pays whoever owns the land under it (WorldPlan.GetLandOwner).
@@ -73,13 +75,21 @@ public sealed record CustomMapVillage(int Id, WorldPosition TopLeft, int Level, 
         return ValidateUnits(slots, level);
     }
 
-    // Garrison rules shared by villages and ruin guards: valid slots, no leaders, at most capacity units with large
-    // units counting twice.
-    public static CustomMapPlacementError? ValidateUnits(IReadOnlyList<CustomMapUnit?> slots, int capacity)
+    // Garrison rules shared by villages, capitals and ruin guards: valid slots, no leaders, levels within range, at
+    // most capacity units with large units counting twice. A capital keeps exactly one guardian; nowhere else may
+    // hold one.
+    public static CustomMapPlacementError? ValidateUnits(IReadOnlyList<CustomMapUnit?> slots, int capacity, bool capital = false)
     {
         if (slots.Count != GridPosition.Count)
         {
             return CustomMapPlacementError.InvalidSlot;
+        }
+
+        int guardians = slots.Count(unit => unit is { IsGuardian: true });
+
+        if (capital ? guardians != 1 : guardians != 0)
+        {
+            return CustomMapPlacementError.Guardian;
         }
 
         for (int index = 0; index < GridPosition.Count; index++)
@@ -99,6 +109,11 @@ public sealed record CustomMapVillage(int Id, WorldPosition TopLeft, int Level, 
             if (unit.IsLeader)
             {
                 return CustomMapPlacementError.LeaderInGarrison;
+            }
+
+            if (unit.Level is < 1 or > CustomMapUnit.MaxLevel)
+            {
+                return CustomMapPlacementError.InvalidUnitLevel;
             }
         }
 

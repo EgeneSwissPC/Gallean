@@ -4,13 +4,14 @@ using Gallean.Engine;
 
 namespace Gallean.Client;
 
-// Sets up one village: name, owner, level and garrison. Laid out like the army screen, with the village picture in
-// place of the leader. A village of level n holds n units; a large unit counts twice.
+// Sets up one village like the game's city screen: name, owner and level, the garrison (as many units as the level,
+// a large unit counting twice) and the army stationed in the village, which serves the village's owner. Units can be
+// dragged between the garrison and the army.
 internal sealed partial class MapEditorVillageScreenViewModel : MapEditorGarrisonScreenViewModel
 {
     public const int MaxNameLength = 40;
 
-    private readonly Func<int, WorldRace, string, CustomMapUnit?[], string?> onConfirm;
+    private readonly Func<int, WorldRace, string, CustomMapUnit?[], CustomMapUnit?[]?, string?> onConfirm;
     private readonly Action onDelete;
     private readonly bool initialized;
 
@@ -20,7 +21,8 @@ internal sealed partial class MapEditorVillageScreenViewModel : MapEditorGarriso
         IReadOnlyList<UnitDefinition> units,
         IReadOnlyList<MapEditorOption<WorldRace>> owners,
         CustomMapVillage village,
-        Func<int, WorldRace, string, CustomMapUnit?[], string?> onConfirm,
+        IReadOnlyList<CustomMapUnit?>? stationed,
+        Func<int, WorldRace, string, CustomMapUnit?[], CustomMapUnit?[]?, string?> onConfirm,
         Action onDelete)
         : base(game, editorGame, units, village.Garrison)
     {
@@ -32,6 +34,7 @@ internal sealed partial class MapEditorVillageScreenViewModel : MapEditorGarriso
         Name = village.Name;
         SelectedOwner = owners.FirstOrDefault(option => option.Value == village.Owner) ?? owners[0];
         SelectedLevel = Levels.FirstOrDefault(option => option.Value == village.Level) ?? Levels[0];
+        Army = AddGroup(MapEditorUnitGroupKind.Army, stationed, () => 0, () => SelectedOwner.Value, isOptional: true);
         initialized = true;
 
         Refresh();
@@ -42,6 +45,7 @@ internal sealed partial class MapEditorVillageScreenViewModel : MapEditorGarriso
     public IReadOnlyList<MapEditorOption<int>> Levels { get; }
     public int NameLength => MaxNameLength;
     public AssetSpriteKey ImageKey => new AssetSpriteKey.CityImage(SelectedLevel.Value);
+    public MapEditorUnitGroup Army { get; }
 
     protected override int GarrisonCapacity => SelectedLevel.Value;
     protected override WorldRace PickerRace => SelectedOwner.Value;
@@ -56,7 +60,19 @@ internal sealed partial class MapEditorVillageScreenViewModel : MapEditorGarriso
     [NotifyPropertyChangedFor(nameof(ImageKey))]
     public partial MapEditorOption<int> SelectedLevel { get; set; }
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RemoveArmyCommand))]
+    public partial bool HasArmy { get; private set; }
+
     partial void OnSelectedLevelChanged(MapEditorOption<int> value)
+    {
+        if (initialized)
+        {
+            Refresh();
+        }
+    }
+
+    partial void OnSelectedOwnerChanged(MapEditorOption<WorldRace> value)
     {
         if (initialized)
         {
@@ -66,13 +82,29 @@ internal sealed partial class MapEditorVillageScreenViewModel : MapEditorGarriso
 
     protected override void OnValidityChanged()
     {
+        HasArmy = !Army.IsEmpty;
         ConfirmCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand]
+    private void ChooseArmyLeader()
+    {
+        ChooseLeader(Army);
+    }
+
+    [RelayCommand(CanExecute = nameof(HasArmy))]
+    private void RemoveArmy()
+    {
+        Army.Slots = new CustomMapUnit?[GridPosition.Count];
+        Refresh();
     }
 
     [RelayCommand(CanExecute = nameof(IsValid))]
     private void Confirm()
     {
-        if (onConfirm(SelectedLevel.Value, SelectedOwner.Value, Name.Trim(), [.. Slots]) is { } error)
+        CustomMapUnit?[]? army = Army.IsEmpty ? null : [.. Army.Slots];
+
+        if (onConfirm(SelectedLevel.Value, SelectedOwner.Value, Name.Trim(), [.. Garrison.Slots], army) is { } error)
         {
             Game.ShowError(error);
             return;
