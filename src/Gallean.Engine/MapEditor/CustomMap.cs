@@ -12,7 +12,42 @@ public enum CustomMapBrush
     Clear
 }
 
-public sealed record CustomMapPlayer(WorldRace Race, WorldPosition? Capital);
+// A playable race and its capital. The capital's garrison holds the race's guardian and up to GarrisonCapacity
+// units in all (large ones count twice); it stays empty until set in the editor, and the writer then puts the
+// guardian in alone. An army on the capital's entrance is stationed in it, like in a village.
+public sealed record CustomMapPlayer(WorldRace Race, WorldPosition? Capital)
+{
+    // GlobalVariables.CapitalCityLevel.
+    public const int GarrisonCapacity = 6;
+
+    public ImmutableArray<CustomMapUnit?> Garrison { get; init; } = [];
+
+    public WorldFootprint? Footprint => Capital is { } capital ? new WorldFootprint(capital, CustomMap.CapitalSize, CustomMap.CapitalSize) : null;
+
+    public WorldPosition? Entrance => Capital is { } capital
+        ? new WorldPosition(capital.X + CustomMap.CapitalSize - 1, capital.Y + CustomMap.CapitalSize - 1)
+        : null;
+
+    public bool Equals(CustomMapPlayer? other)
+    {
+        return other is not null && Race == other.Race && Capital == other.Capital && Garrison.SequenceEqual(other.Garrison);
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = new();
+
+        hash.Add(Race);
+        hash.Add(Capital);
+
+        foreach (CustomMapUnit? unit in Garrison)
+        {
+            hash.Add(unit);
+        }
+
+        return hash.ToHashCode();
+    }
+}
 
 public sealed record CustomMapMountain(int Id, WorldPosition TopLeft, int Size, int Variant)
 {
@@ -22,7 +57,8 @@ public sealed record CustomMapMountain(int Id, WorldPosition TopLeft, int Size, 
 // The map editor's document: terrain, mountains, one player per race with its capital, armies, villages, resources,
 // ruins, treasure bags and sites. It is saved as a normal scenario (CustomMapWriter) and read back through the
 // regular scenario loader (CustomMapStore). Capitals, villages, ruins and sites are structures: their tiles are
-// protected from brushes and they never overlap. An army may stand on a village's entrance: it is stationed there.
+// protected from brushes and they never overlap. An army may stand on the entrance of a village or capital: it is
+// stationed there and belongs to the owner.
 public sealed class CustomMap
 {
     public const int MinSize = 16;
@@ -210,6 +246,7 @@ public sealed class CustomMap
 
     // Places the capital of a race with its top-left corner at topLeft. The footprint must be inside the map and
     // must not overlap another capital; terrain under it becomes the race's land and loses forests and mountains.
+    // Moving a capital takes its garrison and stationed army along.
     public bool PlaceCapital(WorldRace race, WorldPosition topLeft)
     {
         int playerIndex = players.FindIndex(player => player.Race == race);
@@ -219,6 +256,8 @@ public sealed class CustomMap
             return false;
         }
 
+        CustomMapStack? stationed = GetStationedStack(players[playerIndex]);
+
         WorldFootprint footprint = new(topLeft, CapitalSize, CapitalSize);
 
         if (!IsValidPosition(footprint.TopLeft) || !IsValidPosition(new WorldPosition(topLeft.X + CapitalSize - 1, topLeft.Y + CapitalSize - 1)))
@@ -226,7 +265,7 @@ public sealed class CustomMap
             return false;
         }
 
-        if (stacks.Any(stack => footprint.Contains(stack.Position)) ||
+        if (stacks.Any(stack => !ReferenceEquals(stack, stationed) && footprint.Contains(stack.Position)) ||
             resources.Any(resource => footprint.Contains(resource.Position)) ||
             bags.Any(bag => footprint.Contains(bag.Position)) ||
             villages.Any(village => Overlaps(village.Footprint, footprint)) ||
@@ -245,6 +284,12 @@ public sealed class CustomMap
         }
 
         players[playerIndex] = players[playerIndex] with { Capital = topLeft };
+
+        if (stationed is not null)
+        {
+            stacks[stacks.IndexOf(stationed)] = stationed with { Position = players[playerIndex].Entrance!.Value };
+        }
+
         WorldMapTerrain terrain = WorldHelpers.GetNativeTerrain(race);
 
         foreach (WorldPosition position in footprint.EnumerateTiles())
@@ -259,6 +304,36 @@ public sealed class CustomMap
     public CustomMapStack? GetStackAt(WorldPosition position)
     {
         return stacks.FirstOrDefault(stack => stack.Position == position);
+    }
+
+    // The player whose capital covers position.
+    public CustomMapPlayer? GetCapitalAt(WorldPosition position)
+    {
+        return players.FirstOrDefault(player => player.Footprint is { } footprint && footprint.Contains(position));
+    }
+
+    public CustomMapStack? GetStationedStack(CustomMapPlayer player)
+    {
+        return player.Entrance is { } entrance ? GetStackAt(entrance) : null;
+    }
+
+    public CustomMapPlacementError? UpdateCapital(WorldRace race, IReadOnlyList<CustomMapUnit?> garrison)
+    {
+        int index = players.FindIndex(player => player.Race == race && player.Capital is not null);
+
+        if (index < 0)
+        {
+            return CustomMapPlacementError.OutsideMap;
+        }
+
+        if (CustomMapVillage.ValidateUnits(garrison, CustomMapPlayer.GarrisonCapacity, capital: true) is { } error)
+        {
+            return error;
+        }
+
+        players[index] = players[index] with { Garrison = [.. garrison] };
+
+        return null;
     }
 
     public bool IsValidOwner(WorldRace owner)
@@ -314,9 +389,11 @@ public sealed class CustomMap
 
         WorldMapCell cell = GetCell(position);
 
-        // A village's entrance takes one army of the village's owner: it is stationed in the village.
+        // The entrance of a village or capital takes one army of its owner: it is stationed there.
         CustomMapVillage? village = GetVillageAt(position);
-        bool stationed = village is not null && village.Entrance == position;
+        CustomMapPlayer? capital = GetCapitalAt(position);
+        bool stationed = (village is not null && village.Entrance == position) || (capital is not null && capital.Entrance == position);
+        WorldRace? stationOwner = village?.Owner ?? capital?.Race;
 
         if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain ||
             (IsUnderStructure(position) && !stationed) || GetResourceAt(position) is not null || GetBagAt(position) is not null)
@@ -334,7 +411,7 @@ public sealed class CustomMap
             return CustomMapStackError.UnknownOwner;
         }
 
-        if (stationed && owner != village!.Owner)
+        if (stationed && owner != stationOwner)
         {
             return CustomMapStackError.VillageOwner;
         }
@@ -583,6 +660,11 @@ public sealed class CustomMap
         if (keptItems.Length > CustomMapSite.MaxGoods || keptSpells.Length > CustomMapSite.MaxGoods || keptUnits.Length > CustomMapSite.MaxGoods)
         {
             return CustomMapPlacementError.TooManyGoods;
+        }
+
+        if (keptUnits.Any(unit => unit.Level is < 1 or > CustomMapUnit.MaxLevel))
+        {
+            return CustomMapPlacementError.InvalidUnitLevel;
         }
 
         sites[index] = sites[index] with

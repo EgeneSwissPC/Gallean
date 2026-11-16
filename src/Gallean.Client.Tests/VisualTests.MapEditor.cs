@@ -426,12 +426,11 @@ public sealed partial class VisualTests
         editor.SelectTool(MapEditorTool.Village);
         editor.SelectedVillageOwner = editor.VillageOwners.Single(option => option.Value == WorldRace.Human);
         editor.BeginStroke(new WorldPosition(10, 16));
-        editor.SelectTool(MapEditorTool.Army);
         editor.BeginStroke(new WorldPosition(10, 16));
-        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(gameViewModel.TopScreen);
-        army.ChooseLeaderCommand.Execute(null);
+        MapEditorVillageScreenViewModel village = Assert.IsOfType<MapEditorVillageScreenViewModel>(gameViewModel.TopScreen);
+        village.ChooseArmyLeaderCommand.Execute(null);
         UnitPicker().Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge).PickCommand.Execute(null);
-        army.ConfirmCommand.Execute(null);
+        village.ConfirmCommand.Execute(null);
 
         Assert.That((editor.Map.Ruins.Count, editor.Map.Bags.Count, editor.Map.Sites.Count, editor.Map.Stacks.Count), Is.EqualTo((1, 2, 4, 1)));
         await WaitUntilAsync(() => view.SnapshotWorker?.Current?.RenderRequest.State is { } shown && shown.Sites.Count == 4 && shown.Bags.Count == 2 && shown.Stacks.Count == 3);
@@ -523,5 +522,80 @@ public sealed partial class VisualTests
         camp.ConfirmCommand.Execute(null);
 
         Assert.That(editor.Map.Sites.Sum(site => site.Items.Length + site.Spells.Length + site.Units.Length), Is.EqualTo(9));
+    }
+
+    [AvaloniaTest]
+    public async Task MapEditorGarrisonsAndLevelsTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        await WaitForMapEditorAsync(window);
+
+        MapEditorUnitPickerViewModel UnitPicker() => Assert.IsOfType<MapEditorUnitPickerViewModel>(gameViewModel.TopScreen);
+        void PickLeader() => UnitPicker().Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge && option.Definition.Leadership >= 3).PickCommand.Execute(null);
+        void PickSoldier(int skip = 0) => UnitPicker().Options.Where(option => !option.IsUnavailable && !option.Definition.IsLarge).ElementAt(skip).PickCommand.Execute(null);
+
+        // A village: its garrison and the army stationed in it, one unit raised to level 12.
+        editor.SelectTool(MapEditorTool.Village);
+        editor.SelectedVillageOwner = editor.VillageOwners.Single(option => option.Value == WorldRace.Human);
+        editor.SelectedVillageLevel = editor.VillageLevels.Single(option => option.Value == 3);
+        editor.BeginStroke(new WorldPosition(10, 16));
+        editor.BeginStroke(new WorldPosition(10, 16));
+        MapEditorVillageScreenViewModel village = Assert.IsOfType<MapEditorVillageScreenViewModel>(gameViewModel.TopScreen);
+        village.AddUnit(village.Garrison, GridPosition.FrontTop);
+        PickSoldier();
+        village.AddUnit(village.Garrison, GridPosition.FrontBottom);
+        PickSoldier(3);
+        village.AddUnit(village.Army, GridPosition.FrontCenter);
+        PickLeader();
+        village.AddUnit(village.Army, GridPosition.BackCenter);
+        PickSoldier(6);
+        village.SetSelectedLevel(12);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "1-village");
+        village.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Stacks.Count(stack => stack.Position == editor.Map.Villages.Single().Entrance), Is.EqualTo(1));
+
+        // A capital: the guardian, two more defenders and its army.
+        CustomMapPlayer player = editor.Map.Players.First(candidate => candidate.Capital is not null);
+        editor.SelectTool(MapEditorTool.Capital);
+        editor.BeginStroke(new WorldPosition(player.Capital!.Value.X + 1, player.Capital.Value.Y + 1));
+        MapEditorCapitalScreenViewModel capital = Assert.IsOfType<MapEditorCapitalScreenViewModel>(gameViewModel.TopScreen);
+        capital.AddUnit(capital.Garrison, GridPosition.BackTop);
+        PickSoldier();
+        capital.SetSelectedLevel(5);
+        capital.AddUnit(capital.Garrison, GridPosition.BackBottom);
+        PickSoldier(2);
+        capital.AddUnit(capital.Army, GridPosition.BackCenter);
+        PickSoldier(4);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "2-capital");
+        capital.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Players.First(candidate => candidate.Race == player.Race).Garrison.Count(unit => unit is not null), Is.EqualTo(3));
+
+        // An army in the field with a level 30 soldier.
+        UnitDefinition probeLeader = editor.Library.Units.First(unit => unit is { Category: UnitCategory.Leader, Race: WorldRace.Neutral, IsLarge: false });
+        CustomMapUnit?[] probe = new CustomMapUnit?[GridPosition.Count];
+        probe[GridPosition.FrontCenter.ToIndex()] = CustomMapUnit.From(probeLeader);
+        WorldPosition field = Enumerable.Range(4, 40).SelectMany(y => Enumerable.Range(4, 40).Select(x => new WorldPosition(x, y)))
+            .First(position => editor.Map.Clone().PlaceStack(position, WorldRace.Neutral, probe).Error is null);
+        editor.SelectTool(MapEditorTool.Army);
+        editor.SelectedArmyOwner = editor.ArmyOwners.Single(option => option.Value == WorldRace.Neutral);
+        editor.BeginStroke(field);
+        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(gameViewModel.TopScreen);
+        army.ChooseLeaderCommand.Execute(null);
+        PickLeader();
+        army.AddUnit(GridPosition.BackCenter);
+        PickSoldier();
+        army.SetSelectedLevel(30);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "3-army");
+        army.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Stacks.Single(stack => stack.Position == field).Slots.Max(unit => unit?.Level ?? 0), Is.EqualTo(30));
     }
 }

@@ -8,13 +8,29 @@ internal sealed record MapEditorLibrary(
     IReadOnlyList<UnitDefinition> Units,
     IReadOnlyList<ItemDefinition> Items,
     IReadOnlyList<WorldSpellDefinition> Spells,
-    MapEditorNames Names)
+    MapEditorNames Names,
+    IReadOnlyDictionary<WorldRace, (CustomMapUnit?[] Garrison, CustomMapUnit?[] Army)>? CapitalDefaults = null)
 {
     public static MapEditorLibrary Empty { get; } = new([], [], [], MapEditorNames.Empty);
 
     public static MapEditorLibrary Load(CustomMapStore store, IGameDefinitionProvider definitions)
     {
-        return new MapEditorLibrary(store.ListUnits(definitions), store.ListItems(definitions), store.ListSpells(definitions), MapEditorNames.Load());
+        Dictionary<WorldRace, (CustomMapUnit?[] Garrison, CustomMapUnit?[] Army)> capitals = [];
+
+        foreach (WorldRace race in Enum.GetValues<WorldRace>().Where(race => race != WorldRace.Neutral))
+        {
+            capitals[race] = store.GetCapitalDefaults(race, definitions);
+        }
+
+        return new MapEditorLibrary(store.ListUnits(definitions), store.ListItems(definitions), store.ListSpells(definitions), MapEditorNames.Load(), capitals);
+    }
+
+    // What a capital holds until changed in the editor: the race's guardian and its first leader (copies).
+    public (CustomMapUnit?[] Garrison, CustomMapUnit?[] Army) GetCapitalDefaults(WorldRace race)
+    {
+        return CapitalDefaults?.GetValueOrDefault(race) is var (garrison, army) && garrison is not null
+            ? ([.. garrison], [.. army])
+            : (new CustomMapUnit?[GridPosition.Count], new CustomMapUnit?[GridPosition.Count]);
     }
 
     public static string GetItemName(GameModel game, ItemDefinitionId id)

@@ -83,6 +83,8 @@ internal static class MapEditorLabels
             CustomMapPlacementError.LeaderInGarrison => Tr("Leaders cannot join a garrison."),
             CustomMapPlacementError.GarrisonFull => Tr("Too many units for the village's level."),
             CustomMapPlacementError.InvalidLevel => Tr("Villages have levels 1 to 5."),
+            CustomMapPlacementError.InvalidUnitLevel => Tr("Unit levels go from the unit's own level to {0}.", CustomMapUnit.MaxLevel),
+            CustomMapPlacementError.Guardian => Tr("The guardian stays in its capital."),
             _ => Tr("A large unit fills both lines of its row.")
         };
     }
@@ -132,7 +134,9 @@ internal static class MapEditorLabels
         {
             CustomMapStackError.OutsideMap => Tr("Armies must stand inside the map."),
             CustomMapStackError.Blocked => Tr("Armies cannot stand on water, mountains, buildings, resources or treasure. In a village, use its entrance."),
-            CustomMapStackError.VillageOwner => Tr("An army in a village belongs to the village's owner."),
+            CustomMapStackError.VillageOwner => Tr("An army in a village or capital belongs to its owner."),
+            CustomMapStackError.InvalidLevel => Tr("Unit levels go from the unit's own level to {0}.", CustomMapUnit.MaxLevel),
+            CustomMapStackError.Guardian => Tr("The guardian stays in its capital."),
             CustomMapStackError.Occupied => Tr("Another army already stands there."),
             CustomMapStackError.UnknownOwner => Tr("That player is not on this map."),
             CustomMapStackError.NoLeader => Tr("An army needs a leader."),

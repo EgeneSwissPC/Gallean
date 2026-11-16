@@ -588,6 +588,108 @@ public sealed class CustomMapTests
         Assert.That(map.Stacks, Is.Empty);
     }
 
+    [Test]
+    public void UnitLevelTest()
+    {
+        UnitDefinition soldier = definitions.GetUnit(NeutralSoldier.TypeId);
+        UnitDefinition leader = definitions.GetUnit(NeutralLeader.TypeId);
+
+        // A levelled unit has the full hit points of that level; levels stay between its own level and 99.
+        CustomMapUnit veteran = CustomMapUnit.From(soldier, soldier.Level + 4, definitions);
+        Assert.That(veteran.Level, Is.EqualTo(soldier.Level + 4));
+        Assert.That(veteran.Hitpoints, Is.EqualTo(UnitStatsCalculator.GetStats(soldier, veteran.Level, [], definitions, new GlobalVariables()).MaxHitpoints));
+        Assert.That(veteran.Hitpoints, Is.GreaterThan(soldier.MaxHitpoints));
+        Assert.That(CustomMapUnit.From(soldier, 0, definitions), Is.EqualTo(CustomMapUnit.From(soldier)));
+        Assert.That(CustomMapUnit.From(soldier, 500, definitions).Level, Is.EqualTo(CustomMapUnit.MaxLevel));
+
+        CustomMapUnit hero = CustomMapUnit.From(leader, leader.Level + 6, definitions);
+        Assert.That(CustomMapStack.ValidateSlots(Slots((GridPosition.FrontCenter, hero with { Level = 100 }))), Is.EqualTo(CustomMapStackError.InvalidLevel));
+        Assert.That(CustomMapVillage.ValidateUnits(Slots((GridPosition.FrontCenter, veteran with { Level = 0 })), 2), Is.EqualTo(CustomMapPlacementError.InvalidUnitLevel));
+
+        // Levels are saved for armies, garrisons and ruin guards and the game loads them at full health.
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Assert.That(map.PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, Slots((GridPosition.FrontCenter, hero), (GridPosition.BackCenter, veteran))).Error, Is.Null);
+        CustomMapVillage village = map.PlaceVillage(new WorldPosition(14, 14), 2, WorldRace.Neutral, "Errgok").Village!;
+        Assert.That(map.UpdateVillage(village.Id, 2, WorldRace.Neutral, "Errgok", Slots((GridPosition.FrontTop, CustomMapUnit.From(soldier, 9, definitions)))), Is.Null);
+        CustomMapRuin ruin = map.PlaceRuin(new WorldPosition(30, 14), 0, "Rigel").Ruin!;
+        Assert.That(map.UpdateRuin(ruin.Id, 0, "Rigel", 0, null, Slots((GridPosition.FrontCenter, CustomMapUnit.From(soldier, 99, definitions)))), Is.Null);
+        store.Save(map);
+
+        WorldState state = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        WorldUnit[] stackUnits = [.. state.Stacks.Values.Single(stack => stack.Position == new WorldPosition(20, 40)).Units.GetUnits().Select(entry => entry.Unit)];
+        Assert.That(stackUnits.Select(unit => unit.Level), Is.EquivalentTo(new[] { hero.Level, veteran.Level }));
+        WorldUnit cityUnit = state.Fortifications.Values.OfType<WorldCity>().Single().Garrison.GetUnits().Single().Unit;
+        WorldUnit ruinUnit = state.Fortifications.Values.OfType<WorldRuin>().Single().Garrison.GetUnits().Single().Unit;
+        Assert.That((cityUnit.Level, ruinUnit.Level), Is.EqualTo((9, 99)));
+
+        foreach (WorldUnit unit in stackUnits.Append(cityUnit).Append(ruinUnit))
+        {
+            Assert.That(unit.Hitpoints, Is.EqualTo(UnitStatsCalculator.GetStats(definitions.GetUnit(unit.DefinitionId), unit.Level, [], definitions, new GlobalVariables()).MaxHitpoints));
+        }
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Stacks, Is.EquivalentTo(map.Stacks));
+        Assert.That(reopened.Villages, Is.EqualTo(map.Villages));
+        Assert.That(reopened.Ruins, Is.EqualTo(map.Ruins));
+    }
+
+    [Test]
+    public void CapitalGarrisonAndArmyTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        CustomMapPlayer human = map.Players.Single(player => player.Race == WorldRace.Human);
+        (CustomMapUnit?[] garrison, CustomMapUnit?[] army) = store.GetCapitalDefaults(WorldRace.Human, definitions);
+        CustomMapUnit guardian = garrison.Single(unit => unit is not null)!;
+
+        // The garrison keeps the race's guardian and holds 6 places in all.
+        Assert.That(guardian.IsGuardian, Is.True);
+        Assert.That(army.Single(unit => unit is not null)!.IsLeader, Is.True);
+        Assert.That(human.Garrison, Is.Empty, "Unset until changed in the editor.");
+        Assert.That(map.GetCapitalAt(new WorldPosition(6, 6)), Is.EqualTo(human));
+        Assert.That(human.Entrance, Is.EqualTo(new WorldPosition(8, 8)));
+        Assert.That(map.UpdateCapital(WorldRace.Human, Slots((GridPosition.FrontTop, NeutralSoldier))), Is.EqualTo(CustomMapPlacementError.Guardian));
+        Assert.That(map.UpdateCapital(WorldRace.Human, Slots((GridPosition.FrontTop, guardian), (GridPosition.FrontCenter, guardian))), Is.EqualTo(CustomMapPlacementError.Guardian));
+        Assert.That(map.UpdateCapital(WorldRace.Human, Slots((GridPosition.FrontCenter, guardian), (GridPosition.FrontTop, HumanLeader))), Is.EqualTo(CustomMapPlacementError.LeaderInGarrison));
+        Assert.That(map.UpdateCapital(WorldRace.Human, Slots((GridPosition.FrontCenter, guardian), (GridPosition.FrontTop, LargeSoldier), (GridPosition.FrontBottom, LargeSoldier), (GridPosition.BackCenter, NeutralSoldier))), Is.Null, "A full grid fits: 6 places.");
+        Assert.That(CustomMapVillage.ValidateUnits(Slots((GridPosition.FrontCenter, guardian)), 5), Is.EqualTo(CustomMapPlacementError.Guardian), "Guardians stay in capitals.");
+        Assert.That(CustomMapStack.ValidateSlots(Slots((GridPosition.FrontCenter, HumanLeader), (GridPosition.BackCenter, guardian))), Is.EqualTo(CustomMapStackError.Guardian));
+
+        CustomMapUnit veteran = CustomMapUnit.From(definitions.GetUnit(NeutralSoldier.TypeId), 4, definitions);
+        CustomMapUnit?[] defenders = Slots((GridPosition.FrontCenter, guardian), (GridPosition.FrontTop, veteran), (GridPosition.FrontBottom, LargeSoldier), (GridPosition.BackCenter, NeutralSoldier));
+        Assert.That(map.UpdateCapital(WorldRace.Human, defenders), Is.Null);
+
+        // An army of the capital's owner can be stationed on its entrance.
+        Assert.That(map.PlaceStack(new WorldPosition(6, 6), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
+        Assert.That(map.PlaceStack(new WorldPosition(8, 8), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.EqualTo(CustomMapStackError.VillageOwner));
+        Assert.That(map.PlaceStack(new WorldPosition(8, 8), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader), (GridPosition.BackCenter, NeutralSoldier))).Error, Is.Null);
+        human = map.Players.Single(player => player.Race == WorldRace.Human);
+        Assert.That(map.GetStationedStack(human)!.Position, Is.EqualTo(new WorldPosition(8, 8)));
+        store.Save(map);
+
+        WorldState state = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        WorldPlayerId humanId = state.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldCapital capital = state.Fortifications.Values.OfType<WorldCapital>().Single(fortification => fortification.OwnerId == humanId);
+        Assert.That(capital.Garrison.GetUnits().Select(entry => entry.Unit.DefinitionId), Is.EquivalentTo(new[] { guardian.TypeId, veteran.TypeId, LargeSoldier.TypeId, NeutralSoldier.TypeId }));
+        Assert.That(capital.Garrison.GetUnits().Count(entry => entry.Unit.DefinitionId == veteran.TypeId && entry.Unit.Level == 4), Is.EqualTo(1));
+        WorldStack stationed = state.Stacks.Values.Single(stack => stack.Position == capital.Entrance);
+        Assert.That((stationed.OwnerId, stationed.Units.GetUnits().Count()), Is.EqualTo((humanId, 2)));
+        Assert.That(state.Stacks.Values.Count(stack => stack.OwnerId == humanId), Is.EqualTo(1), "No extra starting leader.");
+        WorldPlayerId elfId = state.Players.Values.Single(player => player.Race == WorldRace.Elf).Id;
+        Assert.That(state.Stacks.Values.Count(stack => stack.OwnerId == elfId), Is.EqualTo(1), "A capital without an army still gets its starting leader.");
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Players, Is.EqualTo(map.Players));
+        Assert.That(reopened.Stacks, Is.EquivalentTo(map.Stacks), "The Elf starting leader is not turned into an editor army.");
+
+        // Moving the capital takes the garrison and the army along.
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(6, 12)), Is.True);
+        human = map.Players.Single(player => player.Race == WorldRace.Human);
+        Assert.That(human.Garrison, Is.EqualTo(defenders));
+        Assert.That(map.Stacks.Single().Position, Is.EqualTo(new WorldPosition(10, 16)));
+    }
+
     private ItemDefinitionId[] SomeItems(int count) => [.. globalDb.Items.Keys.Select(id => new ItemDefinitionId(id.Value)).OrderBy(id => id.Value, StringComparer.Ordinal).Take(count)];
 
     private WorldSpellDefinitionId[] SomeSpells(int count) => [.. globalDb.Spells.Keys.Select(id => new WorldSpellDefinitionId(id.Value)).OrderBy(id => id.Value, StringComparer.Ordinal).Take(count)];

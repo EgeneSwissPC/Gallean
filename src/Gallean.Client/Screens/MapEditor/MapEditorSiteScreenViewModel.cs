@@ -12,7 +12,7 @@ internal sealed partial class MapEditorSiteScreenViewModel : AbstractScreenViewM
     public const int MaxNameLength = 40;
     public const int MaxGreetingLength = 200;
     public const int MaxStock = 99;
-    public const int MaxUnitLevel = 20;
+    public const int MaxUnitLevel = CustomMapUnit.MaxLevel;
 
     private readonly GameModel editorGame;
     private readonly MapEditorLibrary library;

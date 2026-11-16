@@ -23,6 +23,12 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     // Ruin guards: UNA000 + 6n + k. Ruins RU + n, bags BG + n, sites SI + n, scenario items IM + running number.
     internal const int FirstRuinUnitNumber = 0xA000;
 
+    // Capital garrisons set in the editor: units UNB000 + 6i + k for player slot i.
+    internal const int FirstCapitalUnitNumber = 0xB000;
+
+    // The slot the guardian takes in a new capital (database position 2).
+    internal static readonly GridPosition GuardianSlot = new(GuardianGridPosition % GridPosition.LineCount, GuardianGridPosition / GridPosition.LineCount);
+
     public void Write(CustomMap map, string mapsDirectory)
     {
         Db.ScenarioId scenarioId = new(map.Id);
@@ -216,7 +222,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
 
             // IDs follow the player index, so they stay the same whichever capitals are placed.
             Db.Id capitalId = MakeId(prefix, "FT", i);
-            Db.Id stackId = MakeId(prefix, "KC", i);
+            CustomMapStack? stationed = map.GetStationedStack(mapPlayer);
+            Db.Id stackId = stationed is null ? MakeId(prefix, "KC", i) : MakeId(prefix, "KC", FirstArmyNumber + stationed.Id);
             Db.Id guardianId = MakeId(prefix, "UN", i * 2);
             Db.Id leaderId = MakeId(prefix, "UN", (i * 2) + 1);
             Db.Unit guardian = globalDb.Units[race.GuardianId ?? throw new InvalidDataException($"Race {raceType} has no guardian.")];
@@ -243,9 +250,26 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                 ProtectedFromElf: null,
                 AiPriority: 3,
                 RiotTurns: null));
-            rows.Units.Add(new Db.ScenarioUnit(scenarioId, guardianId, guardian.Hitpoints, 0, 0, guardian.UnitId, 1, false, false));
+            rows.Texts.Add(Text(scenarioId, capitalId, Db.TextScenario.NameTextId, $"{GetPlayerName(raceType)} Capital"));
+
+            if (mapPlayer.Garrison.Any(unit => unit is not null))
+            {
+                rows.UnitGroups.Add(BuildGroup(rows, mapPlayer.Garrison, scenarioId, prefix, capitalId, FirstCapitalUnitNumber + (i * GridPosition.Count)));
+            }
+            else
+            {
+                rows.Units.Add(new Db.ScenarioUnit(scenarioId, guardianId, guardian.Hitpoints, 0, 0, guardian.UnitId, 1, false, false));
+                rows.UnitGroups.Add(SingleUnitGroup(scenarioId, capitalId, guardianId));
+            }
+
+            // An army set in the editor is written with the others (AddArmy). Without one, the race's first leader
+            // waits in the capital. Either way the human player's leader is swapped for the one chosen at the start.
+            if (stationed is not null)
+            {
+                continue;
+            }
+
             rows.Units.Add(new Db.ScenarioUnit(scenarioId, leaderId, leader.Hitpoints, 0, 0, leader.UnitId, 1, false, false));
-            rows.UnitGroups.Add(SingleUnitGroup(scenarioId, capitalId, guardianId));
             rows.UnitGroups.Add(SingleUnitGroup(scenarioId, stackId, leaderId));
             rows.Stacks.Add(new Db.ScenarioStack(
                 scenarioId,
@@ -278,7 +302,6 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                 NumberOfBattles: 0,
                 Db.OrderType.Normal,
                 AiOrderTargetId: null));
-            rows.Texts.Add(Text(scenarioId, capitalId, Db.TextScenario.NameTextId, $"{GetPlayerName(raceType)} Capital"));
         }
 
         foreach (CustomMapStack stack in map.Stacks)
@@ -333,9 +356,10 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         int firstUnitNumber = (FirstArmyNumber * 6) + (stack.Id * GridPosition.Count);
         int leaderSlot = stack.Slots.ToList().FindIndex(unit => unit is { IsLeader: true });
         Db.Id? leaderId = leaderSlot >= 0 ? MakeId(prefix, "UN", firstUnitNumber + leaderSlot) : null;
+        int capitalIndex = map.Players.ToList().FindIndex(player => player.Entrance == stack.Position);
         Db.Id? stationedIn = map.Villages.FirstOrDefault(village => village.Entrance == stack.Position) is { } village
             ? MakeId(prefix, "FT", FirstVillageNumber + village.Id)
-            : null;
+            : capitalIndex >= 0 ? MakeId(prefix, "FT", 1 + capitalIndex) : null;
 
         rows.UnitGroups.Add(BuildGroup(rows, stack.Slots, scenarioId, prefix, stackId, firstUnitNumber));
         rows.Stacks.Add(new Db.ScenarioStack(
@@ -515,7 +539,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             Db.Id unitId = MakeId(prefix, "UN", firstUnitNumber + slot);
             unitIndexes[unit] = unitIds.Count;
             unitIds.Add(unitId);
-            rows.Units.Add(new Db.ScenarioUnit(scenarioId, unitId, unit.Hitpoints, 0, unit.Level, new Db.Id(unit.TypeId.Value), 1, false, false));
+            rows.Units.Add(new Db.ScenarioUnit(scenarioId, unitId, unit.Hitpoints, Xp: 0, Creation: 0, new Db.Id(unit.TypeId.Value), unit.Level, Transf: false, DynLevel: false));
         }
 
         int[] positions = new int[GridPosition.Count];
@@ -794,7 +818,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         };
     }
 
-    private static Db.RaceType ToRaceType(WorldRace race)
+    internal static Db.RaceType ToRaceType(WorldRace race)
     {
         return race switch
         {

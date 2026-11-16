@@ -12,16 +12,51 @@ public enum CustomMapStackError
     MultipleLeaders,
     LeadershipExceeded,
     InvalidSlot,
-    VillageOwner
+    VillageOwner,
+    InvalidLevel,
+    Guardian
 }
 
-public sealed record CustomMapUnit(UnitDefinitionId TypeId, int Level, int Hitpoints, bool IsLarge, int Leadership, int MovementPoints)
+// A unit placed in an army, garrison or ruin. Level starts at the unit's own level and can go up to MaxLevel; hit
+// points and movement are the unit's full values at that level. A guardian only ever stands in its capital.
+public sealed record CustomMapUnit(UnitDefinitionId TypeId, int Level, int Hitpoints, bool IsLarge, int Leadership, int MovementPoints, bool IsGuardian = false)
 {
-    public bool IsLeader => Leadership > 0;
+    // The highest level used in the original scenarios.
+    public const int MaxLevel = 99;
+
+    // Guardians have leadership in the data but never lead an army.
+    public bool IsLeader => Leadership > 0 && !IsGuardian;
 
     public static CustomMapUnit From(UnitDefinition definition)
     {
-        return new CustomMapUnit(definition.Id, definition.Level, definition.MaxHitpoints, definition.IsLarge, definition.Leadership ?? 0, definition.MovementPoints ?? 20);
+        return new CustomMapUnit(
+            definition.Id,
+            definition.Level,
+            definition.MaxHitpoints,
+            definition.IsLarge,
+            definition.Leadership ?? 0,
+            definition.MovementPoints ?? 20,
+            definition.Category == UnitCategory.Guardian);
+    }
+
+    // The unit at a level from its own level up to MaxLevel, grown like a unit levelling up in the game (dynamic
+    // upgrades): full hit points and, for leaders, movement at that level.
+    public static CustomMapUnit From(UnitDefinition definition, int level, IGameDefinitionProvider definitions)
+    {
+        int clamped = Math.Clamp(level, definition.Level, MaxLevel);
+
+        if (clamped == definition.Level)
+        {
+            return From(definition);
+        }
+
+        GlobalVariables globals = new();
+        UnitStats stats = UnitStatsCalculator.GetStats(definition, clamped, [], definitions, globals);
+        int movement = definition.MovementPoints is null
+            ? 20
+            : UnitStatsCalculator.GetMaxMovementPoints(definition, clamped, [], definitions, globals);
+
+        return From(definition) with { Level = clamped, Hitpoints = stats.MaxHitpoints, MovementPoints = movement };
     }
 }
 
@@ -167,6 +202,16 @@ public sealed record CustomMapStack(int Id, WorldPosition Position, WorldRace Ow
             if (unit.IsLarge && (position.IsBackLine || slots[GridPosition.AtBackLine(position.Flank).ToIndex()] is not null))
             {
                 return CustomMapStackError.InvalidSlot;
+            }
+
+            if (unit.Level is < 1 or > CustomMapUnit.MaxLevel)
+            {
+                return CustomMapStackError.InvalidLevel;
+            }
+
+            if (unit.IsGuardian)
+            {
+                return CustomMapStackError.Guardian;
             }
 
             occupied += unit.IsLarge ? GridPosition.LineCount : 1;

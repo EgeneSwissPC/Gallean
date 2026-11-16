@@ -181,7 +181,8 @@ public sealed class MapEditorScreenViewModelTests
         editor.SelectTool(MapEditorTool.Army);
         editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Neutral);
         editor.BeginStroke(new WorldPosition(9, 9));
-        Assert.That(game.TopScreen, Is.SameAs(editor), "Capitals are blocked.");
+        Assert.IsOfType<MapEditorCapitalScreenViewModel>(game.TopScreen).CloseCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(editor));
 
         // Free land opens an empty army; its first empty slot asks for a leader.
         editor.BeginStroke(new WorldPosition(24, 24));
@@ -421,22 +422,157 @@ public sealed class MapEditorScreenViewModelTests
         editor.UndoCommand.Execute(null);
         Assert.That(editor.Map.Villages.Single().Name, Is.EqualTo("Ford"));
 
-        // The Army tool on a village opens the army stationed in it, owned by the village's owner.
+        // The Army tool on a village opens the village screen too: garrison and stationed army side by side. The
+        // army serves the village's owner.
         editor.SelectTool(MapEditorTool.Army);
         editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Neutral);
         editor.BeginStroke(new WorldPosition(23, 23));
-        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen);
-        Assert.That(army.Owner, Is.EqualTo(WorldRace.Human));
-        army.ChooseLeaderCommand.Execute(null);
-        Picker(game).Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge).PickCommand.Execute(null);
-        army.ConfirmCommand.Execute(null);
+        MapEditorVillageScreenViewModel withArmy = Assert.IsOfType<MapEditorVillageScreenViewModel>(game.TopScreen);
+        Assert.That((withArmy.HasArmy, withArmy.Army.IsEmpty, withArmy.HasSelectedUnit), Is.EqualTo((false, true, false)));
+        withArmy.AddUnit(withArmy.Army, GridPosition.BackCenter);
+        MapEditorUnitPickerViewModel leaders = Picker(game);
+        Assert.That(leaders.SelectedFilter.Race, Is.EqualTo(WorldRace.Human));
+        MapEditorUnitPickerItemViewModel leader = leaders.Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge && option.Definition.Leadership >= 3);
+        leader.PickCommand.Execute(null);
+        Assert.That(withArmy.HasArmy, Is.True);
+        Assert.That(withArmy.Army.Slots[GridPosition.FrontCenter.ToIndex()]!.IsLeader, Is.True);
+        Assert.That(withArmy.SelectedUnitName, Is.Not.Null, "The new leader is selected.");
+        Assert.That(withArmy.LevelDownCommand.CanExecute(null), Is.False, "Not below its own level.");
+
+        // Raise the leader's level; hit points grow with it.
+        withArmy.LevelUpTenCommand.Execute(null);
+        withArmy.LevelUpCommand.Execute(null);
+        CustomMapUnit levelled = withArmy.Army.Slots[GridPosition.FrontCenter.ToIndex()]!;
+        Assert.That(levelled.Level, Is.EqualTo(leader.Definition.Level + 11));
+        Assert.That(levelled.Hitpoints, Is.GreaterThan(leader.Definition.MaxHitpoints));
+        Assert.That(withArmy.SelectedUnitLevel, Is.EqualTo($"Level {levelled.Level}"));
+
+        // Units move between the garrison and the army; leaders stay out of the garrison.
+        Assert.That(withArmy.MoveUnit(withArmy.Garrison, GridPosition.FrontCenter, withArmy.Army, GridPosition.FrontBottom), Is.True);
+        Assert.That(withArmy.Garrison.Slots.Count(unit => unit is not null), Is.EqualTo(1));
+        Assert.That(withArmy.MoveUnit(withArmy.Army, GridPosition.FrontCenter, withArmy.Garrison, GridPosition.BackBottom), Is.False);
+        withArmy.ConfirmCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(editor));
         CustomMapStack stationed = editor.Map.Stacks.Single();
-        Assert.That((stationed.Position, stationed.Owner), Is.EqualTo((new WorldPosition(25, 25), WorldRace.Human)));
-        WorldCity withArmy = editor.State.Fortifications.Values.OfType<WorldCity>().Single();
-        Assert.That(editor.State.Stacks.Values.Count(stack => stack.Position == withArmy.Entrance), Is.EqualTo(1));
+        Assert.That((stationed.Position, stationed.Owner, stationed.Slots.Count(unit => unit is not null)), Is.EqualTo((new WorldPosition(25, 25), WorldRace.Human, 2)));
+        Assert.That(editor.Map.Villages.Single().Garrison.Count(unit => unit is not null), Is.EqualTo(1));
+        WorldCity cityWithArmy = editor.State.Fortifications.Values.OfType<WorldCity>().Single();
+        WorldStack stationedState = editor.State.Stacks.Values.Single(stack => stack.Position == cityWithArmy.Entrance);
+        Assert.That(stationedState.Units.GetUnits().Max(entry => entry.Unit.Level), Is.EqualTo(levelled.Level));
         editor.ShowPositionInfo(new WorldPosition(23, 23));
         Assert.That(Assert.IsOfType<WorldFortificationInfoViewModel>(editor.PositionInfo).VisitingStack, Is.Not.Null, "The city info shows the stationed army.");
         editor.HidePositionInfo();
+
+        // Removing the army on the village screen takes it off the map.
+        editor.SelectTool(MapEditorTool.Village);
+        editor.BeginStroke(new WorldPosition(23, 23));
+        MapEditorVillageScreenViewModel again = Assert.IsOfType<MapEditorVillageScreenViewModel>(game.TopScreen);
+        Assert.That(again.Army.Slots, Is.EqualTo(stationed.Slots));
+        again.RemoveArmyCommand.Execute(null);
+        again.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Stacks, Is.Empty);
+    }
+
+    [Test]
+    public async Task CapitalScreenTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        Assert.That(editor.Map.Players[0].Capital, Is.EqualTo(new WorldPosition(6, 6)));
+
+        // Clicking a capital with the Capital tool opens it instead of moving it.
+        editor.SelectedCapitalRace = editor.CapitalRaces[0];
+        editor.BeginStroke(new WorldPosition(7, 7));
+        MapEditorCapitalScreenViewModel screen = Assert.IsOfType<MapEditorCapitalScreenViewModel>(game.TopScreen);
+        Assert.That(editor.Map.Players[0].Capital, Is.EqualTo(new WorldPosition(6, 6)));
+        int guardianIndex = Array.FindIndex(screen.Garrison.Slots, unit => unit is { IsGuardian: true });
+        Assert.That(guardianIndex, Is.Not.Negative, "The race's guardian is in the garrison.");
+        Assert.That(screen.Garrison.CapacityText, Is.EqualTo("1 / 6"));
+        Assert.That(screen.Army.HasLeader, Is.True, "The race's first leader waits in the capital.");
+
+        // The guardian can be neither removed nor moved to the army.
+        GridPosition guardianPosition = GridPosition.FromIndex(guardianIndex);
+        screen.RemoveUnit(screen.Garrison, guardianPosition);
+        Assert.That(screen.Garrison.Slots[guardianIndex], Is.Not.Null);
+        Assert.That(screen.MoveUnit(screen.Garrison, guardianPosition, screen.Army, GridPosition.BackTop), Is.False);
+
+        // A soldier joins the garrison at level 7, another the army.
+        screen.AddUnit(screen.Garrison, GridPosition.BackTop);
+        MapEditorUnitPickerViewModel soldiers = Picker(game);
+        Assert.That(soldiers.Options.All(option => option.Definition.Leadership is not > 0), Is.True);
+        soldiers.Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge && option.Definition.Level <= 7).PickCommand.Execute(null);
+        screen.SetSelectedLevel(7);
+        Assert.That(screen.Garrison.Slots[GridPosition.BackTop.ToIndex()]!.Level, Is.EqualTo(7));
+        screen.AddUnit(screen.Army, GridPosition.BackCenter);
+        Picker(game).Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge).PickCommand.Execute(null);
+        screen.ConfirmCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(editor));
+
+        CustomMapPlayer human = editor.Map.Players.Single(player => player.Race == WorldRace.Human);
+        Assert.That(human.Garrison.Count(unit => unit is not null), Is.EqualTo(2));
+        CustomMapStack army = editor.Map.Stacks.Single();
+        Assert.That((army.Position, army.Owner, army.Slots.Count(unit => unit is not null)), Is.EqualTo((new WorldPosition(10, 10), WorldRace.Human, 2)));
+        WorldPlayerId humanId = editor.State.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldCapital capital = editor.State.Fortifications.Values.OfType<WorldCapital>().Single(fortification => fortification.OwnerId == humanId);
+        Assert.That(capital.Garrison.GetUnits().Select(entry => entry.Unit.Level), Does.Contain(7));
+        Assert.That(editor.State.Stacks.Values.Count(stack => stack.OwnerId == humanId), Is.EqualTo(1));
+
+        editor.SaveCommand.Execute(null);
+        CustomMap saved = loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions());
+        Assert.That(saved.Players, Is.EqualTo(editor.Map.Players));
+        Assert.That(saved.Stacks, Is.EquivalentTo(editor.Map.Stacks));
+
+        // The Army tool opens the same screen, with what was saved.
+        editor.SelectTool(MapEditorTool.Army);
+        editor.BeginStroke(new WorldPosition(8, 8));
+        MapEditorCapitalScreenViewModel reopened = Assert.IsOfType<MapEditorCapitalScreenViewModel>(game.TopScreen);
+        Assert.That(reopened.Army.Slots, Is.EqualTo(army.Slots));
+        reopened.CloseCommand.Execute(null);
+
+        // Moving the capital takes its garrison and army along.
+        editor.SelectTool(MapEditorTool.Capital);
+        editor.SelectedCapitalRace = editor.CapitalRaces[0];
+        editor.BeginStroke(new WorldPosition(20, 20));
+        Assert.That(editor.Map.Players[0].Capital, Is.EqualTo(new WorldPosition(18, 18)));
+        Assert.That(editor.Map.Stacks.Single().Position, Is.EqualTo(new WorldPosition(22, 22)));
+        Assert.That(editor.Map.Players[0].Garrison, Is.EqualTo(human.Garrison));
+    }
+
+    [Test]
+    public async Task ArmyLevelTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Army);
+        editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Neutral);
+        editor.BeginStroke(new WorldPosition(20, 30));
+        MapEditorArmyScreenViewModel screen = Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen);
+        screen.ChooseLeaderCommand.Execute(null);
+        Picker(game).Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge && option.Definition.Leadership >= 2).PickCommand.Execute(null);
+        screen.AddUnit(GridPosition.BackCenter);
+        MapEditorUnitPickerItemViewModel soldier = Picker(game).Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge);
+        soldier.PickCommand.Execute(null);
+
+        // The new unit is selected; levels go up to 99.
+        Assert.That(screen.HasSelectedUnit, Is.True);
+        screen.SetSelectedLevel(500);
+        Assert.That(screen.Slots[GridPosition.BackCenter.ToIndex()]!.Level, Is.EqualTo(CustomMapUnit.MaxLevel));
+        Assert.That(screen.LevelUpCommand.CanExecute(null), Is.False);
+        screen.LevelDownTenCommand.Execute(null);
+        Assert.That(screen.Slots[GridPosition.BackCenter.ToIndex()]!.Level, Is.EqualTo(89));
+        screen.ConfirmCommand.Execute(null);
+
+        WorldUnit placed = editor.State.Stacks.Values.Single(stack => stack.Position == new WorldPosition(20, 30)).Units.GetUnits()
+            .Single(entry => entry.Unit.DefinitionId == soldier.Definition.Id).Unit;
+        Assert.That(placed.Level, Is.EqualTo(89));
+        Assert.That(placed.Hitpoints, Is.EqualTo(editor.Map.Stacks.Single().Slots[GridPosition.BackCenter.ToIndex()]!.Hitpoints), "Full health at that level.");
+        Assert.That(placed.Hitpoints, Is.GreaterThan(soldier.Definition.MaxHitpoints));
     }
 
     private static MapEditorScreenViewModel PlaceCapitals(MapEditorScreenViewModel editor)

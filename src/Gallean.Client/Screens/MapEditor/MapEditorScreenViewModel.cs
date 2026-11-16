@@ -250,6 +250,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
         if (SelectedTool.Value == MapEditorTool.Capital)
         {
+            if (map.GetCapitalAt(tile) is { } capital)
+            {
+                OpenCapital(capital);
+                return;
+            }
+
             PlaceCapitalAsync(tile).FileAndForget();
             return;
         }
@@ -385,15 +391,21 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     }
 
     // Army tool: clicking free land opens the army screen for a new army, clicking an army opens it for editing.
-    // Clicking a village opens the army stationed in it, which belongs to the village's owner.
+    // Clicking a village or capital opens its screen, with the garrison and the army stationed in it.
     private void ClickArmy(WorldPosition tile)
     {
         WorldRace owner = SelectedArmyOwner.Value;
 
         if (map.GetVillageAt(tile) is { } village)
         {
-            tile = village.Entrance;
-            owner = village.Owner;
+            OpenVillage(village);
+            return;
+        }
+
+        if (map.GetCapitalAt(tile) is { } capital)
+        {
+            OpenCapital(capital);
+            return;
         }
 
         CustomMapStack? existing = map.GetStackAt(tile);
@@ -579,14 +591,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     {
         if (map.GetVillageAt(tile) is { } existing)
         {
-            Game.OpenScreen(new MapEditorVillageScreenViewModel(
-                Game,
-                editorGame,
-                units,
-                VillageOwners,
-                existing,
-                (level, owner, name, garrison) => SaveVillage(existing.Id, level, owner, name, garrison),
-                () => DeleteVillage(existing.Id)));
+            OpenVillage(existing);
             return;
         }
 
@@ -611,13 +616,99 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         return PickName(library.Names.Villages, map.Villages.Select(village => village.Name)).Name;
     }
 
-    private string? SaveVillage(int id, int level, WorldRace owner, string name, CustomMapUnit?[] garrison)
+    // The village screen: its settings, garrison and the army stationed in it.
+    private void OpenVillage(CustomMapVillage village)
+    {
+        Game.OpenScreen(new MapEditorVillageScreenViewModel(
+            Game,
+            editorGame,
+            units,
+            VillageOwners,
+            village,
+            map.GetStationedStack(village)?.Slots,
+            (level, owner, name, garrison, army) => SaveVillage(village.Id, level, owner, name, garrison, army),
+            () => DeleteVillage(village.Id)));
+    }
+
+    private string? SaveVillage(int id, int level, WorldRace owner, string name, CustomMapUnit?[] garrison, CustomMapUnit?[]? army)
     {
         CustomMap before = map.Clone();
 
         if (map.UpdateVillage(id, level, owner, name, garrison) is { } error)
         {
+            map = before;
             return MapEditorLabels.VillageError(error);
+        }
+
+        CustomMapVillage village = map.Villages.Single(candidate => candidate.Id == id);
+
+        if (SaveStationedArmy(village.Entrance, owner, army) is { } armyError)
+        {
+            map = before;
+            return armyError;
+        }
+
+        CommitArmyChange(before);
+        return null;
+    }
+
+    // Puts the army on a village's or capital's entrance, changes the one there, or removes it (army null).
+    private string? SaveStationedArmy(WorldPosition entrance, WorldRace owner, CustomMapUnit?[]? army)
+    {
+        CustomMapStack? stationed = map.GetStackAt(entrance);
+
+        if (army is null)
+        {
+            if (stationed is not null)
+            {
+                map.RemoveStack(stationed.Id);
+            }
+
+            return null;
+        }
+
+        CustomMapStackError? error = stationed is not null
+            ? map.UpdateStack(stationed.Id, owner, army)
+            : map.PlaceStack(entrance, owner, army).Error;
+
+        return error is { } problem ? MapEditorLabels.StackError(problem, CustomMapStack.GetLeadership(army)) : null;
+    }
+
+    // The capital screen: its garrison with the guardian and the army stationed in it (the race's first leader
+    // until set here).
+    private void OpenCapital(CustomMapPlayer capital)
+    {
+        (CustomMapUnit?[] defaultGarrison, CustomMapUnit?[] defaultArmy) = library.GetCapitalDefaults(capital.Race);
+        IReadOnlyList<CustomMapUnit?> garrison = capital.Garrison.Any(unit => unit is not null) ? capital.Garrison : defaultGarrison;
+        IReadOnlyList<CustomMapUnit?> army = map.GetStationedStack(capital)?.Slots ?? (IReadOnlyList<CustomMapUnit?>)defaultArmy;
+
+        Game.OpenScreen(new MapEditorCapitalScreenViewModel(
+            Game,
+            editorGame,
+            units,
+            capital.Race,
+            capital.Capital!.Value,
+            garrison,
+            army,
+            (newGarrison, newArmy) => SaveCapital(capital.Race, newGarrison, newArmy)));
+    }
+
+    private string? SaveCapital(WorldRace race, CustomMapUnit?[] garrison, CustomMapUnit?[] army)
+    {
+        CustomMap before = map.Clone();
+
+        if (map.UpdateCapital(race, garrison) is { } error)
+        {
+            map = before;
+            return MapEditorLabels.VillageError(error);
+        }
+
+        CustomMapPlayer capital = map.Players.Single(player => player.Race == race);
+
+        if (SaveStationedArmy(capital.Entrance!.Value, race, army) is { } armyError)
+        {
+            map = before;
+            return armyError;
         }
 
         CommitArmyChange(before);

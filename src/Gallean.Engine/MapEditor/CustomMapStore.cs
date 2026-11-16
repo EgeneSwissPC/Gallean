@@ -181,13 +181,18 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
                 continue;
             }
 
-            WorldPosition? capital = state.Fortifications.Values
+            WorldCapital? capital = state.Fortifications.Values
                 .OfType<WorldCapital>()
-                .Where(candidate => candidate.OwnerId == player.Id)
-                .Select(candidate => (WorldPosition?)candidate.Footprint.TopLeft)
-                .FirstOrDefault();
+                .FirstOrDefault(candidate => candidate.OwnerId == player.Id);
 
-            players.Add(new CustomMapPlayer(player.Race, capital));
+            // A garrison of just the guardian where the writer puts it is what an unset garrison saves as.
+            CustomMapUnit?[] garrison = capital is null ? [] : ToSlots(capital.Garrison, definitions);
+            bool isDefault = garrison.Length == GridPosition.Count &&
+                             garrison.Count(unit => unit is not null) == 1 &&
+                             garrison[CustomMapWriter.GuardianSlot.ToIndex()] is { IsGuardian: true } guardian &&
+                             guardian == CustomMapUnit.From(definitions.GetUnit(guardian.TypeId));
+
+            players.Add(new CustomMapPlayer(player.Race, capital?.Footprint.TopLeft) { Garrison = isDefault ? [] : [.. garrison] });
         }
 
         ImmutableArray<CustomMapMountain> mountains =
@@ -199,19 +204,43 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
                 mountain.Variant.Value))
         ];
 
-        WorldFootprint[] capitals = [.. state.Fortifications.Values.OfType<WorldCapital>().Select(capital => capital.Footprint)];
+        WorldCapital[] capitals = [.. state.Fortifications.Values.OfType<WorldCapital>()];
         List<CustomMapStack> stacks = [];
+        List<WorldStack> unnumbered = [];
+
+        CustomMapStack ToStack(WorldStack stack, int id)
+        {
+            return new CustomMapStack(id, stack.Position, state.Players[stack.OwnerId].Race, [.. ToSlots(stack.Units, definitions)]);
+        }
 
         foreach (WorldStack stack in state.Stacks.Values)
         {
-            // Capital garrisons belong to the capitals; everything else is an army placed in the editor.
-            if (capitals.Any(footprint => footprint.Contains(stack.Position)))
+            // Inside a capital only the army on its entrance is kept: it is stationed there.
+            if (capitals.Any(capital => capital.Footprint.Contains(stack.Position) && capital.Entrance != stack.Position))
             {
                 continue;
             }
 
-            int id = ParseObjectNumber(stack.Id.Value, CustomMapWriter.FirstArmyNumber) ?? stacks.Count + 1;
-            stacks.Add(new CustomMapStack(id, stack.Position, state.Players[stack.OwnerId].Race, [.. ToSlots(stack.Units, definitions)]));
+            if (ParseObjectNumber(stack.Id.Value, CustomMapWriter.FirstArmyNumber) is { } id)
+            {
+                stacks.Add(ToStack(stack, id));
+            }
+            else
+            {
+                unnumbered.Add(stack);
+            }
+        }
+
+        // Armies from outside the editor's numbering get the next free IDs, except a capital's starting leader: the
+        // writer adds that one when no army was set for the capital.
+        foreach (WorldStack stack in unnumbered)
+        {
+            if (capitals.Any(capital => capital.Entrance == stack.Position))
+            {
+                continue;
+            }
+
+            stacks.Add(ToStack(stack, stacks.Count == 0 ? 1 : stacks.Max(existing => existing.Id) + 1));
         }
 
         List<CustomMapVillage> villages = [];
@@ -287,10 +316,26 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         {
             UnitDefinition definition = definitions.GetUnit(unit.DefinitionId);
             int slot = definition.IsLarge ? GridPosition.AtFrontLine(position.Flank).ToIndex() : position.ToIndex();
-            slots[slot] = CustomMapUnit.From(definition) with { Level = unit.Level, Hitpoints = unit.Hitpoints };
+            slots[slot] = CustomMapUnit.From(definition, unit.Level, definitions) with { Level = unit.Level, Hitpoints = unit.Hitpoints };
         }
 
         return slots;
+    }
+
+    // What a new capital starts with: the race's guardian in the garrison and its first leader stationed inside.
+    public (CustomMapUnit?[] Garrison, CustomMapUnit?[] Army) GetCapitalDefaults(WorldRace race, IGameDefinitionProvider definitions)
+    {
+        Db.RaceType raceType = CustomMapWriter.ToRaceType(race);
+        Db.Race dbRace = globalDb.Races.Values.Single(candidate => candidate.RaceType == raceType);
+        Db.Id guardianId = dbRace.GuardianId ?? throw new InvalidDataException($"Race {race} has no guardian.");
+        Db.Id leaderId = dbRace.Leader1Id ?? throw new InvalidDataException($"Race {race} has no leader.");
+        CustomMapUnit?[] garrison = new CustomMapUnit?[GridPosition.Count];
+        CustomMapUnit?[] army = new CustomMapUnit?[GridPosition.Count];
+
+        garrison[CustomMapWriter.GuardianSlot.ToIndex()] = CustomMapUnit.From(definitions.GetUnit(new UnitDefinitionId(guardianId.Value)));
+        army[GridPosition.FrontCenter.ToIndex()] = CustomMapUnit.From(definitions.GetUnit(new UnitDefinitionId(leaderId.Value)));
+
+        return (garrison, army);
     }
 
     // Items the editor offers for bags, ruins and merchants: every item of the game.
