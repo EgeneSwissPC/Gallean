@@ -27,15 +27,15 @@ internal sealed partial class GameViewModel
 
         try
         {
-            (CustomMap map, GameModel editorGame, IReadOnlyList<UnitDefinition> units, IReadOnlyList<string> villageNames) = await RunAsync(() =>
+            (CustomMap map, GameModel editorGame, MapEditorLibrary library) = await RunAsync(() =>
             {
                 IGameDefinitionProvider definitions = gameLoader.CreateDefinitions();
                 CustomMap map = createMap(definitions);
 
-                return (map, CreateEditorGame(store, map, definitions), store.ListUnits(definitions), MapEditorVillageNames.Load());
+                return (map, CreateEditorGame(store, map, definitions), MapEditorLibrary.Load(store, definitions));
             });
 
-            ShowScreen(new MapEditorScreenViewModel(this, store, editorGame, map, units, villageNames));
+            ShowScreen(new MapEditorScreenViewModel(this, store, editorGame, map, library));
         }
         catch (Exception ex)
         {

@@ -558,6 +558,153 @@ public sealed class CustomMapTests
     }
 
     [Test]
+    public void StationedArmyTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        CustomMapUnit?[] guard = Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.BackCenter, NeutralSoldier));
+        CustomMapVillage village = map.PlaceVillage(new WorldPosition(14, 14), 2, WorldRace.Neutral, "Errgok").Village!;
+
+        // Only the entrance takes an army, and only one of the village's owner.
+        Assert.That(village.Entrance, Is.EqualTo(new WorldPosition(17, 17)));
+        Assert.That(map.PlaceStack(new WorldPosition(15, 15), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Blocked));
+        Assert.That(map.PlaceStack(village.Entrance, WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))).Error, Is.EqualTo(CustomMapStackError.VillageOwner));
+        Assert.That(map.PlaceStack(village.Entrance, WorldRace.Neutral, guard).Error, Is.Null);
+        Assert.That(map.GetStationedStack(village)!.Position, Is.EqualTo(village.Entrance));
+        store.Save(map);
+
+        WorldState state = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        WorldCity city = state.Fortifications.Values.OfType<WorldCity>().Single();
+        WorldStack stationed = state.Stacks.Values.Single(stack => stack.Position == city.Entrance);
+        Assert.That(stationed.OwnerId, Is.EqualTo(city.OwnerId));
+        Assert.That(store.LoadDatabase(map.Id).ScenarioStacksByScenario[new Db.ScenarioId(map.Id)].Single(stack => stack.StackId.Value == CustomMapWriter.GetArmyStackId(map.Id, map.Stacks.Single().Id)).InsideId?.Value,
+            Is.EqualTo(CustomMapWriter.GetVillageId(map.Id, village.Id)));
+        Assert.That(store.Open(map.Id, definitions).Stacks, Is.EquivalentTo(map.Stacks), "The stationed army is read back.");
+
+        // A new owner takes the army along; removing the village removes its army.
+        Assert.That(map.UpdateVillage(village.Id, 2, WorldRace.Human, "Errgok", CustomMapVillage.EmptyGarrison), Is.Null);
+        Assert.That(map.Stacks.Single().Owner, Is.EqualTo(WorldRace.Human));
+        Assert.That(map.RemoveVillage(village.Id), Is.True);
+        Assert.That(map.Stacks, Is.Empty);
+    }
+
+    private ItemDefinitionId[] SomeItems(int count) => [.. globalDb.Items.Keys.Select(id => new ItemDefinitionId(id.Value)).OrderBy(id => id.Value, StringComparer.Ordinal).Take(count)];
+
+    private WorldSpellDefinitionId[] SomeSpells(int count) => [.. globalDb.Spells.Keys.Select(id => new WorldSpellDefinitionId(id.Value)).OrderBy(id => id.Value, StringComparer.Ordinal).Take(count)];
+
+    [Test]
+    public void RuinBagSiteRulesTest()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(1);
+
+        // Structures never overlap each other.
+        CustomMapRuin ruin = map.PlaceRuin(new WorldPosition(14, 14), 3, "Rigel Ruin").Ruin!;
+        Assert.That(ruin.Footprint, Is.EqualTo(new WorldFootprint(new WorldPosition(14, 14), 3, 3)));
+        Assert.That(map.PlaceRuin(new WorldPosition(16, 16), 0, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceSite(new WorldPosition(12, 12), CustomMapSiteType.Merchant, 0, "", "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceVillage(new WorldPosition(11, 11), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.False);
+        Assert.That(map.PlaceSite(new WorldPosition(46, 46), CustomMapSiteType.Trainer, 0, "", "").Error, Is.EqualTo(CustomMapPlacementError.OutsideMap));
+
+        // A site on the lake shore turns its water into land; variants wrap around.
+        CustomMapSite site = map.PlaceSite(new WorldPosition(18, 23), CustomMapSiteType.Mercenaries, 7, "Camp", "Hi").Site!;
+        Assert.That(site.Variant, Is.EqualTo(2), "Mercenary camps have five looks.");
+        Assert.That(site.Footprint.EnumerateTiles().All(tile => map.GetCell(tile).Terrain != WorldMapTerrain.Water), Is.True);
+
+        // Bags lie on land or water, but not on mountains, structures, armies or resources.
+        Assert.That(map.PlaceBag(new WorldPosition(25, 25), 9).Bag!.Variant, Is.EqualTo(1));
+        Assert.That(map.PlaceBag(new WorldPosition(36, 10), 0).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Mountain.");
+        Assert.That(map.PlaceBag(new WorldPosition(15, 15), 0).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Ruin.");
+        Assert.That(map.PlaceBag(new WorldPosition(10, 30), 0).Error, Is.Null);
+        Assert.That(map.GetCell(new WorldPosition(10, 30)).Feature, Is.EqualTo(WorldMapFeature.None), "The forest under a bag is cleared.");
+        Assert.That(map.PlaceBag(new WorldPosition(10, 30), 0).Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(map.PlaceResource(new WorldPosition(10, 30), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(map.PlaceStack(new WorldPosition(10, 30), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
+        Assert.That(map.Paint(new WorldPosition(10, 30), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.PlaceRuin(new WorldPosition(9, 29), 0, "").Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+
+        // Structures are protected from brushes and block armies.
+        Assert.That(map.Paint(new WorldPosition(15, 15), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.PlaceStack(new WorldPosition(16, 16), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
+
+        // Ruin guards: soldiers only, room for six.
+        CustomMapUnit?[] guards = Slots((GridPosition.FrontTop, LargeSoldier), (GridPosition.FrontCenter, LargeSoldier), (GridPosition.FrontBottom, LargeSoldier));
+        Assert.That(map.UpdateRuin(ruin.Id, 4, "Rigel Ruin", 12000, SomeItems(1)[0], guards), Is.Null);
+        CustomMapRuin updated = map.Ruins.Single();
+        Assert.That((updated.Variant, updated.Gold, updated.Item), Is.EqualTo((4, CustomMapRuin.MaxGold, SomeItems(1)[0])));
+        Assert.That(map.UpdateRuin(ruin.Id, 4, "", 0, null, Slots((GridPosition.FrontCenter, NeutralLeader))), Is.EqualTo(CustomMapPlacementError.LeaderInGarrison));
+
+        // Sites keep only the goods of their type.
+        Assert.That(map.UpdateSite(site.Id, 1, "Camp", "Hi", [new CustomMapMerchantItem(SomeItems(1)[0], 2)], SomeSpells(2), [new CustomMapMercenary(NeutralSoldier.TypeId, 3)]), Is.Null);
+        CustomMapSite camp = map.Sites.Single();
+        Assert.That((camp.Items.Length, camp.Spells.Length, camp.Units.Single()), Is.EqualTo((0, 0, new CustomMapMercenary(NeutralSoldier.TypeId, 3))));
+        Assert.That(map.UpdateSite(site.Id, 1, "", "", [], [], [.. Enumerable.Repeat(new CustomMapMercenary(NeutralSoldier.TypeId, 1), CustomMapSite.MaxGoods + 1)]), Is.EqualTo(CustomMapPlacementError.TooManyGoods));
+        Assert.That(map.UpdateBag(map.Bags[0].Id, 3, SomeItems(CustomMapBag.MaxItems + 1)), Is.EqualTo(CustomMapPlacementError.TooManyGoods));
+
+        CustomMap copy = map.Clone();
+        Assert.That(map.RemoveRuin(ruin.Id) && map.RemoveSite(site.Id) && map.RemoveBag(map.Bags[0].Id), Is.True);
+        Assert.That((copy.Ruins.Count, copy.Sites.Count, copy.Bags.Count), Is.EqualTo((1, 1, 2)));
+    }
+
+    [Test]
+    public void RuinBagSiteSaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        ItemDefinitionId[] items = SomeItems(4);
+        WorldSpellDefinitionId[] spells = SomeSpells(3);
+
+        int ruin = map.PlaceRuin(new WorldPosition(14, 14), 5, "Rigel Ruin").Ruin!.Id;
+        map.UpdateRuin(ruin, 5, "Rigel Ruin", 750, items[0], Slots((GridPosition.FrontTop, LargeSoldier), (GridPosition.BackCenter, NeutralSoldier)));
+        int unguarded = map.PlaceRuin(new WorldPosition(20, 40), 0, "").Ruin!.Id;
+        int bag = map.PlaceBag(new WorldPosition(30, 30), 2).Bag!.Id;
+        map.UpdateBag(bag, 2, [items[1], items[2], items[1]]);
+        map.PlaceBag(new WorldPosition(24, 24), 1);
+        int merchant = map.PlaceSite(new WorldPosition(18, 6), CustomMapSiteType.Merchant, 3, "Ebhon's Shop", "My wares can help you.").Site!.Id;
+        map.UpdateSite(merchant, 3, "Ebhon's Shop", "My wares can help you.", [new CustomMapMerchantItem(items[3], 2), new CustomMapMerchantItem(items[0], 1)], [], []);
+        int mage = map.PlaceSite(new WorldPosition(26, 6), CustomMapSiteType.MageTower, 1, "Malavien's Tower", "").Site!.Id;
+        map.UpdateSite(mage, 1, "Malavien's Tower", "", [], spells, []);
+        int camp = map.PlaceSite(new WorldPosition(10, 20), CustomMapSiteType.Mercenaries, 4, "Guther's Camp", "Finest soldiers.").Site!.Id;
+        map.UpdateSite(camp, 4, "Guther's Camp", "Finest soldiers.", [], [], [new CustomMapMercenary(NeutralSoldier.TypeId, 2), new CustomMapMercenary(LargeSoldier.TypeId, 1)]);
+        map.PlaceSite(new WorldPosition(30, 18), CustomMapSiteType.Trainer, 2, "Metaca's Camp", "");
+        store.Save(map);
+
+        ScenarioDatabase database = store.LoadDatabase(map.Id);
+        WorldState state = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+
+        WorldRuin rigel = state.Fortifications.Values.OfType<WorldRuin>().Single(candidate => candidate.Footprint.TopLeft == new WorldPosition(14, 14));
+        Assert.That((rigel.Variant.Value, rigel.Resources.Gold, rigel.Item, rigel.LooterId), Is.EqualTo((5, 750, (ItemDefinitionId?)items[0], (WorldPlayerId?)null)));
+        Assert.That(rigel.Garrison[GridPosition.FrontTop]!.DefinitionId, Is.EqualTo(LargeSoldier.TypeId));
+        Assert.That(rigel.Garrison[GridPosition.BackCenter]!.DefinitionId, Is.EqualTo(NeutralSoldier.TypeId));
+        WorldRuin empty = state.Fortifications.Values.OfType<WorldRuin>().Single(candidate => candidate.Footprint.TopLeft == new WorldPosition(20, 40));
+        Assert.That((empty.Garrison.IsEmpty, empty.Resources, empty.Item), Is.EqualTo((true, WorldResourceSet.Empty, (ItemDefinitionId?)null)));
+
+        WorldBag loot = state.Bags.Values.Single(candidate => candidate.Position == new WorldPosition(30, 30));
+        Assert.That(loot.Inventory.Items.Select(item => item.DefinitionId), Is.EqualTo(new[] { items[1], items[2], items[1] }));
+        Assert.That(loot.Variant.Value, Is.EqualTo(2));
+        Assert.That(state.Bags.Values.Single(candidate => candidate.Position == new WorldPosition(24, 24)).Inventory.Items, Is.Empty);
+
+        Assert.That(state.Sites.Values.OfType<WorldMerchantSite>().Single().Items, Is.EqualTo(new[] { new WorldMerchantItem(items[3], 2), new WorldMerchantItem(items[0], 1) }));
+        Assert.That(state.Sites.Values.OfType<WorldMageSite>().Single().Spells, Is.EqualTo(spells));
+        Assert.That(state.Sites.Values.OfType<WorldMercenarySite>().Single().Units.Select(unit => (unit.DefinitionId, unit.Level)), Is.EqualTo(new[] { (NeutralSoldier.TypeId, 2), (LargeSoldier.TypeId, 1) }));
+        Assert.That(state.Sites.Values.OfType<WorldTrainerSite>().Single().Variant.Value, Is.EqualTo(2));
+
+        string? Text(string objectId, string textId) => database.TextScenariosByScenario[new Db.ScenarioId(map.Id)]
+            .Single(text => text.IdObject.Value == objectId && text.IdString == textId).Text;
+        Assert.That(Text(CustomMapWriter.GetRuinId(map.Id, ruin), Db.TextScenario.RuinTitleTextId), Is.EqualTo("Rigel Ruin"));
+        Assert.That(Text(CustomMapWriter.GetRuinId(map.Id, unguarded), Db.TextScenario.RuinTitleTextId), Is.EqualTo($"Ruin {unguarded}"));
+        Assert.That(Text(CustomMapWriter.GetSiteId(map.Id, merchant), Db.TextScenario.SiteDescriptionTextId), Is.EqualTo("My wares can help you."));
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Ruins.Where(candidate => candidate.Id != unguarded), Is.EquivalentTo(map.Ruins.Where(candidate => candidate.Id != unguarded)));
+        Assert.That(reopened.Bags, Is.EquivalentTo(map.Bags));
+        Assert.That(reopened.Sites, Is.EquivalentTo(map.Sites));
+        Assert.That(reopened.Cells, Is.EqualTo(map.Cells));
+        Assert.That(reopened.Stacks, Is.Empty, "Ruin guards are not read back as armies.");
+    }
+
+    [Test]
     public void VillagePlayTest()
     {
         CustomMap map = CreateMap();
@@ -572,6 +719,21 @@ public sealed class CustomMapTests
         map.Paint(new WorldPosition(12, 10), 1, CustomMapBrush.Land, WorldMapTerrain.Human, random);
         map.PlaceResource(new WorldPosition(12, 10), WorldResourceType.Gold);
         map.PlaceResource(new WorldPosition(34, 12), WorldResourceType.GroveMana);
+
+        // A stationed army, a guarded ruin, treasure and one site of each type.
+        map.PlaceStack(new WorldPosition(7, 19), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader)));
+        int ruin = map.PlaceRuin(new WorldPosition(20, 12), 2, "Rigel Ruin").Ruin!.Id;
+        map.UpdateRuin(ruin, 2, "Rigel Ruin", 500, SomeItems(1)[0], Slots((GridPosition.FrontCenter, NeutralSoldier)));
+        int bag = map.PlaceBag(new WorldPosition(12, 14), 0).Bag!.Id;
+        map.UpdateBag(bag, 0, SomeItems(2));
+        int merchant = map.PlaceSite(new WorldPosition(10, 20), CustomMapSiteType.Merchant, 0, "Shop", "").Site!.Id;
+        map.UpdateSite(merchant, 0, "Shop", "", [new CustomMapMerchantItem(SomeItems(3)[2], 3)], [], []);
+        int mage = map.PlaceSite(new WorldPosition(30, 14), CustomMapSiteType.MageTower, 0, "Tower", "").Site!.Id;
+        map.UpdateSite(mage, 0, "Tower", "", [], SomeSpells(2), []);
+        int camp = map.PlaceSite(new WorldPosition(20, 20), CustomMapSiteType.Mercenaries, 0, "Camp", "").Site!.Id;
+        map.UpdateSite(camp, 0, "Camp", "", [], [], [new CustomMapMercenary(NeutralSoldier.TypeId, 1)]);
+        map.PlaceSite(new WorldPosition(30, 20), CustomMapSiteType.Trainer, 0, "Trainer", "");
+        Assert.That((map.Stacks.Count, map.Ruins.Count, map.Bags.Count, map.Sites.Count), Is.EqualTo((1, 1, 1, 4)));
         store.Save(map);
 
         ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);

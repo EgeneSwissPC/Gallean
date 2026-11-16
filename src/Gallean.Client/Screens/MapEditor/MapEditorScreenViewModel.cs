@@ -15,11 +15,14 @@ internal enum MapEditorTool
     Capital,
     Army,
     Village,
-    Resource
+    Resource,
+    Ruin,
+    Bag,
+    Site
 }
 
 // Paints a CustomMap and shows it through the game's world renderer. Terrain strokes update the preview state
-// directly; placing a capital, army, village or resource rebuilds the preview through the scenario loader.
+// directly; placing a capital or any object rebuilds the preview through the scenario loader.
 internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 {
     public const int MaxBrushRadius = 8;
@@ -40,21 +43,20 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     private readonly IReadOnlyList<UnitDefinition> units;
     private int previewVersion;
     private GameModel editorGame;
-    private readonly IReadOnlyList<string> villageNames;
+    private readonly MapEditorLibrary library;
 
     public MapEditorScreenViewModel(
         GameViewModel game,
         CustomMapStore store,
         GameModel editorGame,
         CustomMap map,
-        IReadOnlyList<UnitDefinition> units,
-        IReadOnlyList<string>? villageNames = null)
+        MapEditorLibrary library)
     {
         Game = game;
         this.store = store;
         this.editorGame = editorGame;
-        this.units = units;
-        this.villageNames = villageNames ?? [];
+        this.library = library;
+        units = library.Units;
         definitions = editorGame.Definitions;
         this.map = map;
         Scenario = editorGame.Scenario;
@@ -71,7 +73,10 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             new MapEditorOption<MapEditorTool>(MapEditorTool.Capital, Tr("Capital")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Army, Tr("Army")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Village, Tr("Village")),
-            new MapEditorOption<MapEditorTool>(MapEditorTool.Resource, Tr("Resources"))
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Resource, Tr("Resources")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Ruin, Tr("Ruin")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Bag, Tr("Treasure")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Site, Tr("Site"))
         ];
         SelectedTool = Tools[0];
         LandTerrains =
@@ -98,6 +103,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
                 .Select(type => new MapEditorOption<WorldResourceType>(type, MapEditorLabels.Resource(type)))
         ];
         SelectedResourceType = ResourceTypes[0];
+        SiteTypes =
+        [
+            .. new[] { CustomMapSiteType.Merchant, CustomMapSiteType.MageTower, CustomMapSiteType.Mercenaries, CustomMapSiteType.Trainer }
+                .Select(type => new MapEditorOption<CustomMapSiteType>(type, MapEditorLabels.SiteType(type)))
+        ];
+        SelectedSiteType = SiteTypes[0];
         Name = map.Name;
         BrushRadius = 1;
         renderRequest = CreateRenderRequest();
@@ -115,6 +126,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public IReadOnlyList<MapEditorOption<WorldRace>> VillageOwners { get; }
     public IReadOnlyList<MapEditorOption<int>> VillageLevels { get; }
     public IReadOnlyList<MapEditorOption<WorldResourceType>> ResourceTypes { get; }
+    public IReadOnlyList<MapEditorOption<CustomMapSiteType>> SiteTypes { get; }
+    public MapEditorLibrary Library => library;
     public GameModel EditorGame => editorGame;
     public int MapWidth => map.Size;
     public int MapHeight => map.Size;
@@ -135,8 +148,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public override ScreenMusic Music => ScreenMusic.Tracks(musicQueue);
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(IsVillageTool), nameof(IsResourceTool), nameof(HasBrush))]
+    [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(IsVillageTool), nameof(IsResourceTool))]
+    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(HasBrush))]
     public partial MapEditorOption<MapEditorTool> SelectedTool { get; set; }
+
+    [ObservableProperty]
+    public partial MapEditorOption<CustomMapSiteType> SelectedSiteType { get; set; }
 
     [ObservableProperty]
     public partial MapEditorOption<WorldRace> SelectedVillageOwner { get; set; }
@@ -184,7 +201,10 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public bool IsArmyTool => SelectedTool.Value == MapEditorTool.Army;
     public bool IsVillageTool => SelectedTool.Value == MapEditorTool.Village;
     public bool IsResourceTool => SelectedTool.Value == MapEditorTool.Resource;
-    public bool HasBrush => SelectedTool.Value is not (MapEditorTool.Capital or MapEditorTool.Army or MapEditorTool.Village or MapEditorTool.Resource);
+    public bool IsRuinTool => SelectedTool.Value == MapEditorTool.Ruin;
+    public bool IsBagTool => SelectedTool.Value == MapEditorTool.Bag;
+    public bool IsSiteTool => SelectedTool.Value == MapEditorTool.Site;
+    public bool HasBrush => SelectedTool.Value is MapEditorTool.Land or MapEditorTool.Water or MapEditorTool.Forest or MapEditorTool.Mountain or MapEditorTool.Clear;
 
     partial void OnSelectedToolChanged(MapEditorOption<MapEditorTool> value)
     {
@@ -249,6 +269,24 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         if (SelectedTool.Value == MapEditorTool.Resource)
         {
             ClickResource(tile);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Ruin)
+        {
+            ClickRuin(tile);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Bag)
+        {
+            ClickBag(tile);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Site)
+        {
+            ClickSite(tile);
             return;
         }
 
@@ -347,11 +385,20 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     }
 
     // Army tool: clicking free land opens the army screen for a new army, clicking an army opens it for editing.
+    // Clicking a village opens the army stationed in it, which belongs to the village's owner.
     private void ClickArmy(WorldPosition tile)
     {
+        WorldRace owner = SelectedArmyOwner.Value;
+
+        if (map.GetVillageAt(tile) is { } village)
+        {
+            tile = village.Entrance;
+            owner = village.Owner;
+        }
+
         CustomMapStack? existing = map.GetStackAt(tile);
 
-        if (existing is null && map.PlaceStack(tile, SelectedArmyOwner.Value, ProbeArmy).Error is { } blocked and not CustomMapStackError.NoLeader)
+        if (existing is null && map.PlaceStack(tile, owner, ProbeArmy).Error is { } blocked and not CustomMapStackError.NoLeader)
         {
             Game.ShowError(MapEditorLabels.StackError(blocked, 0));
             return;
@@ -361,11 +408,141 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             Game,
             editorGame,
             units,
-            existing?.Owner ?? SelectedArmyOwner.Value,
+            existing?.Owner ?? owner,
             tile,
             existing?.Slots,
-            (owner, slots) => SaveArmy(tile, existing?.Id, owner, slots),
+            (armyOwner, slots) => SaveArmy(tile, existing?.Id, armyOwner, slots),
             existing is null ? null : () => DeleteArmy(existing.Id)));
+    }
+
+    // Ruin tool: clicking free land places a ruin centred on the tile, clicking a ruin opens it.
+    private void ClickRuin(WorldPosition tile)
+    {
+        if (map.GetRuinAt(tile) is { } existing)
+        {
+            Game.OpenScreen(new MapEditorRuinScreenViewModel(
+                Game,
+                editorGame,
+                library,
+                existing,
+                (variant, name, gold, item, guards) => Commit(current => current.UpdateRuin(existing.Id, variant, name, gold, item, guards)),
+                () => CommitRemoval(current => current.RemoveRuin(existing.Id))));
+            return;
+        }
+
+        WorldPosition topLeft = CenterFootprint(tile, CustomMapRuin.Size);
+        CustomMap before = map.Clone();
+
+        if (map.PlaceRuin(topLeft, random.Next(CustomMapRuin.VariantCount), PickName(library.Names.Ruins, map.Ruins.Select(ruin => ruin.Name)).Name).Error is { } error)
+        {
+            Game.ShowError(MapEditorLabels.ObjectError(error));
+            return;
+        }
+
+        CommitArmyChange(before);
+    }
+
+    // Treasure tool: clicking land or water places a bag, clicking a bag opens it.
+    private void ClickBag(WorldPosition tile)
+    {
+        if (map.GetBagAt(tile) is { } existing)
+        {
+            Game.OpenScreen(new MapEditorBagScreenViewModel(
+                Game,
+                editorGame,
+                library,
+                existing,
+                map.GetCell(tile).Terrain == WorldMapTerrain.Water,
+                (variant, items) => Commit(current => current.UpdateBag(existing.Id, variant, items)),
+                () => CommitRemoval(current => current.RemoveBag(existing.Id))));
+            return;
+        }
+
+        CustomMap before = map.Clone();
+        int variant = random.Next(map.GetCell(tile).Terrain == WorldMapTerrain.Water ? 4 : CustomMapBag.VariantCount);
+
+        if (map.PlaceBag(tile, variant).Error is { } error)
+        {
+            Game.ShowError(MapEditorLabels.ObjectError(error));
+            return;
+        }
+
+        CommitArmyChange(before);
+    }
+
+    // Site tool: clicking free land places a site of the chosen type centred on the tile, clicking a site opens it.
+    private void ClickSite(WorldPosition tile)
+    {
+        if (map.GetSiteAt(tile) is { } existing)
+        {
+            Game.OpenScreen(new MapEditorSiteScreenViewModel(
+                Game,
+                editorGame,
+                library,
+                existing,
+                (variant, name, greeting, items, spells, siteUnits) => Commit(current => current.UpdateSite(existing.Id, variant, name, greeting, items, spells, siteUnits)),
+                () => CommitRemoval(current => current.RemoveSite(existing.Id))));
+            return;
+        }
+
+        CustomMapSiteType type = SelectedSiteType.Value;
+        IReadOnlyList<MapEditorName> names = type switch
+        {
+            CustomMapSiteType.Merchant => library.Names.Merchants,
+            CustomMapSiteType.MageTower => library.Names.MageTowers,
+            CustomMapSiteType.Mercenaries => library.Names.MercenaryCamps,
+            _ => library.Names.Trainers
+        };
+        MapEditorName name = PickName(names, map.Sites.Select(site => site.Name));
+        CustomMap before = map.Clone();
+
+        if (map.PlaceSite(CenterFootprint(tile, CustomMapSite.Size), type, random.Next(CustomMapSite.GetVariantCount(type)), name.Name, name.Greeting).Error is { } error)
+        {
+            Game.ShowError(MapEditorLabels.ObjectError(error));
+            return;
+        }
+
+        CommitArmyChange(before);
+    }
+
+    private WorldPosition CenterFootprint(WorldPosition tile, int size)
+    {
+        int offset = size / 2;
+
+        return new WorldPosition(Math.Clamp(tile.X - offset, 0, map.Size - size), Math.Clamp(tile.Y - offset, 0, map.Size - size));
+    }
+
+    // A name from the game's list that the map does not use yet.
+    private MapEditorName PickName(IReadOnlyList<MapEditorName> names, IEnumerable<string> used)
+    {
+        HashSet<string> taken = new(used, StringComparer.OrdinalIgnoreCase);
+        MapEditorName[] free = [.. names.Where(name => !taken.Contains(name.Name))];
+
+        return free.Length > 0 ? free[random.Next(free.Length)] : names.Count > 0 ? names[random.Next(names.Count)] : new MapEditorName(string.Empty, string.Empty);
+    }
+
+    // Applies a change made in an object screen; returns the problem to show there, if any.
+    private string? Commit(Func<CustomMap, CustomMapPlacementError?> change)
+    {
+        CustomMap before = map.Clone();
+
+        if (change(map) is { } error)
+        {
+            return MapEditorLabels.ObjectError(error);
+        }
+
+        CommitArmyChange(before);
+        return null;
+    }
+
+    private void CommitRemoval(Func<CustomMap, bool> removal)
+    {
+        CustomMap before = map.Clone();
+
+        if (removal(map))
+        {
+            CommitArmyChange(before);
+        }
     }
 
     // An empty army: placing it only checks the tile (it fails with NoLeader when the tile itself is fine).
@@ -431,9 +608,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     // A name the map does not use yet, from the game's list of city names.
     private string NextVillageName()
     {
-        string[] free = [.. villageNames.Where(name => !map.Villages.Any(village => string.Equals(village.Name, name, StringComparison.OrdinalIgnoreCase)))];
-
-        return free.Length > 0 ? free[random.Next(free.Length)] : string.Empty;
+        return PickName(library.Names.Villages, map.Villages.Select(village => village.Name)).Name;
     }
 
     private string? SaveVillage(int id, int level, WorldRace owner, string name, CustomMapUnit?[] garrison)
@@ -562,7 +737,10 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         bool capitalsChanged = !previous.Players.SequenceEqual(map.Players) ||
                                !previous.Stacks.SequenceEqual(map.Stacks) ||
                                !previous.Villages.SequenceEqual(map.Villages) ||
-                               !previous.Resources.SequenceEqual(map.Resources);
+                               !previous.Resources.SequenceEqual(map.Resources) ||
+                               !previous.Ruins.SequenceEqual(map.Ruins) ||
+                               !previous.Bags.SequenceEqual(map.Bags) ||
+                               !previous.Sites.SequenceEqual(map.Sites);
         map = undoSteps.Pop();
 
         CanUndo = undoSteps.Count > 0;
@@ -712,8 +890,17 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         string resource = map.GetResourceAt(tile) is { } source
             ? $" · {MapEditorLabels.Resource(source.Type)}"
             : string.Empty;
+        string ruin = map.GetRuinAt(tile) is { } foundRuin
+            ? Tr(" · ruin {0}", foundRuin.Name)
+            : string.Empty;
+        string site = map.GetSiteAt(tile) is { } foundSite
+            ? $" · {MapEditorLabels.SiteType(foundSite.Type)} {foundSite.Name}"
+            : string.Empty;
+        string bag = map.GetBagAt(tile) is { } foundBag
+            ? Tr(" · treasure ({0} items)", foundBag.Items.Length)
+            : string.Empty;
 
-        return $"{tile.X}, {tile.Y}: {MapEditorLabels.Terrain(cell.Terrain)}{feature}{army}{village}{resource}";
+        return $"{tile.X}, {tile.Y}: {MapEditorLabels.Terrain(cell.Terrain)}{feature}{army}{village}{resource}{ruin}{site}{bag}";
     }
 
     private string GetUnitName(UnitDefinitionId typeId)

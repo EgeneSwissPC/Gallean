@@ -11,7 +11,8 @@ public enum CustomMapPlacementError
     InvalidLevel,
     LeaderInGarrison,
     GarrisonFull,
-    InvalidSlot
+    InvalidSlot,
+    TooManyGoods
 }
 
 // A gold mine or mana source. It pays whoever owns the land under it (WorldPlan.GetLandOwner).
@@ -27,6 +28,9 @@ public sealed record CustomMapVillage(int Id, WorldPosition TopLeft, int Level, 
     public const int MaxLevel = 5;
 
     public WorldFootprint Footprint => new(TopLeft, Size, Size);
+
+    // The tile an army stationed in the village stands on (FortificationCalculator.GetEntrance).
+    public WorldPosition Entrance => new(TopLeft.X + Size - 1, TopLeft.Y + Size - 1);
 
     public static ImmutableArray<CustomMapUnit?> EmptyGarrison => [.. new CustomMapUnit?[GridPosition.Count]];
 
@@ -66,6 +70,13 @@ public sealed record CustomMapVillage(int Id, WorldPosition TopLeft, int Level, 
             return CustomMapPlacementError.InvalidLevel;
         }
 
+        return ValidateUnits(slots, level);
+    }
+
+    // Garrison rules shared by villages and ruin guards: valid slots, no leaders, at most capacity units with large
+    // units counting twice.
+    public static CustomMapPlacementError? ValidateUnits(IReadOnlyList<CustomMapUnit?> slots, int capacity)
+    {
         if (slots.Count != GridPosition.Count)
         {
             return CustomMapPlacementError.InvalidSlot;
@@ -91,6 +102,6 @@ public sealed record CustomMapVillage(int Id, WorldPosition TopLeft, int Level, 
             }
         }
 
-        return CustomMapStack.GetOccupiedLeadership(slots) > level ? CustomMapPlacementError.GarrisonFull : null;
+        return CustomMapStack.GetOccupiedLeadership(slots) > capacity ? CustomMapPlacementError.GarrisonFull : null;
     }
 }

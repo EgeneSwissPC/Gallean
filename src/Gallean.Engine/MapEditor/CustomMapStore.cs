@@ -89,12 +89,12 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         Db.ScenarioInfo info = List().Single(candidate => string.Equals(candidate.ScenarioId.Value, mapId, StringComparison.OrdinalIgnoreCase));
         ScenarioDatabase database = LoadDatabase(mapId);
         Scenario scenario = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(info.ScenarioId.Value), definitions, new GlobalVariables());
-        Dictionary<string, string> names = database.TextScenariosByScenario[info.ScenarioId]
-            .Where(text => text.IdString == Db.TextScenario.NameTextId && text.Text is not null)
-            .GroupBy(text => text.IdObject.Value, StringComparer.OrdinalIgnoreCase)
+        Dictionary<string, string> texts = database.TextScenariosByScenario[info.ScenarioId]
+            .Where(text => text.Text is not null)
+            .GroupBy(text => $"{text.IdObject.Value}/{text.IdString}", StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First().Text!, StringComparer.OrdinalIgnoreCase);
 
-        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, names.GetValueOrDefault);
+        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, (objectId, textId) => texts.GetValueOrDefault($"{objectId}/{textId}"));
     }
 
     // Builds the world state the editor renders by saving the map to a scratch folder and loading it through the
@@ -164,8 +164,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         };
     }
 
-    // getName returns the scenario name text of an object (by its scenario ID), when known.
-    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions, Func<string, string?>? getName = null)
+    // getText returns a scenario text of an object (scenario object ID, text ID such as NAME_TXT), when known.
+    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions, Func<string, string, string?>? getText = null)
     {
         if (state.Map.Width != state.Map.Height)
         {
@@ -219,7 +219,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         foreach (WorldCity city in state.Fortifications.Values.OfType<WorldCity>())
         {
             int id = ParseObjectNumber(city.Id.Value, CustomMapWriter.FirstVillageNumber) ?? villages.Count + 1;
-            string villageName = getName?.Invoke(city.Id.Value) ?? string.Empty;
+            string villageName = getText?.Invoke(city.Id.Value, Db.TextScenario.NameTextId) ?? string.Empty;
             villages.Add(new CustomMapVillage(id, city.Footprint.TopLeft, city.DefinitionId.Level, state.Players[city.OwnerId].Race, villageName, [.. ToSlots(city.Garrison, definitions)]));
         }
 
@@ -231,7 +231,44 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             resources.Add(new CustomMapResource(id, node.Position, node.ResourceType));
         }
 
-        return new CustomMap(mapId, name, description, state.Map.Width, state.Map.Cells, mountains, players, stacks, villages, resources);
+        List<CustomMapRuin> ruins = [];
+
+        foreach (WorldRuin ruin in state.Fortifications.Values.OfType<WorldRuin>())
+        {
+            int id = ParseObjectNumber(ruin.Id.Value, 0) ?? ruins.Count + 1;
+            string ruinName = getText?.Invoke(ruin.Id.Value, Db.TextScenario.RuinTitleTextId) ?? string.Empty;
+            ruins.Add(new CustomMapRuin(id, ruin.Footprint.TopLeft, ruin.Variant.Value, ruinName, ruin.Resources.Gold, ruin.Item, [.. ToSlots(ruin.Garrison, definitions)]));
+        }
+
+        List<CustomMapBag> bags = [];
+
+        foreach (WorldBag bag in state.Bags.Values)
+        {
+            int id = ParseObjectNumber(bag.Id.Value, 0) ?? bags.Count + 1;
+            bags.Add(new CustomMapBag(id, bag.Position, bag.Variant.Value, [.. bag.Inventory.Items.Select(item => item.DefinitionId)]));
+        }
+
+        List<CustomMapSite> sites = [];
+
+        foreach (WorldSite site in state.Sites.Values)
+        {
+            int id = ParseObjectNumber(site.Id.Value, 0) ?? sites.Count + 1;
+            string siteName = getText?.Invoke(site.Id.Value, Db.TextScenario.SiteTitleTextId) ?? string.Empty;
+            string greeting = getText?.Invoke(site.Id.Value, Db.TextScenario.SiteDescriptionTextId) ?? string.Empty;
+            CustomMapSite converted = site switch
+            {
+                WorldMerchantSite merchant => new CustomMapSite(id, site.Footprint.TopLeft, CustomMapSiteType.Merchant, site.Variant.Value, siteName, greeting,
+                    [.. merchant.Items.Select(item => new CustomMapMerchantItem(item.ItemId, item.Count))], [], []),
+                WorldMageSite mage => new CustomMapSite(id, site.Footprint.TopLeft, CustomMapSiteType.MageTower, site.Variant.Value, siteName, greeting,
+                    [], [.. mage.Spells], []),
+                WorldMercenarySite camp => new CustomMapSite(id, site.Footprint.TopLeft, CustomMapSiteType.Mercenaries, site.Variant.Value, siteName, greeting,
+                    [], [], [.. camp.Units.Select(unit => new CustomMapMercenary(unit.DefinitionId, unit.Level))]),
+                _ => new CustomMapSite(id, site.Footprint.TopLeft, CustomMapSiteType.Trainer, site.Variant.Value, siteName, greeting, [], [], [])
+            };
+            sites.Add(converted);
+        }
+
+        return new CustomMap(mapId, name, description, state.Map.Width, state.Map.Cells, mountains, players, stacks, villages, resources, ruins, bags, sites);
     }
 
     // The editor's object number from a saved ID such as S600KC0101 (first = 0x100 gives 1).
@@ -254,6 +291,18 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         }
 
         return slots;
+    }
+
+    // Items the editor offers for bags, ruins and merchants: every item of the game.
+    public IReadOnlyList<ItemDefinition> ListItems(IGameDefinitionProvider definitions)
+    {
+        return [.. globalDb.Items.Keys.Select(id => definitions.GetItem(new ItemDefinitionId(id.Value)))];
+    }
+
+    // Spells the editor offers for mage towers: every spell of the game.
+    public IReadOnlyList<WorldSpellDefinition> ListSpells(IGameDefinitionProvider definitions)
+    {
+        return [.. globalDb.Spells.Keys.Select(id => definitions.GetSpell(new WorldSpellDefinitionId(id.Value)))];
     }
 
     // Units the editor offers for armies: regular and neutral soldiers and leaders that can walk on land.

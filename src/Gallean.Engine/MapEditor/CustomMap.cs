@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Gallean.Common;
 
 namespace Gallean.Engine;
 
@@ -18,9 +19,10 @@ public sealed record CustomMapMountain(int Id, WorldPosition TopLeft, int Size, 
     public WorldFootprint Footprint => new(TopLeft, Size, Size);
 }
 
-// The map editor's document: terrain, mountains, one player per race with its capital, armies, villages and
-// resources. It is saved as a normal scenario (CustomMapWriter) and read back through the regular scenario loader
-// (CustomMapStore).
+// The map editor's document: terrain, mountains, one player per race with its capital, armies, villages, resources,
+// ruins, treasure bags and sites. It is saved as a normal scenario (CustomMapWriter) and read back through the
+// regular scenario loader (CustomMapStore). Capitals, villages, ruins and sites are structures: their tiles are
+// protected from brushes and they never overlap. An army may stand on a village's entrance: it is stationed there.
 public sealed class CustomMap
 {
     public const int MinSize = 16;
@@ -36,6 +38,9 @@ public sealed class CustomMap
     private readonly List<CustomMapStack> stacks;
     private readonly List<CustomMapVillage> villages;
     private readonly List<CustomMapResource> resources;
+    private readonly List<CustomMapRuin> ruins;
+    private readonly List<CustomMapBag> bags;
+    private readonly List<CustomMapSite> sites;
 
     public CustomMap(
         string id,
@@ -47,7 +52,10 @@ public sealed class CustomMap
         IEnumerable<CustomMapPlayer> players,
         IEnumerable<CustomMapStack>? stacks = null,
         IEnumerable<CustomMapVillage>? villages = null,
-        IEnumerable<CustomMapResource>? resources = null)
+        IEnumerable<CustomMapResource>? resources = null,
+        IEnumerable<CustomMapRuin>? ruins = null,
+        IEnumerable<CustomMapBag>? bags = null,
+        IEnumerable<CustomMapSite>? sites = null)
     {
         if (size is < MinSize or > MaxSize)
         {
@@ -64,6 +72,9 @@ public sealed class CustomMap
         this.stacks = [.. stacks ?? []];
         this.villages = [.. villages ?? []];
         this.resources = [.. resources ?? []];
+        this.ruins = [.. ruins ?? []];
+        this.bags = [.. bags ?? []];
+        this.sites = [.. sites ?? []];
 
         if (this.cells.Length != size * size)
         {
@@ -81,6 +92,9 @@ public sealed class CustomMap
     public IReadOnlyList<CustomMapStack> Stacks => stacks;
     public IReadOnlyList<CustomMapVillage> Villages => villages;
     public IReadOnlyList<CustomMapResource> Resources => resources;
+    public IReadOnlyList<CustomMapRuin> Ruins => ruins;
+    public IReadOnlyList<CustomMapBag> Bags => bags;
+    public IReadOnlyList<CustomMapSite> Sites => sites;
 
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
@@ -113,7 +127,7 @@ public sealed class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites);
     }
 
     public WorldMapCell GetCell(WorldPosition position)
@@ -159,9 +173,9 @@ public sealed class CustomMap
 
         foreach (WorldPosition position in GetBrushArea(center, radius))
         {
-            if (!IsValidPosition(position) || IsUnderFortification(position) ||
+            if (!IsValidPosition(position) || IsUnderStructure(position) ||
                 (brush == CustomMapBrush.Water && (GetStackAt(position) is not null || GetResourceAt(position) is not null)) ||
-                (brush == CustomMapBrush.Forest && GetResourceAt(position) is not null))
+                (brush == CustomMapBrush.Forest && (GetResourceAt(position) is not null || GetBagAt(position) is not null)))
             {
                 continue;
             }
@@ -214,7 +228,10 @@ public sealed class CustomMap
 
         if (stacks.Any(stack => footprint.Contains(stack.Position)) ||
             resources.Any(resource => footprint.Contains(resource.Position)) ||
-            villages.Any(village => Overlaps(village.Footprint, footprint)))
+            bags.Any(bag => footprint.Contains(bag.Position)) ||
+            villages.Any(village => Overlaps(village.Footprint, footprint)) ||
+            ruins.Any(ruin => Overlaps(ruin.Footprint, footprint)) ||
+            sites.Any(site => Overlaps(site.Footprint, footprint)))
         {
             return false;
         }
@@ -297,7 +314,12 @@ public sealed class CustomMap
 
         WorldMapCell cell = GetCell(position);
 
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderFortification(position) || GetResourceAt(position) is not null)
+        // A village's entrance takes one army of the village's owner: it is stationed in the village.
+        CustomMapVillage? village = GetVillageAt(position);
+        bool stationed = village is not null && village.Entrance == position;
+
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain ||
+            (IsUnderStructure(position) && !stationed) || GetResourceAt(position) is not null || GetBagAt(position) is not null)
         {
             return CustomMapStackError.Blocked;
         }
@@ -310,6 +332,11 @@ public sealed class CustomMap
         if (!IsValidOwner(owner))
         {
             return CustomMapStackError.UnknownOwner;
+        }
+
+        if (stationed && owner != village!.Owner)
+        {
+            return CustomMapStackError.VillageOwner;
         }
 
         return CustomMapStack.ValidateSlots(slots);
@@ -344,12 +371,12 @@ public sealed class CustomMap
 
         WorldMapCell cell = GetCell(position);
 
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderFortification(position))
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position))
         {
             return CustomMapPlacementError.Blocked;
         }
 
-        if (GetStackAt(position) is not null)
+        if (GetStackAt(position) is not null || GetBagAt(position) is not null)
         {
             return CustomMapPlacementError.Occupied;
         }
@@ -372,7 +399,7 @@ public sealed class CustomMap
     {
         WorldFootprint footprint = new(topLeft, CustomMapVillage.Size, CustomMapVillage.Size);
 
-        if (CheckVillageSite(footprint, ignoreId: null) is { } error)
+        if (CheckStructureSite(footprint) is { } error)
         {
             return (null, error);
         }
@@ -417,15 +444,224 @@ public sealed class CustomMap
         villages[index] = villages[index] with { Level = level, Owner = owner, Name = name, Garrison = [.. garrison] };
         ClaimLand(villages[index].Footprint, owner);
 
+        // The army stationed in the village serves its new owner.
+        int stationed = stacks.FindIndex(stack => stack.Position == villages[index].Entrance);
+
+        if (stationed >= 0)
+        {
+            stacks[stationed] = stacks[stationed] with { Owner = owner };
+        }
+
         return null;
     }
 
+    // Removes a village together with the army stationed in it.
     public bool RemoveVillage(int id)
     {
-        return villages.RemoveAll(village => village.Id == id) > 0;
+        if (villages.Find(village => village.Id == id) is not { } village)
+        {
+            return false;
+        }
+
+        villages.Remove(village);
+        stacks.RemoveAll(stack => stack.Position == village.Entrance);
+
+        return true;
     }
 
-    private CustomMapPlacementError? CheckVillageSite(WorldFootprint footprint, int? ignoreId)
+    public CustomMapStack? GetStationedStack(CustomMapVillage village)
+    {
+        return GetStackAt(village.Entrance);
+    }
+
+    public CustomMapRuin? GetRuinAt(WorldPosition position)
+    {
+        return ruins.FirstOrDefault(ruin => ruin.Footprint.Contains(position));
+    }
+
+    public CustomMapSite? GetSiteAt(WorldPosition position)
+    {
+        return sites.FirstOrDefault(site => site.Footprint.Contains(position));
+    }
+
+    public CustomMapBag? GetBagAt(WorldPosition position)
+    {
+        return bags.FirstOrDefault(bag => bag.Position == position);
+    }
+
+    // Places a ruin with its top-left corner at topLeft. Its tiles become free land (forests, mountains and water
+    // are cleared); it starts unguarded with no reward.
+    public (CustomMapRuin? Ruin, CustomMapPlacementError? Error) PlaceRuin(WorldPosition topLeft, int variant, string name)
+    {
+        WorldFootprint footprint = new(topLeft, CustomMapRuin.Size, CustomMapRuin.Size);
+
+        if (CheckStructureSite(footprint) is { } error)
+        {
+            return (null, error);
+        }
+
+        int id = ruins.Count == 0 ? 1 : ruins.Max(ruin => ruin.Id) + 1;
+        CustomMapRuin placed = new(id, topLeft, variant.Mod(CustomMapRuin.VariantCount), name, Gold: 0, Item: null, CustomMapVillage.EmptyGarrison);
+        ruins.Add(placed);
+        ClearLand(footprint);
+
+        return (placed, null);
+    }
+
+    public CustomMapPlacementError? UpdateRuin(int id, int variant, string name, int gold, ItemDefinitionId? item, IReadOnlyList<CustomMapUnit?> guards)
+    {
+        int index = ruins.FindIndex(ruin => ruin.Id == id);
+
+        if (index < 0)
+        {
+            return CustomMapPlacementError.OutsideMap;
+        }
+
+        if (CustomMapVillage.ValidateUnits(guards, CustomMapRuin.GuardCapacity) is { } error)
+        {
+            return error;
+        }
+
+        ruins[index] = ruins[index] with
+        {
+            Variant = variant.Mod(CustomMapRuin.VariantCount),
+            Name = name,
+            Gold = Math.Clamp(gold, 0, CustomMapRuin.MaxGold),
+            Item = item,
+            Guards = [.. guards]
+        };
+
+        return null;
+    }
+
+    public bool RemoveRuin(int id)
+    {
+        return ruins.RemoveAll(ruin => ruin.Id == id) > 0;
+    }
+
+    // Places a site with its top-left corner at topLeft; like a ruin, its tiles become free land.
+    public (CustomMapSite? Site, CustomMapPlacementError? Error) PlaceSite(WorldPosition topLeft, CustomMapSiteType type, int variant, string name, string greeting)
+    {
+        WorldFootprint footprint = new(topLeft, CustomMapSite.Size, CustomMapSite.Size);
+
+        if (CheckStructureSite(footprint) is { } error)
+        {
+            return (null, error);
+        }
+
+        int id = sites.Count == 0 ? 1 : sites.Max(site => site.Id) + 1;
+        CustomMapSite placed = new(id, topLeft, type, variant.Mod(CustomMapSite.GetVariantCount(type)), name, greeting, [], [], []);
+        sites.Add(placed);
+        ClearLand(footprint);
+
+        return (placed, null);
+    }
+
+    // Updates a site; only the goods of its type are kept (items for merchants, spells for mage towers, units for
+    // mercenary camps).
+    public CustomMapPlacementError? UpdateSite(
+        int id,
+        int variant,
+        string name,
+        string greeting,
+        IReadOnlyList<CustomMapMerchantItem> items,
+        IReadOnlyList<WorldSpellDefinitionId> spells,
+        IReadOnlyList<CustomMapMercenary> units)
+    {
+        int index = sites.FindIndex(site => site.Id == id);
+
+        if (index < 0)
+        {
+            return CustomMapPlacementError.OutsideMap;
+        }
+
+        CustomMapSiteType type = sites[index].Type;
+        ImmutableArray<CustomMapMerchantItem> keptItems = type == CustomMapSiteType.Merchant ? [.. items.Where(item => item.Count > 0)] : [];
+        ImmutableArray<WorldSpellDefinitionId> keptSpells = type == CustomMapSiteType.MageTower ? [.. spells.Distinct()] : [];
+        ImmutableArray<CustomMapMercenary> keptUnits = type == CustomMapSiteType.Mercenaries ? [.. units] : [];
+
+        if (keptItems.Length > CustomMapSite.MaxGoods || keptSpells.Length > CustomMapSite.MaxGoods || keptUnits.Length > CustomMapSite.MaxGoods)
+        {
+            return CustomMapPlacementError.TooManyGoods;
+        }
+
+        sites[index] = sites[index] with
+        {
+            Variant = variant.Mod(CustomMapSite.GetVariantCount(type)),
+            Name = name,
+            Greeting = greeting,
+            Items = keptItems,
+            Spells = keptSpells,
+            Units = keptUnits
+        };
+
+        return null;
+    }
+
+    public bool RemoveSite(int id)
+    {
+        return sites.RemoveAll(site => site.Id == id) > 0;
+    }
+
+    // Places a bag on land or water; a forest under it is cleared.
+    public (CustomMapBag? Bag, CustomMapPlacementError? Error) PlaceBag(WorldPosition position, int variant)
+    {
+        if (!IsValidPosition(position))
+        {
+            return (null, CustomMapPlacementError.OutsideMap);
+        }
+
+        WorldMapCell cell = GetCell(position);
+
+        if (cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position))
+        {
+            return (null, CustomMapPlacementError.Blocked);
+        }
+
+        if (GetStackAt(position) is not null || GetResourceAt(position) is not null || GetBagAt(position) is not null)
+        {
+            return (null, CustomMapPlacementError.Occupied);
+        }
+
+        int id = bags.Count == 0 ? 1 : bags.Max(bag => bag.Id) + 1;
+        CustomMapBag placed = new(id, position, variant.Mod(CustomMapBag.VariantCount), []);
+        bags.Add(placed);
+
+        if (cell.Feature == WorldMapFeature.Forest)
+        {
+            cells[(position.Y * Size) + position.X] = cell with { Feature = WorldMapFeature.None, FeatureVariant = new WorldObjectVariant(0) };
+        }
+
+        return (placed, null);
+    }
+
+    public CustomMapPlacementError? UpdateBag(int id, int variant, IReadOnlyList<ItemDefinitionId> items)
+    {
+        int index = bags.FindIndex(bag => bag.Id == id);
+
+        if (index < 0)
+        {
+            return CustomMapPlacementError.OutsideMap;
+        }
+
+        if (items.Count > CustomMapBag.MaxItems)
+        {
+            return CustomMapPlacementError.TooManyGoods;
+        }
+
+        bags[index] = bags[index] with { Variant = variant.Mod(CustomMapBag.VariantCount), Items = [.. items] };
+
+        return null;
+    }
+
+    public bool RemoveBag(int id)
+    {
+        return bags.RemoveAll(bag => bag.Id == id) > 0;
+    }
+
+    // A new structure must fit inside the map, must not overlap another structure and must not cover an army, a
+    // resource or a bag.
+    private CustomMapPlacementError? CheckStructureSite(WorldFootprint footprint)
     {
         if (!IsValidPosition(footprint.TopLeft) ||
             !IsValidPosition(new WorldPosition(footprint.TopLeft.X + footprint.Width - 1, footprint.TopLeft.Y + footprint.Height - 1)))
@@ -433,20 +669,57 @@ public sealed class CustomMap
             return CustomMapPlacementError.OutsideMap;
         }
 
-        bool overlapsCapital = players.Any(player => player.Capital is { } capital && Overlaps(new WorldFootprint(capital, CapitalSize, CapitalSize), footprint));
-        bool overlapsVillage = villages.Any(village => village.Id != ignoreId && Overlaps(village.Footprint, footprint));
-
-        if (overlapsCapital || overlapsVillage)
+        if (GetStructureFootprints().Any(other => Overlaps(other, footprint)))
         {
             return CustomMapPlacementError.Blocked;
         }
 
-        if (stacks.Any(stack => footprint.Contains(stack.Position)) || resources.Any(resource => footprint.Contains(resource.Position)))
+        if (stacks.Any(stack => footprint.Contains(stack.Position)) ||
+            resources.Any(resource => footprint.Contains(resource.Position)) ||
+            bags.Any(bag => footprint.Contains(bag.Position)))
         {
             return CustomMapPlacementError.Occupied;
         }
 
         return null;
+    }
+
+    private IEnumerable<WorldFootprint> GetStructureFootprints()
+    {
+        foreach (CustomMapPlayer player in players)
+        {
+            if (player.Capital is { } capital)
+            {
+                yield return new WorldFootprint(capital, CapitalSize, CapitalSize);
+            }
+        }
+
+        foreach (CustomMapVillage village in villages)
+        {
+            yield return village.Footprint;
+        }
+
+        foreach (CustomMapRuin ruin in ruins)
+        {
+            yield return ruin.Footprint;
+        }
+
+        foreach (CustomMapSite site in sites)
+        {
+            yield return site.Footprint;
+        }
+    }
+
+    // Ruins and sites stand on free land: forests and mountains go, water becomes neutral land.
+    private void ClearLand(WorldFootprint footprint)
+    {
+        foreach (WorldPosition position in footprint.EnumerateTiles())
+        {
+            RemoveMountainsAt(position);
+            int index = (position.Y * Size) + position.X;
+            WorldMapTerrain terrain = cells[index].Terrain == WorldMapTerrain.Water ? WorldMapTerrain.Neutral : cells[index].Terrain;
+            cells[index] = new WorldMapCell(terrain, WorldMapFeature.None, new WorldObjectVariant(0));
+        }
     }
 
     private void ClaimLand(WorldFootprint footprint, WorldRace owner)
@@ -501,7 +774,8 @@ public sealed class CustomMap
 
         foreach (WorldPosition position in footprint.EnumerateTiles())
         {
-            if (!IsValidPosition(position) || IsUnderFortification(position) || GetStackAt(position) is not null || GetResourceAt(position) is not null)
+            if (!IsValidPosition(position) || IsUnderStructure(position) || GetStackAt(position) is not null ||
+                GetResourceAt(position) is not null || GetBagAt(position) is not null)
             {
                 return false;
             }
@@ -555,17 +829,9 @@ public sealed class CustomMap
         return changed;
     }
 
-    private bool IsUnderFortification(WorldPosition position)
+    private bool IsUnderStructure(WorldPosition position)
     {
-        foreach (CustomMapPlayer player in players)
-        {
-            if (player.Capital is { } capital && new WorldFootprint(capital, CapitalSize, CapitalSize).Contains(position))
-            {
-                return true;
-            }
-        }
-
-        return GetVillageAt(position) is not null;
+        return GetStructureFootprints().Any(footprint => footprint.Contains(position));
     }
 
     private static bool Overlaps(WorldFootprint a, WorldFootprint b)

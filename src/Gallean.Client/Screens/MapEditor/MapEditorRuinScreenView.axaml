@@ -1,0 +1,108 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorRuinScreenView"
+             x:DataType="local:MapEditorRuinScreenViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.rune.purchase">
+      <Setter Property="ToolTip.Tip" Value="{local:Text 'Add a unit'}" />
+    </Style>
+    <Style Selector="Line.party-divider">
+      <Setter Property="Margin" Value="32,24,32,0" />
+      <Setter Property="Stretch" Value="Fill" />
+      <Setter Property="StartPoint" Value="0,0" />
+      <Setter Property="EndPoint" Value="0,1" />
+      <Setter Property="Stroke" Value="{StaticResource AccentSecondaryBrush}" />
+      <Setter Property="StrokeThickness" Value="1" />
+      <Setter Property="StrokeDashArray" Value="4,3" />
+    </Style>
+    <Style Selector=":is(TextBlock).field-label">
+      <Setter Property="Margin" Value="0,10,0,4" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
+    <ContentControl Classes="ornament-panel"
+                    Background="{StaticResource CapitalScenePanelBodyGradientBrush}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,*,Auto" Margin="28,16">
+        <local:OutlinedTextBlock Grid.Row="0" Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" Margin="0,0,0,8" />
+
+        <Grid Grid.Row="1" ColumnDefinitions="320,Auto,Auto">
+          <!-- Ruin -->
+          <StackPanel Grid.Column="0" Width="300" VerticalAlignment="Center">
+            <Panel Height="150">
+              <local:AnimationVisual AnimationKey="{Binding PreviewKey}" Stretch="Uniform" />
+            </Panel>
+            <local:OutlinedTextBlock Text="{local:Text 'Name'}" Classes="caption field-label" />
+            <TextBox x:Name="RuinNameBox" Text="{Binding Name}" MaxLength="{Binding NameLength}" />
+            <local:OutlinedTextBlock Text="{local:Text 'Look'}" Classes="caption field-label" />
+            <ComboBox x:Name="RuinLookBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Looks}" SelectedItem="{Binding SelectedLook}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorLabeled">
+                  <TextBlock Text="{Binding Label}" Classes="body" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+            <local:OutlinedTextBlock Text="{local:Text 'Gold reward'}" Classes="caption field-label" />
+            <TextBox x:Name="RuinGoldBox" Text="{Binding GoldText}" MaxLength="4" />
+            <local:OutlinedTextBlock Text="{local:Text 'Item reward'}" Classes="caption field-label" />
+            <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="8">
+              <Panel Grid.Column="0" Width="44" Height="44" Classes="inventory-slot">
+                <local:PlateChrome Classes="socket" />
+                <local:SpriteVisual SpriteKey="{Binding ItemIcon}" Stretch="Uniform" />
+              </Panel>
+              <TextBlock Grid.Column="1" Text="{Binding ItemName}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+              <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                <Button x:Name="ChooseItemButton" Classes="pill" Height="28" Padding="10,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'Choose'}" Command="{Binding ChooseItemCommand}" />
+                <Button x:Name="ClearItemButton" Classes="pill" Height="28" Padding="10,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'None'}" Command="{Binding ClearItemCommand}" IsVisible="{Binding HasItem}" />
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+
+          <Line Grid.Column="1" Classes="party-divider" />
+
+          <!-- Guards -->
+          <StackPanel Grid.Column="2" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center" Margin="0,0,0,12" ToolTip.Tip="{local:Text 'Garrison size'}">
+              <local:OutlinedTextBlock Text="{local:Text 'Guards'}" Classes="object-name row" />
+              <local:OutlinedTextBlock Text="{Binding Capacity}" Classes="object-name row" Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+            <Viewbox Classes="unit-grid-container" HorizontalAlignment="Center" VerticalAlignment="Top">
+              <ItemsControl x:Name="GuardGrid"
+                            Classes="unit-grid focus-group"
+                            ItemsSource="{Binding UnitGrid.Slots}"
+                            ItemTemplate="{StaticResource UnitGridSlotTemplate}"
+                            ItemContainerTheme="{StaticResource UnitGridSlotContainerTheme}" />
+            </Viewbox>
+            <TextBlock Text="{local:Text 'Whoever beats the guards takes the reward. Click + to add a unit, drag units to rearrange them or onto Remove.'}"
+                       Classes="caption"
+                       Width="240"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       Margin="0,12,0,0" />
+          </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,0" Spacing="10">
+          <TextBlock Text="{Binding Problem}"
+                     Classes="body"
+                     HorizontalAlignment="Center"
+                     Foreground="{StaticResource AccentBrush}"
+                     IsVisible="{Binding Problem, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
+          <StackPanel Classes="focus-group" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+            <Button x:Name="DeleteButton" Classes="pill" local:PlateChrome.TextureSeed="4" MinWidth="140" Content="{local:Text 'Delete ruin'}" Command="{Binding DeleteCommand}" />
+            <Button x:Name="CancelButton" Classes="pill" local:PlateChrome.TextureSeed="5" MinWidth="140" Content="{local:Text 'Cancel'}" Command="{Binding CloseCommand}" />
+            <Button x:Name="ConfirmButton" Classes="pill primary" local:PlateChrome.TextureSeed="6" MinWidth="140" Content="{local:Text 'Save ruin'}" Command="{Binding ConfirmCommand}" />
+          </StackPanel>
+        </StackPanel>
+      </Grid>
+    </ContentControl>
+
+    <ItemsControl Classes="drop-zones" ItemsSource="{Binding DropZones}" Margin="0,12,0,0" />
+  </Grid>
+
+</UserControl>

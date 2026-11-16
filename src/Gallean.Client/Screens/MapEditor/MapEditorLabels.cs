@@ -77,8 +77,8 @@ internal static class MapEditorLabels
         return error switch
         {
             CustomMapPlacementError.OutsideMap => Tr("A village must fit inside the map."),
-            CustomMapPlacementError.Blocked => Tr("A village cannot overlap a capital or another village."),
-            CustomMapPlacementError.Occupied => Tr("Move the armies and resources out of the way first."),
+            CustomMapPlacementError.Blocked => Tr("A village cannot overlap a capital, village, ruin or site."),
+            CustomMapPlacementError.Occupied => Tr("Move the armies, resources and treasure out of the way first."),
             CustomMapPlacementError.UnknownOwner => Tr("That player is not on this map."),
             CustomMapPlacementError.LeaderInGarrison => Tr("Leaders cannot join a garrison."),
             CustomMapPlacementError.GarrisonFull => Tr("Too many units for the village's level."),
@@ -87,13 +87,42 @@ internal static class MapEditorLabels
         };
     }
 
+    public static string SiteType(CustomMapSiteType type)
+    {
+        return type switch
+        {
+            CustomMapSiteType.Merchant => Tr("Merchant"),
+            CustomMapSiteType.MageTower => Tr("Mage tower"),
+            CustomMapSiteType.Mercenaries => Tr("Mercenary camp"),
+            _ => Tr("Trainer")
+        };
+    }
+
+    public static IReadOnlyList<MapEditorOption<int>> Looks(int count)
+    {
+        return [.. Enumerable.Range(0, count).Select(variant => new MapEditorOption<int>(variant, Tr("Look {0}", variant + 1)))];
+    }
+
+    // Problems placing or changing ruins, sites and bags (and garrison problems from their screens).
+    public static string ObjectError(CustomMapPlacementError error)
+    {
+        return error switch
+        {
+            CustomMapPlacementError.OutsideMap => Tr("It must fit inside the map."),
+            CustomMapPlacementError.Blocked => Tr("It cannot overlap a capital, village, ruin or site, or stand on a mountain."),
+            CustomMapPlacementError.Occupied => Tr("Move the armies, resources and treasure out of the way first."),
+            CustomMapPlacementError.TooManyGoods => Tr("That is more than it can hold."),
+            _ => VillageError(error)
+        };
+    }
+
     public static string ResourceError(CustomMapPlacementError error)
     {
         return error switch
         {
             CustomMapPlacementError.OutsideMap => Tr("Resources must lie inside the map."),
-            CustomMapPlacementError.Occupied => Tr("An army stands there."),
-            _ => Tr("Resources need free land: no water, mountains, capitals or villages.")
+            CustomMapPlacementError.Occupied => Tr("An army or treasure is there."),
+            _ => Tr("Resources need free land: no water, mountains or buildings.")
         };
     }
 
@@ -102,7 +131,8 @@ internal static class MapEditorLabels
         return error switch
         {
             CustomMapStackError.OutsideMap => Tr("Armies must stand inside the map."),
-            CustomMapStackError.Blocked => Tr("Armies cannot stand on water, mountains, capitals, villages or resources."),
+            CustomMapStackError.Blocked => Tr("Armies cannot stand on water, mountains, buildings, resources or treasure. In a village, use its entrance."),
+            CustomMapStackError.VillageOwner => Tr("An army in a village belongs to the village's owner."),
             CustomMapStackError.Occupied => Tr("Another army already stands there."),
             CustomMapStackError.UnknownOwner => Tr("That player is not on this map."),
             CustomMapStackError.NoLeader => Tr("An army needs a leader."),

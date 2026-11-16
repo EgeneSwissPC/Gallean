@@ -356,7 +356,7 @@ public sealed class MapEditorScreenViewModelTests
         CustomMapVillage village = editor.Map.Villages.Single();
         Assert.That((village.TopLeft, village.Level, village.Owner), Is.EqualTo((new WorldPosition(22, 22), 2, WorldRace.Neutral)));
         Assert.That(village.Name, Is.Not.Empty);
-        Assert.That(MapEditorVillageNames.Load(), Does.Contain(village.Name));
+        Assert.That(MapEditorNames.Load().Villages.Select(name => name.Name), Does.Contain(village.Name));
         Assert.That(editor.State.Fortifications.Values.OfType<WorldCity>().Single().Footprint.TopLeft, Is.EqualTo(new WorldPosition(22, 22)));
         Assert.That(game.TopScreen, Is.SameAs(editor), "Placing does not open the village screen.");
 
@@ -420,5 +420,221 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(editor.State.Fortifications.Values.OfType<WorldCity>(), Is.Empty);
         editor.UndoCommand.Execute(null);
         Assert.That(editor.Map.Villages.Single().Name, Is.EqualTo("Ford"));
+
+        // The Army tool on a village opens the army stationed in it, owned by the village's owner.
+        editor.SelectTool(MapEditorTool.Army);
+        editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Neutral);
+        editor.BeginStroke(new WorldPosition(23, 23));
+        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen);
+        Assert.That(army.Owner, Is.EqualTo(WorldRace.Human));
+        army.ChooseLeaderCommand.Execute(null);
+        Picker(game).Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge).PickCommand.Execute(null);
+        army.ConfirmCommand.Execute(null);
+        CustomMapStack stationed = editor.Map.Stacks.Single();
+        Assert.That((stationed.Position, stationed.Owner), Is.EqualTo((new WorldPosition(25, 25), WorldRace.Human)));
+        WorldCity withArmy = editor.State.Fortifications.Values.OfType<WorldCity>().Single();
+        Assert.That(editor.State.Stacks.Values.Count(stack => stack.Position == withArmy.Entrance), Is.EqualTo(1));
+        editor.ShowPositionInfo(new WorldPosition(23, 23));
+        Assert.That(Assert.IsOfType<WorldFortificationInfoViewModel>(editor.PositionInfo).VisitingStack, Is.Not.Null, "The city info shows the stationed army.");
+        editor.HidePositionInfo();
+    }
+
+    private static MapEditorScreenViewModel PlaceCapitals(MapEditorScreenViewModel editor)
+    {
+        editor.SelectTool(MapEditorTool.Capital);
+        editor.SelectedCapitalRace = editor.CapitalRaces[0];
+        editor.BeginStroke(new WorldPosition(8, 8));
+        editor.SelectedCapitalRace = editor.CapitalRaces[1];
+        editor.BeginStroke(new WorldPosition(38, 38));
+
+        return editor;
+    }
+
+    private static MapEditorListPickerViewModel ListPicker(GameViewModel game)
+    {
+        return Assert.IsOfType<MapEditorListPickerViewModel>(game.TopScreen);
+    }
+
+    [Test]
+    public async Task RuinTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+
+        editor.SelectTool(MapEditorTool.Ruin);
+        Assert.That(editor.IsRuinTool, Is.True);
+        editor.BeginStroke(new WorldPosition(20, 20));
+        CustomMapRuin ruin = editor.Map.Ruins.Single();
+        Assert.That(ruin.TopLeft, Is.EqualTo(new WorldPosition(19, 19)));
+        Assert.That(MapEditorNames.Load().Ruins.Select(name => name.Name), Does.Contain(ruin.Name));
+        Assert.That(editor.State.Fortifications.Values.OfType<WorldRuin>().Count(), Is.EqualTo(1));
+
+        editor.BeginStroke(new WorldPosition(21, 21));
+        MapEditorRuinScreenViewModel screen = Assert.IsOfType<MapEditorRuinScreenViewModel>(game.TopScreen);
+        Assert.That(screen.Capacity, Is.EqualTo("0 / 6"));
+        screen.GoldText = "abc";
+        Assert.That(screen.ConfirmCommand.CanExecute(null), Is.False);
+        screen.GoldText = "800";
+        Assert.That(screen.ConfirmCommand.CanExecute(null), Is.True);
+        screen.SelectedLook = screen.Looks[7];
+        screen.ChooseItemCommand.Execute(null);
+        MapEditorListPickerViewModel items = ListPicker(game);
+        Assert.That(items.Options, Has.Count.GreaterThan(100), "Every item of the game.");
+        items.SelectedFilter = items.Filters[1];
+        Assert.That(items.Options.Select(option => option.Group).Distinct(), Is.EqualTo(new[] { items.Filters[1] }));
+        Assert.That(items.Options[0].Details, Is.Not.Null, "Right-click shows the item details.");
+        ItemDefinitionId chosen = (ItemDefinitionId)items.Options[0].Value;
+        items.Options[0].PickCommand.Execute(null);
+        Assert.That(screen.Item, Is.EqualTo(chosen));
+        screen.AddUnit(GridPosition.FrontTop);
+        Picker(game).Options.First(option => option.Definition.IsLarge && !option.IsUnavailable).PickCommand.Execute(null);
+        Assert.That(screen.Capacity, Is.EqualTo("2 / 6"));
+        screen.Name = "Odense";
+        screen.ConfirmCommand.Execute(null);
+
+        ruin = editor.Map.Ruins.Single();
+        Assert.That((ruin.Name, ruin.Gold, ruin.Item, ruin.Variant, ruin.Guards.Count(unit => unit is not null)), Is.EqualTo(("Odense", 800, (ItemDefinitionId?)chosen, 7, 1)));
+        WorldRuin loaded = editor.State.Fortifications.Values.OfType<WorldRuin>().Single();
+        Assert.That((loaded.Resources.Gold, loaded.Item, loaded.Garrison.IsEmpty), Is.EqualTo((800, (ItemDefinitionId?)chosen, false)));
+        editor.UpdateHover(new WorldPosition(20, 20));
+        Assert.That(editor.HoverText, Does.Contain("ruin Odense"));
+        editor.ShowPositionInfo(new WorldPosition(20, 20));
+        Assert.That(editor.PositionInfo, Is.InstanceOf<WorldTileInfoViewModel>());
+        editor.HidePositionInfo();
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions()).Ruins, Is.EqualTo(editor.Map.Ruins));
+
+        editor.BeginStroke(new WorldPosition(20, 20));
+        Assert.IsOfType<MapEditorRuinScreenViewModel>(game.TopScreen).DeleteCommand.Execute(null);
+        Assert.That(editor.Map.Ruins, Is.Empty);
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Ruins.Single().Name, Is.EqualTo("Odense"));
+    }
+
+    [Test]
+    public async Task BagTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+
+        editor.SelectTool(MapEditorTool.Bag);
+        editor.BeginStroke(new WorldPosition(20, 20));
+        Assert.That(editor.Map.Bags.Single().Position, Is.EqualTo(new WorldPosition(20, 20)));
+        Assert.That(editor.State.Bags, Has.Count.EqualTo(1));
+
+        editor.BeginStroke(new WorldPosition(20, 20));
+        MapEditorBagScreenViewModel screen = Assert.IsOfType<MapEditorBagScreenViewModel>(game.TopScreen);
+        Assert.That(screen.CountText, Is.EqualTo("0 / 16"));
+        screen.AddItemCommand.Execute(null);
+        ItemDefinitionId first = (ItemDefinitionId)ListPicker(game).Options[0].Value;
+        ListPicker(game).Options[0].PickCommand.Execute(null);
+        screen.AddItemCommand.Execute(null);
+        ItemDefinitionId second = (ItemDefinitionId)ListPicker(game).Options[5].Value;
+        ListPicker(game).Options[5].PickCommand.Execute(null);
+        screen.AddItemCommand.Execute(null);
+        ListPicker(game).Options[9].PickCommand.Execute(null);
+        screen.Items[2].RemoveCommand.Execute(null);
+        Assert.That(screen.Items.Select(row => row.Value), Is.EqualTo(new object[] { first, second }));
+        screen.SelectedLook = screen.Looks[3];
+        screen.ConfirmCommand.Execute(null);
+
+        CustomMapBag bag = editor.Map.Bags.Single();
+        Assert.That(bag.Variant, Is.EqualTo(3));
+        Assert.That(bag.Items, Is.EqualTo(new[] { first, second }));
+        Assert.That(editor.State.Bags.Values.Single().Inventory.Items.Select(item => item.DefinitionId), Is.EqualTo(new[] { first, second }));
+        editor.UpdateHover(new WorldPosition(20, 20));
+        Assert.That(editor.HoverText, Does.Contain("treasure (2 items)"));
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions()).Bags, Is.EqualTo(editor.Map.Bags));
+    }
+
+    [Test]
+    public async Task SiteTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Site);
+        Assert.That(editor.SiteTypes.Select(type => type.Value), Is.EqualTo(Enum.GetValues<CustomMapSiteType>()));
+
+        // One site of each type, named and greeting from the game's lists.
+        (CustomMapSiteType Type, WorldPosition Tile)[] places =
+        [
+            (CustomMapSiteType.Merchant, new WorldPosition(20, 20)),
+            (CustomMapSiteType.MageTower, new WorldPosition(26, 20)),
+            (CustomMapSiteType.Mercenaries, new WorldPosition(20, 26)),
+            (CustomMapSiteType.Trainer, new WorldPosition(26, 26))
+        ];
+
+        foreach ((CustomMapSiteType type, WorldPosition tile) in places)
+        {
+            editor.SelectedSiteType = editor.SiteTypes.Single(option => option.Value == type);
+            editor.BeginStroke(tile);
+        }
+
+        Assert.That(editor.Map.Sites.Select(site => site.Type), Is.EqualTo(Enum.GetValues<CustomMapSiteType>()));
+        Assert.That(editor.Map.Sites.All(site => site.Name.Length > 0 && site.Greeting.Length > 0), Is.True);
+        Assert.That(editor.State.Sites, Has.Count.EqualTo(4));
+
+        // Merchant: picking an item twice raises its stock.
+        editor.BeginStroke(new WorldPosition(20, 20));
+        MapEditorSiteScreenViewModel merchant = Assert.IsOfType<MapEditorSiteScreenViewModel>(game.TopScreen);
+        merchant.AddCommand.Execute(null);
+        ItemDefinitionId item = (ItemDefinitionId)ListPicker(game).Options[3].Value;
+        ListPicker(game).Options[3].PickCommand.Execute(null);
+        merchant.AddCommand.Execute(null);
+        ListPicker(game).Options[3].PickCommand.Execute(null);
+        Assert.That(merchant.Goods.Single().Amount, Is.EqualTo(2));
+        merchant.Goods.Single().IncreaseCommand.Execute(null);
+        merchant.Name = "Ebhon's Shop";
+        merchant.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Sites[0].Items.Single(), Is.EqualTo(new CustomMapMerchantItem(item, 3)));
+        Assert.That(editor.State.Sites.Values.OfType<WorldMerchantSite>().Single().Items.Single(), Is.EqualTo(new WorldMerchantItem(item, 3)));
+
+        // Mage tower: spells, no duplicates.
+        editor.BeginStroke(new WorldPosition(26, 20));
+        MapEditorSiteScreenViewModel mage = Assert.IsOfType<MapEditorSiteScreenViewModel>(game.TopScreen);
+        mage.AddCommand.Execute(null);
+        Assert.That(ListPicker(game).Options, Has.Count.GreaterThan(50), "Every spell of the game.");
+        WorldSpellDefinitionId spell = (WorldSpellDefinitionId)ListPicker(game).Options[0].Value;
+        ListPicker(game).Options[0].PickCommand.Execute(null);
+        mage.AddCommand.Execute(null);
+        ListPicker(game).Options[0].PickCommand.Execute(null);
+        mage.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Sites[1].Spells, Is.EqualTo(new[] { spell }));
+
+        // Mercenary camp: units with a level from their base level up.
+        editor.BeginStroke(new WorldPosition(20, 26));
+        MapEditorSiteScreenViewModel camp = Assert.IsOfType<MapEditorSiteScreenViewModel>(game.TopScreen);
+        camp.AddCommand.Execute(null);
+        MapEditorUnitPickerItemViewModel unit = Picker(game).Options.First(option => !option.IsUnavailable);
+        unit.PickCommand.Execute(null);
+        Assert.That(camp.Goods.Single().DecreaseCommand.CanExecute(null), Is.False, "Not below the unit's own level.");
+        camp.Goods.Single().IncreaseCommand.Execute(null);
+        camp.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Sites[2].Units.Single(), Is.EqualTo(new CustomMapMercenary(unit.Definition.Id, unit.Definition.Level + 1)));
+
+        // Trainer: nothing to sell.
+        editor.BeginStroke(new WorldPosition(26, 26));
+        MapEditorSiteScreenViewModel trainer = Assert.IsOfType<MapEditorSiteScreenViewModel>(game.TopScreen);
+        Assert.That((trainer.IsTrainer, trainer.HasGoods, trainer.AddCommand.CanExecute(null)), Is.EqualTo((true, false, false)));
+        trainer.CloseCommand.Execute(null);
+
+        editor.ShowPositionInfo(new WorldPosition(20, 20));
+        Assert.That(Assert.IsOfType<WorldTileInfoViewModel>(editor.PositionInfo).Title, Does.Contain("Ebhon's Shop"));
+        editor.HidePositionInfo();
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions()).Sites, Is.EqualTo(editor.Map.Sites));
     }
 }

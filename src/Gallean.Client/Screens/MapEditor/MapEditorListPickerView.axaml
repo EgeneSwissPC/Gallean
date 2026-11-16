@@ -1,0 +1,91 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorListPickerView"
+             x:DataType="local:MapEditorListPickerViewModel">
+
+  <UserControl.DataTemplates>
+    <DataTemplate x:DataType="local:IconViewModel+Item">
+      <Panel Classes="inventory-slot" Width="52" Height="52">
+        <local:PlateChrome Classes="socket" />
+        <local:SpriteVisual SpriteKey="{Binding Key}" Stretch="Uniform" />
+      </Panel>
+    </DataTemplate>
+    <DataTemplate x:DataType="local:IconViewModel+Spell">
+      <Border Classes="frame spell-icon" Width="52" Height="52" BorderThickness="2" Classes.dark-background="{Binding Background, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static local:IconViewModel+Spell+BackgroundType.Dark}}">
+        <local:SpriteVisual SpriteKey="{Binding Key}" Stretch="Uniform" />
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:DataType="local:IconViewModel+Unit">
+      <local:UnitIcon SpriteKey="{Binding Key}" Width="52" Height="52" />
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <UserControl.Styles>
+    <Style Selector="ListBox.group-filter > ListBoxItem">
+      <Setter Property="Padding" Value="10,4" />
+      <Setter Property="MinHeight" Value="0" />
+    </Style>
+  </UserControl.Styles>
+
+  <Border Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
+    <local:ModalPanel Width="620" MaxHeight="720" Title="{Binding Title}" InitialFocus="{Binding #CloseButton}">
+
+      <local:ModalPanel.Footer>
+        <Button x:Name="CloseButton"
+                Content="{local:Text 'Cancel'}"
+                Classes="pill"
+                MinWidth="110"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                Command="{Binding CloseCommand}" />
+      </local:ModalPanel.Footer>
+
+      <DockPanel>
+        <ListBox x:Name="GroupFilter"
+                 DockPanel.Dock="Top"
+                 Classes="group-filter"
+                 Margin="0,0,0,10"
+                 ItemsSource="{Binding Filters}"
+                 SelectedItem="{Binding SelectedFilter}">
+          <ListBox.ItemsPanel>
+            <ItemsPanelTemplate>
+              <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center" />
+            </ItemsPanelTemplate>
+          </ListBox.ItemsPanel>
+          <ListBox.ItemTemplate>
+            <DataTemplate x:DataType="x:String">
+              <TextBlock Text="{Binding}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ScrollViewer Classes="list">
+          <ItemsControl x:Name="OptionList" Classes="focus-group" ItemsSource="{Binding Options}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:MapEditorListPickerItemViewModel">
+                <Button Classes="row" Command="{Binding PickCommand}">
+                  <Grid ColumnDefinitions="56,*">
+                    <ContentControl Grid.Column="0" Content="{Binding Icon}" VerticalAlignment="Center" />
+                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Spacing="2">
+                      <local:OutlinedTextBlock Text="{Binding Name}" Classes="object-name row" />
+                      <TextBlock Text="{Binding Description}"
+                                 Classes="caption"
+                                 Foreground="{StaticResource PrimaryTextBrush}"
+                                 TextWrapping="Wrap"
+                                 MaxLines="2"
+                                 TextTrimming="CharacterEllipsis" />
+                      <TextBlock Text="{Binding Info}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </DockPanel>
+
+    </local:ModalPanel>
+  </Border>
+
+</UserControl>

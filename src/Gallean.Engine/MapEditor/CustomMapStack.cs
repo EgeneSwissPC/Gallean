@@ -11,7 +11,8 @@ public enum CustomMapStackError
     NoLeader,
     MultipleLeaders,
     LeadershipExceeded,
-    InvalidSlot
+    InvalidSlot,
+    VillageOwner
 }
 
 public sealed record CustomMapUnit(UnitDefinitionId TypeId, int Level, int Hitpoints, bool IsLarge, int Leadership, int MovementPoints)
