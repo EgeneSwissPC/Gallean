@@ -29,8 +29,12 @@ bottom left says what will happen.
 | --- | --- |
 | Green | The object fits here; these tiles are what it will cover. |
 | Red | This tile blocks the placement. The other tiles stay green, so you see exactly what is in the way. |
-| Amber | It fits, but this tile will change: a forest cleared, water turned into land, land claimed by an owner, a mountain removed. |
+| Amber | It fits, but this tile will change in a way you can see: a forest cleared, a mountain removed, water turned into land. |
 | Outline glow on an object | A click opens this object's screen (or removes it, see below). Uses the game's own highlight, like when you point at a city in the game. |
+
+The land a village or capital claims for its owner is **not** coloured: it changes on almost every placement, so amber
+would cover the whole footprint and hide the green and the warnings that matter. The city picture covers those tiles
+anyway. The hover line mentions it instead ("claims 16 tiles for the Empire").
 
 Hover line examples:
 - `Village (4x4): fits · claims 16 tiles for the Empire`
@@ -60,7 +64,8 @@ ones.
 **Capital (5x5)**
 - On free land: the 5x5 square where the capital will stand, after the push back inside the map.
 - Red tiles: other capitals, villages, ruins, sites, landmarks, armies, resources and bags.
-- Amber: forests and mountains it removes, land that becomes the race's land.
+- Amber: forests and mountains it removes. The land that becomes the race's land stays green; the hover line says
+  "claims 25 tiles for the Empire".
 - If the race already has a capital, the current one gets a faint outline too: placing again moves it, with its
   garrison and stationed army.
 - Over an existing capital: glow, "click opens it".
@@ -74,7 +79,8 @@ ones.
 
 **Village (4x4), Ruin (3x3), Site (3x3)**
 - Footprint after the push back inside the map; red tiles for structures, landmarks, armies, resources and bags.
-- Village: amber for the land it claims for its owner. Ruin and site: amber for water that becomes land.
+- Village: amber for forests and mountains it removes; the land it claims for its owner stays green and is only
+  mentioned in the hover line. Ruin and site: amber for forests and mountains they remove and water that becomes land.
 - Over an existing one: glow, "click opens it".
 
 **Resources (1 tile)**
@@ -173,6 +179,7 @@ Phases 1–3 together are a moderate task, about the size of the landmark featur
 ## Open questions
 
 1. Colours: green/red/amber, or the game's own gold/purple cursor tones?
-2. Should the preview also show the land a village claims (amber), or is that too much colour?
+2. ~~Should the preview also show the land a village claims (amber), or is that too much colour?~~ Decided: no colour,
+   only the hover line mentions it (see "What you would see").
 3. On by default with a switch, or always on?
 4. Ghost sprites: wanted at all, or are coloured tiles enough?
