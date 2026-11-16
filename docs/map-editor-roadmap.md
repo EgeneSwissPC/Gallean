@@ -131,8 +131,13 @@ What was built (branch `upgrade/map-editor-landmarks`, commit `2931c5c`, merged 
 Known limits / possible follow-ups:
 - While the palette is open it covers the map's left edge, so edge scrolling to the left only works with WASD, the
   arrow keys or the middle button there.
-- No ghost/footprint preview under the cursor yet (the world renderer only highlights tiles for a selected army; a
-  preview would need a small editor-only overlay).
+- No footprint preview under the cursor yet. It's planned for every tool, not just landmarks: see
+  `docs/map-editor-placement-preview.md`.
+
+## Task: placement preview under the cursor (all tools)
+
+Coloured tiles under the mouse showing where a click puts an object and whether it fits (green), what blocks it
+(red) and what it changes (amber), plus the brush area. Full description: `docs/map-editor-placement-preview.md`.
 
 ## Task: roads and looks
 
@@ -202,6 +207,6 @@ point at them once events exist.
 2. Items: should the leader's 7 slots work like the in-game equipment screen, or just be a list?
 3. ~~Landmarks: should they block armies like in the game, or be decoration only?~~ Decided: they block, like in the
    game (see "Decisions so far"). Say if you want decoration-only after all; that needs a game rule change.
-4. Which comes next: player settings, items, or roads and looks?
+4. Which comes next: player settings, items, roads and looks, or the placement preview?
 5. Landmarks: is the palette over the left of the map fine, or should it go into the right panel (it only fits there
    with scrolling at 1366x768)? Is a footprint preview under the cursor worth adding?
