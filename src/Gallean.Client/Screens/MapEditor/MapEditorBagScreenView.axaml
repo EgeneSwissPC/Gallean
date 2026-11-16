@@ -1,0 +1,89 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorBagScreenView"
+             x:DataType="local:MapEditorBagScreenViewModel">
+
+  <UserControl.DataTemplates>
+    <DataTemplate x:DataType="local:IconViewModel+Item">
+      <Panel Classes="inventory-slot" Width="44" Height="44">
+        <local:PlateChrome Classes="socket" />
+        <local:SpriteVisual SpriteKey="{Binding Key}" Stretch="Uniform" />
+      </Panel>
+    </DataTemplate>
+    <DataTemplate x:DataType="local:IconViewModel+Spell">
+      <Border Classes="frame spell-icon" Width="44" Height="44" BorderThickness="2" Classes.dark-background="{Binding Background, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static local:IconViewModel+Spell+BackgroundType.Dark}}">
+        <local:SpriteVisual SpriteKey="{Binding Key}" Stretch="Uniform" />
+      </Border>
+    </DataTemplate>
+    <DataTemplate x:DataType="local:IconViewModel+Unit">
+      <local:UnitIcon SpriteKey="{Binding Key}" Width="44" Height="44" />
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <UserControl.Styles>
+    <Style Selector=":is(TextBlock).field-label">
+      <Setter Property="Margin" Value="0,10,0,4" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
+    <ContentControl Classes="ornament-panel"
+                    Background="{StaticResource CapitalScenePanelBodyGradientBrush}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,*,Auto" Margin="28,16">
+        <local:OutlinedTextBlock Grid.Row="0" Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" Margin="0,0,0,8" />
+
+        <Grid Grid.Row="1" ColumnDefinitions="220,Auto" ColumnSpacing="24">
+          <StackPanel Grid.Column="0" VerticalAlignment="Center">
+            <Panel Height="120">
+              <local:SpriteVisual SpriteKey="{Binding PreviewKey}" Stretch="Uniform" Width="96" Height="96" />
+            </Panel>
+            <local:OutlinedTextBlock Text="{local:Text 'Look'}" Classes="caption field-label" />
+            <ComboBox x:Name="BagLookBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Looks}" SelectedItem="{Binding SelectedLook}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorLabeled">
+                  <TextBlock Text="{Binding Label}" Classes="body" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </StackPanel>
+
+          <StackPanel Grid.Column="1" Spacing="8">
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+              <local:OutlinedTextBlock Text="{local:Text 'Items'}" Classes="object-name row" />
+              <local:OutlinedTextBlock Text="{Binding CountText}" Classes="object-name row" Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+            <ScrollViewer Height="330" Width="380" Classes="list">
+              <ItemsControl x:Name="StockList" Classes="focus-group" ItemsSource="{Binding Items}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorStockRowViewModel">
+                    <Grid ColumnDefinitions="48,*,Auto,Auto" ColumnSpacing="8" Margin="0,2" Background="Transparent">
+                      <ContentControl Grid.Column="0" Content="{Binding Icon}" VerticalAlignment="Center" />
+                      <TextBlock Grid.Column="1" Text="{Binding Name}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center" IsVisible="{Binding HasAmount}">
+                        <Button Classes="pill" Width="28" Height="28" Padding="0" Content="-" Command="{Binding DecreaseCommand}" />
+                        <TextBlock Text="{Binding AmountText}" Classes="body" MinWidth="60" TextAlignment="Center" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" />
+                        <Button Classes="pill" Width="28" Height="28" Padding="0" Content="+" Command="{Binding IncreaseCommand}" />
+                      </StackPanel>
+                      <Button Grid.Column="3" Classes="pill" Height="28" Padding="10,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'Remove'}" Command="{Binding RemoveCommand}" VerticalAlignment="Center" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+            <Button x:Name="AddItemButton" Classes="pill" HorizontalAlignment="Center" Content="{local:Text 'Add item'}" Command="{Binding AddItemCommand}" />
+          </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Margin="0,16,0,0" Classes="focus-group" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+          <Button x:Name="DeleteButton" Classes="pill" local:PlateChrome.TextureSeed="4" MinWidth="140" Content="{local:Text 'Delete treasure'}" Command="{Binding DeleteCommand}" />
+          <Button x:Name="CancelButton" Classes="pill" local:PlateChrome.TextureSeed="5" MinWidth="140" Content="{local:Text 'Cancel'}" Command="{Binding CloseCommand}" />
+          <Button x:Name="ConfirmButton" Classes="pill primary" local:PlateChrome.TextureSeed="6" MinWidth="140" Content="{local:Text 'Save treasure'}" Command="{Binding ConfirmCommand}" />
+        </StackPanel>
+      </Grid>
+    </ContentControl>
+  </Grid>
+
+</UserControl>

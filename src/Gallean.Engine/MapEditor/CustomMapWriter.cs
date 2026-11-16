@@ -20,6 +20,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     // Village IDs start after the capitals' too: city FT0100 + n, garrison units UN8000 + 6n + k (after the armies').
     internal const int FirstVillageNumber = 0x100;
     internal const int FirstVillageUnitNumber = 0x8000;
+    // Ruin guards: UNA000 + 6n + k. Ruins RU + n, bags BG + n, sites SI + n, scenario items IM + running number.
+    internal const int FirstRuinUnitNumber = 0xA000;
 
     public void Write(CustomMap map, string mapsDirectory)
     {
@@ -47,6 +49,14 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SMapBlck.json", BuildMapBlocks(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SMounts.json", BuildMountains(map, scenarioId));
         WriteTable(stagingDirectory, "SCrys.json", BuildResources(map, scenarioId, prefix));
+        WriteTable(stagingDirectory, "SRuin.json", rows.Ruins);
+        WriteTable(stagingDirectory, "SBag.json", rows.Bags);
+        WriteTable(stagingDirectory, "SItem.json", rows.Items);
+        WriteTable(stagingDirectory, "SInventr.json", rows.Inventories);
+        WriteTable(stagingDirectory, "SSite.json", rows.Sites);
+        WriteTable(stagingDirectory, "SMerch.json", rows.Merchants);
+        WriteTable(stagingDirectory, "SMage.json", rows.Mages);
+        WriteTable(stagingDirectory, "SMercs.json", rows.Mercenaries);
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
         // Original scenarios all ship an event table; custom maps get an empty one so they load the same way.
         WriteTable(stagingDirectory, "SEvent.json", new List<Db.ScenarioEvent>());
@@ -84,6 +94,21 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         return MakeId(mapId[..4], "CR", resourceId).Value;
     }
 
+    public static string GetRuinId(string mapId, int ruinId)
+    {
+        return MakeId(mapId[..4], "RU", ruinId).Value;
+    }
+
+    public static string GetBagId(string mapId, int bagId)
+    {
+        return MakeId(mapId[..4], "BG", bagId).Value;
+    }
+
+    public static string GetSiteId(string mapId, int siteId)
+    {
+        return MakeId(mapId[..4], "SI", siteId).Value;
+    }
+
     public static void Delete(string mapsDirectory, string mapId)
     {
         string indexPath = Path.Combine(mapsDirectory, IndexFileName);
@@ -119,11 +144,19 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         List<Db.ScenarioUnitGroup> UnitGroups,
         List<Db.ScenarioRelation> Relations,
         List<Db.TextScenario> Texts,
-        List<Db.RaceType> PlayerRaces);
+        List<Db.RaceType> PlayerRaces,
+        List<Db.ScenarioRuin> Ruins,
+        List<Db.ScenarioBag> Bags,
+        List<Db.ScenarioItem> Items,
+        List<Db.ScenarioInventory> Inventories,
+        List<Db.ScenarioSite> Sites,
+        List<Db.ScenarioMerchant> Merchants,
+        List<Db.ScenarioMage> Mages,
+        List<Db.ScenarioMercenary> Mercenaries);
 
     private Rows BuildRows(CustomMap map, Db.ScenarioId scenarioId, string prefix)
     {
-        Rows rows = new([], [], [], [], [], [], [], [], []);
+        Rows rows = new([], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []);
 
         // Player 0 is the (primary) neutral player; it owns nothing on a new map but the engine requires one.
         List<(Db.RaceType Race, CustomMapPlayer? Player)> players = [(Db.RaceType.Neutral, null)];
@@ -258,6 +291,21 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             AddVillage(rows, map, village, scenarioId, prefix);
         }
 
+        foreach (CustomMapRuin ruin in map.Ruins)
+        {
+            AddRuin(rows, ruin, scenarioId, prefix);
+        }
+
+        foreach (CustomMapBag bag in map.Bags)
+        {
+            AddBag(rows, bag, scenarioId, prefix);
+        }
+
+        foreach (CustomMapSite site in map.Sites)
+        {
+            AddSite(rows, site, scenarioId, prefix);
+        }
+
         for (int i = 0; i < rows.PlayerRaces.Count; i++)
         {
             for (int j = i + 1; j < rows.PlayerRaces.Count; j++)
@@ -285,6 +333,9 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         int firstUnitNumber = (FirstArmyNumber * 6) + (stack.Id * GridPosition.Count);
         int leaderSlot = stack.Slots.ToList().FindIndex(unit => unit is { IsLeader: true });
         Db.Id? leaderId = leaderSlot >= 0 ? MakeId(prefix, "UN", firstUnitNumber + leaderSlot) : null;
+        Db.Id? stationedIn = map.Villages.FirstOrDefault(village => village.Entrance == stack.Position) is { } village
+            ? MakeId(prefix, "FT", FirstVillageNumber + village.Id)
+            : null;
 
         rows.UnitGroups.Add(BuildGroup(rows, stack.Slots, scenarioId, prefix, stackId, firstUnitNumber));
         rows.Stacks.Add(new Db.ScenarioStack(
@@ -307,7 +358,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             BootsId: null,
             playerId,
             subraceId,
-            null,
+            stationedIn,
             Invisible: false,
             UpgradeCount: 0,
             AiIgnore: false,
@@ -339,6 +390,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         Db.Id cityId = MakeId(prefix, "FT", FirstVillageNumber + village.Id);
         Db.Id playerId = MakeId(prefix, "PL", playerIndex);
         Db.Id subraceId = MakeId(prefix, "SR", playerIndex);
+        CustomMapStack? stationed = map.GetStationedStack(village);
 
         rows.Fortifications.Add(new Db.ScenarioFortification(
             scenarioId,
@@ -347,7 +399,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             village.TopLeft.Y,
             playerId,
             subraceId,
-            Stack: null,
+            Stack: stationed is null ? null : MakeId(prefix, "KC", FirstArmyNumber + stationed.Id),
             Size: village.Level,
             SizeMax: null,
             RegenerationBonus: 0,
@@ -363,6 +415,86 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             RiotTurns: 0));
         rows.Texts.Add(Text(scenarioId, cityId, Db.TextScenario.NameTextId, string.IsNullOrWhiteSpace(village.Name) ? $"Village {village.Id}" : village.Name.Trim()));
         rows.UnitGroups.Add(BuildGroup(rows, village.Garrison, scenarioId, prefix, cityId, FirstVillageUnitNumber + (village.Id * GridPosition.Count)));
+    }
+
+    private static void AddRuin(Rows rows, CustomMapRuin ruin, Db.ScenarioId scenarioId, string prefix)
+    {
+        Db.Id ruinId = MakeId(prefix, "RU", ruin.Id);
+        Db.ResourceSet cash = new(Math.Clamp(ruin.Gold, 0, CustomMapRuin.MaxGold), 0, 0, 0, 0, 0);
+
+        rows.Ruins.Add(new Db.ScenarioRuin(
+            scenarioId,
+            ruinId,
+            ruin.Variant,
+            ruin.TopLeft.X,
+            ruin.TopLeft.Y,
+            cash.IsEmpty ? "g0000:r0000:y0000:e0000:w0000:b0000" : cash.Value,
+            ruin.Item is { } item ? new Db.Id(item.Value) : null,
+            Looter: null,
+            AiPriority: 3));
+        rows.Texts.Add(Text(scenarioId, ruinId, Db.TextScenario.RuinTitleTextId, string.IsNullOrWhiteSpace(ruin.Name) ? $"Ruin {ruin.Id}" : ruin.Name.Trim()));
+        rows.UnitGroups.Add(BuildGroup(rows, ruin.Guards, scenarioId, prefix, ruinId, FirstRuinUnitNumber + (ruin.Id * GridPosition.Count)));
+    }
+
+    private static void AddBag(Rows rows, CustomMapBag bag, Db.ScenarioId scenarioId, string prefix)
+    {
+        Db.Id bagId = MakeId(prefix, "BG", bag.Id);
+
+        rows.Bags.Add(new Db.ScenarioBag(scenarioId, bagId, bag.Position.X, bag.Position.Y, ObjValue: null, bag.Variant, AiPriority: 3));
+
+        foreach (ItemDefinitionId item in bag.Items)
+        {
+            Db.Id itemId = MakeId(prefix, "IM", rows.Items.Count);
+            rows.Items.Add(new Db.ScenarioItem(scenarioId, itemId, new Db.Id(item.Value)));
+            rows.Inventories.Add(new Db.ScenarioInventory(scenarioId, bagId, itemId));
+        }
+    }
+
+    // The loader tells site types apart by which quantity is set: items (merchant), units (mercenaries), spells
+    // (mage tower) or none (trainer).
+    private static void AddSite(Rows rows, CustomMapSite site, Db.ScenarioId scenarioId, string prefix)
+    {
+        Db.Id siteId = MakeId(prefix, "SI", site.Id);
+
+        rows.Sites.Add(new Db.ScenarioSite(
+            scenarioId,
+            siteId,
+            site.Variant,
+            ImageInterface: null,
+            VisiterId: null,
+            site.TopLeft.X,
+            site.TopLeft.Y,
+            QuantityVisit: null,
+            QuantitySpell: site.Type == CustomMapSiteType.MageTower ? site.Spells.Length : null,
+            QuantityUnit: site.Type == CustomMapSiteType.Mercenaries ? site.Units.Length : null,
+            QuantityItem: site.Type == CustomMapSiteType.Merchant ? site.Items.Length : null,
+            BuyArmor: null,
+            BuyJewel: null,
+            BuyWeapon: null,
+            BuyBanner: null,
+            BuyPotion: null,
+            BuyScroll: null,
+            BuyWand: null,
+            BuyValue: null,
+            Mission: null,
+            AiPriority: 3));
+        rows.Texts.Add(Text(scenarioId, siteId, Db.TextScenario.SiteTitleTextId, string.IsNullOrWhiteSpace(site.Name) ? $"Site {site.Id}" : site.Name.Trim()));
+        rows.Texts.Add(Text(scenarioId, siteId, Db.TextScenario.SiteDescriptionTextId, site.Greeting.Trim()));
+
+        switch (site.Type)
+        {
+            case CustomMapSiteType.Merchant:
+                rows.Merchants.AddRange(site.Items.Select(item => new Db.ScenarioMerchant(scenarioId, siteId, new Db.Id(item.Item.Value), item.Count)));
+                break;
+
+            case CustomMapSiteType.MageTower:
+                rows.Mages.AddRange(site.Spells.Select(spell => new Db.ScenarioMage(scenarioId, siteId, new Db.Id(spell.Value))));
+                break;
+
+            case CustomMapSiteType.Mercenaries:
+                rows.Mercenaries.AddRange(site.Units.Select(unit => new Db.ScenarioMercenary(scenarioId, siteId, new Db.Id(unit.Unit.Value), unit.Level, UnitUniq: false)));
+                break;
+        }
     }
 
     // Adds the units of a slot layout (GridPosition.ToIndex(), a large unit in its front slot) and returns their

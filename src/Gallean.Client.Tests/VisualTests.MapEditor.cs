@@ -386,4 +386,142 @@ public sealed partial class VisualTests
         screen.ConfirmCommand.Execute(null);
         Assert.That(editor.Map.Villages.Single(village => village.Level == 3).Garrison.Count(unit => unit is not null), Is.EqualTo(2));
     }
+
+    [AvaloniaTest]
+    public async Task MapEditorRuinsAndSitesTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+
+        MapEditorListPickerViewModel ListPicker() => Assert.IsOfType<MapEditorListPickerViewModel>(gameViewModel.TopScreen);
+        MapEditorUnitPickerViewModel UnitPicker() => Assert.IsOfType<MapEditorUnitPickerViewModel>(gameViewModel.TopScreen);
+
+        // A ruin, treasure on land and water, one site of each type and a village with an army stationed in it.
+        editor.SelectTool(MapEditorTool.Ruin);
+        editor.BeginStroke(new WorldPosition(5, 22));
+        editor.SelectTool(MapEditorTool.Bag);
+        editor.BeginStroke(new WorldPosition(9, 21));
+        editor.BeginStroke(new WorldPosition(20, 24));
+        editor.SelectTool(MapEditorTool.Site);
+        (CustomMapSiteType Type, int X, int Y)[] sites =
+        [
+            (CustomMapSiteType.Merchant, 13, 22),
+            (CustomMapSiteType.MageTower, 12, 27),
+            (CustomMapSiteType.Mercenaries, 8, 27),
+            (CustomMapSiteType.Trainer, 4, 27)
+        ];
+
+        foreach ((CustomMapSiteType type, int x, int y) in sites)
+        {
+            editor.SelectedSiteType = editor.SiteTypes.Single(option => option.Value == type);
+            editor.BeginStroke(new WorldPosition(x, y));
+        }
+
+        editor.SelectTool(MapEditorTool.Village);
+        editor.SelectedVillageOwner = editor.VillageOwners.Single(option => option.Value == WorldRace.Human);
+        editor.BeginStroke(new WorldPosition(10, 16));
+        editor.SelectTool(MapEditorTool.Army);
+        editor.BeginStroke(new WorldPosition(10, 16));
+        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(gameViewModel.TopScreen);
+        army.ChooseLeaderCommand.Execute(null);
+        UnitPicker().Options.First(option => !option.IsUnavailable && !option.Definition.IsLarge).PickCommand.Execute(null);
+        army.ConfirmCommand.Execute(null);
+
+        Assert.That((editor.Map.Ruins.Count, editor.Map.Bags.Count, editor.Map.Sites.Count, editor.Map.Stacks.Count), Is.EqualTo((1, 2, 4, 1)));
+        await WaitUntilAsync(() => view.SnapshotWorker?.Current?.RenderRequest.State is { } shown && shown.Sites.Count == 4 && shown.Bags.Count == 2 && shown.Stacks.Count == 3);
+
+        view.Camera.SetZoom(1);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(11, 22)));
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "1-map");
+
+        // Ruin: reward and guards.
+        editor.SelectTool(MapEditorTool.Ruin);
+        editor.BeginStroke(new WorldPosition(5, 22));
+        MapEditorRuinScreenViewModel ruin = Assert.IsOfType<MapEditorRuinScreenViewModel>(gameViewModel.TopScreen);
+        ruin.GoldText = "750";
+        ruin.ChooseItemCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "2-items");
+        ListPicker().Options.First(option => option.Group == ListPicker().Filters[3]).PickCommand.Execute(null);
+        ruin.AddUnit(GridPosition.FrontTop);
+        UnitPicker().Options.First(option => option.Definition.IsLarge && !option.IsUnavailable).PickCommand.Execute(null);
+        ruin.AddUnit(GridPosition.FrontCenter);
+        UnitPicker().Options.First(option => !option.IsUnavailable).PickCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "3-ruin");
+        ruin.ConfirmCommand.Execute(null);
+
+        // Treasure.
+        editor.SelectTool(MapEditorTool.Bag);
+        editor.BeginStroke(new WorldPosition(9, 21));
+        MapEditorBagScreenViewModel bag = Assert.IsOfType<MapEditorBagScreenViewModel>(gameViewModel.TopScreen);
+
+        foreach (int index in new[] { 0, 40, 80, 120 })
+        {
+            bag.AddItemCommand.Execute(null);
+            ListPicker().Options[index].PickCommand.Execute(null);
+        }
+
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "4-treasure");
+        bag.ConfirmCommand.Execute(null);
+
+        // Merchant, mage tower, mercenary camp.
+        editor.SelectTool(MapEditorTool.Site);
+        editor.BeginStroke(new WorldPosition(13, 22));
+        MapEditorSiteScreenViewModel merchant = Assert.IsOfType<MapEditorSiteScreenViewModel>(gameViewModel.TopScreen);
+
+        foreach (int index in new[] { 10, 50, 90 })
+        {
+            merchant.AddCommand.Execute(null);
+            ListPicker().Options[index].PickCommand.Execute(null);
+        }
+
+        merchant.Goods[0].IncreaseCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "5-merchant");
+        merchant.ConfirmCommand.Execute(null);
+
+        editor.BeginStroke(new WorldPosition(12, 27));
+        MapEditorSiteScreenViewModel mage = Assert.IsOfType<MapEditorSiteScreenViewModel>(gameViewModel.TopScreen);
+        mage.AddCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "6-spells");
+
+        foreach (int index in new[] { 0, 7, 20 })
+        {
+            if (index > 0)
+            {
+                mage.AddCommand.Execute(null);
+            }
+
+            ListPicker().Options[index].PickCommand.Execute(null);
+        }
+
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "7-mage");
+        mage.ConfirmCommand.Execute(null);
+
+        editor.BeginStroke(new WorldPosition(8, 27));
+        MapEditorSiteScreenViewModel camp = Assert.IsOfType<MapEditorSiteScreenViewModel>(gameViewModel.TopScreen);
+
+        for (int i = 0; i < 3; i++)
+        {
+            camp.AddCommand.Execute(null);
+            UnitPicker().Options.Where(option => !option.IsUnavailable).ElementAt(i * 5).PickCommand.Execute(null);
+        }
+
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "8-camp");
+        camp.ConfirmCommand.Execute(null);
+
+        Assert.That(editor.Map.Sites.Sum(site => site.Items.Length + site.Spells.Length + site.Units.Length), Is.EqualTo(9));
+    }
 }

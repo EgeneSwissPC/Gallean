@@ -334,7 +334,7 @@
                   </DataTemplate>
                 </ComboBox.ItemTemplate>
               </ComboBox>
-              <TextBlock Text="{local:Text 'Click free land to set up a new army, or click an army to change or delete it. Right-click an army to see it.'}"
+              <TextBlock Text="{local:Text 'Click free land to set up a new army, or click an army to change or delete it. Click a village to station an army in it. Right-click an army to see it.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}"
@@ -375,6 +375,38 @@
                 </ComboBox.ItemTemplate>
               </ComboBox>
               <TextBlock Text="{local:Text 'Click land to place it; click it again to remove it. A resource pays whoever owns the land under it, so paint race land around it to give it to a player.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,6,0,0" />
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsRuinTool}">
+              <TextBlock Text="{local:Text 'Click free land to place a ruin. Click a ruin to set its name, look, reward and guards, or to delete it.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,10,0,0" />
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsBagTool}">
+              <TextBlock Text="{local:Text 'Click land or water to drop a treasure bag. Click a bag to choose its items, or to delete it.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,10,0,0" />
+            </StackPanel>
+
+            <StackPanel IsVisible="{Binding IsSiteTool}">
+              <local:OutlinedTextBlock Text="{local:Text 'Site type'}" Classes="caption field-label" />
+              <ComboBox x:Name="SiteTypeBox" HorizontalAlignment="Stretch" ItemsSource="{Binding SiteTypes}" SelectedItem="{Binding SelectedSiteType}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{local:Text 'Click free land to place the site. Click a site to set its name, greeting, look and goods, or to delete it.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}"
