@@ -582,6 +582,139 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(placed.Hitpoints, Is.GreaterThan(soldier.Definition.MaxHitpoints));
     }
 
+    [Test]
+    public async Task PlacementPreviewTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, _) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        Assert.That((editor.IsPreviewEnabled, editor.PlacementPreview.IsEmpty), Is.EqualTo((true, true)), "On by default; nothing while the mouse is off the map.");
+
+        // A village on free land: its 4x4 footprint in green; the land it claims is only mentioned.
+        editor.SelectTool(MapEditorTool.Village);
+        editor.SelectedVillageOwner = editor.VillageOwners.Single(owner => owner.Value == WorldRace.Human);
+        editor.UpdateHover(new WorldPosition(24, 24));
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(16));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(22, 22)), Is.EqualTo(MapEditorTileState.Fits));
+        Assert.That(editor.HoverText, Is.EqualTo("Village (4x4): fits · claims 16 tiles for Empire\n24, 24: Neutral land"));
+
+        // Next to the capital: the overlapping column is red, the rest green, and the hover line names the first
+        // blocking tile. The click agrees.
+        editor.UpdateHover(new WorldPosition(12, 8));
+        Assert.That((editor.PlacementPreview.Count(MapEditorTileState.Blocked), editor.PlacementPreview.Count(MapEditorTileState.Fits)), Is.EqualTo((4, 12)));
+        Assert.That(editor.HoverText, Does.StartWith("Village (4x4): blocked by a capital at 10, 6\n"));
+        editor.BeginStroke(new WorldPosition(12, 8));
+        Assert.That(editor.Map.Villages, Is.Empty);
+
+        // Brushes show their disk at the current size, at once when the size changes.
+        editor.SelectTool(MapEditorTool.Water);
+        editor.BrushRadius = 2;
+        editor.UpdateHover(new WorldPosition(30, 20));
+        int disk = CustomMap.GetBrushArea(new WorldPosition(30, 20), 2).Count();
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(disk));
+        Assert.That(editor.HoverText, Does.StartWith($"Water brush, size 2: paints {disk} tiles\n"));
+        editor.BrushRadius = 3;
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(CustomMap.GetBrushArea(new WorldPosition(30, 20), 3).Count()));
+        editor.BeginStroke(new WorldPosition(30, 20));
+        editor.EndStroke();
+
+        // A Water brush touching a mountain removes all of it: its tiles are amber, the painted tile is still counted.
+        editor.SelectTool(MapEditorTool.Mountain);
+        editor.BrushRadius = 1;
+        editor.BeginStroke(new WorldPosition(30, 34));
+        editor.EndStroke();
+        editor.SelectTool(MapEditorTool.Water);
+        editor.BrushRadius = 0;
+        editor.UpdateHover(new WorldPosition(29, 33));
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Changes), Is.EqualTo(9));
+        Assert.That(editor.HoverText, Does.StartWith("Water brush, size 0: paints 1 tile · removes 1 mountain\n"));
+
+        // Over the capital, the brush leaves its tiles alone (red).
+        editor.SelectTool(MapEditorTool.Land);
+        editor.BrushRadius = 1;
+        editor.UpdateHover(new WorldPosition(6, 8));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(6, 8)), Is.EqualTo(MapEditorTileState.Blocked));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(5, 8)), Is.EqualTo(MapEditorTileState.Fits));
+        Assert.That(editor.HoverText, Does.StartWith("Land brush, size 1: paints 3 tiles · leaves 6 tiles alone\n"));
+
+        // A ruin on the shore turns water into land: those tiles are amber.
+        editor.SelectTool(MapEditorTool.Ruin);
+        editor.UpdateHover(new WorldPosition(27, 20));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(27, 20)), Is.EqualTo(MapEditorTileState.Changes));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(26, 20)), Is.EqualTo(MapEditorTileState.Fits));
+        Assert.That(editor.HoverText, Does.Match(@"^Ruin \(3x3\): fits · turns \d+ water tiles into land\n"));
+
+        // Capital tool: over a capital the gold outline shows the click opens it; elsewhere placing again moves it.
+        editor.SelectTool(MapEditorTool.Capital);
+        editor.SelectedCapitalRace = editor.CapitalRaces[0];
+        editor.UpdateHover(new WorldPosition(7, 7));
+        Assert.That(editor.PlacementPreview.Glow, Is.EqualTo(editor.Map.Players[0].Footprint));
+        Assert.That(editor.HoverText, Does.StartWith("Capital of Empire: click opens it\n"));
+        editor.UpdateHover(new WorldPosition(20, 8));
+        Assert.That(editor.PlacementPreview.MovesFrom, Is.EqualTo(editor.Map.Players[0].Footprint));
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(25));
+        Assert.That(editor.HoverText, Does.StartWith("Capital (5x5): fits · claims 25 tiles for Empire · moves it here with its garrison and army\n"));
+
+        // One-tile objects get the game's hover cursor: the render request carries it.
+        editor.SelectTool(MapEditorTool.Bag);
+        editor.BeginStroke(new WorldPosition(14, 30));
+        editor.UpdateHover(new WorldPosition(15, 30));
+        editor.UpdateHover(new WorldPosition(14, 30));
+        Assert.That(editor.PlacementPreview.HoverObject, Is.EqualTo(new WorldPosition(14, 30)));
+        Assert.That(editor.RenderRequest.Cursor.HoverObject, Is.EqualTo(new WorldPosition(14, 30)));
+        Assert.That(editor.HoverText, Does.StartWith("Treasure: click opens it\n"));
+
+        // Resources: the same type is removed by a click, another type is changed; a new one names who earns from it.
+        editor.SelectTool(MapEditorTool.Resource);
+        editor.SelectedResourceType = editor.ResourceTypes.Single(type => type.Value == WorldResourceType.Gold);
+        editor.UpdateHover(new WorldPosition(9, 12));
+        Assert.That(editor.HoverText, Does.StartWith("Gold mine: fits · income goes to nobody\n"));
+        editor.UpdateHover(new WorldPosition(14, 30));
+        Assert.That((editor.PlacementPreview.Count(MapEditorTileState.Blocked), editor.HoverText), Is.EqualTo((1, "Gold mine: blocked by treasure at 14, 30\n14, 30: Neutral land · treasure (0 items)")));
+        editor.UpdateHover(new WorldPosition(9, 11));
+        editor.BeginStroke(new WorldPosition(9, 11));
+        editor.UpdateHover(new WorldPosition(9, 12));
+        editor.UpdateHover(new WorldPosition(9, 11));
+        Assert.That(editor.HoverText, Does.StartWith("Gold mine: click removes it\n"));
+        editor.SelectedResourceType = editor.ResourceTypes.Single(type => type.Value == WorldResourceType.LifeMana);
+        Assert.That(editor.HoverText, Does.StartWith("Gold mine: click changes it to Life mana crystal\n"));
+
+        // Landmarks: the footprint follows the palette selection at once; over a landmark the click removes it.
+        editor.SelectTool(MapEditorTool.Landmark);
+        editor.UpdateHover(new WorldPosition(20, 26));
+        editor.SelectedLandmarkSize = editor.LandmarkSizes.Single(size => size.Value == 3);
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(9));
+        editor.SelectedLandmarkSize = editor.LandmarkSizes.Single(size => size.Value == 2);
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(4));
+        editor.UpdateHover(new WorldPosition(10, 12));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(9, 11)), Is.EqualTo(MapEditorTileState.Blocked));
+        Assert.That(editor.HoverText, Does.Contain(": blocked by a resource at 9, 11\n"));
+        editor.BeginStroke(new WorldPosition(10, 12));
+        Assert.That(editor.Map.Landmarks, Is.Empty, "Blocked, as the preview said.");
+        editor.UpdateHover(new WorldPosition(30, 30));
+        editor.BeginStroke(new WorldPosition(30, 30));
+        Assert.That(editor.Map.Landmarks, Has.Count.EqualTo(1));
+        editor.UpdateHover(new WorldPosition(29, 29));
+        Assert.That((editor.PlacementPreview.Glow, editor.HoverText), Is.EqualTo((editor.Map.Landmarks[0].Footprint, $"{editor.SelectedLandmark!.Name}: click removes it\n29, 29: Neutral land · {editor.SelectedLandmark.Name}")));
+
+        // The preview goes away with the right-click popup, while dragging the map, when switched off and when the
+        // mouse leaves the map; the tile description stays.
+        editor.ShowPositionInfo(new WorldPosition(29, 29));
+        Assert.That((editor.PlacementPreview.IsEmpty, editor.HoverText), Is.EqualTo((true, $"29, 29: Neutral land · {editor.SelectedLandmark.Name}")));
+        editor.HidePositionInfo();
+        Assert.That(editor.PlacementPreview.IsEmpty, Is.False);
+        editor.SetPreviewSuspended(true);
+        Assert.That(editor.PlacementPreview.IsEmpty, Is.True);
+        editor.SetPreviewSuspended(false);
+        editor.IsPreviewEnabled = false;
+        Assert.That((editor.PlacementPreview.IsEmpty, editor.RenderRequest.Cursor.HoverObject), Is.EqualTo((true, (WorldPosition?)null)));
+        editor.IsPreviewEnabled = true;
+        editor.UpdateHover(null);
+        Assert.That((editor.PlacementPreview.IsEmpty, editor.HoverText), Is.EqualTo((true, string.Empty)));
+    }
+
     private static MapEditorScreenViewModel PlaceCapitals(MapEditorScreenViewModel editor)
     {
         editor.SelectTool(MapEditorTool.Capital);

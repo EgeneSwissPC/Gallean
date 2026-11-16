@@ -241,6 +241,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     partial void OnSelectedToolChanged(MapEditorOption<MapEditorTool> value)
     {
         renderRequest = CreateRenderRequest();
+        RefreshPreview();
     }
 
     partial void OnSelectedLandmarkCategoryChanged(MapEditorOption<WorldLandmarkType> value)
@@ -299,8 +300,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         }
 
         hoverTile = tile;
-        HoverText = tile is { } current ? FormatTile(current) : string.Empty;
-        SetRenderRequest(CreateRenderRequest());
+        RefreshPreview();
     }
 
     public void BeginStroke(WorldPosition tile)
@@ -385,7 +385,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             strokeChanged = true;
             IsDirty = true;
             state = CustomMapStore.ApplyTerrain(state, map);
-            SetRenderRequest(CreateRenderRequest());
+            RefreshPreview();
         }
     }
 
@@ -409,15 +409,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     private async Task PlaceCapitalAsync(WorldPosition tile)
     {
-        int offset = CustomMap.CapitalSize / 2;
-        WorldPosition topLeft = new(
-            Math.Clamp(tile.X - offset, 0, map.Size - CustomMap.CapitalSize),
-            Math.Clamp(tile.Y - offset, 0, map.Size - CustomMap.CapitalSize));
+        WorldPosition topLeft = map.CenterFootprint(tile, CustomMap.CapitalSize, CustomMap.CapitalSize);
         CustomMap before = map.Clone();
 
-        if (!map.PlaceCapital(SelectedCapitalRace.Value, topLeft))
+        if (map.PlaceCapital(SelectedCapitalRace.Value, topLeft) is { } error)
         {
-            Game.ShowError(Tr("A capital cannot overlap another capital or an army."));
+            Game.ShowError(MapEditorLabels.CapitalError(error));
             return;
         }
 
@@ -432,7 +429,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     {
         int version = ++previewVersion;
         state = CustomMapStore.ApplyTerrain(state, map);
-        SetRenderRequest(CreateRenderRequest());
+        RefreshPreview();
         UpdateStatus();
 
         try
@@ -510,7 +507,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             return;
         }
 
-        WorldPosition topLeft = CenterFootprint(tile, CustomMapRuin.Size);
+        WorldPosition topLeft = map.CenterFootprint(tile, CustomMapRuin.Size, CustomMapRuin.Size);
         CustomMap before = map.Clone();
 
         if (map.PlaceRuin(topLeft, random.Next(CustomMapRuin.VariantCount), PickName(library.Names.Ruins, map.Ruins.Select(ruin => ruin.Name)).Name).Error is { } error)
@@ -576,7 +573,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         MapEditorName name = PickName(names, map.Sites.Select(site => site.Name));
         CustomMap before = map.Clone();
 
-        if (map.PlaceSite(CenterFootprint(tile, CustomMapSite.Size), type, random.Next(CustomMapSite.GetVariantCount(type)), name.Name, name.Greeting).Error is { } error)
+        if (map.PlaceSite(map.CenterFootprint(tile, CustomMapSite.Size, CustomMapSite.Size), type, random.Next(CustomMapSite.GetVariantCount(type)), name.Name, name.Greeting).Error is { } error)
         {
             Game.ShowError(MapEditorLabels.ObjectError(error));
             return;
@@ -602,9 +599,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
         CustomMap before = map.Clone();
         WorldLandmarkDefinition definition = option.Definition;
-        WorldPosition topLeft = new(
-            Math.Clamp(tile.X - (definition.Width / 2), 0, Math.Max(0, map.Size - definition.Width)),
-            Math.Clamp(tile.Y - (definition.Height / 2), 0, Math.Max(0, map.Size - definition.Height)));
+        WorldPosition topLeft = map.CenterFootprint(tile, definition.Width, definition.Height);
 
         if (map.PlaceLandmark(topLeft, definition).Error is { } error)
         {
@@ -613,13 +608,6 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         }
 
         CommitArmyChange(before);
-    }
-
-    private WorldPosition CenterFootprint(WorldPosition tile, int size)
-    {
-        int offset = size / 2;
-
-        return new WorldPosition(Math.Clamp(tile.X - offset, 0, map.Size - size), Math.Clamp(tile.Y - offset, 0, map.Size - size));
     }
 
     // A name from the game's list that the map does not use yet.
@@ -693,10 +681,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             return;
         }
 
-        int offset = CustomMapVillage.Size / 2;
-        WorldPosition topLeft = new(
-            Math.Clamp(tile.X - offset, 0, map.Size - CustomMapVillage.Size),
-            Math.Clamp(tile.Y - offset, 0, map.Size - CustomMapVillage.Size));
+        WorldPosition topLeft = map.CenterFootprint(tile, CustomMapVillage.Size, CustomMapVillage.Size);
         CustomMap before = map.Clone();
 
         if (map.PlaceVillage(topLeft, SelectedVillageLevel.Value, SelectedVillageOwner.Value, NextVillageName()).Error is { } error)
@@ -848,7 +833,6 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         TrimUndo();
         CanUndo = true;
         IsDirty = true;
-        HoverText = hoverTile is { } tile ? FormatTile(tile) : string.Empty;
         RebuildPreviewAsync().FileAndForget();
     }
 
@@ -947,7 +931,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         else
         {
             state = CustomMapStore.ApplyTerrain(state, map);
-            SetRenderRequest(CreateRenderRequest());
+            RefreshPreview();
             UpdateStatus();
         }
     }
@@ -1136,7 +1120,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     private WorldRenderRequest CreateRenderRequest()
     {
-        WorldCursor cursor = WorldCursor.Empty with { HoverTile = hoverTile };
+        WorldCursor cursor = WorldCursor.Empty with { HoverTile = hoverTile, HoverObject = PlacementPreview.HoverObject };
 
         return new WorldRenderRequest(state, ViewPlayerId, cursor, FogEnabled: false, Animation: null, IsPlayingEvent: false);
     }

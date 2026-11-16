@@ -42,8 +42,8 @@ public sealed class CustomMapTests
         map.Paint(new WorldPosition(36, 10), 1, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
         map.Paint(new WorldPosition(40, 40), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
         map.Paint(new WorldPosition(30, 36), 2, CustomMapBrush.Land, WorldMapTerrain.Undead, random);
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(4, 4)), Is.True);
-        Assert.That(map.PlaceCapital(WorldRace.Elf, new WorldPosition(38, 4)), Is.True);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(4, 4)), Is.Null);
+        Assert.That(map.PlaceCapital(WorldRace.Elf, new WorldPosition(38, 4)), Is.Null);
 
         return map;
     }
@@ -85,11 +85,11 @@ public sealed class CustomMapTests
         Random random = new(1);
 
         Assert.That(map.Validate(), Has.Count.EqualTo(2));
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(30, 30)), Is.False, "Capital outside the map.");
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(2, 2)), Is.True);
-        Assert.That(map.PlaceCapital(WorldRace.Undead, new WorldPosition(4, 4)), Is.False, "Overlaps the human capital.");
-        Assert.That(map.PlaceCapital(WorldRace.Elf, new WorldPosition(20, 20)), Is.False, "Elves are not on this map.");
-        Assert.That(map.PlaceCapital(WorldRace.Undead, new WorldPosition(20, 20)), Is.True);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(30, 30)), Is.EqualTo(CustomMapPlacementError.OutsideMap), "Capital outside the map.");
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(2, 2)), Is.Null);
+        Assert.That(map.PlaceCapital(WorldRace.Undead, new WorldPosition(4, 4)), Is.EqualTo(CustomMapPlacementError.Blocked), "Overlaps the human capital.");
+        Assert.That(map.PlaceCapital(WorldRace.Elf, new WorldPosition(20, 20)), Is.EqualTo(CustomMapPlacementError.UnknownOwner), "Elves are not on this map.");
+        Assert.That(map.PlaceCapital(WorldRace.Undead, new WorldPosition(20, 20)), Is.Null);
         Assert.That(map.Validate(), Is.Empty);
         Assert.That(map.GetCell(new WorldPosition(4, 4)).Terrain, Is.EqualTo(WorldMapTerrain.Human));
 
@@ -98,7 +98,7 @@ public sealed class CustomMapTests
         Assert.That(map.GetCell(new WorldPosition(4, 4)).Terrain, Is.EqualTo(WorldMapTerrain.Human));
 
         // Moving a capital keeps one capital per player.
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(10, 2)), Is.True);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(10, 2)), Is.Null);
         Assert.That(map.Players.Single(player => player.Race == WorldRace.Human).Capital, Is.EqualTo(new WorldPosition(10, 2)));
     }
 
@@ -294,7 +294,7 @@ public sealed class CustomMapTests
         map.Paint(new WorldPosition(20, 40), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
         map.Paint(new WorldPosition(20, 40), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
         Assert.That(map.GetCell(new WorldPosition(20, 40)), Is.EqualTo(new WorldMapCell(WorldMapTerrain.Neutral, WorldMapFeature.None, new WorldObjectVariant(0))));
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(18, 38)), Is.False);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(18, 38)), Is.EqualTo(CustomMapPlacementError.Occupied));
 
         int id = map.Stacks.Single().Id;
         Assert.That(map.UpdateStack(id, WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))), Is.Null);
@@ -431,7 +431,7 @@ public sealed class CustomMapTests
         map.Paint(gold, 0, CustomMapBrush.Forest, WorldMapTerrain.Neutral, random);
         Assert.That(map.Paint(gold, 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random), Is.False);
         Assert.That(map.GetCell(gold), Is.EqualTo(new WorldMapCell(WorldMapTerrain.Human, WorldMapFeature.None, new WorldObjectVariant(0))));
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(18, 18)), Is.False, "A capital cannot cover a resource.");
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(18, 18)), Is.EqualTo(CustomMapPlacementError.Occupied), "A capital cannot cover a resource.");
 
         Assert.That(map.RemoveResource(gold), Is.True);
         Assert.That(map.RemoveResource(gold), Is.False);
@@ -466,7 +466,7 @@ public sealed class CustomMapTests
         Assert.That(map.Paint(new WorldPosition(15, 15), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random), Is.False);
         Assert.That(map.PlaceStack(new WorldPosition(15, 15), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
         Assert.That(map.PlaceResource(new WorldPosition(15, 15), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Blocked));
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.False);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.EqualTo(CustomMapPlacementError.Blocked));
 
         // Nothing can be built over an army or a resource.
         map.PlaceResource(new WorldPosition(22, 32), WorldResourceType.Gold);
@@ -684,7 +684,7 @@ public sealed class CustomMapTests
         Assert.That(reopened.Stacks, Is.EquivalentTo(map.Stacks), "The Elf starting leader is not turned into an editor army.");
 
         // Moving the capital takes the garrison and the army along.
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(6, 12)), Is.True);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(6, 12)), Is.Null);
         human = map.Players.Single(player => player.Race == WorldRace.Human);
         Assert.That(human.Garrison, Is.EqualTo(defenders));
         Assert.That(map.Stacks.Single().Position, Is.EqualTo(new WorldPosition(10, 16)));
@@ -706,7 +706,7 @@ public sealed class CustomMapTests
         Assert.That(map.PlaceRuin(new WorldPosition(16, 16), 0, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
         Assert.That(map.PlaceSite(new WorldPosition(12, 12), CustomMapSiteType.Merchant, 0, "", "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
         Assert.That(map.PlaceVillage(new WorldPosition(11, 11), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.False);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.EqualTo(CustomMapPlacementError.Blocked));
         Assert.That(map.PlaceSite(new WorldPosition(46, 46), CustomMapSiteType.Trainer, 0, "", "").Error, Is.EqualTo(CustomMapPlacementError.OutsideMap));
 
         // A site on the lake shore turns its water into land; variants wrap around.
@@ -838,7 +838,7 @@ public sealed class CustomMapTests
         Assert.That(map.PlaceLandmark(new WorldPosition(46, 46), big).Error, Is.EqualTo(CustomMapPlacementError.OutsideMap));
         Assert.That(map.PlaceRuin(new WorldPosition(12, 12), 0, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
         Assert.That(map.PlaceVillage(new WorldPosition(15, 16), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Blocked));
-        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.False);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(12, 12)), Is.EqualTo(CustomMapPlacementError.Blocked));
         Assert.That(map.PlaceStack(new WorldPosition(15, 15), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
         Assert.That(map.PlaceResource(new WorldPosition(15, 15), WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Blocked));
         Assert.That(map.PlaceBag(new WorldPosition(15, 15), 0).Error, Is.EqualTo(CustomMapPlacementError.Blocked));
@@ -964,5 +964,268 @@ public sealed class CustomMapTests
         Assert.That(session.World.State.Fortifications.Values.OfType<WorldCity>().Count(), Is.EqualTo(3));
         TestContext.Out.WriteLine(string.Join(", ", session.World.State.Fortifications.Values.OfType<WorldCity>().Select(city => $"{city.Id}: {session.World.State.Players[city.OwnerId].Race}")));
         TestContext.Out.WriteLine($"Turn {session.World.State.TurnInfo.TurnNumber}, Empire gold {goldBefore} -> {session.World.State.Players[empire.Id].Resources.Gold}");
+    }
+
+    // A map with one of everything close together, for the preview tests.
+    private CustomMap CreateBusyMap()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(2);
+
+        map.PlaceVillage(new WorldPosition(4, 16), 2, WorldRace.Human, "Ford");
+        map.PlaceStack(new WorldPosition(7, 19), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader)));
+        map.PlaceStack(new WorldPosition(14, 12), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader)));
+        map.PlaceStack(new WorldPosition(8, 8), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader)));
+        map.PlaceRuin(new WorldPosition(20, 12), 0, "Rigel Ruin");
+        map.PlaceBag(new WorldPosition(12, 14), 0);
+        map.PlaceBag(new WorldPosition(22, 22), 0);
+        map.PlaceResource(new WorldPosition(16, 8), WorldResourceType.Gold);
+        map.PlaceSite(new WorldPosition(30, 20), CustomMapSiteType.Merchant, 0, "Shop", "");
+        map.PlaceLandmark(new WorldPosition(20, 4), Landmark(3));
+        map.PlaceLandmark(new WorldPosition(14, 30), Landmark(1));
+        map.Paint(new WorldPosition(30, 30), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
+        map.Paint(new WorldPosition(18, 18), 1, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
+        map.Paint(new WorldPosition(34, 28), 1, CustomMapBrush.Forest, WorldMapTerrain.Neutral, random);
+        Assert.That((map.Villages.Count, map.Stacks.Count, map.Ruins.Count, map.Bags.Count, map.Resources.Count, map.Sites.Count, map.Landmarks.Count, map.Mountains.Count),
+            Is.EqualTo((1, 3, 1, 2, 1, 1, 2, 4)));
+
+        return map;
+    }
+
+    // Tiles whose change a player sees on the map: forests and mountains gone, water turned into land.
+    private static HashSet<WorldPosition> VisibleChanges(CustomMap before, CustomMap after)
+    {
+        HashSet<WorldPosition> changed = [];
+
+        for (int y = 0; y < before.Size; y++)
+        {
+            for (int x = 0; x < before.Size; x++)
+            {
+                WorldPosition position = new(x, y);
+                WorldMapCell old = before.GetCell(position);
+                WorldMapCell now = after.GetCell(position);
+
+                if ((old.Feature != WorldMapFeature.None && now.Feature == WorldMapFeature.None) ||
+                    (old.Terrain == WorldMapTerrain.Water && now.Terrain != WorldMapTerrain.Water))
+                {
+                    changed.Add(position);
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    private static HashSet<WorldPosition> TilesWith(CustomMapPlacementPreview preview, CustomMapTileStatus status)
+    {
+        return [.. preview.Tiles.Where(tile => tile.Status == status).Select(tile => tile.Position)];
+    }
+
+    // Every tool's preview, on every tile of a busy map, matches what the click does on a copy of the map: the
+    // same error, the same footprint, and the amber tiles are exactly the tiles that visibly change.
+    [Test]
+    public void PreviewAgreesWithPlaceTest()
+    {
+        CustomMap map = CreateBusyMap();
+        WorldLandmarkDefinition landmark = Landmark(3);
+        WorldLandmarkDefinition small = Landmark(2);
+        Dictionary<string, (int Fits, int Blocked)> counts = [];
+
+        void Check(string tool, CustomMapPlacementPreview preview, Func<CustomMap, (CustomMapPlacementError? Error, WorldFootprint? Footprint)> place)
+        {
+            CustomMap copy = map.Clone();
+            (CustomMapPlacementError? error, WorldFootprint? footprint) = place(copy);
+
+            Assert.That(preview.Error, Is.EqualTo(error), $"{tool} at {preview.Footprint}");
+
+            if (error is null)
+            {
+                if (footprint is not null)
+                {
+                    Assert.That(preview.Footprint, Is.EqualTo(footprint), tool);
+                }
+
+                Assert.That(TilesWith(preview, CustomMapTileStatus.Changes), Is.EquivalentTo(VisibleChanges(map, copy)), $"{tool} at {preview.Footprint}");
+                Assert.That(TilesWith(preview, CustomMapTileStatus.Blocked), Is.Empty, tool);
+            }
+            else
+            {
+                Assert.That(copy.Cells, Is.EqualTo(map.Cells), tool);
+                Assert.That(TilesWith(preview, CustomMapTileStatus.Blocked), Is.Not.Empty, $"{tool}: a blocked placement shows what blocks it.");
+            }
+
+            (int fits, int blocked) = counts.GetValueOrDefault(tool);
+            counts[tool] = error is null ? (fits + 1, blocked) : (fits, blocked + 1);
+        }
+
+        for (int y = 0; y < map.Size; y++)
+        {
+            for (int x = 0; x < map.Size; x++)
+            {
+                WorldPosition tile = new(x, y);
+                WorldPosition capital = map.CenterFootprint(tile, CustomMap.CapitalSize, CustomMap.CapitalSize);
+                WorldPosition village = map.CenterFootprint(tile, CustomMapVillage.Size, CustomMapVillage.Size);
+                WorldPosition ruin = map.CenterFootprint(tile, CustomMapRuin.Size, CustomMapRuin.Size);
+                WorldPosition big = map.CenterFootprint(tile, landmark.Width, landmark.Height);
+                WorldPosition little = map.CenterFootprint(tile, small.Width, small.Height);
+
+                Check("capital", map.PreviewCapital(WorldRace.Elf, capital), copy => (copy.PlaceCapital(WorldRace.Elf, capital), copy.Players[1].Footprint));
+                Check("village", map.PreviewVillage(village, 1, WorldRace.Neutral), copy => Result(copy.PlaceVillage(village, 1, WorldRace.Neutral, "")));
+                Check("ruin", map.PreviewRuin(ruin), copy => Result(copy.PlaceRuin(ruin, 0, "")));
+                Check("site", map.PreviewSite(ruin), copy => Result(copy.PlaceSite(ruin, CustomMapSiteType.Trainer, 0, "", "")));
+                Check("landmark", map.PreviewLandmark(big, landmark.Width, landmark.Height), copy => Result(copy.PlaceLandmark(big, landmark)));
+                Check("landmark 2x2", map.PreviewLandmark(little, small.Width, small.Height), copy => Result(copy.PlaceLandmark(little, small)));
+                Check("bag", map.PreviewBag(tile), copy => (copy.PlaceBag(tile, 0).Error, new WorldFootprint(tile, 1, 1)));
+
+                if (map.GetResourceAt(tile) is null)
+                {
+                    Check("resource", map.PreviewResource(tile), copy => (copy.PlaceResource(tile, WorldResourceType.LifeMana), new WorldFootprint(tile, 1, 1)));
+                }
+
+                // Armies: the editor probes the tile with an empty army, which fails with NoLeader when the tile is fine.
+                foreach (WorldRace owner in new[] { WorldRace.Neutral, WorldRace.Human })
+                {
+                    CustomMapPlacementPreview army = map.PreviewStack(tile, owner);
+                    CustomMapStackError? placed = map.Clone().PlaceStack(tile, owner, new CustomMapUnit?[GridPosition.Count]).Error;
+                    Assert.That(army.StackError ?? CustomMapStackError.NoLeader, Is.EqualTo(placed), $"army of {owner} at {tile}");
+                    Assert.That(army.Tiles.Single().Status == CustomMapTileStatus.Blocked, Is.EqualTo(army.StackError is not null), $"army at {tile}");
+                }
+            }
+        }
+
+        foreach ((string tool, (int fits, int blocked)) in counts)
+        {
+            TestContext.Out.WriteLine($"{tool}: {fits} fit, {blocked} blocked");
+            Assert.That((fits > 0, blocked > 0), Is.EqualTo((true, true)), $"{tool} is tested both ways.");
+        }
+    }
+
+    private static (CustomMapPlacementError? Error, WorldFootprint? Footprint) Result<T>((T? Placed, CustomMapPlacementError? Error) result)
+        where T : class
+    {
+        WorldFootprint? footprint = result.Placed switch
+        {
+            CustomMapVillage village => village.Footprint,
+            CustomMapRuin ruin => ruin.Footprint,
+            CustomMapSite site => site.Footprint,
+            CustomMapLandmark landmark => landmark.Footprint,
+            _ => null
+        };
+
+        return (result.Error, footprint);
+    }
+
+    // Brush previews: the tiles a stroke paints, the ones it leaves alone and the mountains it removes or creates,
+    // checked against Paint on a copy.
+    [Test]
+    public void PreviewPaintAgreesWithPaintTest()
+    {
+        CustomMap map = CreateBusyMap();
+        int checkedStrokes = 0;
+
+        foreach (CustomMapBrush brush in Enum.GetValues<CustomMapBrush>())
+        {
+            foreach (int radius in new[] { 0, 1, 2, 3, 8 })
+            {
+                for (int y = 0; y < map.Size; y += 3)
+                {
+                    for (int x = 0; x < map.Size; x += 3)
+                    {
+                        WorldPosition center = new(x, y);
+                        CustomMapPlacementPreview preview = map.PreviewPaint(center, radius, brush);
+                        CustomMap copy = map.Clone();
+                        copy.Paint(center, radius, brush, WorldMapTerrain.Dwarf, new Random(3));
+                        string where = $"{brush} r{radius} at {center}";
+
+                        HashSet<WorldPosition> changed = [.. Enumerable.Range(0, map.Size * map.Size)
+                            .Select(index => new WorldPosition(index % map.Size, index / map.Size))
+                            .Where(position => map.GetCell(position) != copy.GetCell(position))];
+                        HashSet<WorldPosition> covered = [.. preview.Tiles.Where(tile => tile.Status != CustomMapTileStatus.Blocked).Select(tile => tile.Position)];
+
+                        Assert.That(changed.IsSubsetOf(covered), Is.True, $"{where}: every painted tile is in the preview.");
+                        Assert.That(TilesWith(preview, CustomMapTileStatus.Blocked).Overlaps(changed), Is.False, $"{where}: red tiles stay as they are.");
+                        Assert.That(preview.RemovedMountains, Is.EquivalentTo(map.Mountains.Except(copy.Mountains).Select(mountain => mountain.Footprint)), where);
+                        Assert.That(preview.NewMountains, Is.EquivalentTo(copy.Mountains.Except(map.Mountains).Select(mountain => mountain.Footprint)), where);
+
+                        if (brush != CustomMapBrush.Mountain)
+                        {
+                            HashSet<WorldPosition> disk = [.. CustomMap.GetBrushArea(center, radius).Where(map.IsValidPosition)];
+                            Assert.That(preview.Tiles.Select(tile => tile.Position).Where(disk.Contains).Count(), Is.EqualTo(disk.Count), $"{where}: the whole disk is shown.");
+                        }
+
+                        checkedStrokes++;
+                    }
+                }
+            }
+        }
+
+        Assert.That(checkedStrokes, Is.EqualTo(5 * 5 * 16 * 16));
+    }
+
+    [Test]
+    public void PreviewTileReasonsTest()
+    {
+        CustomMap map = CreateBusyMap();
+
+        CustomMapTileReason ReasonAt(CustomMapPlacementPreview preview, int x, int y)
+        {
+            return preview.Tiles.Single(tile => tile.Position == new WorldPosition(x, y)).Reason;
+        }
+
+        // A village whose corner touches the ruin and the 3x3 mountain: just those tiles are red, the rest green.
+        CustomMapPlacementPreview village = map.PreviewVillage(new WorldPosition(17, 9), 1, WorldRace.Neutral);
+        Assert.That(village.Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(ReasonAt(village, 20, 12), Is.EqualTo(CustomMapTileReason.Structure));
+        Assert.That(ReasonAt(village, 17, 9), Is.EqualTo(CustomMapTileReason.None));
+        Assert.That(village.FirstBlocked!.Value.Position, Is.EqualTo(new WorldPosition(20, 12)));
+
+        // A bag inside the footprint: Occupied, with the bag tile named.
+        CustomMapPlacementPreview ruin = map.PreviewRuin(new WorldPosition(11, 13));
+        Assert.That(ruin.Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(ReasonAt(ruin, 12, 14), Is.EqualTo(CustomMapTileReason.Bag));
+
+        // A ruin on the lake shore turns water into land; on the 3x3 mountain it removes all of it, also outside.
+        CustomMapPlacementPreview shore = map.PreviewRuin(new WorldPosition(19, 23));
+        Assert.That(shore.Error, Is.Null);
+        Assert.That(ReasonAt(shore, 21, 24), Is.EqualTo(CustomMapTileReason.WaterToLand));
+        CustomMapPlacementPreview mountain = map.PreviewSite(new WorldPosition(15, 15));
+        Assert.That(mountain.Error, Is.Null);
+        Assert.That(mountain.RemovedMountains, Is.EqualTo(new[] { new WorldFootprint(new WorldPosition(17, 17), 3, 3) }));
+        Assert.That(ReasonAt(mountain, 19, 19), Is.EqualTo(CustomMapTileReason.RemovesMountain), "Outside the footprint.");
+        Assert.That(mountain.Tiles, Has.Length.EqualTo(9 + 8));
+
+        // A landmark can't stand on that mountain; a village can be pushed back inside at the map edge.
+        CustomMapPlacementPreview rocky = map.PreviewLandmark(new WorldPosition(16, 16), 2, 2);
+        Assert.That((rocky.Error, ReasonAt(rocky, 17, 17), ReasonAt(rocky, 16, 16)), Is.EqualTo((CustomMapPlacementError.Blocked, CustomMapTileReason.Mountain, CustomMapTileReason.None)));
+        Assert.That(map.CenterFootprint(new WorldPosition(47, 0), CustomMapVillage.Size, CustomMapVillage.Size), Is.EqualTo(new WorldPosition(44, 0)));
+
+        // A forest under a resource or bag is cleared.
+        Assert.That(ReasonAt(map.PreviewBag(new WorldPosition(10, 30)), 10, 30), Is.EqualTo(CustomMapTileReason.ClearsForest));
+        Assert.That(map.PreviewResource(new WorldPosition(23, 23)).Tiles.Single().Reason, Is.EqualTo(CustomMapTileReason.Water));
+
+        // The village entrance takes an army of its owner only.
+        Assert.That(map.PreviewStack(new WorldPosition(7, 19), WorldRace.Human).StackError, Is.EqualTo(CustomMapStackError.Occupied), "Its stationed army stands there.");
+        map.RemoveStack(map.GetStackAt(new WorldPosition(7, 19))!.Id);
+        Assert.That(map.PreviewStack(new WorldPosition(7, 19), WorldRace.Human).Fits, Is.True);
+        CustomMapPlacementPreview stranger = map.PreviewStack(new WorldPosition(7, 19), WorldRace.Neutral);
+        Assert.That((stranger.StackError, stranger.Tiles.Single().Reason), Is.EqualTo((CustomMapStackError.VillageOwner, CustomMapTileReason.WrongOwner)));
+        Assert.That(map.PreviewStack(new WorldPosition(6, 18), WorldRace.Human).Tiles.Single().Reason, Is.EqualTo(CustomMapTileReason.Structure));
+
+        // Moving a capital onto its own old place is fine and takes its stationed army along; the old place is shown.
+        CustomMapPlacementPreview moved = map.PreviewCapital(WorldRace.Human, new WorldPosition(6, 5));
+        Assert.That(moved.Error, Is.Null, "Overlaps its own old place and its own army at (8, 8).");
+        Assert.That(moved.MovesFrom, Is.EqualTo(new WorldFootprint(new WorldPosition(4, 4), 5, 5)));
+        Assert.That(map.PreviewCapital(WorldRace.Human, new WorldPosition(4, 4)).MovesFrom, Is.Null);
+        CustomMapPlacementPreview onElves = map.PreviewCapital(WorldRace.Human, new WorldPosition(36, 4));
+        Assert.That((onElves.Error, ReasonAt(onElves, 38, 4)), Is.EqualTo((CustomMapPlacementError.Blocked, CustomMapTileReason.Structure)));
+
+        // Brushes: Water leaves armies alone and removes a touched mountain whole; Mountains shows its blocks.
+        CustomMapPlacementPreview water = map.PreviewPaint(new WorldPosition(17, 17), 0, CustomMapBrush.Water);
+        Assert.That(water.RemovedMountains, Has.Length.EqualTo(1));
+        Assert.That(TilesWith(water, CustomMapTileStatus.Changes), Has.Count.EqualTo(9));
+        Assert.That(ReasonAt(map.PreviewPaint(new WorldPosition(14, 12), 1, CustomMapBrush.Water), 14, 12), Is.EqualTo(CustomMapTileReason.Army));
+        CustomMapPlacementPreview peaks = map.PreviewPaint(new WorldPosition(40, 26), 4, CustomMapBrush.Mountain);
+        Assert.That(peaks.NewMountains, Is.EqualTo(new[] { new WorldFootprint(new WorldPosition(36, 22), 5, 5) }));
+        Assert.That(TilesWith(peaks, CustomMapTileStatus.Ok), Has.Count.EqualTo(25));
     }
 }

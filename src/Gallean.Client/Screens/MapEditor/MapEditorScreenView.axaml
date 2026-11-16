@@ -318,7 +318,7 @@
           <Panel Width="170" Height="170" HorizontalAlignment="Center">
             <local:MinimapVisual x:Name="Minimap" Width="170" Height="170" MapScale="1" />
           </Panel>
-          <TextBlock Text="{local:Text 'Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save'}"
+          <TextBlock Text="{local:Text 'Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview'}"
                      Classes="caption"
                      TextWrapping="Wrap"
                      Foreground="{StaticResource SecondaryTextBrush}" />
@@ -484,6 +484,10 @@
               <local:OutlinedTextBlock Text="{local:Text 'Brush size'}" Classes="caption field-label" />
               <Slider x:Name="BrushSlider" Minimum="0" Maximum="{Binding MaxBrush}" Value="{Binding BrushRadius}" IsSnapToTickEnabled="True" TickFrequency="1" />
             </StackPanel>
+
+            <CheckBox x:Name="PreviewBox" IsChecked="{Binding IsPreviewEnabled}" Margin="0,12,0,0">
+              <TextBlock Text="{local:Text 'Placement preview (P)'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+            </CheckBox>
 
             <local:OutlinedTextBlock Text="{local:Text 'Status'}" Classes="caption field-label" />
             <TextBlock Text="{Binding Status}"
