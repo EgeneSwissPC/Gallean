@@ -89,6 +89,17 @@ internal static class MapEditorLabels
         };
     }
 
+    public static string CapitalError(CustomMapPlacementError error)
+    {
+        return error switch
+        {
+            CustomMapPlacementError.OutsideMap => Tr("A capital must fit inside the map."),
+            CustomMapPlacementError.Blocked => Tr("A capital cannot overlap another capital, a village, ruin, site or landmark."),
+            CustomMapPlacementError.Occupied => Tr("Move the armies, resources and treasure out of the way first."),
+            _ => Tr("That player is not on this map.")
+        };
+    }
+
     public static string SiteType(CustomMapSiteType type)
     {
         return type switch

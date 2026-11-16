@@ -215,9 +215,7 @@ public sealed class CustomMap
 
         foreach (WorldPosition position in GetBrushArea(center, radius))
         {
-            if (!IsValidPosition(position) || IsUnderStructure(position) ||
-                (brush == CustomMapBrush.Water && (GetStackAt(position) is not null || GetResourceAt(position) is not null)) ||
-                (brush == CustomMapBrush.Forest && (GetResourceAt(position) is not null || GetBagAt(position) is not null || GetLandmarkAt(position) is not null)))
+            if (!IsValidPosition(position) || GetBrushBlock(position, brush) != CustomMapTileReason.None)
             {
                 continue;
             }
@@ -250,45 +248,307 @@ public sealed class CustomMap
         return changed;
     }
 
-    // Places the capital of a race with its top-left corner at topLeft. The footprint must be inside the map and
-    // must not overlap another capital; terrain under it becomes the race's land and loses forests and mountains.
-    // Moving a capital takes its garrison and stationed army along.
-    public bool PlaceCapital(WorldRace race, WorldPosition topLeft)
+    // Why a brush leaves a tile alone: structures for every brush, armies and resources for Water, resources, bags
+    // and landmarks for Forest. (Mountains have their own rule, GetMountainBlock.)
+    private CustomMapTileReason GetBrushBlock(WorldPosition position, CustomMapBrush brush)
     {
-        int playerIndex = players.FindIndex(player => player.Race == race);
-
-        if (playerIndex < 0)
+        if (IsUnderStructure(position))
         {
-            return false;
+            return CustomMapTileReason.Structure;
         }
 
-        CustomMapStack? stationed = GetStationedStack(players[playerIndex]);
-
-        WorldFootprint footprint = new(topLeft, CapitalSize, CapitalSize);
-
-        if (!IsValidPosition(footprint.TopLeft) || !IsValidPosition(new WorldPosition(topLeft.X + CapitalSize - 1, topLeft.Y + CapitalSize - 1)))
+        if (brush == CustomMapBrush.Water)
         {
-            return false;
-        }
-
-        if (stacks.Any(stack => !ReferenceEquals(stack, stationed) && footprint.Contains(stack.Position)) ||
-            resources.Any(resource => footprint.Contains(resource.Position)) ||
-            bags.Any(bag => footprint.Contains(bag.Position)) ||
-            villages.Any(village => Overlaps(village.Footprint, footprint)) ||
-            ruins.Any(ruin => Overlaps(ruin.Footprint, footprint)) ||
-            sites.Any(site => Overlaps(site.Footprint, footprint)) ||
-            landmarks.Any(landmark => Overlaps(landmark.Footprint, footprint)))
-        {
-            return false;
-        }
-
-        foreach (CustomMapPlayer other in players)
-        {
-            if (other.Race != race && other.Capital is { } capital && Overlaps(new WorldFootprint(capital, CapitalSize, CapitalSize), footprint))
+            if (GetStackAt(position) is not null)
             {
-                return false;
+                return CustomMapTileReason.Army;
+            }
+
+            if (GetResourceAt(position) is not null)
+            {
+                return CustomMapTileReason.Resource;
             }
         }
+
+        if (brush == CustomMapBrush.Forest)
+        {
+            if (GetResourceAt(position) is not null)
+            {
+                return CustomMapTileReason.Resource;
+            }
+
+            if (GetBagAt(position) is not null)
+            {
+                return CustomMapTileReason.Bag;
+            }
+
+            if (GetLandmarkAt(position) is not null)
+            {
+                return CustomMapTileReason.Landmark;
+            }
+        }
+
+        return CustomMapTileReason.None;
+    }
+
+    // What Paint would do, without painting: the brush tiles (Ok), the ones it leaves alone (Blocked), and for Water
+    // and Clear the mountains it removes as a whole (Changes, on all their tiles). For Mountains: the mountain
+    // blocks it would create (Ok) and the tiles that stop a block (Blocked).
+    public CustomMapPlacementPreview PreviewPaint(WorldPosition center, int radius, CustomMapBrush brush)
+    {
+        if (brush == CustomMapBrush.Mountain)
+        {
+            return PreviewMountains(center, radius);
+        }
+
+        Dictionary<WorldPosition, CustomMapPreviewTile> tiles = [];
+        List<CustomMapMountain> removed = [];
+
+        foreach (WorldPosition position in GetBrushArea(center, radius))
+        {
+            if (!IsValidPosition(position))
+            {
+                continue;
+            }
+
+            CustomMapTileReason block = GetBrushBlock(position, brush);
+
+            if (block != CustomMapTileReason.None)
+            {
+                tiles[position] = new CustomMapPreviewTile(position, CustomMapTileStatus.Blocked, block);
+                continue;
+            }
+
+            tiles[position] = new CustomMapPreviewTile(position, CustomMapTileStatus.Ok, CustomMapTileReason.None);
+
+            if (brush is CustomMapBrush.Water or CustomMapBrush.Clear)
+            {
+                removed.AddRange(mountains.Where(mountain => mountain.Footprint.Contains(position) && !removed.Contains(mountain)));
+            }
+        }
+
+        AddRemovedMountains(tiles, removed);
+
+        return new CustomMapPlacementPreview(null, [.. tiles.Values], null)
+        {
+            RemovedMountains = [.. removed.Select(mountain => mountain.Footprint)]
+        };
+    }
+
+    private CustomMapPlacementPreview PreviewMountains(WorldPosition center, int radius)
+    {
+        List<CustomMapPreviewTile> tiles = [];
+        List<WorldFootprint> created = [];
+
+        foreach (WorldFootprint block in GetMountainBlocks(center, radius))
+        {
+            CustomMapPreviewTile[] blocked =
+            [
+                .. block.EnumerateTiles()
+                    .Select(position => new CustomMapPreviewTile(position, CustomMapTileStatus.Blocked, GetMountainBlock(position)))
+                    .Where(tile => tile.Reason != CustomMapTileReason.None)
+            ];
+
+            if (blocked.Length == 0)
+            {
+                created.Add(block);
+                tiles.AddRange(block.EnumerateTiles().Select(position => new CustomMapPreviewTile(position, CustomMapTileStatus.Ok, CustomMapTileReason.None)));
+            }
+            else
+            {
+                tiles.AddRange(blocked.Where(tile => tile.Reason != CustomMapTileReason.OutsideMap));
+            }
+        }
+
+        return new CustomMapPlacementPreview(null, [.. tiles], null) { NewMountains = [.. created] };
+    }
+
+    // Removing a mountain clears all of its tiles, also those outside the brush or footprint.
+    private void AddRemovedMountains(Dictionary<WorldPosition, CustomMapPreviewTile> tiles, IEnumerable<CustomMapMountain> removed)
+    {
+        foreach (CustomMapMountain mountain in removed)
+        {
+            foreach (WorldPosition position in mountain.Footprint.EnumerateTiles())
+            {
+                if (IsValidPosition(position) && (!tiles.TryGetValue(position, out CustomMapPreviewTile tile) || tile.Status != CustomMapTileStatus.Blocked))
+                {
+                    tiles[position] = new CustomMapPreviewTile(position, CustomMapTileStatus.Changes, CustomMapTileReason.RemovesMountain);
+                }
+            }
+        }
+    }
+
+    // The top-left corner of a width x height object centred on tile, pushed back inside the map.
+    public WorldPosition CenterFootprint(WorldPosition tile, int width, int height)
+    {
+        return new WorldPosition(
+            Math.Clamp(tile.X - (width / 2), 0, Math.Max(0, Size - width)),
+            Math.Clamp(tile.Y - (height / 2), 0, Math.Max(0, Size - height)));
+    }
+
+    // What placing the race's capital at topLeft would do. Other capitals, villages, ruins, sites and landmarks
+    // block it, and so do armies (except its own stationed army, which moves along), resources and bags.
+    public CustomMapPlacementPreview PreviewCapital(WorldRace race, WorldPosition topLeft)
+    {
+        CustomMapPlayer? player = players.Find(candidate => candidate.Race == race);
+        CustomMapStack? stationed = player is not null ? GetStationedStack(player) : null;
+        WorldFootprint footprint = new(topLeft, CapitalSize, CapitalSize);
+        CustomMapPlacementPreview preview = PreviewSite(footprint, SiteKind.Capital, player, stationed);
+
+        if (player is null)
+        {
+            preview = preview with { Error = CustomMapPlacementError.UnknownOwner };
+        }
+
+        return player?.Footprint is { } current && current.TopLeft != topLeft ? preview with { MovesFrom = current } : preview;
+    }
+
+    public CustomMapPlacementPreview PreviewVillage(WorldPosition topLeft, int level, WorldRace owner)
+    {
+        CustomMapPlacementPreview preview = PreviewSite(new WorldFootprint(topLeft, CustomMapVillage.Size, CustomMapVillage.Size), SiteKind.Claim);
+
+        if (preview.Error is null && !IsValidOwner(owner))
+        {
+            return preview with { Error = CustomMapPlacementError.UnknownOwner };
+        }
+
+        if (preview.Error is null && level is < CustomMapVillage.MinLevel or > CustomMapVillage.MaxLevel)
+        {
+            return preview with { Error = CustomMapPlacementError.InvalidLevel };
+        }
+
+        return preview;
+    }
+
+    public CustomMapPlacementPreview PreviewRuin(WorldPosition topLeft)
+    {
+        return PreviewSite(new WorldFootprint(topLeft, CustomMapRuin.Size, CustomMapRuin.Size), SiteKind.Clear);
+    }
+
+    public CustomMapPlacementPreview PreviewSite(WorldPosition topLeft)
+    {
+        return PreviewSite(new WorldFootprint(topLeft, CustomMapSite.Size, CustomMapSite.Size), SiteKind.Clear);
+    }
+
+    public CustomMapPlacementPreview PreviewLandmark(WorldPosition topLeft, int width, int height)
+    {
+        return PreviewSite(new WorldFootprint(topLeft, width, height), SiteKind.Landmark);
+    }
+
+    private enum SiteKind
+    {
+        // A capital: claims the land for its race; everything else like Claim.
+        Capital,
+
+        // A village: the land becomes the owner's (water too); forests and mountains go.
+        Claim,
+
+        // A ruin or site: forests and mountains go, water becomes land.
+        Clear,
+
+        // A landmark: mountains block it, forests go, land and water stay.
+        Landmark
+    }
+
+    // The shared check behind every structure and landmark: per tile what blocks it or what changes, and the overall
+    // error in the order Place* reports it (outside the map, then structures/landmarks/mountains, then armies,
+    // resources and bags in the way).
+    private CustomMapPlacementPreview PreviewSite(WorldFootprint footprint, SiteKind kind, CustomMapPlayer? capitalOwner = null, CustomMapStack? stationed = null)
+    {
+        List<WorldFootprint> structures = [.. GetStructureFootprints(ignoreCapitalOf: capitalOwner)];
+        Dictionary<WorldPosition, CustomMapPreviewTile> tiles = [];
+        List<CustomMapMountain> removed = [];
+
+        foreach (WorldPosition position in footprint.EnumerateTiles())
+        {
+            CustomMapTileReason block = CustomMapTileReason.None;
+
+            if (!IsValidPosition(position))
+            {
+                block = CustomMapTileReason.OutsideMap;
+            }
+            else if (structures.Any(structure => structure.Contains(position)))
+            {
+                block = CustomMapTileReason.Structure;
+            }
+            else if (GetLandmarkAt(position) is not null)
+            {
+                block = CustomMapTileReason.Landmark;
+            }
+            else if (kind == SiteKind.Landmark && GetCell(position).Feature == WorldMapFeature.Mountain)
+            {
+                block = CustomMapTileReason.Mountain;
+            }
+            else if (GetStackAt(position) is { } stack && !ReferenceEquals(stack, stationed))
+            {
+                block = CustomMapTileReason.Army;
+            }
+            else if (GetResourceAt(position) is not null)
+            {
+                block = CustomMapTileReason.Resource;
+            }
+            else if (GetBagAt(position) is not null)
+            {
+                block = CustomMapTileReason.Bag;
+            }
+
+            if (block != CustomMapTileReason.None)
+            {
+                tiles[position] = new CustomMapPreviewTile(position, CustomMapTileStatus.Blocked, block);
+                continue;
+            }
+
+            WorldMapCell cell = GetCell(position);
+            CustomMapTileReason change = cell switch
+            {
+                { Feature: WorldMapFeature.Mountain } => CustomMapTileReason.RemovesMountain,
+                { Feature: WorldMapFeature.Forest } => CustomMapTileReason.ClearsForest,
+                { Terrain: WorldMapTerrain.Water } when kind != SiteKind.Landmark => CustomMapTileReason.WaterToLand,
+                _ => CustomMapTileReason.None
+            };
+
+            tiles[position] = new CustomMapPreviewTile(position, change == CustomMapTileReason.None ? CustomMapTileStatus.Ok : CustomMapTileStatus.Changes, change);
+
+            if (change == CustomMapTileReason.RemovesMountain)
+            {
+                removed.AddRange(mountains.Where(mountain => mountain.Footprint.Contains(position) && !removed.Contains(mountain)));
+            }
+        }
+
+        AddRemovedMountains(tiles, removed);
+
+        ImmutableArray<CustomMapPreviewTile> result = [.. tiles.Values];
+        CustomMapPlacementError? error = null;
+
+        if (result.Any(tile => tile.Reason == CustomMapTileReason.OutsideMap))
+        {
+            error = CustomMapPlacementError.OutsideMap;
+        }
+        else if (result.Any(tile => tile.Reason is CustomMapTileReason.Structure or CustomMapTileReason.Landmark or CustomMapTileReason.Mountain))
+        {
+            error = CustomMapPlacementError.Blocked;
+        }
+        else if (result.Any(tile => tile.Reason is CustomMapTileReason.Army or CustomMapTileReason.Resource or CustomMapTileReason.Bag))
+        {
+            error = CustomMapPlacementError.Occupied;
+        }
+
+        return new CustomMapPlacementPreview(footprint, result, error) { RemovedMountains = [.. removed.Select(mountain => mountain.Footprint)] };
+    }
+
+    // Places the capital of a race with its top-left corner at topLeft (rules: PreviewCapital); terrain under it
+    // becomes the race's land and loses forests and mountains. Moving a capital takes its garrison and stationed
+    // army along.
+    public CustomMapPlacementError? PlaceCapital(WorldRace race, WorldPosition topLeft)
+    {
+        if (PreviewCapital(race, topLeft).Error is { } error)
+        {
+            return error;
+        }
+
+        int playerIndex = players.FindIndex(player => player.Race == race);
+        CustomMapStack? stationed = GetStationedStack(players[playerIndex]);
+        WorldFootprint footprint = new(topLeft, CapitalSize, CapitalSize);
 
         players[playerIndex] = players[playerIndex] with { Capital = topLeft };
 
@@ -305,7 +565,7 @@ public sealed class CustomMap
             cells[(position.Y * Size) + position.X] = new WorldMapCell(terrain, WorldMapFeature.None, new WorldObjectVariant(0));
         }
 
-        return true;
+        return null;
     }
 
     public CustomMapStack? GetStackAt(WorldPosition position)
@@ -339,6 +599,23 @@ public sealed class CustomMap
         }
 
         players[index] = players[index] with { Garrison = [.. garrison] };
+
+        return null;
+    }
+
+    // The race whose land a tile is: it earns from a resource there (like WorldPlan.GetLandOwner). Null for neutral
+    // land and water.
+    public WorldRace? GetLandOwner(WorldPosition position)
+    {
+        WorldMapTerrain terrain = GetCell(position).Terrain;
+
+        foreach (CustomMapPlayer player in players)
+        {
+            if (WorldHelpers.GetNativeTerrain(player.Race) == terrain)
+            {
+                return player.Race;
+            }
+        }
 
         return null;
     }
@@ -389,9 +666,24 @@ public sealed class CustomMap
 
     private CustomMapStackError? CheckStack(WorldPosition position, WorldRace owner, IReadOnlyList<CustomMapUnit?> slots, int? ignoreId)
     {
+        return CheckStackSite(position, owner, ignoreId).Error ?? CustomMapStack.ValidateSlots(slots);
+    }
+
+    // What placing an army of owner on position would do (its units aside): the tile and the reason it can't stand
+    // there, the same error PlaceStack returns before it looks at the units.
+    public CustomMapPlacementPreview PreviewStack(WorldPosition position, WorldRace owner)
+    {
+        (CustomMapTileReason reason, CustomMapStackError? error) = CheckStackSite(position, owner, ignoreId: null);
+        CustomMapTileStatus status = error is null or CustomMapStackError.UnknownOwner ? CustomMapTileStatus.Ok : CustomMapTileStatus.Blocked;
+
+        return new CustomMapPlacementPreview(new WorldFootprint(position, 1, 1), [new CustomMapPreviewTile(position, status, reason)], null, error);
+    }
+
+    private (CustomMapTileReason Reason, CustomMapStackError? Error) CheckStackSite(WorldPosition position, WorldRace owner, int? ignoreId)
+    {
         if (!IsValidPosition(position))
         {
-            return CustomMapStackError.OutsideMap;
+            return (CustomMapTileReason.OutsideMap, CustomMapStackError.OutsideMap);
         }
 
         WorldMapCell cell = GetCell(position);
@@ -402,29 +694,35 @@ public sealed class CustomMap
         bool stationed = (village is not null && village.Entrance == position) || (capital is not null && capital.Entrance == position);
         WorldRace? stationOwner = village?.Owner ?? capital?.Race;
 
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain ||
-            (IsUnderStructure(position) && !stationed) || GetResourceAt(position) is not null || GetBagAt(position) is not null ||
-            GetLandmarkAt(position) is not null)
+        CustomMapTileReason block = cell.Terrain == WorldMapTerrain.Water ? CustomMapTileReason.Water
+            : cell.Feature == WorldMapFeature.Mountain ? CustomMapTileReason.Mountain
+            : IsUnderStructure(position) && !stationed ? CustomMapTileReason.Structure
+            : GetResourceAt(position) is not null ? CustomMapTileReason.Resource
+            : GetBagAt(position) is not null ? CustomMapTileReason.Bag
+            : GetLandmarkAt(position) is not null ? CustomMapTileReason.Landmark
+            : CustomMapTileReason.None;
+
+        if (block != CustomMapTileReason.None)
         {
-            return CustomMapStackError.Blocked;
+            return (block, CustomMapStackError.Blocked);
         }
 
         if (stacks.Any(stack => stack.Position == position && stack.Id != ignoreId))
         {
-            return CustomMapStackError.Occupied;
+            return (CustomMapTileReason.Army, CustomMapStackError.Occupied);
         }
 
         if (!IsValidOwner(owner))
         {
-            return CustomMapStackError.UnknownOwner;
+            return (CustomMapTileReason.None, CustomMapStackError.UnknownOwner);
         }
 
         if (stationed && owner != stationOwner)
         {
-            return CustomMapStackError.VillageOwner;
+            return (CustomMapTileReason.WrongOwner, CustomMapStackError.VillageOwner);
         }
 
-        return CustomMapStack.ValidateSlots(slots);
+        return (CustomMapTileReason.None, null);
     }
 
     public CustomMapResource? GetResourceAt(WorldPosition position)
@@ -454,24 +752,63 @@ public sealed class CustomMap
             return null;
         }
 
+        if (PreviewResource(position).Error is { } error)
+        {
+            return error;
+        }
+
         WorldMapCell cell = GetCell(position);
-
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position) ||
-            GetLandmarkAt(position) is not null)
-        {
-            return CustomMapPlacementError.Blocked;
-        }
-
-        if (GetStackAt(position) is not null || GetBagAt(position) is not null)
-        {
-            return CustomMapPlacementError.Occupied;
-        }
-
         int id = resources.Count == 0 ? 1 : resources.Max(resource => resource.Id) + 1;
         resources.Add(new CustomMapResource(id, position, type));
         cells[(position.Y * Size) + position.X] = cell with { Feature = WorldMapFeature.None, FeatureVariant = new WorldObjectVariant(0) };
 
         return null;
+    }
+
+    // What placing a resource on position would do. A resource already there just changes its type.
+    public CustomMapPlacementPreview PreviewResource(WorldPosition position)
+    {
+        if (!IsValidPosition(position))
+        {
+            return SingleTile(position, CustomMapTileReason.OutsideMap, CustomMapPlacementError.OutsideMap);
+        }
+
+        if (GetResourceAt(position) is not null)
+        {
+            return SingleTile(position, CustomMapTileReason.None, null);
+        }
+
+        WorldMapCell cell = GetCell(position);
+        CustomMapTileReason blocked = cell.Terrain == WorldMapTerrain.Water ? CustomMapTileReason.Water
+            : cell.Feature == WorldMapFeature.Mountain ? CustomMapTileReason.Mountain
+            : IsUnderStructure(position) ? CustomMapTileReason.Structure
+            : GetLandmarkAt(position) is not null ? CustomMapTileReason.Landmark
+            : CustomMapTileReason.None;
+
+        if (blocked != CustomMapTileReason.None)
+        {
+            return SingleTile(position, blocked, CustomMapPlacementError.Blocked);
+        }
+
+        CustomMapTileReason occupied = GetStackAt(position) is not null ? CustomMapTileReason.Army
+            : GetBagAt(position) is not null ? CustomMapTileReason.Bag
+            : CustomMapTileReason.None;
+
+        if (occupied != CustomMapTileReason.None)
+        {
+            return SingleTile(position, occupied, CustomMapPlacementError.Occupied);
+        }
+
+        return SingleTile(position, cell.Feature == WorldMapFeature.Forest ? CustomMapTileReason.ClearsForest : CustomMapTileReason.None, null);
+    }
+
+    private static CustomMapPlacementPreview SingleTile(WorldPosition position, CustomMapTileReason reason, CustomMapPlacementError? error)
+    {
+        CustomMapTileStatus status = error is not null ? CustomMapTileStatus.Blocked
+            : reason == CustomMapTileReason.None ? CustomMapTileStatus.Ok
+            : CustomMapTileStatus.Changes;
+
+        return new CustomMapPlacementPreview(new WorldFootprint(position, 1, 1), [new CustomMapPreviewTile(position, status, reason)], error);
     }
 
     public bool RemoveResource(WorldPosition position)
@@ -485,19 +822,9 @@ public sealed class CustomMap
     {
         WorldFootprint footprint = new(topLeft, CustomMapVillage.Size, CustomMapVillage.Size);
 
-        if (CheckStructureSite(footprint) is { } error)
+        if (PreviewVillage(topLeft, level, owner).Error is { } error)
         {
             return (null, error);
-        }
-
-        if (!IsValidOwner(owner))
-        {
-            return (null, CustomMapPlacementError.UnknownOwner);
-        }
-
-        if (level is < CustomMapVillage.MinLevel or > CustomMapVillage.MaxLevel)
-        {
-            return (null, CustomMapPlacementError.InvalidLevel);
         }
 
         int id = villages.Count == 0 ? 1 : villages.Max(village => village.Id) + 1;
@@ -581,7 +908,7 @@ public sealed class CustomMap
     {
         WorldFootprint footprint = new(topLeft, CustomMapRuin.Size, CustomMapRuin.Size);
 
-        if (CheckStructureSite(footprint) is { } error)
+        if (PreviewRuin(topLeft).Error is { } error)
         {
             return (null, error);
         }
@@ -630,7 +957,7 @@ public sealed class CustomMap
     {
         WorldFootprint footprint = new(topLeft, CustomMapSite.Size, CustomMapSite.Size);
 
-        if (CheckStructureSite(footprint) is { } error)
+        if (PreviewSite(topLeft).Error is { } error)
         {
             return (null, error);
         }
@@ -697,22 +1024,12 @@ public sealed class CustomMap
     // Places a bag on land or water; a forest under it is cleared.
     public (CustomMapBag? Bag, CustomMapPlacementError? Error) PlaceBag(WorldPosition position, int variant)
     {
-        if (!IsValidPosition(position))
+        if (PreviewBag(position).Error is { } error)
         {
-            return (null, CustomMapPlacementError.OutsideMap);
+            return (null, error);
         }
 
         WorldMapCell cell = GetCell(position);
-
-        if (cell.Feature == WorldMapFeature.Mountain || IsUnderStructure(position) || GetLandmarkAt(position) is not null)
-        {
-            return (null, CustomMapPlacementError.Blocked);
-        }
-
-        if (GetStackAt(position) is not null || GetResourceAt(position) is not null || GetBagAt(position) is not null)
-        {
-            return (null, CustomMapPlacementError.Occupied);
-        }
 
         int id = bags.Count == 0 ? 1 : bags.Max(bag => bag.Id) + 1;
         CustomMapBag placed = new(id, position, variant.Mod(CustomMapBag.VariantCount), []);
@@ -724,6 +1041,38 @@ public sealed class CustomMap
         }
 
         return (placed, null);
+    }
+
+    // What dropping a bag on position would do: land or water, no mountain, structure or landmark, nothing else on it.
+    public CustomMapPlacementPreview PreviewBag(WorldPosition position)
+    {
+        if (!IsValidPosition(position))
+        {
+            return SingleTile(position, CustomMapTileReason.OutsideMap, CustomMapPlacementError.OutsideMap);
+        }
+
+        WorldMapCell cell = GetCell(position);
+        CustomMapTileReason blocked = cell.Feature == WorldMapFeature.Mountain ? CustomMapTileReason.Mountain
+            : IsUnderStructure(position) ? CustomMapTileReason.Structure
+            : GetLandmarkAt(position) is not null ? CustomMapTileReason.Landmark
+            : CustomMapTileReason.None;
+
+        if (blocked != CustomMapTileReason.None)
+        {
+            return SingleTile(position, blocked, CustomMapPlacementError.Blocked);
+        }
+
+        CustomMapTileReason occupied = GetStackAt(position) is not null ? CustomMapTileReason.Army
+            : GetResourceAt(position) is not null ? CustomMapTileReason.Resource
+            : GetBagAt(position) is not null ? CustomMapTileReason.Bag
+            : CustomMapTileReason.None;
+
+        if (occupied != CustomMapTileReason.None)
+        {
+            return SingleTile(position, occupied, CustomMapPlacementError.Occupied);
+        }
+
+        return SingleTile(position, cell.Feature == WorldMapFeature.Forest ? CustomMapTileReason.ClearsForest : CustomMapTileReason.None, null);
     }
 
     public CustomMapPlacementError? UpdateBag(int id, int variant, IReadOnlyList<ItemDefinitionId> items)
@@ -761,14 +1110,9 @@ public sealed class CustomMap
     {
         WorldFootprint footprint = new(topLeft, definition.Width, definition.Height);
 
-        if (CheckStructureSite(footprint) is { } error)
+        if (PreviewLandmark(topLeft, definition.Width, definition.Height).Error is { } error)
         {
             return (null, error);
-        }
-
-        if (footprint.EnumerateTiles().Any(position => GetCell(position).Feature == WorldMapFeature.Mountain))
-        {
-            return (null, CustomMapPlacementError.Blocked);
         }
 
         int id = landmarks.Count == 0 ? 1 : landmarks.Max(landmark => landmark.Id) + 1;
@@ -793,37 +1137,11 @@ public sealed class CustomMap
         return landmarks.RemoveAll(landmark => landmark.Id == id) > 0;
     }
 
-    // A new structure or landmark must fit inside the map, must not overlap another structure or a landmark and must
-    // not cover an army, a resource or a bag.
-    private CustomMapPlacementError? CheckStructureSite(WorldFootprint footprint)
-    {
-        if (!IsValidPosition(footprint.TopLeft) ||
-            !IsValidPosition(new WorldPosition(footprint.TopLeft.X + footprint.Width - 1, footprint.TopLeft.Y + footprint.Height - 1)))
-        {
-            return CustomMapPlacementError.OutsideMap;
-        }
-
-        if (GetStructureFootprints().Any(other => Overlaps(other, footprint)) ||
-            landmarks.Any(landmark => Overlaps(landmark.Footprint, footprint)))
-        {
-            return CustomMapPlacementError.Blocked;
-        }
-
-        if (stacks.Any(stack => footprint.Contains(stack.Position)) ||
-            resources.Any(resource => footprint.Contains(resource.Position)) ||
-            bags.Any(bag => footprint.Contains(bag.Position)))
-        {
-            return CustomMapPlacementError.Occupied;
-        }
-
-        return null;
-    }
-
-    private IEnumerable<WorldFootprint> GetStructureFootprints()
+    private IEnumerable<WorldFootprint> GetStructureFootprints(CustomMapPlayer? ignoreCapitalOf = null)
     {
         foreach (CustomMapPlayer player in players)
         {
-            if (player.Capital is { } capital)
+            if (player.Capital is { } capital && player.Race != ignoreCapitalOf?.Race)
             {
                 yield return new WorldFootprint(capital, CapitalSize, CapitalSize);
             }
@@ -885,42 +1203,61 @@ public sealed class CustomMap
 
     private bool PlaceMountains(WorldPosition center, int radius, Random random)
     {
+        bool changed = false;
+
+        foreach (WorldFootprint block in GetMountainBlocks(center, radius))
+        {
+            changed |= TryPlaceMountain(block.TopLeft, block.Width, random);
+        }
+
+        return changed;
+    }
+
+    // The mountain squares a Mountains brush places: one 1x1, 2x2, 3x3 or 5x5 block up to brush size 5, a grid of
+    // 5x5 blocks for larger brushes.
+    private static IEnumerable<WorldFootprint> GetMountainBlocks(WorldPosition center, int radius)
+    {
         int brushSize = (radius * 2) + 1;
         int mountainSize = MountainSizes.Where(size => size <= Math.Min(brushSize, 5)).Max();
         int span = brushSize <= 5 ? mountainSize : brushSize;
         int start = -(span / 2);
-        bool changed = false;
 
         for (int y = start; y + mountainSize <= start + span; y += mountainSize)
         {
             for (int x = start; x + mountainSize <= start + span; x += mountainSize)
             {
-                WorldPosition topLeft = new(center.X + x, center.Y + y);
-                changed |= TryPlaceMountain(topLeft, mountainSize, random);
+                yield return new WorldFootprint(new WorldPosition(center.X + x, center.Y + y), mountainSize, mountainSize);
             }
         }
+    }
 
-        return changed;
+    // Why a mountain block can't cover a tile.
+    private CustomMapTileReason GetMountainBlock(WorldPosition position)
+    {
+        if (!IsValidPosition(position))
+        {
+            return CustomMapTileReason.OutsideMap;
+        }
+
+        WorldMapCell cell = GetCell(position);
+
+        return IsUnderStructure(position) ? CustomMapTileReason.Structure
+            : GetStackAt(position) is not null ? CustomMapTileReason.Army
+            : GetResourceAt(position) is not null ? CustomMapTileReason.Resource
+            : GetBagAt(position) is not null ? CustomMapTileReason.Bag
+            : GetLandmarkAt(position) is not null ? CustomMapTileReason.Landmark
+            : cell.Terrain == WorldMapTerrain.Water ? CustomMapTileReason.Water
+            : cell.Feature == WorldMapFeature.Mountain ? CustomMapTileReason.Mountain
+            : CustomMapTileReason.None;
     }
 
     private bool TryPlaceMountain(WorldPosition topLeft, int size, Random random)
     {
         WorldFootprint footprint = new(topLeft, size, size);
 
-        foreach (WorldPosition position in footprint.EnumerateTiles())
+        if (footprint.EnumerateTiles().Any(position => GetMountainBlock(position) != CustomMapTileReason.None))
         {
-            if (!IsValidPosition(position) || IsUnderStructure(position) || GetStackAt(position) is not null ||
-                GetResourceAt(position) is not null || GetBagAt(position) is not null || GetLandmarkAt(position) is not null)
-            {
-                return false;
-            }
-
-            WorldMapCell cell = GetCell(position);
-
-            if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain)
-            {
-                return false;
-            }
+            return false;
         }
 
         int id = mountains.Count == 0 ? 1 : mountains.Max(mountain => mountain.Id) + 1;
@@ -967,12 +1304,6 @@ public sealed class CustomMap
     private bool IsUnderStructure(WorldPosition position)
     {
         return GetStructureFootprints().Any(footprint => footprint.Contains(position));
-    }
-
-    private static bool Overlaps(WorldFootprint a, WorldFootprint b)
-    {
-        return a.TopLeft.X < b.TopLeft.X + b.Width && b.TopLeft.X < a.TopLeft.X + a.Width &&
-               a.TopLeft.Y < b.TopLeft.Y + b.Height && b.TopLeft.Y < a.TopLeft.Y + a.Height;
     }
 
     // Sprite variants per mountain size in the asset pack (AssetSpriteKey.Mountain wraps larger values around).

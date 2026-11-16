@@ -580,6 +580,49 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task MapEditorPlacementPreviewTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+        view.Camera.SetZoom(1);
+
+        async Task ShowAsync(MapEditorTool tool, WorldPosition tile, WorldPosition lookAt, string step)
+        {
+            editor.SelectTool(tool);
+            editor.UpdateHover(null);
+            editor.UpdateHover(tile);
+            view.Camera.LookAt(WorldTransform.ToWorldPoint(lookAt));
+            await SkipFramesAsync(10);
+            await CaptureAsync(window, step);
+        }
+
+        // Green: a village on free land. Red: one overlapping the capital (the rest of it stays green).
+        editor.SelectedVillageOwner = editor.VillageOwners.Single(owner => owner.Value == WorldRace.Human);
+        await ShowAsync(MapEditorTool.Village, new WorldPosition(20, 18), new WorldPosition(17, 16), "1-fits");
+        await ShowAsync(MapEditorTool.Village, new WorldPosition(14, 10), new WorldPosition(13, 12), "2-blocked");
+
+        // Amber: a site on the mountain's corner removes the whole mountain; a ruin on the shore drains the water.
+        await ShowAsync(MapEditorTool.Site, new WorldPosition(14, 27), new WorldPosition(15, 28), "3-changes");
+        await ShowAsync(MapEditorTool.Ruin, new WorldPosition(19, 24), new WorldPosition(20, 23), "4-shore");
+
+        // A Water brush at size 4 next to the capital: the capital's tiles are left alone.
+        editor.BrushRadius = 4;
+        await ShowAsync(MapEditorTool.Water, new WorldPosition(14, 13), new WorldPosition(13, 13), "5-brush");
+
+        // Capital tool: placing it again moves it (its current place outlined), and over a capital the click opens it.
+        editor.SelectedCapitalRace = editor.CapitalRaces[0];
+        await ShowAsync(MapEditorTool.Capital, new WorldPosition(20, 11), new WorldPosition(15, 11), "6-move");
+        await ShowAsync(MapEditorTool.Capital, new WorldPosition(36, 10), new WorldPosition(34, 12), "7-opens");
+        Assert.That(editor.PlacementPreview.Glow, Is.Not.Null);
+    }
+
+    [AvaloniaTest]
     public async Task MapEditorGarrisonsAndLevelsTest()
     {
         using Sandbox sb = Sandbox.Create();

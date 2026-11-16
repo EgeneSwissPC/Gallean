@@ -18,6 +18,12 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
     private const double ZoomStepFactor = 1.15;
 
     private static readonly ImmutableSolidColorBrush BackdropBrush = new(Client.Theme.World.BackdropColor);
+    private static readonly ImmutableSolidColorBrush FitsBrush = new(MapEditorPreviewColors.Fits, MapEditorPreviewColors.FillOpacity);
+    private static readonly ImmutableSolidColorBrush ChangesBrush = new(MapEditorPreviewColors.Changes, MapEditorPreviewColors.FillOpacity);
+    private static readonly ImmutableSolidColorBrush BlockedBrush = new(MapEditorPreviewColors.Blocked, MapEditorPreviewColors.FillOpacity);
+
+    // Tile diamonds are drawn a little smaller than the tile, so neighbouring outlines don't merge.
+    private const double TileInset = 0.06;
 
     private readonly AnimationClock animationClock = new();
     private readonly HashSet<Key> pressedKeys = [];
@@ -31,6 +37,8 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
     private bool redrawRequested = true;
     private int lastFrameIndex = -1;
     private WorldRenderState? lastWorldState;
+    private MapEditorPlacementPreview? drawnPreview;
+    private PreviewGeometry? previewGeometry;
 
     public MapEditorVisual()
     {
@@ -137,6 +145,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         else if (point.Properties.IsMiddleButtonPressed)
         {
             panAnchor = worldPoint;
+            ViewModel.SetPreviewSuspended(true);
             e.Pointer.Capture(this);
             e.Handled = true;
         }
@@ -158,6 +167,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         else if (e.InitialPressMouseButton == MouseButton.Middle)
         {
             panAnchor = null;
+            ViewModel.SetPreviewSuspended(false);
         }
 
         e.Pointer.Capture(null);
@@ -168,6 +178,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         base.OnPointerCaptureLost(e);
 
         panAnchor = null;
+        ViewModel.SetPreviewSuspended(false);
         ViewModel.HidePositionInfo();
 
         if (painting)
@@ -252,6 +263,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             pressedKeys.Add(e.Key);
             e.Handled = true;
         }
+        else if (e.Key == Key.P && e.KeyModifiers == KeyModifiers.None)
+        {
+            ViewModel.IsPreviewEnabled = !ViewModel.IsPreviewEnabled;
+            e.Handled = true;
+        }
     }
 
     private void OnTopLevelKeyUp(object? sender, KeyEventArgs e)
@@ -281,7 +297,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
 
         WorldRenderState? worldState = snapshotWorker.Current?.WorldState;
         int frameIndex = AnimationRate.Sprites.GetFrameIndex(animationClock.Now);
-        bool redraw = redrawRequested || !ReferenceEquals(worldState, lastWorldState);
+        bool redraw = redrawRequested || !ReferenceEquals(worldState, lastWorldState) || !ReferenceEquals(ViewModel.PlacementPreview, drawnPreview);
 
         if (ViewModel.IsActive)
         {
@@ -369,5 +385,128 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             false,
             ViewModel.Game.DevTools.Diagnostics,
             contentLease));
+
+        DrawPlacementPreview(context);
+    }
+
+    // The placement preview, drawn over the map like the game's cursor: semi-transparent tile diamonds with an
+    // outline, the gold outline of an object a click opens or removes, and a faint outline of a capital's current
+    // place when placing it again moves it. Editor-only; the game's renderer is untouched.
+    private void DrawPlacementPreview(DrawingContext context)
+    {
+        MapEditorPlacementPreview preview = ViewModel.PlacementPreview;
+
+        if (!ReferenceEquals(preview, drawnPreview))
+        {
+            drawnPreview = preview;
+            previewGeometry = PreviewGeometry.Build(preview);
+        }
+
+        if (previewGeometry is not { } geometry)
+        {
+            return;
+        }
+
+        Matrix view = camera.GetViewMatrix();
+        double pixel = 1.0 / Math.Max(0.01, Math.Abs(view.M11));
+
+        using (context.PushTransform(view))
+        {
+            DrawTiles(context, geometry.Fits, FitsBrush, MapEditorPreviewColors.Fits, pixel);
+            DrawTiles(context, geometry.Changes, ChangesBrush, MapEditorPreviewColors.Changes, pixel);
+            DrawTiles(context, geometry.Blocked, BlockedBrush, MapEditorPreviewColors.Blocked, pixel);
+
+            if (geometry.Footprint is not null)
+            {
+                Color color = preview.Fits ? MapEditorPreviewColors.Fits : MapEditorPreviewColors.Blocked;
+                context.DrawGeometry(null, new Pen(new SolidColorBrush(color), 2.5 * pixel), geometry.Footprint);
+            }
+
+            if (geometry.MovesFrom is not null)
+            {
+                context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.MovesFrom), 1.5 * pixel, new DashStyle([4, 3], 0)), geometry.MovesFrom);
+            }
+
+            if (geometry.Glow is not null)
+            {
+                context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.Halo), 6 * pixel), geometry.Glow);
+                context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.Glow), 3.5 * pixel), geometry.Glow);
+                context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.GlowInner), 1.2 * pixel), geometry.Glow);
+            }
+        }
+    }
+
+    private static void DrawTiles(DrawingContext context, Geometry? tiles, IBrush fill, Color outline, double pixel)
+    {
+        if (tiles is not null)
+        {
+            context.DrawGeometry(fill, new Pen(new SolidColorBrush(outline, MapEditorPreviewColors.OutlineOpacity), 1.5 * pixel), tiles);
+        }
+    }
+
+    private sealed record PreviewGeometry(Geometry? Fits, Geometry? Changes, Geometry? Blocked, Geometry? Glow, Geometry? MovesFrom, Geometry? Footprint)
+    {
+        public static PreviewGeometry? Build(MapEditorPlacementPreview preview)
+        {
+            if (preview.Tiles.Count == 0 && preview.Glow is null && preview.MovesFrom is null)
+            {
+                return null;
+            }
+
+            return new PreviewGeometry(
+                Tiles(preview, MapEditorTileState.Fits),
+                Tiles(preview, MapEditorTileState.Changes),
+                Tiles(preview, MapEditorTileState.Blocked),
+                preview.Glow is { } glow ? Outline(glow) : null,
+                preview.MovesFrom is { } moves ? Outline(moves) : null,
+                preview.Footprint is { } footprint ? Outline(footprint) : null);
+        }
+
+        private static StreamGeometry? Tiles(MapEditorPlacementPreview preview, MapEditorTileState state)
+        {
+            StreamGeometry geometry = new();
+            bool any = false;
+
+            using (StreamGeometryContext stream = geometry.Open())
+            {
+                foreach (MapEditorPreviewTile tile in preview.Tiles)
+                {
+                    if (tile.State == state)
+                    {
+                        AddDiamond(stream, tile.Position.X - 0.5 + TileInset, tile.Position.Y - 0.5 + TileInset, tile.Position.X + 0.5 - TileInset, tile.Position.Y + 0.5 - TileInset);
+                        any = true;
+                    }
+                }
+            }
+
+            return any ? geometry : null;
+        }
+
+        private static StreamGeometry Outline(WorldFootprint footprint)
+        {
+            StreamGeometry geometry = new();
+
+            using (StreamGeometryContext stream = geometry.Open())
+            {
+                AddDiamond(
+                    stream,
+                    footprint.TopLeft.X - 0.5,
+                    footprint.TopLeft.Y - 0.5,
+                    footprint.TopLeft.X + footprint.Width - 0.5,
+                    footprint.TopLeft.Y + footprint.Height - 0.5);
+            }
+
+            return geometry;
+        }
+
+        // The tile-space rectangle (x0, y0)-(x1, y1) is a diamond on screen.
+        private static void AddDiamond(StreamGeometryContext stream, double x0, double y0, double x1, double y1)
+        {
+            stream.BeginFigure(WorldTransform.ToWorldPoint(x0, y0), isFilled: true);
+            stream.LineTo(WorldTransform.ToWorldPoint(x1, y0));
+            stream.LineTo(WorldTransform.ToWorldPoint(x1, y1));
+            stream.LineTo(WorldTransform.ToWorldPoint(x0, y1));
+            stream.EndFigure(isClosed: true);
+        }
     }
 }
