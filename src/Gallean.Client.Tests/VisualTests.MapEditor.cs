@@ -525,6 +525,61 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task MapEditorLandmarksTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+
+        // A few landmarks of each category around the human capital and the lake, one of them in the water.
+        editor.SelectTool(MapEditorTool.Landmark);
+        (WorldLandmarkType Category, int Size, int Index, int X, int Y)[] places =
+        [
+            (WorldLandmarkType.Misc, 3, 0, 4, 20),
+            (WorldLandmarkType.Misc, 1, 0, 8, 19),
+            (WorldLandmarkType.Misc, 1, 3, 9, 20),
+            (WorldLandmarkType.Building, 4, 0, 16, 18),
+            (WorldLandmarkType.Building, 2, 0, 14, 23),
+            (WorldLandmarkType.Structure, 3, 0, 5, 25),
+            (WorldLandmarkType.Structure, 1, 0, 11, 26),
+            (WorldLandmarkType.Terrain, 3, 0, 9, 30),
+            (WorldLandmarkType.Terrain, 1, 0, 22, 23),
+            (WorldLandmarkType.Terrain, 2, 0, 18, 26)
+        ];
+
+        foreach ((WorldLandmarkType category, int size, int index, int x, int y) in places)
+        {
+            editor.SelectedLandmarkCategory = editor.LandmarkCategories.Single(option => option.Value == category);
+            editor.SelectedLandmarkSize = editor.LandmarkSizes.Single(option => option.Value == size);
+            editor.SelectedLandmark = editor.Landmarks[Math.Min(index, editor.Landmarks.Count - 1)];
+            editor.BeginStroke(new WorldPosition(x, y));
+        }
+
+        Assert.That(editor.Map.Landmarks, Has.Count.EqualTo(places.Length));
+        await WaitUntilAsync(() => view.SnapshotWorker?.Current?.RenderRequest.State is { } shown && shown.Landmarks.Count == places.Length);
+
+        // The palette of buildings, any size.
+        editor.SelectedLandmarkCategory = editor.LandmarkCategories.Single(option => option.Value == WorldLandmarkType.Building);
+        editor.SelectedLandmarkSize = editor.LandmarkSizes[0];
+        view.Camera.SetZoom(1);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(12, 23)));
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "1-map");
+
+        // Terrain landmarks; the right-click info names a landmark.
+        editor.SelectedLandmarkCategory = editor.LandmarkCategories.Single(option => option.Value == WorldLandmarkType.Terrain);
+        editor.ShowPositionInfo(new WorldPosition(17, 19));
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "2-info");
+        editor.HidePositionInfo();
+    }
+
+    [AvaloniaTest]
     public async Task MapEditorGarrisonsAndLevelsTest()
     {
         using Sandbox sb = Sandbox.Create();

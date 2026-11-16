@@ -906,7 +906,6 @@
     "Gold reward": "Gold reward",
     "Greeting": "Greeting",
     "Guards": "Guards",
-    "It cannot overlap a capital, village, ruin or site, or stand on a mountain.": "It cannot overlap a capital, village, ruin or site, or stand on a mountain.",
     "It must fit inside the map.": "It must fit inside the map.",
     "Item reward": "Item reward",
     "Items": "Items",
@@ -945,6 +944,14 @@
     "Save capital": "Save capital",
     "Stationed army": "Stationed army",
     "The guardian stays in its capital.": "The guardian stays in its capital.",
-    "Unit levels go from the unit's own level to {0}.": "Unit levels go from the unit's own level to {0}."
+    "Unit levels go from the unit's own level to {0}.": "Unit levels go from the unit's own level to {0}.",
+    "Landmark": "Landmark",
+    "Misc": "Misc",
+    "Structures": "Structures",
+    "Terrain": "Terrain",
+    "Any size": "Any size",
+    "Click land or water to place the chosen landmark; click a landmark to remove it. Armies cannot pass through landmarks.": "Click land or water to place the chosen landmark; click a landmark to remove it. Armies cannot pass through landmarks.",
+    "It cannot overlap a capital, village, ruin, site or landmark, or stand on a mountain.": "It cannot overlap a capital, village, ruin, site or landmark, or stand on a mountain.",
+    "Landmarks": "Landmarks"
   }
 }
