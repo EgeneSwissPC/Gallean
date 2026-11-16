@@ -1,7 +1,8 @@
 # Gallean Upgrade – map editor: what's missing and next steps
 
 Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; updated 2026-11-16 after landmark
-placement (commit `2931c5c`). Each section is meant as a separate task.
+placement (commit `2931c5c`) and 2026-11-17 after the placement preview (commit `07c76c6`). Each section is meant as a
+separate task.
 
 ## Decisions so far
 
@@ -14,6 +15,8 @@ placement (commit `2931c5c`). Each section is meant as a separate task.
   which goes against "editor changes must not change the game". Landmarks of the mountain type (49 of them: 42 in
   Terrain, plus two cemeteries, the Unholy Gates and three elven houses) also make their tiles count as mountains, as
   in the original maps.
+- **Placement preview**: green/red/amber, on by default (checkbox and P key to switch it off), no ghost sprites for
+  now. Its rules are the editor's placement rules; `Place*` run the same checks, so preview and click can't disagree.
 
 ## Already in the editor
 
@@ -43,6 +46,13 @@ placement (commit `2931c5c`). Each section is meant as a separate task.
   - click to place centred on the tile, click a landmark to remove it, Ctrl+Z to undo
   - the hover line and the right-click info show the landmark's name
 - Right-click info for capitals and villages shows them as their owner sees them (editor only).
+- Placement preview (new), for every tool:
+  - green tiles where the object or brush goes, red where a tile blocks it, amber where a tile visibly changes
+    (forest cleared, a whole mountain removed, water turned into land)
+  - the hover line says what a click does ("Village (4x4): blocked by a capital at 10, 6", "Cemetery: click removes
+    it", "Water brush, size 1: paints 9 tiles · removes 1 mountain")
+  - a gold outline (or the game's hover cursor) on an object a click opens or removes; moving a capital outlines its
+    current place
 
 ## Missing: things you can't place yet
 
@@ -74,8 +84,7 @@ placement (commit `2931c5c`). Each section is meant as a separate task.
 - **Terrain:** mountain and forest looks are random and can't be picked.
 - **Ruins:** gold and one item only, no mana.
 - **Villages:** no riot, protection or growth settings (minor).
-- **Landmarks:** no custom description (the scenario's `DESC_TXT`; no original map uses it either), and no footprint
-  preview under the cursor before you click.
+- **Landmarks:** no custom description (the scenario's `DESC_TXT`; no original map uses it either).
 
 ---
 
@@ -131,13 +140,19 @@ What was built (branch `upgrade/map-editor-landmarks`, commit `2931c5c`, merged 
 Known limits / possible follow-ups:
 - While the palette is open it covers the map's left edge, so edge scrolling to the left only works with WASD, the
   arrow keys or the middle button there.
-- No footprint preview under the cursor yet. It's planned for every tool, not just landmarks: see
-  `docs/map-editor-placement-preview.md`.
+- ~~No footprint preview under the cursor yet.~~ Done for every tool: see the placement preview task.
 
-## Task: placement preview under the cursor (all tools)
+## Task: placement preview under the cursor (all tools) — done
 
-Coloured tiles under the mouse showing where a click puts an object and whether it fits (green), what blocks it
-(red) and what it changes (amber), plus the brush area. Full description: `docs/map-editor-placement-preview.md`.
+What was built (branch `upgrade/map-editor-placement-preview`, commit `07c76c6`, merged into `gallean-upgrade` as
+`f78edb6`): coloured tiles under the mouse for every tool and brush, the hover line saying what a click does, and an
+outline on objects a click opens or removes. Engine `CustomMap.Preview*` methods (the `Place*` methods run the same
+checks first; `PlaceCapital` now returns an error reason), client `MapEditorPlacementPreview` drawn by
+`MapEditorVisual` after the world render. Tests: `CustomMapTests.PreviewAgreesWithPlaceTest` (every tile, every tool,
+against `Place*` on a copy), `PreviewPaintAgreesWithPaintTest`, `PreviewTileReasonsTest`,
+`MapEditorScreenViewModelTests.PlacementPreviewTest`, `VisualTests.MapEditorPlacementPreviewTest`.
+
+Full description, what differs from the plan and known limits: `docs/map-editor-placement-preview.md` ("As built").
 
 ## Task: roads and looks
 
@@ -207,6 +222,8 @@ point at them once events exist.
 2. Items: should the leader's 7 slots work like the in-game equipment screen, or just be a list?
 3. ~~Landmarks: should they block armies like in the game, or be decoration only?~~ Decided: they block, like in the
    game (see "Decisions so far"). Say if you want decoration-only after all; that needs a game rule change.
-4. Which comes next: player settings, items, roads and looks, or the placement preview?
+4. Which comes next: player settings, items, or roads and looks? (The placement preview is done.)
 5. Landmarks: is the palette over the left of the map fine, or should it go into the right panel (it only fits there
-   with scrolling at 1366x768)? Is a footprint preview under the cursor worth adding?
+   with scrolling at 1366x768)? ~~Is a footprint preview under the cursor worth adding?~~ Done, for every tool.
+6. Placement preview: should the "Placement preview (P)" checkbox move out of the scrolling panel (next to Undo/Save),
+   so it is always visible at 1366x768?

@@ -1,7 +1,10 @@
 # Gallean Upgrade – map editor: placement preview under the cursor
 
-Feature description, 2026-11-16, on `gallean-upgrade` at `5231c29`. Not built yet. Part of the map editor roadmap
+Feature description, 2026-11-16, on `gallean-upgrade` at `5231c29`. Part of the map editor roadmap
 (`docs/map-editor-roadmap.md`).
+
+**Built** 2026-11-17: commit `07c76c6`, merged into `gallean-upgrade` as `f78edb6` (phases 1–3; no ghost sprites).
+What differs from the plan below is listed in "As built" at the end.
 
 ## The problem today
 
@@ -178,8 +181,53 @@ Phases 1–3 together are a moderate task, about the size of the landmark featur
 
 ## Open questions
 
-1. Colours: green/red/amber, or the game's own gold/purple cursor tones?
+1. ~~Colours: green/red/amber, or the game's own gold/purple cursor tones?~~ Decided: green/red/amber; the outline on
+   an object a click opens uses the game's gold hover-cursor colour.
 2. ~~Should the preview also show the land a village claims (amber), or is that too much colour?~~ Decided: no colour,
    only the hover line mentions it (see "What you would see").
-3. On by default with a switch, or always on?
-4. Ghost sprites: wanted at all, or are coloured tiles enough?
+3. ~~On by default with a switch, or always on?~~ Decided: on by default; the "Placement preview (P)" checkbox or the
+   P key switches it off.
+4. ~~Ghost sprites: wanted at all, or are coloured tiles enough?~~ Decided: no ghost sprites for now.
+
+## As built
+
+- **Engine** (`CustomMapPreview.cs`, `CustomMap.cs`): `CustomMapPlacementPreview` (footprint, tiles with
+  `CustomMapTileStatus` Ok/Changes/Blocked and a `CustomMapTileReason`, the `Place*` error, `RemovedMountains`,
+  `NewMountains`, `MovesFrom`). Methods `PreviewCapital`, `PreviewVillage`, `PreviewRuin`, `PreviewSite`,
+  `PreviewLandmark`, `PreviewStack`, `PreviewResource`, `PreviewBag`, `PreviewPaint`. Every `Place*` runs its preview
+  check first; `Paint` and the Mountains brush share `GetBrushBlock`/`GetMountainBlock`/`GetMountainBlocks` with the
+  preview. `PlaceCapital` returns `CustomMapPlacementError?` instead of `bool` (new message: "A capital cannot overlap
+  another capital, a village, ruin, site or landmark."). `CenterFootprint` (centre + push back inside the map) and
+  `GetLandOwner` moved into `CustomMap`, so the client and the preview use the same clamping.
+- **Client**: `MapEditorPlacementPreview` (+ `MapEditorPreviewColors`), built in
+  `MapEditorScreenViewModel.Preview.cs` on hover-tile, tool, brush size, palette, owner/level/type changes and after
+  every map change. `MapEditorVisual` draws it after the world render (editor-only; no game renderer file changed).
+  Placed objects also get an outline of their footprint (green, or red when blocked), so the object's area stays
+  visible among amber tiles.
+- **Tests**: `CustomMapTests.PreviewAgreesWithPlaceTest` (every tile of a busy 48x48 map, the 7 object tools (landmarks
+  at two sizes) plus armies of two owners: same error, footprint and visibly changed tiles as `Place*` on a copy; each tool hits both fits and
+  blocked), `PreviewPaintAgreesWithPaintTest` (5 brushes x 5 sizes x 256 positions against `Paint`),
+  `PreviewTileReasonsTest`, `MapEditorScreenViewModelTests.PlacementPreviewTest`,
+  `VisualTests.MapEditorPlacementPreviewTest` (7 shots). Real AOT build checked headless with `xdotool` hovers.
+
+Differences from the plan above:
+- **Water under capitals and villages is amber too.** Capitals and villages turn every tile into land (`ClaimLand`
+  overwrites water), not only ruins and sites, so "turns N water tiles into land" shows for all four.
+- **Colours live in `MapEditorPreviewColors`, not in `Theme`.** Every `Theme` colour needs a brush resource in
+  `Colors.axaml` (`ThemeTests.BrushTokensTest`), so putting them there means editing two upstream files. The glow
+  reuses `Theme.World.HoverCursorOuterColor`/`InnerColor`.
+- **The glow**: one-tile objects (armies, bags, resources) get the game's own hover cursor through
+  `WorldCursor.HoverObject`; capitals, villages, ruins, sites and landmarks get a gold outline of their footprint. The
+  game's sprite outline (`Highlight`) would have needed render-request changes.
+- **Army tool on a village or capital entrance**: the click opens the village/capital screen (where its stationed
+  army is set), so the preview shows "click opens it" there instead of a green/red entrance tile. The owner rule is
+  still checked (`PreviewStack` returns `WrongOwner`) and covered by the tests.
+- **When a placement is blocked**, tiles that would have changed are shown green (nothing changes if the click
+  fails), and mountain tiles outside the footprint are not shown.
+- Hover line: the preview's text is the first line, the tile description the second.
+
+Known limits:
+- The overlay is drawn over sprites without depth sorting; tall sprites (castles, mountains) can hide part of it
+  visually, the outline still shows the area.
+- The checkbox sits in the scrolling part of the right panel, below the tool options; at 1366x768 you may need to
+  scroll to see it. The P key and the help line mention it.
