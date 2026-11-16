@@ -35,23 +35,25 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     private WorldPosition? hoverTile;
     private WorldPosition? lastStrokeTile;
     private bool strokeChanged;
+    private readonly IReadOnlyList<UnitDefinition> units;
     private int previewVersion;
-    private int? selectedArmyId;
+    private GameModel editorGame;
 
     public MapEditorScreenViewModel(
         GameViewModel game,
         CustomMapStore store,
-        IGameDefinitionProvider definitions,
+        GameModel editorGame,
         CustomMap map,
-        Scenario preview,
-        IReadOnlyList<MapEditorUnitOption> units)
+        IReadOnlyList<UnitDefinition> units)
     {
         Game = game;
         this.store = store;
-        this.definitions = definitions;
+        this.editorGame = editorGame;
+        this.units = units;
+        definitions = editorGame.Definitions;
         this.map = map;
-        Scenario = preview.Provider;
-        state = preview.State;
+        Scenario = editorGame.Scenario;
+        state = editorGame.Snapshot.WorldState;
         ViewPlayerId = state.Players.Keys.First();
 
         Tools =
@@ -73,7 +75,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         SelectedLandTerrain = LandTerrains[0];
         CapitalRaces = [.. map.Players.Select(player => new MapEditorOption<WorldRace>(player.Race, MapEditorLabels.Race(player.Race)))];
         SelectedCapitalRace = CapitalRaces[0];
-        Army = new MapEditorArmyViewModel(units, map.Players.Select(player => player.Race));
+        ArmyOwners =
+        [
+            new MapEditorOption<WorldRace>(WorldRace.Neutral, Tr("Neutral")),
+            .. map.Players.Select(player => new MapEditorOption<WorldRace>(player.Race, MapEditorLabels.Race(player.Race)))
+        ];
+        SelectedArmyOwner = ArmyOwners[0];
         Name = map.Name;
         BrushRadius = 1;
         renderRequest = CreateRenderRequest();
@@ -87,7 +94,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public IReadOnlyList<MapEditorOption<MapEditorTool>> Tools { get; }
     public IReadOnlyList<MapEditorOption<WorldMapTerrain>> LandTerrains { get; }
     public IReadOnlyList<MapEditorOption<WorldRace>> CapitalRaces { get; }
-    public MapEditorArmyViewModel Army { get; }
+    public IReadOnlyList<MapEditorOption<WorldRace>> ArmyOwners { get; }
+    public GameModel EditorGame => editorGame;
     public int MapWidth => map.Size;
     public int MapHeight => map.Size;
     public int MaxBrush => MaxBrushRadius;
@@ -117,6 +125,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public partial MapEditorOption<WorldRace> SelectedCapitalRace { get; set; }
 
     [ObservableProperty]
+    public partial MapEditorOption<WorldRace> SelectedArmyOwner { get; set; }
+
+    [ObservableProperty]
+    public partial WorldPositionInfoViewModel? PositionInfo { get; private set; }
+
+    [ObservableProperty]
     public partial int BrushRadius { get; set; }
 
     [ObservableProperty]
@@ -140,7 +154,6 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public bool IsCapitalTool => SelectedTool.Value == MapEditorTool.Capital;
     public bool IsArmyTool => SelectedTool.Value == MapEditorTool.Army;
     public bool HasBrush => SelectedTool.Value is not (MapEditorTool.Capital or MapEditorTool.Army);
-    public int? SelectedArmyId => selectedArmyId;
 
     partial void OnSelectedToolChanged(MapEditorOption<MapEditorTool> value)
     {
@@ -269,12 +282,19 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
         try
         {
-            Scenario preview = await Game.BuildMapPreviewAsync(store, map.Clone(), definitions);
+            GameModel preview = await Game.BuildMapPreviewAsync(store, map.Clone(), definitions);
 
             if (version == previewVersion)
             {
-                state = preview.State;
+                editorGame.Dispose();
+                editorGame = preview;
+                state = CustomMapStore.ApplyTerrain(preview.Snapshot.WorldState, map);
                 SetRenderRequest(CreateRenderRequest());
+                OnPropertyChanged(nameof(EditorGame));
+            }
+            else
+            {
+                preview.Dispose();
             }
         }
         catch (Exception ex)
@@ -283,85 +303,97 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         }
     }
 
-    // Army tool: clicking an army selects it for editing; clicking free land places the army from the panel.
+    // Army tool: clicking free land opens the army screen for a new army, clicking an army opens it for editing.
     private void ClickArmy(WorldPosition tile)
     {
-        if (map.GetStackAt(tile) is { } existing)
+        CustomMapStack? existing = map.GetStackAt(tile);
+
+        if (existing is null && map.PlaceStack(tile, SelectedArmyOwner.Value, ProbeArmy).Error is { } blocked and not CustomMapStackError.NoLeader)
         {
-            SelectArmy(existing.Id);
-            Army.Load(existing);
+            Game.ShowError(MapEditorLabels.StackError(blocked, 0));
             return;
         }
 
+        Game.OpenScreen(new MapEditorArmyScreenViewModel(
+            Game,
+            editorGame,
+            units,
+            existing?.Owner ?? SelectedArmyOwner.Value,
+            tile,
+            existing?.Slots,
+            (owner, slots) => SaveArmy(tile, existing?.Id, owner, slots),
+            existing is null ? null : () => DeleteArmy(existing.Id)));
+    }
+
+    // An empty army: placing it only checks the tile (it fails with NoLeader when the tile itself is fine).
+    private static CustomMapUnit?[] ProbeArmy => new CustomMapUnit?[GridPosition.Count];
+
+    private string? SaveArmy(WorldPosition tile, int? armyId, WorldRace owner, CustomMapUnit?[] slots)
+    {
         CustomMap before = map.Clone();
-        (CustomMapStack? placed, CustomMapStackError? error) = map.PlaceStack(tile, Army.Owner, Army.GetSlots());
+        CustomMapStackError? error = armyId is { } id
+            ? map.UpdateStack(id, owner, slots)
+            : map.PlaceStack(tile, owner, slots).Error;
 
         if (error is { } problem)
         {
-            Game.ShowError(MapEditorArmyViewModel.FormatError(problem, Army.GetSlots().FirstOrDefault(unit => unit is { IsLeader: true })?.Leadership ?? 0));
-            return;
+            return MapEditorLabels.StackError(problem, CustomMapStack.GetLeadership(slots));
         }
 
-        CommitArmyChange(before, placed!.Id);
+        CommitArmyChange(before);
+        return null;
     }
 
-    private bool CanEditArmy()
+    private void DeleteArmy(int armyId)
     {
-        return selectedArmyId is not null;
-    }
-
-    [RelayCommand(CanExecute = nameof(CanEditArmy))]
-    private void ApplyArmy()
-    {
-        if (selectedArmyId is not { } armyId)
-        {
-            return;
-        }
-
-        CustomMap before = map.Clone();
-
-        if (map.UpdateStack(armyId, Army.Owner, Army.GetSlots()) is { } error)
-        {
-            Game.ShowError(MapEditorArmyViewModel.FormatError(error, Army.GetSlots().FirstOrDefault(unit => unit is { IsLeader: true })?.Leadership ?? 0));
-            return;
-        }
-
-        CommitArmyChange(before, armyId);
-    }
-
-    [RelayCommand(CanExecute = nameof(CanEditArmy))]
-    private void DeleteArmy()
-    {
-        if (selectedArmyId is not { } armyId)
-        {
-            return;
-        }
-
         CustomMap before = map.Clone();
 
         if (map.RemoveStack(armyId))
         {
-            CommitArmyChange(before, null);
+            CommitArmyChange(before);
         }
     }
 
-    private void CommitArmyChange(CustomMap before, int? selected)
+    private void CommitArmyChange(CustomMap before)
     {
         undoSteps.Push(before);
         TrimUndo();
         CanUndo = true;
         IsDirty = true;
-        SelectArmy(selected);
+        HoverText = hoverTile is { } tile ? FormatTile(tile) : string.Empty;
         RebuildPreviewAsync().FileAndForget();
     }
 
-    private void SelectArmy(int? armyId)
+    // Right-click info, as in the game: armies, capitals and tiles.
+    public void ShowPositionInfo(WorldPosition tile)
     {
-        selectedArmyId = armyId;
-        ApplyArmyCommand.NotifyCanExecuteChanged();
-        DeleteArmyCommand.NotifyCanExecuteChanged();
-        OnPropertyChanged(nameof(SelectedArmyId));
-        SetRenderRequest(CreateRenderRequest());
+        if (!state.Map.IsValidPosition(tile))
+        {
+            PositionInfo = null;
+            return;
+        }
+
+        WorldPlan plan = WorldPlan.For(state);
+        WorldVisibility visibility = WorldVisibility.Create(state, ViewPlayerId, fogEnabled: false);
+
+        if (plan.GetFortificationAt(tile) is WorldCapital capital)
+        {
+            PositionInfo = WorldFortificationInfoViewModel.CreateCapital(
+                state, ViewPlayerId, capital, visibility.GetStackAt(plan, capital.Entrance, ViewPlayerId), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+        }
+        else if (visibility.GetStackAt(plan, tile, ViewPlayerId) is { } stack)
+        {
+            PositionInfo = WorldStackInfoViewModel.Create(state, ViewPlayerId, stack, editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+        }
+        else
+        {
+            PositionInfo = WorldTileInfoViewModel.TryCreate(state, ViewPlayerId, tile, visibility, null, editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+        }
+    }
+
+    public void HidePositionInfo()
+    {
+        PositionInfo = null;
     }
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
@@ -376,10 +408,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         bool capitalsChanged = !previous.Players.SequenceEqual(map.Players) || !previous.Stacks.SequenceEqual(map.Stacks);
         map = undoSteps.Pop();
 
-        if (selectedArmyId is { } armyId && map.Stacks.All(stack => stack.Id != armyId))
-        {
-            SelectArmy(null);
-        }
+
         CanUndo = undoSteps.Count > 0;
         IsDirty = true;
 
@@ -519,10 +548,28 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         };
 
         string army = map.GetStackAt(tile) is { } stack
-            ? Tr(" · army of {0}: {1}", stack.Owner == WorldRace.Neutral ? Tr("Neutral") : MapEditorLabels.Race(stack.Owner), Army.GetUnitName(stack.Leader.TypeId) ?? stack.Leader.TypeId.Value)
+            ? Tr(" · army of {0}: {1}", stack.Owner == WorldRace.Neutral ? Tr("Neutral") : MapEditorLabels.Race(stack.Owner), GetUnitName(stack.Leader.TypeId))
             : string.Empty;
 
         return $"{tile.X}, {tile.Y}: {MapEditorLabels.Terrain(cell.Terrain)}{feature}{army}";
+    }
+
+    private string GetUnitName(UnitDefinitionId typeId)
+    {
+        try
+        {
+            return editorGame.Texts.GetGlobalText(definitions.GetUnit(typeId).NameTextId).Text;
+        }
+        catch (Exception ex) when (ex is KeyNotFoundException or InvalidDataException)
+        {
+            return typeId.Value;
+        }
+    }
+
+    public override void Dispose()
+    {
+        editorGame.Dispose();
+        base.Dispose();
     }
 
     private void TrimUndo()
@@ -543,10 +590,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     private WorldRenderRequest CreateRenderRequest()
     {
-        WorldStackId? selected = IsArmyTool && selectedArmyId is { } armyId
-            ? new WorldStackId(CustomMapWriter.GetArmyStackId(map.Id, armyId))
-            : null;
-        WorldCursor cursor = WorldCursor.Empty with { HoverTile = hoverTile, StackId = selected };
+        WorldCursor cursor = WorldCursor.Empty with { HoverTile = hoverTile };
 
         return new WorldRenderRequest(state, ViewPlayerId, cursor, FogEnabled: false, Animation: null, IsPlayingEvent: false);
     }

@@ -1,5 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Markup.Xaml;
 using Gallean.Engine;
 
@@ -18,6 +21,21 @@ internal sealed partial class MapEditorScreenView : UserControl
         this.diagnostics = diagnostics;
 
         AvaloniaXamlLoader.Load(this);
+
+        this.FindControl<MapEditorVisual>("Map")!.AddHandler(PointerPressedEvent, OnMapPointerPressed, RoutingStrategies.Tunnel);
+    }
+
+    // Like the world screen: the right-click info popup opens next to the cursor.
+    private void OnMapPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        MapEditorVisual map = (MapEditorVisual)sender!;
+        PointerPoint point = e.GetCurrentPoint(map);
+
+        if (point.Properties.IsRightButtonPressed)
+        {
+            Rect cursor = new(point.Position, new Size(1, 1));
+            this.FindControl<Popup>("PositionInfoPopup")!.PlacementRect = cursor.Inflate(new Thickness(24, 0));
+        }
     }
 
     internal WorldScreenSnapshotWorker? SnapshotWorker { get; private set; }

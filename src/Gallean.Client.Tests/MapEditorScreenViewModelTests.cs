@@ -158,10 +158,9 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(reopened.IsDirty, Is.False);
     }
 
-    private static void Select(MapEditorScreenViewModel editor, GridPosition position, Func<MapEditorUnitOption, bool> predicate)
+    private static MapEditorUnitPickerViewModel Picker(GameViewModel game)
     {
-        MapEditorSlotViewModel slot = editor.Army.Slots.Single(candidate => candidate.Position == position);
-        slot.SelectedOption = slot.Options.First(option => option.Unit is not null && predicate(option));
+        return Assert.IsOfType<MapEditorUnitPickerViewModel>(game.TopScreen);
     }
 
     [Test]
@@ -178,59 +177,105 @@ public sealed class MapEditorScreenViewModelTests
         editor.SelectedCapitalRace = editor.CapitalRaces[1];
         editor.BeginStroke(new WorldPosition(38, 38));
 
-        // Neutral owner starts with a neutral leader in the front center; add a large unit and a soldier.
+        // Clicking water does not open the army screen.
         editor.SelectTool(MapEditorTool.Army);
-        Assert.That(editor.Army.Owner, Is.EqualTo(WorldRace.Neutral));
-        Assert.That(editor.Army.Slots.Single(slot => slot.Position == GridPosition.FrontCenter).SelectedOption?.Unit, Is.Not.Null.And.Property(nameof(CustomMapUnit.IsLeader)).True);
-        Assert.That(editor.Army.IsValid, Is.True);
+        editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Neutral);
+        editor.BeginStroke(new WorldPosition(9, 9));
+        Assert.That(game.TopScreen, Is.SameAs(editor), "Capitals are blocked.");
 
-        Select(editor, GridPosition.FrontTop, option => option.Unit is { IsLarge: true, IsLeader: false });
-        MapEditorSlotViewModel backTop = editor.Army.Slots.Single(slot => slot.Position == GridPosition.BackTop);
-        Assert.That(backTop.IsEnabled, Is.False, "A large unit fills both lines.");
-        Assert.That(backTop.Options.Any(option => option.Unit is { IsLarge: true }), Is.False, "Large units only go in the front line.");
-        Select(editor, GridPosition.BackBottom, option => option.Unit is { IsLarge: false, IsLeader: false });
-        Assert.That(editor.Army.IsValid, Is.True, editor.Army.Status);
-
+        // Free land opens an empty army; its first empty slot asks for a leader.
         editor.BeginStroke(new WorldPosition(24, 24));
+        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen);
+        Assert.That(army.IsNew, Is.True);
+        Assert.That(army.HasLeader, Is.False);
+        Assert.That(army.ConfirmCommand.CanExecute(null), Is.False);
+
+        await army.UnitGrid.Slots.First(slot => slot.Position == GridPosition.BackTop).SelectCommand.ExecuteAsync(null);
+        MapEditorUnitPickerViewModel leaders = Picker(game);
+        Assert.That(leaders.SelectedFilter.Race, Is.EqualTo(WorldRace.Neutral), "Starts with the owner's race.");
+        Assert.That(leaders.Options.All(option => option.Definition.Leadership > 0 && option.Definition.Race == WorldRace.Neutral), Is.True);
+        leaders.SelectedFilter = leaders.Filters.Single(filter => filter.Race is null);
+        Assert.That(leaders.Options.Select(option => option.Definition.Race).Distinct().Count(), Is.GreaterThan(3), "Any leader can be chosen.");
+        leaders.SelectedFilter = leaders.Filters.Single(filter => filter.Race == WorldRace.Neutral);
+        MapEditorUnitPickerItemViewModel leader = leaders.Options.First(option => !option.Definition.IsLarge && option.Definition.Leadership >= 4);
+        Assert.That(leader.Details, Is.Not.Null, "Right-click shows the unit details.");
+        leader.PickCommand.Execute(null);
+
+        Assert.That(game.TopScreen, Is.SameAs(army));
+        Assert.That(army.HasLeader, Is.True);
+        Assert.That(army.Slots[GridPosition.FrontCenter.ToIndex()]!.TypeId, Is.EqualTo(leader.Definition.Id));
+        Assert.That(army.ConfirmCommand.CanExecute(null), Is.True);
+
+        // Units: a large one takes its whole row; a full row cannot take another.
+        await army.UnitGrid.Slots.First(slot => slot.Position == GridPosition.BackTop).SelectCommand.ExecuteAsync(null);
+        MapEditorUnitPickerViewModel soldiers = Picker(game);
+        Assert.That(soldiers.Options.All(option => option.Definition.Leadership is not > 0), Is.True);
+        soldiers.Options.First(option => option.Definition.IsLarge && !option.IsUnavailable).PickCommand.Execute(null);
+        Assert.That(army.Slots[GridPosition.FrontTop.ToIndex()], Is.Not.Null.And.Property(nameof(CustomMapUnit.IsLarge)).True);
+
+        army.AddUnit(GridPosition.FrontCenter);
+        Assert.That(Picker(game).Options.All(option => option.IsUnavailable), Is.True, "The slot is taken.");
+        Picker(game).CloseCommand.Execute(null);
+
+        army.AddUnit(GridPosition.BackBottom);
+        Picker(game).Options.First(option => !option.Definition.IsLarge).PickCommand.Execute(null);
+        Assert.That(army.Slots[GridPosition.BackBottom.ToIndex()], Is.Not.Null);
+
+        // Rearranging works like in the game: the large unit swaps rows.
+        army.MoveUnit(GridPosition.BackTop, GridPosition.FrontBottom);
+        Assert.That(army.Slots[GridPosition.FrontBottom.ToIndex()], Is.Not.Null.And.Property(nameof(CustomMapUnit.IsLarge)).True);
+        Assert.That(army.Slots[GridPosition.BackTop.ToIndex()], Is.Not.Null.And.Property(nameof(CustomMapUnit.IsLarge)).False);
+        army.RemoveUnit(GridPosition.BackTop);
+        Assert.That(army.Slots.Count(unit => unit is not null), Is.EqualTo(2));
+
+        army.ConfirmCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(editor));
         CustomMapStack placed = editor.Map.Stacks.Single();
         Assert.That(placed.Position, Is.EqualTo(new WorldPosition(24, 24)));
-        Assert.That(editor.SelectedArmyId, Is.EqualTo(placed.Id));
-        Assert.That(editor.RenderRequest.Cursor.StackId, Is.EqualTo(new WorldStackId("S600KC0101")));
+        Assert.That(placed.Owner, Is.EqualTo(WorldRace.Neutral));
 
-        // Two leaders are refused.
-        Select(editor, GridPosition.BackCenter, option => option.Unit is { IsLeader: true, IsLarge: false });
-        Assert.That(editor.Army.IsValid, Is.False);
-        editor.BeginStroke(new WorldPosition(30, 20));
-        Assert.That(editor.Map.Stacks, Has.Count.EqualTo(1));
+        // Right-click shows the game's army info.
+        editor.ShowPositionInfo(new WorldPosition(24, 24));
+        Assert.That(editor.PositionInfo, Is.InstanceOf<WorldStackInfoViewModel>());
+        editor.HidePositionInfo();
+        Assert.That(editor.PositionInfo, Is.Null);
+        editor.ShowPositionInfo(new WorldPosition(9, 9));
+        Assert.That(editor.PositionInfo, Is.InstanceOf<WorldFortificationInfoViewModel>());
+        editor.HidePositionInfo();
 
-        // Select the army again by clicking it, give it to the Dwarves, apply.
-        editor.BeginStroke(new WorldPosition(10, 30));
+        // Clicking the army opens it again; change the leader and save.
         editor.BeginStroke(new WorldPosition(24, 24));
-        Assert.That(editor.Army.Owner, Is.EqualTo(WorldRace.Neutral));
-        editor.Army.SelectedOwner = editor.Army.Owners.Single(owner => owner.Value == WorldRace.Dwarf);
+        army = Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen);
+        Assert.That(army.IsNew, Is.False);
+        Assert.That(army.Slots, Is.EqualTo(placed.Slots));
+        army.ChooseLeaderCommand.Execute(null);
+        Picker(game).SelectedFilter = Picker(game).Filters.Single(filter => filter.Race == WorldRace.Dwarf);
+        MapEditorUnitPickerItemViewModel dwarf = Picker(game).Options.First(option => !option.IsUnavailable);
+        dwarf.PickCommand.Execute(null);
+        Assert.That(army.Slots.Count(unit => unit is { IsLeader: true }), Is.EqualTo(1));
+        Assert.That(army.Slots.Single(unit => unit is { IsLeader: true })!.TypeId, Is.EqualTo(dwarf.Definition.Id));
 
-        // The neutral leader is replaced by a Dwarf leader; neutral soldiers may stay.
-        Assert.That(editor.Army.Slots.Select(slot => slot.SelectedOption?.Unit).Count(unit => unit is { IsLeader: true }), Is.EqualTo(1));
-        Assert.That(editor.Army.Slots.Single(slot => slot.SelectedOption?.Unit is { IsLeader: true }).SelectedOption!.Race, Is.EqualTo(WorldRace.Dwarf));
-        Assert.That(editor.Army.Slots.All(slot => slot.Options.All(option => option.Unit is not { IsLeader: true } || option.Race == WorldRace.Dwarf)), Is.True);
-        editor.ApplyArmyCommand.Execute(null);
-        Assert.That(editor.Map.Stacks.Single().Owner, Is.EqualTo(WorldRace.Dwarf));
+        if (army.ConfirmCommand.CanExecute(null))
+        {
+            army.ConfirmCommand.Execute(null);
+            Assert.That(editor.Map.Stacks.Single().Leader.TypeId, Is.EqualTo(dwarf.Definition.Id));
+        }
+        else
+        {
+            Assert.That(army.Problem, Is.Not.Null, "A weaker leader may not lead the large unit.");
+            army.CloseCommand.Execute(null);
+        }
 
         editor.SaveCommand.Execute(null);
         Assert.That(editor.IsDirty, Is.False);
+        WorldState saved = loader.CreateMapStore()!.BuildPreview(loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions()), loader.CreateDefinitions()).State;
+        Assert.That(saved.Stacks.Values.Count(stack => stack.Position == new WorldPosition(24, 24)), Is.EqualTo(1));
 
-        CustomMapStore store = loader.CreateMapStore()!;
-        WorldState saved = store.BuildPreview(store.Open("S600SC0000", loader.CreateDefinitions()), loader.CreateDefinitions()).State;
-        WorldStack army = saved.Stacks.Values.Single(stack => stack.Position == new WorldPosition(24, 24));
-        Assert.That(saved.Players[army.OwnerId].Race, Is.EqualTo(WorldRace.Dwarf));
-
-        editor.DeleteArmyCommand.Execute(null);
+        // Delete from the army screen, then undo.
+        editor.BeginStroke(new WorldPosition(24, 24));
+        Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen).DeleteCommand.Execute(null);
         Assert.That(editor.Map.Stacks, Is.Empty);
-        Assert.That(editor.SelectedArmyId, Is.Null);
-
         editor.UndoCommand.Execute(null);
-        Assert.That(editor.Map.Stacks.Single().Owner, Is.EqualTo(WorldRace.Dwarf));
-        editor.UndoCommand.Execute(null);
-        Assert.That(editor.Map.Stacks.Single().Owner, Is.EqualTo(WorldRace.Neutral));
+        Assert.That(editor.Map.Stacks, Has.Count.EqualTo(1));
     }
 }

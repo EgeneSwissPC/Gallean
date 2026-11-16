@@ -114,6 +114,11 @@ internal sealed class GameLoader(IRandomProvider random, string? customMapsDirec
         return customMapsDirectory is null ? null : new CustomMapStore(customMapsDirectory, globalDatabase.Value, campaignDatabase.Value);
     }
 
+    public IGameTextProvider CreateTexts(ScenarioDatabase scenarioDatabase, string scenarioId, Language language)
+    {
+        return CreateTextProvider(scenarioDatabase, scenarioId, language);
+    }
+
     public IGameTextProvider LoadGlobalTexts(Language language)
     {
         LanguageDatabase languageDatabase = LanguageDatabaseLoader.LoadIndex(
