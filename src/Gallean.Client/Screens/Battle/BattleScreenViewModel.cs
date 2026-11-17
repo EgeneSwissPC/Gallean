@@ -82,6 +82,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
             RetreatCommand,
             SkipCommand,
             ToggleAutoBattleCommand,
+            ToggleHealModeCommand,
             AutoResolveCommand,
             ExitBattleCommand);
     }
@@ -169,7 +170,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
 
     private bool IsFinished => State.Outcome is not null;
 
-    private bool IsAiTurn => battle.IsAiTurn || IsAutoBattle;
+    private bool IsAiTurn => battle.IsAiTurn || IsAutoBattle || IsHealMode;
 
     public async Task LoadAsync()
     {
@@ -354,7 +355,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
                 }
                 else
                 {
-                    await DispatchBattleActionAsync(new BattleAiActionCommand(CanUseItems: battle.IsAiTurn), animate: true);
+                    await PlayAiStepAsync();
                 }
             }
         }
@@ -427,6 +428,12 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
     [RelayCommand(CanExecute = nameof(CanAutoResolve))]
     private void AutoResolve()
     {
+        if (IsHealMode)
+        {
+            OpenHealModeResolvePrompt();
+            return;
+        }
+
         Game.OpenScreen(new ConfirmPromptViewModel(
             Tr("Instant resolve"),
             TrSpans("Would you like to resolve the rest of the battle automatically?"),
@@ -1244,6 +1251,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
         RetreatCommand.NotifyCanExecuteChanged();
         SkipCommand.NotifyCanExecuteChanged();
         ToggleAutoBattleCommand.NotifyCanExecuteChanged();
+        ToggleHealModeCommand.NotifyCanExecuteChanged();
         AutoResolveCommand.NotifyCanExecuteChanged();
         ExitBattleCommand.NotifyCanExecuteChanged();
     }
