@@ -166,9 +166,47 @@ Client (`src/Gallean.Client/Screens/MapEditor/`):
 - Real client run: place rods for two races, save, play the map as a custom quest, check the rods are drawn and spread
   on turn 2, and the in-game income table matches the panel.
 
+## Phase 1 — done
+
+What was built (branch `upgrade/map-editor-rods`, commit `ca0330f`, merged into `gallean-upgrade` as `367c0bb`):
+- Engine `CustomMapRods.cs`: `CustomMapRod(Id, Position, Owner)` (in `CustomMapObjects.cs`), `GetRodBlock` (the one
+  rule), `GetRodTooClose`, `PreviewRod`, `PlaceRod`, `RemoveRod`, `GetRodAt`; `RodSpacing` and `RodTilesPerTurn`
+  come from `GlobalVariables` defaults (2 and 2). The spread is a port of `ExpansionCalculator.ExpandAround` and
+  `TerrainTransformCalculator.TransformCells`.
+- New tile reasons: `ClaimsLand` (amber: land a rod takes) and `Rod` (a rod in the way, or one too close). Capitals,
+  villages, ruins, sites, landmarks, armies, resources and bags refuse a rod's tile; roads go around rods; water and
+  mountain brushes leave them alone.
+- `CustomMapLandmark` remembers the mountain type (`Mountain`), set by `PlaceLandmark` and `FromState`, because the
+  spread can't enter mountain-type landmarks.
+- Writer: `SRod.json`, IDs `RO` + n (`CustomMapWriter.GetRodId`), owner = the race's player (`PL` + slot).
+  `FromState` reads rods back (only playable races' rods); `ApplyTerrain` refreshes `Rods`, so a placed rod shows at
+  once.
+- Client: the hover line names a rod as "a rod" when it blocks something (new string in all 7 catalogs).
+- Tests (suite 5199 -> 5204): `CustomMapTests.RodRulesTest`, `RodResourceTest` (3x3 flip, a rod guarding a mine,
+  capitals stop the spread, walking over own land), `RodPaintAgreesWithGameTest` (3,996 placements on every free tile
+  for both races, terrain compared with the game's `ExpansionCalculator.ExpandRodTerrain` on the loaded map; 159 of
+  them took a resource's 3x3 along), `RodSaveAndLoadTest`, `RodPlayTest` (AI, 9 player turns: Empire land near its
+  rod 2 -> 16 tiles), plus rods in `PreviewAgreesWithPlaceTest`. Two deliberate bugs in the port (rod-guarded mines,
+  neutral villages) were each caught by the agreement test.
+- Real client run (AOT build on the Debian 12 image, test map from `mapgen` with an Empire rod next to an infernal
+  mine): the editor draws the rod and its right-click info says "Rod, owner Empire"; in the game the rod is drawn and
+  the Empire earns +50 infernal and +50 rune mana per turn from turn 1.
+
+Found on the way:
+- Mines next to each other flip together: the 3x3 taken along around one resource can touch the next resource,
+  whose 3x3 then flips too (the game's `TransformCells` keeps going). In the test map the rod's 2 tiles took the
+  infernal mine and, through it, the rune mine 2 tiles further. The preview will show this as amber tiles.
+- The loader's rod path works on written maps (no original scenario has rods).
+
+Known limits:
+- There is no Rod tool in the editor yet (phase 2); maps get rods only through code (`mapgen`, `MapFromPlan` could
+  use `PlaceRod`).
+- Whether the original game's rod ID type is `RO` is unchecked; the loader takes any ID.
+
 ## Phases
 
-1. Rods in the engine and writer: `CustomMapRod`, rules, paint, `SRod.json`, `FromState`, tests (about 1 day).
+1. ~~Rods in the engine and writer: `CustomMapRod`, rules, paint, `SRod.json`, `FromState`, tests (about 1 day).~~
+   Done, see "Phase 1 — done".
 2. Rod tool in the client: tool, preview, hover line, Shift+click, visual test, real client run (about half a day).
 3. Economy panel: `CustomMapEconomy`, panel, live update, highlight (about 1 day).
 4. Starting bank per race in the panel (gold + all five manas), "Same for all" (about half a day).

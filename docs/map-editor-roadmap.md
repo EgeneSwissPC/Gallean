@@ -2,8 +2,9 @@
 
 Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; updated 2026-11-16 after landmark
 placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
-plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), and after
-planning rods and the economy panel. Each section is meant as a separate task.
+plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), after
+planning rods and the economy panel, and after rods in the engine (commit `ca0330f`). Each section is meant as a
+separate task.
 
 ## Decisions so far
 
@@ -83,7 +84,7 @@ planning rods and the economy panel. Each section is meant as a separate task.
 
 | Object | Notes |
 | --- | --- |
-| Rods | terraforming rods; planned, see "Task: rods and the economy panel" |
+| Rods | terraforming rods; engine, save and load done (commit `ca0330f`), the Rod tool is next (see "Task: rods and the economy panel") |
 | Locations | named zones (see below) |
 | Events | scenario scripting (see below); every custom map is saved with no events |
 | Army templates | armies that events create |
@@ -146,6 +147,14 @@ Full description: `docs/map-editor-rods-economy.md`. Summary:
 - Land spread preview: turn bar (-10/-/+/+10) that redraws the map after N turns of spread, numbers per turn.
 - Phases: rods in engine and writer (~1 day), rod tool (~0.5 day), economy panel (~1 day), starting bank (~0.5 day),
   spread preview (~1 day).
+
+Phase 1 — done (branch `upgrade/map-editor-rods`, commit `ca0330f`, merged as `367c0bb`): `CustomMapRods.cs`
+(`PlaceRod`/`PreviewRod`/`RemoveRod`, game planting rules, the first 2 tiles claimed by a port of the game's spread,
+including the 3x3 resource flip and rod-guarded mines), other tools respect rods, `SRod.json` (`RO` + n), `FromState`
+and `ApplyTerrain` read rods, landmarks remember the mountain type. Tests: `CustomMapTests.Rod*` (the spread checked
+against the game's `ExpansionCalculator` on 3,996 placements), suite 5204. Real client: the rod is drawn in the editor
+and the game, and the mines it took pay from turn 1. Finding: neighbouring mines flip together (one mine's 3x3 can
+reach the next). Details: `docs/map-editor-rods-economy.md` ("Phase 1 — done").
 
 ## Task: items (one shared item editor)
 
