@@ -341,7 +341,7 @@
             <ListBox x:Name="ToolList" Classes="tools" ItemsSource="{Binding Tools}" SelectedItem="{Binding SelectedTool}">
               <ListBox.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <UniformGrid Columns="2" />
+                  <UniformGrid Columns="3" />
                 </ItemsPanelTemplate>
               </ListBox.ItemsPanel>
               <ListBox.ItemTemplate>
@@ -479,6 +479,21 @@
                          Margin="0,6,0,0" />
             </StackPanel>
 
+            <StackPanel IsVisible="{Binding IsRodTool}">
+              <local:OutlinedTextBlock Text="{local:Text 'Rod owner'}" Classes="caption field-label" />
+              <ComboBox x:Name="RodOwnerBox" HorizontalAlignment="Stretch" ItemsSource="{Binding RodOwners}" SelectedItem="{Binding SelectedRodOwner}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{local:Text 'Click land to plant a rod: like in the game, it turns the nearest 2 tiles into its race land at once and 2 more every turn, and a mine those tiles reach changes owner. Rods need 2 free tiles between them. Click a rod or Shift+click to remove it; its land stays.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,6,0,0" />
+            </StackPanel>
             <StackPanel IsVisible="{Binding IsRoadTool}">
               <TextBlock Text="{local:Text 'Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads.'}"
                          Classes="caption"

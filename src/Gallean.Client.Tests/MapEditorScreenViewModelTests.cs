@@ -976,6 +976,88 @@ public sealed class MapEditorScreenViewModelTests
     }
 
     [Test]
+    public async Task RodTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Rod);
+        Assert.That((editor.IsRodTool, editor.HasBrush), Is.EqualTo((true, false)));
+        Assert.That(editor.RodOwners.Select(option => option.Value), Is.EqualTo(new[] { WorldRace.Human, WorldRace.Dwarf }), "Only the races on the map.");
+        Assert.That(editor.SelectedRodOwner!.Value, Is.EqualTo(WorldRace.Human));
+
+        // Hover: the rod's tile is green, the 2 tiles it claims amber.
+        WorldPosition first = new(20, 20);
+        editor.UpdateHover(first);
+        Assert.That(editor.PlacementPreview.GetState(first), Is.EqualTo(MapEditorTileState.Fits));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(20, 21)), Is.EqualTo(MapEditorTileState.Changes));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(20, 19)), Is.EqualTo(MapEditorTileState.Changes));
+        Assert.That(editor.HoverText, Does.StartWith("Rod (Empire): fits · turns 2 tiles into Empire land\n"));
+
+        // Click: placed, drawn at once (no preview rebuild needed) and undoable.
+        editor.BeginStroke(first);
+        Assert.That(editor.Map.Rods.Select(rod => (rod.Position, rod.Owner)), Is.EqualTo(new[] { (first, WorldRace.Human) }));
+        Assert.That(editor.RenderRequest.State.Rods.Values.Select(rod => rod.Position), Is.EqualTo(new[] { first }));
+        Assert.That(editor.RenderRequest.State.Map.GetCellAt(new WorldPosition(20, 21)).Terrain, Is.EqualTo(WorldMapTerrain.Human));
+        Assert.That(editor.CanUndo, Is.True);
+
+        // Too close: both rods red, and the click says which rod is in the way.
+        WorldPosition near = new(21, 22);
+        editor.UpdateHover(near);
+        Assert.That(editor.PlacementPreview.GetState(near), Is.EqualTo(MapEditorTileState.Blocked));
+        Assert.That(editor.PlacementPreview.GetState(first), Is.EqualTo(MapEditorTileState.Blocked));
+        const string tooClose = "Rod (Empire): another rod at 20, 20 is too close (rods need 2 free tiles between them)";
+        Assert.That(editor.HoverText, Does.StartWith(tooClose));
+        editor.BeginStroke(near);
+        Assert.That((editor.Map.Rods.Count, game.Alert.Current?.Caption), Is.EqualTo((1, tooClose)));
+        editor.UpdateHover(new WorldPosition(8, 8));
+        Assert.That(editor.HoverText, Does.StartWith("Rod (Empire): blocked by a capital at 8, 8"));
+
+        // A rod whose land reaches a mine takes it: the hover line says from whom.
+        editor.SelectTool(MapEditorTool.Resource);
+        editor.BeginStroke(new WorldPosition(30, 18));
+        editor.SelectTool(MapEditorTool.Rod);
+        editor.SelectedRodOwner = editor.RodOwners[1];
+        WorldPosition second = new(30, 20);
+        editor.UpdateHover(second);
+        Assert.That(editor.HoverText, Does.StartWith("Rod (Mountain Clans): fits · turns 10 tiles into Mountain Clans land · takes Gold mine from nobody\n"));
+        editor.BeginStroke(second);
+        Assert.That(editor.Map.GetLandOwner(new WorldPosition(30, 18)), Is.EqualTo(WorldRace.Dwarf));
+
+        // Other tools see the rod in the way.
+        editor.SelectTool(MapEditorTool.Army);
+        editor.UpdateHover(second);
+        Assert.That(editor.HoverText, Does.StartWith("Army: blocked by a rod at 30, 20"));
+
+        // Hovering a rod: a click removes it. Shift+click and a plain click both do; the land stays.
+        editor.SelectTool(MapEditorTool.Rod);
+        editor.UpdateHover(null);
+        editor.UpdateHover(second);
+        Assert.That(editor.HoverText, Does.StartWith("Rod of Mountain Clans: click removes it (its land stays)"));
+        Assert.That(editor.PlacementPreview.HoverObject, Is.EqualTo(second));
+        editor.BeginStroke(second, alternate: true);
+        editor.BeginStroke(first);
+        Assert.That(editor.Map.Rods, Is.Empty);
+        Assert.That(editor.RenderRequest.State.Rods, Is.Empty);
+        Assert.That(editor.Map.GetLandOwner(new WorldPosition(30, 18)), Is.EqualTo(WorldRace.Dwarf));
+
+        // Shift+click on free land does nothing; undo brings the rods back one by one.
+        editor.BeginStroke(new WorldPosition(24, 30), alternate: true);
+        Assert.That(editor.Map.Rods, Is.Empty);
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Rods.Select(rod => rod.Position), Is.EqualTo(new[] { first }));
+        Assert.That(editor.RenderRequest.State.Rods.Count, Is.EqualTo(1));
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Rods.Count, Is.EqualTo(2));
+
+        // Saved and opened again, the rods are still there.
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).Rods, Is.EquivalentTo(editor.Map.Rods));
+    }
+
+    [Test]
     public async Task SiteTest()
     {
         using Sandbox sb = Sandbox.Create();

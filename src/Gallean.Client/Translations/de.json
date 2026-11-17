@@ -1010,6 +1010,15 @@
     "{0} new road tiles": "{0} new road tiles",
     "click lays it": "click lays it",
     "Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads.": "Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads.",
-    "a rod": "a rod"
+    "a rod": "a rod",
+    "Rod owner": "Rod owner",
+    "Click land to plant a rod: like in the game, it turns the nearest 2 tiles into its race land at once and 2 more every turn, and a mine those tiles reach changes owner. Rods need 2 free tiles between them. Click a rod or Shift+click to remove it; its land stays.": "Click land to plant a rod: like in the game, it turns the nearest 2 tiles into its race land at once and 2 more every turn, and a mine those tiles reach changes owner. Rods need 2 free tiles between them. Click a rod or Shift+click to remove it; its land stays.",
+    "Rod of {0}: click removes it (its land stays)": "Rod of {0}: click removes it (its land stays)",
+    "Rod ({0})": "Rod ({0})",
+    "turns 1 tile into {0} land": "turns 1 tile into {0} land",
+    "turns {0} tiles into {1} land": "turns {0} tiles into {1} land",
+    "takes {0} from {1}": "takes {0} from {1}",
+    "{0}: another rod at {1}, {2} is too close (rods need {3} free tiles between them)": "{0}: another rod at {1}, {2} is too close (rods need {3} free tiles between them)",
+    "Rods": "Rods"
   }
 }

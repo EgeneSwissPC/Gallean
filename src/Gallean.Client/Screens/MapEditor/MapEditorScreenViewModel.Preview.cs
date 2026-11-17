@@ -180,6 +180,9 @@ internal sealed partial class MapEditorScreenViewModel
             case MapEditorTool.Road:
                 return RoadPreview(tile);
 
+            case MapEditorTool.Rod:
+                return RodPreview(tile);
+
             default:
                 return BrushPreview(tile);
         }

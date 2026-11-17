@@ -25,6 +25,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
     // Tile diamonds are drawn a little smaller than the tile, so neighbouring outlines don't merge.
     private const double TileInset = 0.06;
 
+    // The game fades new race land in over up to ~2.3 s (terrain expansion). The editor shows every change at once:
+    // a time far past the end of any expansion draws the new land and leaves out the fading trees. (With zero, the
+    // renderer kept drawing the old land on the last changed tiles until the next change.)
+    private static readonly TimeSpan FinishedTerrainExpansion = TimeSpan.FromDays(1);
+
     private readonly AnimationClock animationClock = new();
     private readonly HashSet<Key> pressedKeys = [];
     private readonly WorldRenderer renderer = new();
@@ -384,7 +389,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             Assets,
             animationClock.Now,
             TimeSpan.Zero,
-            TimeSpan.Zero,
+            FinishedTerrainExpansion,
             settings.RenderResolutionRatio,
             false,
             ViewModel.Game.DevTools.Diagnostics,
