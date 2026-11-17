@@ -43,7 +43,9 @@ location" / "defend location" army orders, but the editor can't place them and `
 - **Default names "Location 1", "Location 2" ...** (the next unused number). After placing, a small name box opens
   with that name filled in and selected: type a new one, or press Enter / Save to keep it. Renaming later is in the
   tool settings.
-- **Locations can be dragged to move them.** How the drag works is being worked out (open question 2).
+- **Locations can be dragged to move them**: grab anywhere inside the square; where squares overlap, the selected
+  location is picked first, then the smallest. Dropping where the square would leave the map snaps it to the nearest
+  place that fits (see "Dragging").
 
 ## What the user would see
 
@@ -57,6 +59,22 @@ location" / "defend location" army orders, but the editor can't place them and `
 - Click an existing location's centre: selects it; the settings then show its name (editable), radius, position and
   a Delete button. Shift+click deletes. Ctrl+Z undoes every change.
 - Locations may overlap and may cover water, mountains and objects (the original maps do this); they block nothing.
+
+### Dragging
+
+- Only with the Locations tool on (other tools paint on a drag).
+- Hovering outlines the location a press would pick up: the selected one if the cursor is in it, else the smallest
+  square under the cursor.
+- Press and release on the same tile = click (select, or place on empty ground). Moving to another tile before the
+  release = drag. A drag starting on empty ground does nothing.
+- The grabbed tile stays under the cursor; the square follows with the placement preview. Where it would leave the
+  map, the preview shows amber at the snapped place (centre clamped so the square fits: `radius <= x, y <= size - 1 -
+  radius`, the nearest fitting centre) and the hover line says "Northern Pass: 30, 12 -> 34, 20 (snapped to the map
+  edge)". Releasing moves it there. A click-to-place near the edge snaps the same way, so placing never fails.
+- Esc or right-click during the drag puts it back; Ctrl+Z undoes the whole drag in one step.
+- Screen-edge scrolling keeps working during the drag (long moves on 512 maps); X/Y number boxes in the settings for
+  exact positions.
+- Moving keeps the location's ID and name (later events and orders point at the ID).
 
 ### Overlay
 
@@ -100,5 +118,6 @@ location" / "defend location" army orders, but the editor can't place them and `
 ## Open questions
 
 1. ~~Default name, or ask for a name on placing?~~ Decided: default "Location N", editable in a name box on placing.
-2. Dragging is wanted: what should the drag feel like (grab anywhere or the centre, overlaps, cancel, edge scroll)?
+2. ~~What should the drag feel like?~~ Decided: grab anywhere, selected then smallest first, snap to the nearest
+   fitting place on drop (see "Dragging").
 3. Where does the list go (right panel vs left overlay)? Decided in phase 3.
