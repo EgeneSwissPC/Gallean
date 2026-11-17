@@ -363,6 +363,7 @@ internal sealed partial class MapEditorScreenViewModel
             CustomMapTileReason.Army => Tr("an army"),
             CustomMapTileReason.Resource => Tr("a resource"),
             CustomMapTileReason.Bag => Tr("treasure"),
+            CustomMapTileReason.Rod => Tr("a rod"),
             _ => Tr("the map edge")
         };
     }

@@ -148,8 +148,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         };
     }
 
-    // Updates terrain, mountains, resources and landmarks of a preview state in place of a full rebuild; capitals,
-    // armies and villages need BuildPreview.
+    // Updates terrain, mountains, resources, landmarks and rods of a preview state in place of a full rebuild;
+    // capitals, armies and villages need BuildPreview.
     public static WorldState ApplyTerrain(WorldState state, CustomMap map)
     {
         return state with
@@ -163,7 +163,14 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
                 .ToImmutableSortedDictionary(node => node.Id, node => node),
             Landmarks = map.Landmarks
                 .Select(landmark => new WorldLandmark(new WorldLandmarkId(CustomMapWriter.GetLandmarkId(map.Id, landmark.Id)), landmark.Type, landmark.Footprint))
-                .ToImmutableSortedDictionary(landmark => landmark.Id, landmark => landmark)
+                .ToImmutableSortedDictionary(landmark => landmark.Id, landmark => landmark),
+            Rods = map.Rods
+                .Where(rod => state.Players.Values.Any(player => player.Race == rod.Owner))
+                .Select(rod => new WorldRod(
+                    new WorldRodId(CustomMapWriter.GetRodId(map.Id, rod.Id)),
+                    state.Players.Values.First(player => player.Race == rod.Owner).Id,
+                    rod.Position))
+                .ToImmutableSortedDictionary(rod => rod.Id, rod => rod)
         };
     }
 
@@ -306,11 +313,12 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         foreach (WorldLandmark landmark in state.Landmarks.Values)
         {
             int id = ParseObjectNumber(landmark.Id.Value, 0) ?? landmarks.Count + 1;
-            landmarks.Add(new CustomMapLandmark(id, landmark.Footprint.TopLeft, landmark.DefinitionId, landmark.Footprint.Width, landmark.Footprint.Height));
+            bool mountainType = definitions.GetLandmark(landmark.DefinitionId).Mountain;
+            landmarks.Add(new CustomMapLandmark(id, landmark.Footprint.TopLeft, landmark.DefinitionId, landmark.Footprint.Width, landmark.Footprint.Height, mountainType));
 
             // The loader turns the tiles of a mountain-type landmark into mountains; the map keeps them free, so the
             // tiles don't stay blocked once the landmark is removed. The writer marks them again.
-            if (definitions.GetLandmark(landmark.DefinitionId).Mountain)
+            if (mountainType)
             {
                 foreach (WorldPosition tile in landmark.Footprint.EnumerateTiles())
                 {
@@ -325,7 +333,21 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             }
         }
 
-        return new CustomMap(mapId, name, description, state.Map.Width, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks);
+        List<CustomMapRod> rods = [];
+
+        foreach (WorldRod rod in state.Rods.Values)
+        {
+            WorldRace owner = state.Players[rod.OwnerId].Race;
+
+            // Only playable races' rods spread land; a rod of anyone else can't be edited, so it isn't kept.
+            if (WorldHelpers.IsRacePlayable(owner))
+            {
+                int id = ParseObjectNumber(rod.Id.Value, 0) ?? rods.Count + 1;
+                rods.Add(new CustomMapRod(id, rod.Position, owner));
+            }
+        }
+
+        return new CustomMap(mapId, name, description, state.Map.Width, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods);
     }
 
     // The editor's object number from a saved ID such as S600KC0101 (first = 0x100 gives 1).

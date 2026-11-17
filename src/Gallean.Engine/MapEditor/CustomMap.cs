@@ -59,7 +59,7 @@ public sealed record CustomMapMountain(int Id, WorldPosition TopLeft, int Size, 
 // the regular scenario loader (CustomMapStore). Capitals, villages, ruins and sites are structures: their tiles are
 // protected from brushes and they never overlap. An army may stand on the entrance of a village or capital: it is
 // stationed there and belongs to the owner. Landmarks overlap nothing either; land and water can be painted under
-// them, forests and mountains can't.
+// them, forests and mountains can't. Rods (CustomMapRods.cs) stand alone on a tile like resources.
 public sealed partial class CustomMap
 {
     public const int MinSize = 16;
@@ -79,6 +79,7 @@ public sealed partial class CustomMap
     private readonly List<CustomMapBag> bags;
     private readonly List<CustomMapSite> sites;
     private readonly List<CustomMapLandmark> landmarks;
+    private readonly List<CustomMapRod> rods;
 
     public CustomMap(
         string id,
@@ -94,7 +95,8 @@ public sealed partial class CustomMap
         IEnumerable<CustomMapRuin>? ruins = null,
         IEnumerable<CustomMapBag>? bags = null,
         IEnumerable<CustomMapSite>? sites = null,
-        IEnumerable<CustomMapLandmark>? landmarks = null)
+        IEnumerable<CustomMapLandmark>? landmarks = null,
+        IEnumerable<CustomMapRod>? rods = null)
     {
         if (size is < MinSize or > MaxSize)
         {
@@ -115,6 +117,7 @@ public sealed partial class CustomMap
         this.bags = [.. bags ?? []];
         this.sites = [.. sites ?? []];
         this.landmarks = [.. landmarks ?? []];
+        this.rods = [.. rods ?? []];
 
         if (this.cells.Length != size * size)
         {
@@ -136,6 +139,7 @@ public sealed partial class CustomMap
     public IReadOnlyList<CustomMapBag> Bags => bags;
     public IReadOnlyList<CustomMapSite> Sites => sites;
     public IReadOnlyList<CustomMapLandmark> Landmarks => landmarks;
+    public IReadOnlyList<CustomMapRod> Rods => rods;
 
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
@@ -168,7 +172,7 @@ public sealed partial class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods);
     }
 
     public WorldMapCell GetCell(WorldPosition position)
@@ -283,8 +287,8 @@ public sealed partial class CustomMap
         return true;
     }
 
-    // Why a brush leaves a tile alone: structures for every brush, armies and resources for Water, resources, bags
-    // and landmarks for Forest. (Mountains have their own rule, GetMountainBlock.)
+    // Why a brush leaves a tile alone: structures for every brush, armies, resources and rods for Water, resources,
+    // bags and landmarks for Forest. (Mountains have their own rule, GetMountainBlock.)
     private CustomMapTileReason GetBrushBlock(WorldPosition position, CustomMapBrush brush)
     {
         if (IsUnderStructure(position))
@@ -302,6 +306,11 @@ public sealed partial class CustomMap
             if (GetResourceAt(position) is not null)
             {
                 return CustomMapTileReason.Resource;
+            }
+
+            if (GetRodAt(position) is not null)
+            {
+                return CustomMapTileReason.Rod;
             }
         }
 
@@ -526,6 +535,10 @@ public sealed partial class CustomMap
             {
                 block = CustomMapTileReason.Bag;
             }
+            else if (GetRodAt(position) is not null)
+            {
+                block = CustomMapTileReason.Rod;
+            }
 
             if (block != CustomMapTileReason.None)
             {
@@ -563,7 +576,7 @@ public sealed partial class CustomMap
         {
             error = CustomMapPlacementError.Blocked;
         }
-        else if (result.Any(tile => tile.Reason is CustomMapTileReason.Army or CustomMapTileReason.Resource or CustomMapTileReason.Bag))
+        else if (result.Any(tile => tile.Reason is CustomMapTileReason.Army or CustomMapTileReason.Resource or CustomMapTileReason.Bag or CustomMapTileReason.Rod))
         {
             error = CustomMapPlacementError.Occupied;
         }
@@ -735,6 +748,7 @@ public sealed partial class CustomMap
             : GetResourceAt(position) is not null ? CustomMapTileReason.Resource
             : GetBagAt(position) is not null ? CustomMapTileReason.Bag
             : GetLandmarkAt(position) is not null ? CustomMapTileReason.Landmark
+            : GetRodAt(position) is not null ? CustomMapTileReason.Rod
             : CustomMapTileReason.None;
 
         if (block != CustomMapTileReason.None)
@@ -827,6 +841,7 @@ public sealed partial class CustomMap
 
         CustomMapTileReason occupied = GetStackAt(position) is not null ? CustomMapTileReason.Army
             : GetBagAt(position) is not null ? CustomMapTileReason.Bag
+            : GetRodAt(position) is not null ? CustomMapTileReason.Rod
             : CustomMapTileReason.None;
 
         if (occupied != CustomMapTileReason.None)
@@ -1100,6 +1115,7 @@ public sealed partial class CustomMap
         CustomMapTileReason occupied = GetStackAt(position) is not null ? CustomMapTileReason.Army
             : GetResourceAt(position) is not null ? CustomMapTileReason.Resource
             : GetBagAt(position) is not null ? CustomMapTileReason.Bag
+            : GetRodAt(position) is not null ? CustomMapTileReason.Rod
             : CustomMapTileReason.None;
 
         if (occupied != CustomMapTileReason.None)
@@ -1151,7 +1167,7 @@ public sealed partial class CustomMap
         }
 
         int id = landmarks.Count == 0 ? 1 : landmarks.Max(landmark => landmark.Id) + 1;
-        CustomMapLandmark placed = new(id, topLeft, definition.Id, definition.Width, definition.Height);
+        CustomMapLandmark placed = new(id, topLeft, definition.Id, definition.Width, definition.Height, definition.Mountain);
         landmarks.Add(placed);
 
         foreach (WorldPosition position in footprint.EnumerateTiles())
@@ -1281,6 +1297,7 @@ public sealed partial class CustomMap
             : GetResourceAt(position) is not null ? CustomMapTileReason.Resource
             : GetBagAt(position) is not null ? CustomMapTileReason.Bag
             : GetLandmarkAt(position) is not null ? CustomMapTileReason.Landmark
+            : GetRodAt(position) is not null ? CustomMapTileReason.Rod
             : cell.Terrain == WorldMapTerrain.Water ? CustomMapTileReason.Water
             : cell.Feature == WorldMapFeature.Mountain ? CustomMapTileReason.Mountain
             : CustomMapTileReason.None;
