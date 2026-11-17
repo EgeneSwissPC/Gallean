@@ -40,9 +40,12 @@ location" / "defend location" army orders, but the editor can't place them and `
 - **Looks like landmarks.** Landmarks have no labels drawn on the map: their name shows in the hover line and in the
   right-click info. Locations get the same, plus their name drawn on the map over the square, in the outlined text
   style the game uses for path cost labels (`WorldRenderer.DrawPathCostLabel`), so the zones can be found at a glance.
-- **Default names "Location 1", "Location 2" ...** (the next unused number). After placing, a small name box opens
-  with that name filled in and selected: type a new one, or press Enter / Save to keep it. Renaming later is in the
-  tool settings.
+- **Default names "Location 1", "Location 2" ...** (the next unused number). Names are edited in one place only: the
+  location's row in the list. After placing, its row opens for editing with the name filled in and selected: type a
+  new one, or press Enter to keep it. Double-click a row to rename later.
+- **List on the left over the map** (like the landmark palette and the economy panel, which it hides while open),
+  sorted alphabetically by default, with a search box. Hotkey **L** (checked free: the editor uses W/A/S/D, arrows,
+  Ctrl+Z, Ctrl+S, P and E in `MapEditorVisual.OnKeyDown`).
 - **Locations can be dragged to move them**: grab anywhere inside the square; where squares overlap, the selected
   location is picked first, then the smallest. Dropping where the square would leave the map snaps it to the nearest
   place that fits (see "Dragging").
@@ -54,10 +57,10 @@ location" / "defend location" army orders, but the editor can't place them and `
 - A "Locations" tool in the tool list (Russian label must fit ~90 px).
 - Hovering shows the square that would be placed (placement preview: green; red where the square leaves the map).
 - Click: places a location centred on the tile with the current radius and a default name ("Location 1", ...), then
-  opens the name box.
+  opens its list row for editing the name.
 - Radius 0–3 in the tool settings, also with + / −. Not the scroll wheel: it zooms the map in the editor.
-- Click an existing location's centre: selects it; the settings then show its name (editable), radius, position and
-  a Delete button. Shift+click deletes. Ctrl+Z undoes every change.
+- Click inside an existing location: selects it; the settings then show its radius, X/Y position and a Delete
+  button (the name is edited in the list). Shift+click deletes. Ctrl+Z undoes every change.
 - Locations may overlap and may cover water, mountains and objects (the original maps do this); they block nothing.
 
 ### Dragging
@@ -84,10 +87,18 @@ location" / "defend location" army orders, but the editor can't place them and `
 
 ### Locations list
 
-- A list of all locations: name, position, radius. Clicking a row moves the camera there and selects it.
-- Quest-list style (`ListBox Classes="select-list"`), not a palette list.
-- Where it goes (right panel or left overlay, which then hides the landmark palette and economy panel) is decided in
-  phase 3 against the 1366x768 screenshot.
+- Left overlay over the map, like the landmark palette and economy panel; while open it hides them (computed `Show*`
+  property notified from every toggle). The right panel shows only ~270 px at 1366x768, too little for up to 102 rows.
+- Opens by itself when the Locations tool is picked; a "Locations (L)" button and the L key open/close it with any
+  tool.
+- Header with the count: "Locations (12)". A search box under it filters by name (case-insensitive, contains).
+- Rows sorted alphabetically (culture-aware, so Russian names sort right), quest-list style
+  (`ListBox Classes="select-list"`, `Border Classes="row"`, `TextBlock Classes="row-title"`): name, size ("5x5"),
+  position. A small delete button per row.
+- The selected location is the highlighted row; selecting it on the map scrolls the list to its row.
+- Hover a row: its square lights up on the map. Click: camera moves there and selects it. Double-click: edit the name
+  in the row (Enter saves, Esc cancels). A new location's row opens in edit mode right after placing; renaming re-sorts
+  the list and keeps the row in view.
 
 ## Technical approach
 
@@ -120,4 +131,4 @@ location" / "defend location" army orders, but the editor can't place them and `
 1. ~~Default name, or ask for a name on placing?~~ Decided: default "Location N", editable in a name box on placing.
 2. ~~What should the drag feel like?~~ Decided: grab anywhere, selected then smallest first, snap to the nearest
    fitting place on drop (see "Dragging").
-3. Where does the list go (right panel vs left overlay)? Decided in phase 3.
+3. ~~Where does the list go?~~ Decided: left overlay, alphabetical, search, L, names edited in the row.
