@@ -75,13 +75,16 @@
           <local:OutlinedTextBlock Text="{local:Text 'Display'}" Classes="label" />
         </Border>
 
-        <CheckBox IsChecked="{Binding Windowed}">
-          <TextBlock Text="{local:Text 'Windowed mode (F11)'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
-        </CheckBox>
+        <!-- Gallean Upgrade: both display checkboxes share one row, so the extra Game checkbox still fits at 768 px. -->
+        <Grid ColumnDefinitions="*,*" ColumnSpacing="16">
+          <CheckBox Grid.Column="0" IsChecked="{Binding Windowed}">
+            <TextBlock Text="{local:Text 'Windowed mode (F11)'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+          </CheckBox>
 
-        <CheckBox IsChecked="{Binding LockCursor}">
-          <TextBlock Text="{local:Text 'Lock cursor to window'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
-        </CheckBox>
+          <CheckBox Grid.Column="1" IsChecked="{Binding LockCursor}">
+            <TextBlock Text="{local:Text 'Lock cursor to window'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+          </CheckBox>
+        </Grid>
 
         <Grid RowDefinitions="Auto,Auto" ColumnSpacing="16" RowSpacing="12">
           <Grid.ColumnDefinitions>
