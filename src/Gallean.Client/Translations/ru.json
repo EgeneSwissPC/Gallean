@@ -992,6 +992,7 @@
     "{0}: click removes it": "{0}: щелчок уберёт",
     "{0}: fits": "{0}: помещается",
     "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки",
-    "{0} brush, size {1}: paints 1 tile": "Кисть «{0}», размер {1}: 1 клетка"
+    "{0} brush, size {1}: paints 1 tile": "Кисть «{0}», размер {1}: 1 клетка",
+    "Show the army path under the cursor": "Показывать путь армии под курсором"
   }
 }

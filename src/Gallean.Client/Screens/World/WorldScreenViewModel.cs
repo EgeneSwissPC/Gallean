@@ -362,6 +362,11 @@ internal sealed partial class WorldScreenViewModel :
             return false;
         }
 
+        if (TryMoveAlongHoverPath(selected, position))
+        {
+            return true;
+        }
+
         WorldPathSelection? path = cursor.Path;
 
         if (path is not null && path.Destination == position)
@@ -2006,7 +2011,7 @@ internal sealed partial class WorldScreenViewModel :
         SetRenderRequest(new WorldRenderRequest(
             state,
             ViewPlayerId,
-            cursor,
+            ResolveRenderCursor(),
             FogEnabled,
             eventActionPlayer.ActiveAnimation,
             eventQueue.PlayingEntry is not null));

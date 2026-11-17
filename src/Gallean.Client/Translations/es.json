@@ -992,6 +992,7 @@
     "{0}: click removes it": "{0}: click removes it",
     "{0}: fits": "{0}: fits",
     "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview",
-    "{0} brush, size {1}: paints 1 tile": "{0} brush, size {1}: paints 1 tile"
+    "{0} brush, size {1}: paints 1 tile": "{0} brush, size {1}: paints 1 tile",
+    "Show the army path under the cursor": "Show the army path under the cursor"
   }
 }

@@ -249,6 +249,10 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
         </Grid>
+
+        <CheckBox IsChecked="{Binding ShowPathOnHover}">
+          <TextBlock Text="{local:Text 'Show the army path under the cursor'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+        </CheckBox>
       </StackPanel>
 
     </local:ModalPanel>

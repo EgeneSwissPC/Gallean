@@ -15,7 +15,8 @@ public sealed record GameSettings(
     UiSize UiSize = GameSettings.DefaultUiSize,
     bool LockCursor = true,
     MovementSpeed MovementSpeed = GameSettings.DefaultMovementSpeed,
-    Language? Language = null)
+    Language? Language = null,
+    bool ShowPathOnHover = true)
 {
     public const int CurrentFormatVersion = 6;
     public const int MinVolume = 0;
