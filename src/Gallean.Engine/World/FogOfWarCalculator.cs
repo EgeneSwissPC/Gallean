@@ -52,6 +52,8 @@ internal static class FogOfWarCalculator
             }
         }
 
+        OwnLandVisionCalculator.Reveal(builder, state, playerId);
+
         return builder.ToImmutable();
     }
 
