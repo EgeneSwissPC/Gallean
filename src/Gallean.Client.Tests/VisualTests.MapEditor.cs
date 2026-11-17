@@ -669,6 +669,53 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task MapEditorRodsTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+        view.Camera.SetZoom(1);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(22, 15)));
+
+        async Task ShowAsync(WorldPosition hover, string step)
+        {
+            editor.UpdateHover(null);
+            editor.UpdateHover(hover);
+            await SkipFramesAsync(10);
+            await CaptureAsync(window, step);
+        }
+
+        // A gold mine on free land near the Undead.
+        editor.SelectTool(MapEditorTool.Resource);
+        editor.BeginStroke(new WorldPosition(24, 10));
+        await SkipFramesAsync(5);
+        editor.SelectTool(MapEditorTool.Rod);
+
+        // An Empire rod: its tile green, the 2 tiles it claims amber; placed, it is drawn with its land.
+        await ShowAsync(new WorldPosition(20, 16), "1-hover");
+        editor.BeginStroke(new WorldPosition(20, 16));
+
+        // Another rod too close: both red.
+        await ShowAsync(new WorldPosition(21, 17), "2-too-close");
+        Assert.That(editor.PlacementPreview.Fits, Is.False);
+
+        // An Undead rod whose land reaches the mine: the mine's 3x3 is amber too.
+        editor.SelectedRodOwner = editor.RodOwners[1];
+        await ShowAsync(new WorldPosition(24, 12), "3-takes-mine");
+        Assert.That(editor.HoverText, Does.Contain("takes Gold mine from nobody"));
+        editor.BeginStroke(new WorldPosition(24, 12));
+
+        // Both placed; hovering a rod offers to remove it.
+        await ShowAsync(new WorldPosition(24, 12), "4-placed");
+        Assert.That(editor.Map.Rods.Count, Is.EqualTo(2));
+    }
+
+    [AvaloniaTest]
     public async Task MapEditorGarrisonsAndLevelsTest()
     {
         using Sandbox sb = Sandbox.Create();

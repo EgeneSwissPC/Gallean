@@ -20,7 +20,8 @@ internal enum MapEditorTool
     Bag,
     Site,
     Landmark,
-    Road
+    Road,
+    Rod
 }
 
 // Paints a CustomMap and shows it through the game's world renderer. Terrain strokes update the preview state
@@ -81,7 +82,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             new MapEditorOption<MapEditorTool>(MapEditorTool.Bag, Tr("Treasure")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Site, Tr("Site")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Landmark, Tr("Landmark")),
-            new MapEditorOption<MapEditorTool>(MapEditorTool.Road, Tr("Road"))
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Road, Tr("Road")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Rod, Tr("Rods"))
         ];
         SelectedTool = Tools[0];
         LandTerrains =
@@ -92,6 +94,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         SelectedLandTerrain = LandTerrains[0];
         CapitalRaces = [.. map.Players.Select(player => new MapEditorOption<WorldRace>(player.Race, MapEditorLabels.Race(player.Race)))];
         SelectedCapitalRace = CapitalRaces[0];
+        SelectedRodOwner = CapitalRaces[0];
         ArmyOwners =
         [
             new MapEditorOption<WorldRace>(WorldRace.Neutral, Tr("Neutral")),
@@ -169,7 +172,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(IsVillageTool), nameof(IsResourceTool))]
-    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(IsLandmarkTool), nameof(IsRoadTool), nameof(HasBrush))]
+    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(IsLandmarkTool), nameof(IsRoadTool), nameof(IsRodTool), nameof(HasBrush))]
     public partial MapEditorOption<MapEditorTool> SelectedTool { get; set; }
 
     [ObservableProperty]
@@ -307,7 +310,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         RefreshPreview();
     }
 
-    // alternate: Shift is held (the road tool then removes a road tile).
+    // alternate: Shift is held (the road tool then removes a road tile, the rod tool a rod).
     public void BeginStroke(WorldPosition tile, bool alternate = false)
     {
         if (!map.IsValidPosition(tile))
@@ -318,6 +321,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         if (SelectedTool.Value == MapEditorTool.Road)
         {
             ClickRoad(tile, alternate);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Rod)
+        {
+            ClickRod(tile, alternate);
             return;
         }
 
