@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Builds a custom map (the map editor's format) from a JSON map plan: regions, coasts, rivers, mountain ranges,
+       forests, roads, cities, ruins, sites, landmarks and neutral armies placed in miles on a north-up map.
+       Usage: see README.md next to this file. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsAotCompatible>false</IsAotCompatible>
+    <RootNamespace>MapFromPlan</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Gallean.Common" />
+    <Using Include="Gallean.Engine" />
+    <Using Include="Gallean.Engine.Contracts" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gallean.Engine\Gallean.Engine.csproj" />
+    <ProjectReference Include="..\..\src\Gallean.Entities.GameData\Gallean.Entities.GameData.csproj" />
+  </ItemGroup>
+
+</Project>

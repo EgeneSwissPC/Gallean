@@ -903,6 +903,48 @@ public sealed class CustomMapTests
     }
 
     [Test]
+    public void RoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Random random = new(1);
+
+        // A road over open land and through the forest (which it clears); never on water, mountains, capitals or landmarks.
+        for (int x = 6; x <= 14; x++)
+        {
+            Assert.That(map.SetRoad(new WorldPosition(x, 30), true), Is.True, $"Road at {x}.");
+        }
+
+        Assert.That(map.SetRoad(new WorldPosition(14, 31), true), Is.True);
+        Assert.That(map.GetCell(new WorldPosition(10, 30)).Feature, Is.EqualTo(WorldMapFeature.Road), "Forest cleared.");
+        Assert.That(map.SetRoad(new WorldPosition(10, 30), true), Is.False, "Already a road.");
+        Assert.That(map.SetRoad(new WorldPosition(24, 24), true), Is.False, "Water.");
+        Assert.That(map.SetRoad(new WorldPosition(36, 10), true), Is.False, "Mountain.");
+        Assert.That(map.SetRoad(new WorldPosition(5, 5), true), Is.False, "Capital.");
+        map.PlaceLandmark(new WorldPosition(20, 4), Landmark(1));
+        Assert.That(map.SetRoad(new WorldPosition(20, 4), true), Is.False, "Landmark.");
+        Assert.That(map.SetRoad(new WorldPosition(60, 4), true), Is.False, "Outside the map.");
+
+        // Land brushes keep it, water replaces it; lifting a road leaves open land.
+        map.Paint(new WorldPosition(7, 30), 0, CustomMapBrush.Land, WorldMapTerrain.Undead, random);
+        Assert.That(map.GetCell(new WorldPosition(7, 30)), Is.EqualTo(new WorldMapCell(WorldMapTerrain.Undead, WorldMapFeature.Road, new WorldObjectVariant(0))));
+        map.Paint(new WorldPosition(6, 30), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        Assert.That(map.GetCell(new WorldPosition(6, 30)).Terrain, Is.EqualTo(WorldMapTerrain.Water));
+        Assert.That(map.SetRoad(new WorldPosition(8, 30), false), Is.True);
+        Assert.That(map.SetRoad(new WorldPosition(8, 30), false), Is.False);
+        Assert.That(map.GetCell(new WorldPosition(8, 30)).Feature, Is.EqualTo(WorldMapFeature.None));
+
+        // Saved as SRoad rows: the game loads the roads (cheaper to walk) and the editor reads them back.
+        store.Save(map);
+        ScenarioDatabase database = store.LoadDatabase(map.Id);
+        Assert.That(database.ScenarioRoadsByScenario[new Db.ScenarioId(map.Id)].Single(road => road.PositionX == 14 && road.PositionY == 30).Index, Is.EqualTo(4 | 8), "Neighbour mask south + west.");
+        WorldState state = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        WorldPosition[] roads = [.. Enumerable.Range(0, map.Size * map.Size).Select(i => new WorldPosition(i % map.Size, i / map.Size)).Where(p => state.Map.GetCellAt(p).Feature == WorldMapFeature.Road)];
+        Assert.That(roads, Has.Length.EqualTo(8));
+        Assert.That(store.Open(map.Id, definitions).Cells, Is.EqualTo(map.Cells));
+    }
+
+    [Test]
     public void VillagePlayTest()
     {
         CustomMap map = CreateMap();

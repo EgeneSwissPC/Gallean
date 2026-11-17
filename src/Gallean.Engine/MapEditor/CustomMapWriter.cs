@@ -55,6 +55,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SRel.json", rows.Relations);
         WriteTable(stagingDirectory, "SMapBlck.json", BuildMapBlocks(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SMounts.json", BuildMountains(map, scenarioId));
+        WriteTable(stagingDirectory, "SRoad.json", BuildRoads(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SCrys.json", BuildResources(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SRuin.json", rows.Ruins);
         WriteTable(stagingDirectory, "SBag.json", rows.Bags);
@@ -725,6 +726,34 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                 mountain.Variant,
                 (int)Db.RaceType.Neutral))
         ];
+    }
+
+    // One SRoad row per road tile. The loader only reads the position; INDEX holds the neighbour mask like the
+    // original maps (north 1, east 2, south 4, west 8), which the renderer works out again by itself.
+    private static List<Db.ScenarioRoad> BuildRoads(CustomMap map, Db.ScenarioId scenarioId, string prefix)
+    {
+        List<Db.ScenarioRoad> roads = [];
+
+        bool IsRoad(int x, int y)
+        {
+            return x >= 0 && y >= 0 && x < map.Size && y < map.Size && map.Cells[(y * map.Size) + x].Feature == WorldMapFeature.Road;
+        }
+
+        for (int y = 0; y < map.Size; y++)
+        {
+            for (int x = 0; x < map.Size; x++)
+            {
+                if (!IsRoad(x, y))
+                {
+                    continue;
+                }
+
+                int mask = (IsRoad(x, y - 1) ? 1 : 0) | (IsRoad(x + 1, y) ? 2 : 0) | (IsRoad(x, y + 1) ? 4 : 0) | (IsRoad(x - 1, y) ? 8 : 0);
+                roads.Add(new Db.ScenarioRoad(scenarioId, MakeId(prefix, "RA", roads.Count), x, y, mask, 0));
+            }
+        }
+
+        return roads;
     }
 
     // Inverse of ScenarioMapDecoder.ParseTileInfo: terrain in bits 0-2, ground in bits 3-7, variant in bits 26-31.
