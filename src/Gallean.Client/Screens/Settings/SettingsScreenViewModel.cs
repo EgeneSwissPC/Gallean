@@ -15,6 +15,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
     private MovementSpeed movementSpeed;
     private UiSize uiSize;
     private bool lockCursor;
+    private bool showPathOnHover;
     private Language? language;
 
     public SettingsScreenViewModel(GameViewModel gameViewModel)
@@ -30,6 +31,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         movementSpeed = gameViewModel.Settings.MovementSpeed;
         uiSize = gameViewModel.Settings.UiSize;
         lockCursor = gameViewModel.Settings.LockCursor;
+        showPathOnHover = gameViewModel.Settings.ShowPathOnHover;
         language = gameViewModel.Settings.Language;
 
         gameViewModel.PropertyChanged += OnGamePropertyChanged;
@@ -154,6 +156,18 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         }
     }
 
+    public bool ShowPathOnHover
+    {
+        get => showPathOnHover;
+        set
+        {
+            if (SetProperty(ref showPathOnHover, value))
+            {
+                Apply();
+            }
+        }
+    }
+
     public Language Language
     {
         get => language ?? gameViewModel.Settings.EffectiveLanguage;
@@ -188,7 +202,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
 
     private void Apply()
     {
-        gameViewModel.UpdateSettings(GameSettings.Create(soundVolume, musicVolume, gameViewModel.IsWindowed, renderResolution, autoSaveInterval, autoSaveLimit, battleSpeed, uiSize, lockCursor, movementSpeed, language));
+        gameViewModel.UpdateSettings(GameSettings.Create(soundVolume, musicVolume, gameViewModel.IsWindowed, renderResolution, autoSaveInterval, autoSaveLimit, battleSpeed, uiSize, lockCursor, movementSpeed, language) with { ShowPathOnHover = showPathOnHover });
     }
 
     private void OnGamePropertyChanged(object? sender, PropertyChangedEventArgs e)

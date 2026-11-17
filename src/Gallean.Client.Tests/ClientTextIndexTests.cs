@@ -25,6 +25,7 @@ public sealed class ClientTextIndexTests
             "Music",
             "Render resolution",
             "Settings",
+            "Show the army path under the cursor",
             "Sound and music",
             "Windowed mode (F11)"
         ]));

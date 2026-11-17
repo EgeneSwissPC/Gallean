@@ -12,7 +12,9 @@ internal sealed class TestGameViewModelBuilder
     private GameSaveStore saveStore = new(Path.Combine(TestContext.CurrentContext.WorkDirectory, "saves"), GameSettings.DefaultAutoSaveLimit);
     private LeaderStore leaderStore = new(Path.Combine(TestContext.CurrentContext.WorkDirectory, "leaders"));
     private GameSettingsStore settingsStore = new(Path.Combine(TestContext.CurrentContext.WorkDirectory, "settings"));
-    private GameSettingsSource settingsSource = new(GameSettings.Default);
+    // Gallean Upgrade: the hover path is on by default in the game; tests keep the
+    // click-to-select path flow unless they turn it on explicitly.
+    private GameSettingsSource settingsSource = new(GameSettings.Default with { ShowPathOnHover = false });
     private ClientVersion clientVersion = new("0.1.0", "2d40300");
     private IRandomProvider random = new RandomProvider(0);
 
