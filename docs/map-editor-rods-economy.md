@@ -77,14 +77,31 @@ Income per turn (`PlayerIncomeCalculator.GetIncomeInfo`, `WorldGetPlayerInfoComm
     or mountains), number of rods
   - one row per resource type with icon and name: number of resources of that type on the race's land, capital
     income, resources income, total per turn, e.g. "Gold · 3 mines · 100 + 150 = +250"
-  - starting gold and starting own mana as number boxes (0-9999), plus a "Same for all races" button that copies
-    the gold and mana amount to every race (each race gets the amount in its own mana)
+  - starting bank as number boxes (0-9999): gold and all five mana types. By default gold 500, the race's own mana
+    1500 and the other four manas 0; any of them can be set by hand. A "Same for all races" button copies the
+    selected race's bank to every race, with own mana mapped to own mana (Empire's life mana amount becomes the
+    Undead's death mana amount) and the other manas copied as they are
 - A last block "Nobody's land": resources standing on neutral land, by type, so unclaimed mines are easy to spot.
 - All income at **Average difficulty** (see "Decisions"). A note under the panel says so ("Easy: +30 % income for
   humans; computer players earn 70-145 % depending on difficulty").
 - The numbers update live after every paint, placement, rod or undo.
 - Clicking a race's block outlines its resources and rods on the map (gold outline, as the placement preview does for
   objects); clicking again or closing the panel clears it.
+- Hotkey **E** opens and closes the panel (E is free in the editor; WASD, arrows, P and Ctrl+Z/S are taken).
+
+### Land spread preview (turns)
+
+- At the top of the panel, a turn bar built like the unit level bar (`MapEditorUnitLevelBar`): `-10` `-` **Turn N**
+  `+` `+10`, plus "Back to the map" (turn 0). Turn 0 is the map as it is saved.
+- Each step redraws the whole map with the land as it would be after N turns of spread: capitals, villages and rods
+  grow every turn (engine defaults: capital 10 tiles, villages 15/15/20/20/25 by level, rods 2), mines flip with
+  the land, and the panel's numbers (land %, resources per race, income) are recalculated for turn N. So you can
+  click +1, +1, +10 and watch who gets which mine when.
+- Assumptions, shown as a note: nobody moves, fights, captures, plants or removes rods; only the spread happens.
+- While N > 0 the map is a preview: editing tools are disabled (the hover line says "Turn N preview: go back to the
+  map to edit"), and any edit attempt or closing the panel returns to turn 0. The preview never changes the saved map.
+- Large maps: each turn runs the real spread once per race; it's computed on demand and cached per turn (turn 20
+  reuses turn 10 and adds 10), so +10 on a 512 map should stay well under a second; measured in phase 5.
 
 ## Technical approach
 
@@ -106,8 +123,8 @@ Engine (`src/Gallean.Engine/MapEditor/`):
   rod, it only matters for looks.
 - `CustomMapStore.FromState` reads `state.Rods` back (owner via the player's race); `ApplyTerrain` also refreshes
   `Rods`, so a placed rod shows without a full preview rebuild.
-- Starting bank: `CustomMapPlayer` gets `StartingGold` and `StartingMana` (defaults 500/1500); `GetStartingBank`
-  uses them. `FromState` reads them from `state.Players[...].Resources`; the map is saved as Average, so the load
+- Starting bank: `CustomMapPlayer` gets `StartingBank` (a `WorldResourceSet`: gold + all five manas; default 500
+  gold, 1500 own mana, 0 for the rest); `GetStartingBank` writes it as is. `FromState` reads them from `state.Players[...].Resources`; the map is saved as Average, so the load
   scaling is 100 % and the round trip is exact.
 - Economy numbers: a new `CustomMapEconomy` record built from the editor's preview `WorldState` with
   `Difficulty = Average`, calling `WorldGetPlayerInfoCommand` per player (the same code the game's income table uses)
@@ -119,6 +136,11 @@ Client (`src/Gallean.Client/Screens/MapEditor/`):
 - `MapEditorScreenViewModel.Economy.cs` + `MapEditorEconomyBlockViewModel` (one per race) reusing
   `WorldIncomeRowViewModel`; the panel markup copied from the world screen's income table.
 - Highlight: extra outline tiles in `MapEditorPlacementPreview`.
+- Spread preview: `CustomMapSpreadPreview` (engine side) takes the editor's preview `WorldState` and, per turn, calls
+  `ExpansionCalculator.ExpandPlayerTerrain` for every player in turn order, the same call the game makes in
+  `WorldEngine.Events.TurnStarting`; results cached by turn. The client shows `state with { Map = turnMap }` (like the
+  road ghost map) and feeds the same state to the economy numbers. Turn bar view model mirrors the level bar
+  (`CanTurnDown`, `TurnUpTenCommand`, ...).
 - New strings in all 7 catalogs (ru translated).
 
 ## Testing
@@ -135,7 +157,10 @@ Client (`src/Gallean.Client/Screens/MapEditor/`):
   tiles per turn.
 - `CustomMapTests.EconomyTest`: counts and income per race against hand-computed numbers (base 100 gold + 25 mana,
   50 per resource), including a resource on neutral land and one flipped by a rod.
-- `CustomMapTests.StartingBankSaveAndLoadTest`.
+- `CustomMapTests.StartingBankSaveAndLoadTest` (all six amounts, non-default other manas).
+- `CustomMapTests.SpreadPreviewAgreesWithGameTest`: N turns of the preview give the same map as N turns of the real
+  `WorldEngine` turn start with no other actions (armies kept still); `MapEditorScreenViewModelTests.SpreadPreviewTest`
+  (turn bar, tools disabled, edit returns to turn 0); spread benchmark on the 512 map.
 - `MapEditorScreenViewModelTests.RodTest`, `EconomyPanelTest` (live update after paint/undo, "Same for all").
 - `VisualTests.MapEditorRodsTest`, `MapEditorEconomyPanelTest` (also at 1366x768).
 - Real client run: place rods for two races, save, play the map as a custom quest, check the rods are drawn and spread
@@ -146,14 +171,16 @@ Client (`src/Gallean.Client/Screens/MapEditor/`):
 1. Rods in the engine and writer: `CustomMapRod`, rules, paint, `SRod.json`, `FromState`, tests (about 1 day).
 2. Rod tool in the client: tool, preview, hover line, Shift+click, visual test, real client run (about half a day).
 3. Economy panel: `CustomMapEconomy`, panel, live update, highlight (about 1 day).
-4. Starting gold and mana per race in the panel, "Same for all" (about half a day).
+4. Starting bank per race in the panel (gold + all five manas), "Same for all" (about half a day).
+5. Land spread preview: turn bar, cached spread, numbers per turn, benchmark (about 1 day).
 
 Each phase is its own `upgrade/` branch and roadmap update.
 
 ## Open questions
 
-1. Starting bank: only gold and the race's own mana, or all five mana types per race (the scenario row has all six
-   amounts)? The plan is gold + own mana for now; the Players screen could add the rest later.
-2. Should the panel also show a "after N turns" estimate (running the real spread from capitals, villages and rods),
-   since a mine's owner changes as land spreads? Not planned for now.
-3. Is a hotkey for the economy panel wanted (and which)? Not planned for now.
+1. ~~Starting bank: only gold and own mana, or all five manas?~~ Decided: gold and all five manas, other manas 0 by
+   default.
+2. ~~"After N turns" estimate?~~ Decided: yes, the turn bar above.
+3. ~~Hotkey?~~ Decided: yes, E.
+4. Spread preview: should village growth turns (`GrowthTurn`, villages that level up over time) be simulated? The
+   editor writes none today, so not planned.

@@ -30,7 +30,11 @@ planning rods and the economy panel. Each section is meant as a separate task.
 - **No neutral rods** for now: neutral land doesn't spread, so a neutral rod would only block other races. Maybe later.
 - **Economy panel at Average difficulty**: income is shown at Average (no difficulty bonus, AI attitude 100 %). It
   also shows the race's base income from its capital, so totals match what the game pays on turn 1.
-- **Starting gold and mana per race**, with a "Same for all races" button, in the economy panel.
+- **Starting bank per race**: gold and all five manas (default 500 gold, 1500 own mana, other manas 0, all editable),
+  with a "Same for all races" button, in the economy panel.
+- **Land spread preview**: a turn bar like the unit level bar (-10, -, Turn N, +, +10) redraws the map with N turns of
+  spread from capitals, villages and rods, and the panel's numbers follow. Editing is off while N > 0. Hotkey E opens
+  the panel.
 
 ## Already in the editor
 
@@ -138,8 +142,10 @@ Full description: `docs/map-editor-rods-economy.md`. Summary:
   race's land, capital income, resources income, total at Average difficulty), land %, rods, plus a block for
   resources on nobody's land. Numbers come from `WorldGetPlayerInfoCommand` on the editor's preview state, so they
   match the game. Clicking a race outlines its resources and rods.
-- Starting gold and own mana per race in the panel, "Same for all races".
-- Phases: rods in engine and writer (~1 day), rod tool (~0.5 day), economy panel (~1 day), starting bank (~0.5 day).
+- Starting bank per race in the panel (gold + all five manas), "Same for all races". Hotkey E.
+- Land spread preview: turn bar (-10/-/+/+10) that redraws the map after N turns of spread, numbers per turn.
+- Phases: rods in engine and writer (~1 day), rod tool (~0.5 day), economy panel (~1 day), starting bank (~0.5 day),
+  spread preview (~1 day).
 
 ## Task: items (one shared item editor)
 
@@ -311,5 +317,5 @@ point at them once events exist.
 8. ~~Roads: is the road brush the next editor task?~~ Done as a path tool (click, move, click).
 9. Roads: should a road also be allowed to run onto a village's or capital's entrance tile, so it visibly reaches the
    gate? Today structures block roads, as before.
-10. Starting bank: only gold and the race's own mana (planned), or all five mana types per race?
-11. Economy panel: is an "after N turns" estimate of the land spread wanted, and a hotkey for the panel?
+10. ~~Starting bank: only gold and own mana, or all five manas?~~ All five, other manas 0 by default.
+11. ~~"After N turns" spread estimate and a hotkey?~~ Yes to both (turn bar, E).
