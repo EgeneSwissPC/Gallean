@@ -1,7 +1,7 @@
 # Gallean Upgrade – map editor: locations
 
-Planned 2026-11-17 on branch `gallean-upgrade` at `2ce057c1`. Nothing is built yet. This file tracks the work and
-its progress: one "Phase N — done" section is added per phase.
+Planned 2026-11-17 on branch `gallean-upgrade` at `2ce057c1`. This file tracks the work and its progress: one
+"Phase N — done" section is added per phase. Phase 1 is done (commit `8a6ffe2d`).
 
 ## The problem today
 
@@ -120,11 +120,40 @@ location" / "defend location" army orders, but the editor can't place them and `
 - Real client: save a mapgen map with locations, load it in the game and play a few turns: nothing changes in the game
   (no locations visible), no errors in the log. The order test in the game comes with the armies task.
 
+## Phase 1 — done
+
+Commit `8a6ffe2d`, merged in `657cd245`. Engine only; the editor screen doesn't show locations yet.
+
+- `CustomMapLocations.cs`: `CustomMapLocation(Id, Name, Center, Radius)` (`Side`, `Footprint`, `Contains` = the
+  game's Chebyshev distance), kept on `CustomMap.Locations` (constructor and `Clone` carry them).
+  - `PlaceLocation(center, radius, name?)`: blank name = `GetNextLocationName()` ("Location N", smallest unused N
+    among default names); names are trimmed.
+  - `SnapLocationCenter`: centre clamped to `radius..Size-1-radius`, used by place, move and resize, so none of them
+    fail. Radius outside 0–3 throws (`MaxLocationRadius`).
+  - `MoveLocation`, `ResizeLocation`, `RenameLocation` (blank ignored), `RemoveLocation` by ID; ID and name survive a
+    move.
+  - `PickLocation(position, selectedId)`: selected first, then smallest radius, then most recent; `GetLocationsAt`
+    lists all of them (for the hover line).
+- Writer: `SLoc.json` (`LOC_ID` = `<prefix>LO<hex id>`, `CustomMapWriter.GetLocationId`), name as Tscen `NAME_TXT`.
+- Reader: `CustomMapStore.FromState(..., locations)` takes `Scenario.Provider.Locations` (locations aren't in the
+  world state); `Open` passes them, names from Tscen. Radii above 3 (none in the original maps) are clamped.
+- Tests (`CustomMapTests`): `LocationRulesTest` (default names, snapping at edges, overlap picking, move/resize/
+  rename/remove, clone), `LocationSaveAndLoadTest` (SLoc rows, a Russian name, the game's provider has the same IDs,
+  agreement with `ScenarioLocationCalculator` on every tile of the map for radius 0–3, nothing else in the world
+  changes, reopen + save keeps IDs). Mutation check: switching `Contains` to a diamond (Manhattan) distance makes the
+  agreement test fail. Full non-visual suite 5213 (was 5211).
+- Real client: the `mapgen` map now has "Northern Pass" (12,10 r1), "Pass Warning" (12,10 r3, overlapping) and a
+  location placed at 0,0 r2 that snapped to 2,2. AOT build loaded it in the quest list, the game started and
+  played 3 turns, log clean apart from the usual missing sound card.
+- Known limits: IDs are the highest + 1, so deleting the newest location and placing another reuses its ID (same as
+  the other editor objects); this matters only once events point at locations.
+
 ## Phases
 
-1. Engine data, writer and loader round trip (small).
-2. Locations tool with placement preview and the overlay (medium).
-3. Locations list panel (small).
+1. ~~Engine data, writer and loader round trip (small).~~ Done.
+2. Locations tool with placement preview, the overlay with labels, and the list with names edited in the row
+   (medium to large; the list moved here because names live in it).
+3. Dragging with snap-to-fit and the X/Y boxes (medium).
 
 ## Open questions
 

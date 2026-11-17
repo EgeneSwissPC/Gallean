@@ -312,7 +312,10 @@ Side effect: the AI would then get map goals (from turn 60/50/40/30, easy to ver
 
 ## Task: locations
 
-Planned in `docs/map-editor-locations.md` (decisions, tool, overlay, list, tests, 3 phases). Not started.
+Planned in `docs/map-editor-locations.md` (decisions, tool, overlay, list, tests, 3 phases). Phase 1 done
+(`8a6ffe2d`): locations in the engine (place/move/resize/rename/remove with snap-to-fit, overlap picking), saved as
+`SLoc` rows with Tscen names and read back; the tiles agree with the game's `ScenarioLocationCalculator`. Next: the
+tool, overlay and list.
 
 ## Task (later): full events and locations
 
