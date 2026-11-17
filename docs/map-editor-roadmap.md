@@ -106,7 +106,7 @@ spread preview (commit `caab9b3`). Each section is meant as a separate task.
 | Object | Notes |
 | --- | --- |
 | ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
-| Locations | named zones; planned in `docs/map-editor-locations.md` (see "Task: locations") |
+| ~~Locations~~ | done: tool "Locations" (`docs/map-editor-locations.md`, see "Task: locations") |
 | Events | scenario scripting (see below); every custom map is saved with no events |
 | Army templates | armies that events create |
 
@@ -317,8 +317,9 @@ Planned in `docs/map-editor-locations.md` (decisions, tool, overlay, list, tests
 (`8a6ffe2d`): locations in the engine (place/move/resize/rename/remove with snap-to-fit, overlap picking), saved as
 `SLoc` rows with Tscen names and read back; the tiles agree with the game's `ScenarioLocationCalculator`. Phase 2 done
 (`8b9ccde8`): tool "Locations" (click places and names it in the list, click selects, Ctrl+click places inside a
-zone, Shift+click removes, + / - size), overlay with names, list on the left (L) sorted by name with search. Next:
-dragging.
+zone, Shift+click removes, + / - size), overlay with names, list on the left (L) sorted by name with search. Phase
+3 done (`b31aa076`): drag a zone anywhere inside it (snaps onto the map, Esc puts it back) and X/Y boxes. The
+locations task is complete; the zones are ready for army orders (armies task) and events.
 
 ## Task (later): full events and locations
 

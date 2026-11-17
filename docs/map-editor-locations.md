@@ -1,7 +1,8 @@
 # Gallean Upgrade – map editor: locations
 
 Planned 2026-11-17 on branch `gallean-upgrade` at `2ce057c1`. This file tracks the work and its progress: one
-"Phase N — done" section is added per phase. Phases 1 (`8a6ffe2d`) and 2 (`8b9ccde8`) are done.
+"Phase N — done" section is added per phase. All three phases are done: 1 (`8a6ffe2d`), 2 (`8b9ccde8`), 3
+(`b31aa076`).
 
 ## The problem today
 
@@ -190,12 +191,41 @@ Commit `8b9ccde8`, merged in `4193fb1e`. Client only (the engine part is phase 1
 - Known limits: labels can overlap where zones' top corners are close; names longer than the panel are cut with an
   ellipsis in the list; the delete button doesn't ask (Ctrl+Z brings it back).
 
+## Phase 3 — done
+
+Commit `b31aa076`, merged in `b80e2f19`. Client only.
+
+- `MapEditorScreenViewModel.LocationDrag.cs`: with the Locations tool the left button is now press / move / release
+  (`PressLocation`, `MoveLocationPress`, `ReleaseLocationPress`, hooked into `BeginStroke` / `ContinueStroke` /
+  `EndStroke`).
+  - Press inside a zone (selected first, then smallest) and move to another tile: drag. The grabbed tile stays under
+    the cursor (centre + cursor offset), the zone is selected, the preview shows the drop square (green, amber where
+    it was snapped onto the map) with the old place dashed, and the hover line says "Northern Pass: 20, 14 -> 24, 13 ·
+    Esc puts it back" (or "(snapped to the map edge)").
+  - Release: `MoveLocation` (snapped, ID and name kept, one undo step); nothing happens when the drop is the old place.
+  - Press and release on the same tile = the click from phase 2 (select, or place and name). A press on empty ground
+    that moves away does nothing. Shift+click still removes at the press; Ctrl+click still places inside a zone.
+  - Esc, the right button, or losing the mouse capture puts the zone back (`CancelLocationDrag`).
+  - Edge scrolling during a drag (or a paint stroke) now follows the cursor: when the camera moves under a still
+    mouse, `MapEditorVisual` feeds the new tile to `ContinueStroke` / `UpdateHover`.
+- X/Y boxes under the size row, shown while a zone is selected: Enter or leaving a box moves it there (clamped to
+  the map, then snapped); junk text is put back. The boxes follow drags, undo and selection.
+- Tests: `MapEditorScreenViewModelTests.LocationDragTest` (off-centre grab, preview and dashed old place, drop,
+  snapped drop past the edge, Esc, drag from empty ground, undo, X/Y boxes incl. snapping and junk), `LocationToolTest`
+  updated to press + release, `VisualTests.MapEditorLocationsTest` step "3b-dragging". Non-visual suite 5215 (was
+  5214); all 14 map editor visual tests pass (9 min 30 s).
+- Real client (AOT, mapgen map): dragged Northern Pass with the mouse (mousedown, moves, mouseup); the green drop
+  square, dashed old place and hover line showed during the drag, the zone was selected after the drop with X/Y
+  filled in, and Ctrl+S saved `S600LO0001` at its new place (23,4).
+- Known limits: with a zone selected the tool's help text sits below the X/Y boxes and needs the panel's scroll bar at
+  1366x768; the X/Y boxes don't show the snapping until Enter.
+
 ## Phases
 
 1. ~~Engine data, writer and loader round trip (small).~~ Done.
 2. ~~Locations tool with placement preview, the overlay with labels, and the list with names edited in the row
    (medium to large; the list moved here because names live in it).~~ Done.
-3. Dragging with snap-to-fit and the X/Y boxes (medium).
+3. ~~Dragging with snap-to-fit and the X/Y boxes (medium).~~ Done.
 
 ## Open questions
 
