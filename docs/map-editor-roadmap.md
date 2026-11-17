@@ -278,7 +278,8 @@ point at them once events exist.
 2. Items: should the leader's 7 slots work like the in-game equipment screen, or just be a list?
 3. ~~Landmarks: should they block armies like in the game, or be decoration only?~~ Decided: they block, like in the
    game (see "Decisions so far"). Say if you want decoration-only after all; that needs a game rule change.
-4. Which comes next: player settings, items, or roads and looks? (The placement preview is done.)
+4. Which comes next: player settings, items, or the mountain/forest looks? (The placement preview and the road tool
+   are done; the road tool is "good enough for now".)
 5. Landmarks: is the palette over the left of the map fine, or should it go into the right panel (it only fits there
    with scrolling at 1366x768)? ~~Is a footprint preview under the cursor worth adding?~~ Done, for every tool.
 6. Placement preview: should the "Placement preview (P)" checkbox move out of the scrolling panel (next to Undo/Save),
