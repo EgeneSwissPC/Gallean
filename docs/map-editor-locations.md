@@ -1,7 +1,7 @@
 # Gallean Upgrade – map editor: locations
 
 Planned 2026-11-17 on branch `gallean-upgrade` at `2ce057c1`. This file tracks the work and its progress: one
-"Phase N — done" section is added per phase. Phase 1 is done (commit `8a6ffe2d`).
+"Phase N — done" section is added per phase. Phases 1 (`8a6ffe2d`) and 2 (`8b9ccde8`) are done.
 
 ## The problem today
 
@@ -46,6 +46,11 @@ location" / "defend location" army orders, but the editor can't place them and `
 - **List on the left over the map** (like the landmark palette and the economy panel, which it hides while open),
   sorted alphabetically by default, with a search box. Hotkey **L** (checked free: the editor uses W/A/S/D, arrows,
   Ctrl+Z, Ctrl+S, P and E in `MapEditorVisual.OnKeyDown`).
+- **Ctrl+click places a zone inside another one** (a plain click inside a zone selects it, so without this a small
+  trap zone could only be placed before the larger zone around it). Taken during phase 2; say if you want a different
+  key.
+- **Names sit on the square's top corner tile**, not the centre: zones sharing a centre (warning + trap) would hide
+  each other's names (seen in the real client with the mapgen map).
 - **Locations can be dragged to move them**: grab anywhere inside the square; where squares overlap, the selected
   location is picked first, then the smallest. Dropping where the square would leave the map snaps it to the nearest
   place that fits (see "Dragging").
@@ -148,11 +153,48 @@ Commit `8a6ffe2d`, merged in `657cd245`. Engine only; the editor screen doesn't 
 - Known limits: IDs are the highest + 1, so deleting the newest location and placing another reuses its ID (same as
   the other editor objects); this matters only once events point at locations.
 
+## Phase 2 — done
+
+Commit `8b9ccde8`, merged in `4193fb1e`. Client only (the engine part is phase 1).
+
+- `MapEditorScreenViewModel.Locations.cs`: tool `MapEditorTool.Location` ("Locations", 16th, last in the grid).
+  - Hover: green square of the current size with the name it will get; near the edge amber at the snapped place
+    ("... at 1, 1 (moved inside the map)"). Over a zone: gold outline, "click selects it · Ctrl+click places a zone
+    inside · Shift+click removes it".
+  - Click on empty ground places (`PlaceLocationAt`, default name from the translated "Location " prefix), selects it
+    and opens its row for the name; a click inside a zone selects it (`PickLocation`); Shift+click removes; Ctrl+click
+    (in `MapEditorVisual`) places inside a zone.
+  - Size: - / 3x3 / + in the tool settings and the + / - keys; with a zone selected they resize it (one undo step).
+  - Every change is one undo step and only redraws the overlay (locations aren't in the world state, so no preview
+    rebuild); Undo rebuilds the list.
+- List (`IsLocationsOpen`, L key, "List (L)" button, opens with the tool): left overlay 340 px, "Locations (N)",
+  search (culture-aware, ignores case), rows sorted by name (culture-aware) with size and position and a delete
+  button. Click a row: the camera goes there (`TakeCameraTarget`, taken by `MapEditorVisual`); selecting on the map
+  scrolls the list to the row. Double-click or a new zone: name edited in the row (Enter keeps, Esc cancels, leaving
+  the box keeps; blank keeps the old name). Hovering a row outlines its zone in gold. The selection survives a search
+  that hides its row. Economy panel, landmark palette and the list share the left side (opening one closes the others).
+- Overlay (`MapEditorVisual.DrawLocations`, `MapEditorPlacementPreview.Locations`): pale blue squares, largest first;
+  selected / hovered row gold; names in the outlined style of the game's path labels on each square's top corner tile.
+  Drawn while the tool is on or the list is open. The hover line lists every zone on the tile with any tool
+  ("Locations here: Northern Pass, Trap").
+- Layout at 1366x768: with 16 tools the grid has 6 rows, which pushed other tools' settings out of view; tool rows are
+  now 4 px shorter and the key help line lost "E: economy" (the button says "Economy (E)" anyway), so every tool's
+  first setting shows again (checked in all 14 map editor screenshots).
+- Tests: `MapEditorScreenViewModelTests.LocationToolTest` (hover/snap, place + name, resize limits, overlap picking,
+  sorting, search, camera only from the list, hover line, Shift+click, undo, delete button, shared left side),
+  `VisualTests.MapEditorLocationsTest` (5 shots: hover, naming, overlay, row hover, hidden). Non-visual suite 5214
+  (was 5213); all 14 map editor visual tests pass (9 min).
+- Real client (AOT): opened the mapgen map, the tool showed its 3 zones and list; placed a zone, typed "Ford of
+  Bruinen" + Enter, Ctrl+S wrote `S600LO0004` (37,16 r1) with that Tscen name; Save and play ran 2 turns, no zones in
+  the game, log clean apart from the missing sound card.
+- Known limits: labels can overlap where zones' top corners are close; names longer than the panel are cut with an
+  ellipsis in the list; the delete button doesn't ask (Ctrl+Z brings it back).
+
 ## Phases
 
 1. ~~Engine data, writer and loader round trip (small).~~ Done.
-2. Locations tool with placement preview, the overlay with labels, and the list with names edited in the row
-   (medium to large; the list moved here because names live in it).
+2. ~~Locations tool with placement preview, the overlay with labels, and the list with names edited in the row
+   (medium to large; the list moved here because names live in it).~~ Done.
 3. Dragging with snap-to-fit and the X/Y boxes (medium).
 
 ## Open questions

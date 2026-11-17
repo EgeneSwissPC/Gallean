@@ -37,6 +37,7 @@ spread preview (commit `caab9b3`). Each section is meant as a separate task.
 - **Land spread preview**: a turn bar like the unit level bar (-10, -, Turn N, +, +10) redraws the map with N turns of
   spread from capitals, villages and rods, and the panel's numbers follow. Editing is off while N > 0. Hotkey E opens
   the panel.
+- **Locations: Ctrl+click places a zone inside another**, since a click inside a zone selects it.
 - **Locations are editor-only, radius 0–3, no army orders yet**: not shown in the game (not even dev tools; maybe
   later); radius 0–3 like the engine, so maps stay upstream-compatible; the move-to/defend-location orders belong to
   the separate armies task. Names show like landmarks (hover line, right-click info) plus a label on the map.
@@ -314,8 +315,10 @@ Side effect: the AI would then get map goals (from turn 60/50/40/30, easy to ver
 
 Planned in `docs/map-editor-locations.md` (decisions, tool, overlay, list, tests, 3 phases). Phase 1 done
 (`8a6ffe2d`): locations in the engine (place/move/resize/rename/remove with snap-to-fit, overlap picking), saved as
-`SLoc` rows with Tscen names and read back; the tiles agree with the game's `ScenarioLocationCalculator`. Next: the
-tool, overlay and list.
+`SLoc` rows with Tscen names and read back; the tiles agree with the game's `ScenarioLocationCalculator`. Phase 2 done
+(`8b9ccde8`): tool "Locations" (click places and names it in the list, click selects, Ctrl+click places inside a
+zone, Shift+click removes, + / - size), overlay with names, list on the left (L) sorted by name with search. Next:
+dragging.
 
 ## Task (later): full events and locations
 
