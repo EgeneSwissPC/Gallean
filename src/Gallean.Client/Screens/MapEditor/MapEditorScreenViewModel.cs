@@ -19,7 +19,8 @@ internal enum MapEditorTool
     Ruin,
     Bag,
     Site,
-    Landmark
+    Landmark,
+    Road
 }
 
 // Paints a CustomMap and shows it through the game's world renderer. Terrain strokes update the preview state
@@ -79,7 +80,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             new MapEditorOption<MapEditorTool>(MapEditorTool.Ruin, Tr("Ruin")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Bag, Tr("Treasure")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Site, Tr("Site")),
-            new MapEditorOption<MapEditorTool>(MapEditorTool.Landmark, Tr("Landmark"))
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Landmark, Tr("Landmark")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Road, Tr("Road"))
         ];
         SelectedTool = Tools[0];
         LandTerrains =
@@ -167,7 +169,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(IsVillageTool), nameof(IsResourceTool))]
-    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(IsLandmarkTool), nameof(HasBrush))]
+    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(IsLandmarkTool), nameof(IsRoadTool), nameof(HasBrush))]
     public partial MapEditorOption<MapEditorTool> SelectedTool { get; set; }
 
     [ObservableProperty]
@@ -236,10 +238,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public bool IsBagTool => SelectedTool.Value == MapEditorTool.Bag;
     public bool IsSiteTool => SelectedTool.Value == MapEditorTool.Site;
     public bool IsLandmarkTool => SelectedTool.Value == MapEditorTool.Landmark;
+    public bool IsRoadTool => SelectedTool.Value == MapEditorTool.Road;
     public bool HasBrush => SelectedTool.Value is MapEditorTool.Land or MapEditorTool.Water or MapEditorTool.Forest or MapEditorTool.Mountain or MapEditorTool.Clear;
 
     partial void OnSelectedToolChanged(MapEditorOption<MapEditorTool> value)
     {
+        roadStart = null;
         renderRequest = CreateRenderRequest();
         RefreshPreview();
     }
@@ -303,10 +307,17 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         RefreshPreview();
     }
 
-    public void BeginStroke(WorldPosition tile)
+    // alternate: Shift is held (the road tool then removes a road tile).
+    public void BeginStroke(WorldPosition tile, bool alternate = false)
     {
         if (!map.IsValidPosition(tile))
         {
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Road)
+        {
+            ClickRoad(tile, alternate);
             return;
         }
 
@@ -920,6 +931,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
                                !previous.Sites.SequenceEqual(map.Sites) ||
                                !previous.Landmarks.SequenceEqual(map.Landmarks);
         map = undoSteps.Pop();
+        roadStart = null;
 
         CanUndo = undoSteps.Count > 0;
         IsDirty = true;
@@ -1122,7 +1134,10 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     {
         WorldCursor cursor = WorldCursor.Empty with { HoverTile = hoverTile, HoverObject = PlacementPreview.HoverObject };
 
-        return new WorldRenderRequest(state, ViewPlayerId, cursor, FogEnabled: false, Animation: null, IsPlayingEvent: false);
+        // The road tool shows the road it would lay as real road pieces, joined with the roads already there.
+        WorldState shown = roadGhostTiles is { } ghost ? state with { Map = map.ToWorldMap(ghost) } : state;
+
+        return new WorldRenderRequest(shown, ViewPlayerId, cursor, FogEnabled: false, Animation: null, IsPlayingEvent: false);
     }
 
     private void SetRenderRequest(WorldRenderRequest request)

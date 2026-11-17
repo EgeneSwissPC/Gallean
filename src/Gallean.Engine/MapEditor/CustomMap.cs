@@ -60,7 +60,7 @@ public sealed record CustomMapMountain(int Id, WorldPosition TopLeft, int Size, 
 // protected from brushes and they never overlap. An army may stand on the entrance of a village or capital: it is
 // stationed there and belongs to the owner. Landmarks overlap nothing either; land and water can be painted under
 // them, forests and mountains can't.
-public sealed class CustomMap
+public sealed partial class CustomMap
 {
     public const int MinSize = 16;
     public const int MaxSize = 1024;
@@ -273,8 +273,7 @@ public sealed class CustomMap
             return true;
         }
 
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature is WorldMapFeature.Mountain or WorldMapFeature.Road ||
-            IsUnderStructure(position) || GetLandmarkAt(position) is not null)
+        if (cell.Feature == WorldMapFeature.Road || GetRoadBlock(position) != CustomMapTileReason.None)
         {
             return false;
         }

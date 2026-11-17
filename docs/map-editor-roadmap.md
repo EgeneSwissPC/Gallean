@@ -2,7 +2,8 @@
 
 Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; updated 2026-11-16 after landmark
 placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
-plus the MapFromPlan generator (commits `418e463`, `9d96d14`). Each section is meant as a separate task.
+plus the MapFromPlan generator (commits `418e463`, `9d96d14`), and after the road tool (commit `219ecd5`). Each section
+is meant as a separate task.
 
 ## Decisions so far
 
@@ -15,6 +16,12 @@ plus the MapFromPlan generator (commits `418e463`, `9d96d14`). Each section is m
   which goes against "editor changes must not change the game". Landmarks of the mountain type (49 of them: 42 in
   Terrain, plus two cemeteries, the Unholy Gates and three elven houses) also make their tiles count as mountains, as
   in the original maps.
+- **Roads are laid along a path, like an army's path in the game**: one click starts, the road to the cursor is shown
+  with the game's road pieces (joined with existing roads, junction pieces where roads meet), the next click lays it.
+  No brush size (a road is one tile wide). Roads still clear forests (amber in the preview), as in `SetRoad`.
+- **Road INDEX like the original maps**: SRoad `INDEX` uses the original numbering (measured on all 13,227 road tiles of
+  the 95 maps), not the neighbour mask. The game ignores it either way. The pack has one look per road piece, so `VAR`
+  stays 0 (the original maps use 0 and 1).
 - **Placement preview**: green/red/amber, on by default (checkbox and P key to switch it off), no ghost sprites for
   now. Its rules are the editor's placement rules; `Place*` run the same checks, so preview and click can't disagree.
 
@@ -46,9 +53,13 @@ plus the MapFromPlan generator (commits `418e463`, `9d96d14`). Each section is m
   - click to place centred on the tile, click a landmark to remove it, Ctrl+Z to undo
   - the hover line and the right-click info show the landmark's name
 - Right-click info for capitals and villages shows them as their owner sees them (editor only).
-- Roads (new, engine and file format only): `CustomMap.SetRoad` and `SRoad.json` rows, so maps keep their roads when
-  opened and saved in the editor and the game loads them. There is no road brush yet; generated maps (MapFromPlan)
-  are the only way to get roads for now.
+- Roads (new): tool "Road"
+  - click a tile to start, move the mouse: the road to the cursor takes the cheapest way around water, mountains,
+    capitals, villages, ruins, sites and landmarks, follows existing roads, and avoids forests when it can
+  - it is drawn with the game's 16 road pieces before it is laid, outlined green (amber where it clears a forest);
+    where it meets a road the pieces turn into junctions and crossroads
+  - the next click lays it and the road carries on from that tile; the same tile again or Esc stops
+  - Shift+click removes a road tile; a click where a road can't go, or can't reach, says why; Ctrl+Z undoes
 - Placement preview (new), for every tool:
   - green tiles where the object or brush goes, red where a tile blocks it, amber where a tile visibly changes
     (forest cleared, a whole mountain removed, water turned into land)
@@ -61,7 +72,6 @@ plus the MapFromPlan generator (commits `418e463`, `9d96d14`). Each section is m
 
 | Object | Notes |
 | --- | --- |
-| Roads (brush) | the engine and the writer handle roads now (`CustomMap.SetRoad`); only the brush is missing |
 | Rods | terraforming rods |
 | Locations | named zones (see below) |
 | Events | scenario scripting (see below); every custom map is saved with no events |
@@ -162,8 +172,26 @@ Full description, what differs from the plan and known limits: `docs/map-editor-
 Done so far (commit `418e463`): roads in `CustomMap` (`SetRoad`: open or forest land, the forest is cleared; never on
 water, mountains, structures or landmarks; land brushes keep a road, water and forest brushes replace it) and in the
 writer (`SRoad.json`, one row per tile, INDEX = neighbour mask N1 E2 S4 W8 like the original maps; the loader only
-reads the position and the renderer joins the 16 pieces itself). Test: `CustomMapTests.RoadTest`. Still to do: the
-brush (paint/erase, a road tool next to Land/Water) and the looks.
+reads the position and the renderer joins the 16 pieces itself). Test: `CustomMapTests.RoadTest`.
+
+Road tool — done (branch `upgrade/map-editor-road-tool`, commit `219ecd5`):
+- Engine (`CustomMapRoads.cs`): `GetRoadBlock` (the one rule for where a road can go; `SetRoad` uses it),
+  `FindRoadPath` (A* over the 4 tile edges, because road pieces only join across edges; steps cost 10 on a road, 20 on
+  open land, 30 through forest, plus up to 3 for straying from the straight line, so equal paths come out as an even
+  staircase), `PreviewRoad`, `LayRoad`, `ToWorldMap(extraRoads)` (the map shown while a road is planned).
+- Client (`MapEditorScreenViewModel.Road.cs`): tool "Road" (14th in the tool list), start tile, the planned road put
+  into the shown map so the game renderer draws the real pieces, preview tiles as outlines only
+  (`MapEditorPlacementPreview.OutlineOnly`) so the road stays visible, Esc in `MapEditorVisual`, Shift+click.
+- Writer: SRoad `INDEX` in the original maps' numbering.
+- Tests: `CustomMapTests.RoadPathTest`, `MapEditorScreenViewModelTests.RoadTest`, `VisualTests.MapEditorRoadsTest`.
+
+Known limits:
+- A road across the screen (left-right or up-down) is always a zigzag: pieces join only across tile edges, which are
+  the screen diagonals.
+- A lone road tile shows the crossroads piece (the pack's `road/none` is the same picture).
+- No bridges: roads stop at water.
+
+Still to do: the looks.
 
 Ideas:
 - Roads painted like a brush; the 16 road pieces join up automatically.
@@ -257,4 +285,6 @@ point at them once events exist.
    so it is always visible at 1366x768?
 7. Capital names: add a name to `CustomMapPlayer` (a field on the capital screen and in the writer), so generated and
    hand-made maps can have "Minas Tirith" instead of "Empire Capital"?
-8. Roads: is the road brush the next editor task, now that the engine and the file format handle roads?
+8. ~~Roads: is the road brush the next editor task?~~ Done as a path tool (click, move, click).
+9. Roads: should a road also be allowed to run onto a village's or capital's entrance tile, so it visibly reaches the
+   gate? Today structures block roads, as before.

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Gallean.Entities.GameData;
 
 namespace Gallean.Engine.Tests;
@@ -937,11 +938,74 @@ public sealed class CustomMapTests
         // Saved as SRoad rows: the game loads the roads (cheaper to walk) and the editor reads them back.
         store.Save(map);
         ScenarioDatabase database = store.LoadDatabase(map.Id);
-        Assert.That(database.ScenarioRoadsByScenario[new Db.ScenarioId(map.Id)].Single(road => road.PositionX == 14 && road.PositionY == 30).Index, Is.EqualTo(4 | 8), "Neighbour mask south + west.");
+        Assert.That(database.ScenarioRoadsByScenario[new Db.ScenarioId(map.Id)].Single(road => road.PositionX == 14 && road.PositionY == 30).Index, Is.EqualTo(10), "South + west, numbered like the original maps.");
         WorldState state = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
         WorldPosition[] roads = [.. Enumerable.Range(0, map.Size * map.Size).Select(i => new WorldPosition(i % map.Size, i / map.Size)).Where(p => state.Map.GetCellAt(p).Feature == WorldMapFeature.Road)];
         Assert.That(roads, Has.Length.EqualTo(8));
         Assert.That(store.Open(map.Id, definitions).Cells, Is.EqualTo(map.Cells));
+    }
+
+    [Test]
+    public void RoadPathTest()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(1);
+
+        static void AssertJoined(IReadOnlyList<WorldPosition> path)
+        {
+            for (int i = 1; i < path.Count; i++)
+            {
+                Assert.That(Math.Abs(path[i].X - path[i - 1].X) + Math.Abs(path[i].Y - path[i - 1].Y), Is.EqualTo(1), $"Step {i} shares an edge.");
+            }
+        }
+
+        // Open land: the shortest road over tile edges, as an even staircase along the straight line.
+        ImmutableArray<WorldPosition> open = map.FindRoadPath(new WorldPosition(10, 12), new WorldPosition(16, 18))!.Value;
+        AssertJoined(open);
+        Assert.That((open[0], open[^1], open.Length), Is.EqualTo((new WorldPosition(10, 12), new WorldPosition(16, 18), 13)));
+        Assert.That(open.All(tile => Math.Abs((tile.X - 10) - (tile.Y - 12)) <= 1), Is.True, "Close to the line.");
+        Assert.That(map.FindRoadPath(new WorldPosition(10, 12), new WorldPosition(10, 12)), Is.EqualTo(ImmutableArray.Create(new WorldPosition(10, 12))));
+
+        // Around the lake, never on water; nothing starts or ends on water, a capital or outside the map.
+        ImmutableArray<WorldPosition> around = map.FindRoadPath(new WorldPosition(16, 24), new WorldPosition(32, 24))!.Value;
+        AssertJoined(around);
+        Assert.That(around.Any(tile => map.GetRoadBlock(tile) != CustomMapTileReason.None), Is.False);
+        Assert.That(around.Length, Is.GreaterThan(17));
+        Assert.That(map.FindRoadPath(new WorldPosition(16, 24), new WorldPosition(24, 24)), Is.Null);
+        Assert.That(map.FindRoadPath(new WorldPosition(5, 5), new WorldPosition(16, 24)), Is.Null);
+        Assert.That(map.FindRoadPath(new WorldPosition(16, 24), new WorldPosition(60, 24)), Is.Null);
+        Assert.That(map.GetRoadBlock(new WorldPosition(36, 10)), Is.EqualTo(CustomMapTileReason.Mountain));
+
+        // An island can't be reached.
+        map.Paint(new WorldPosition(10, 40), 2, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        map.Paint(new WorldPosition(10, 40), 0, CustomMapBrush.Land, WorldMapTerrain.Neutral, random);
+        Assert.That(map.FindRoadPath(new WorldPosition(4, 46), new WorldPosition(10, 40)), Is.Null);
+
+        // A new road joins and follows an existing one instead of running beside it.
+        for (int x = 16; x <= 36; x++)
+        {
+            map.SetRoad(new WorldPosition(x, 44), true);
+        }
+
+        ImmutableArray<WorldPosition> joined = map.FindRoadPath(new WorldPosition(16, 43), new WorldPosition(36, 43))!.Value;
+        AssertJoined(joined);
+        Assert.That(joined.Count(tile => tile.Y == 44), Is.GreaterThanOrEqualTo(19));
+
+        // Preview and laying: new tiles green, forest tiles amber (cleared), existing road left out; the shown
+        // map has the roads before anything is laid.
+        ImmutableArray<WorldPosition> forest = map.FindRoadPath(new WorldPosition(6, 30), new WorldPosition(14, 30))!.Value;
+        CustomMapPlacementPreview preview = map.PreviewRoad(forest);
+        Assert.That(preview.Fits, Is.True);
+        Assert.That(preview.Count(CustomMapTileReason.ClearsForest), Is.GreaterThan(0));
+        WorldMap shown = map.ToWorldMap(forest);
+        Assert.That(forest.All(tile => shown.GetCellAt(tile).Feature == WorldMapFeature.Road), Is.True);
+        Assert.That(map.GetCell(forest[0]).Feature, Is.Not.EqualTo(WorldMapFeature.Road));
+        Assert.That(map.LayRoad(forest), Is.EqualTo((preview.Tiles.Length, (CustomMapPlacementError?)null)));
+        Assert.That(forest.All(tile => map.GetCell(tile).Feature == WorldMapFeature.Road), Is.True);
+        Assert.That(map.PreviewRoad(forest).Tiles, Is.Empty);
+        Assert.That(map.LayRoad(forest).Laid, Is.Zero);
+        Assert.That(map.LayRoad([new WorldPosition(20, 30), new WorldPosition(24, 24)]), Is.EqualTo((0, (CustomMapPlacementError?)CustomMapPlacementError.Blocked)));
+        Assert.That(map.GetCell(new WorldPosition(20, 30)).Feature, Is.Not.EqualTo(WorldMapFeature.Road), "Nothing laid when blocked.");
     }
 
     [Test]
