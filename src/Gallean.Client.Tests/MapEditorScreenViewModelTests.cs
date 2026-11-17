@@ -715,6 +715,108 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That((editor.PlacementPreview.IsEmpty, editor.HoverText), Is.EqualTo((true, string.Empty)));
     }
 
+    // The locations tool and list: hover preview (snapping near the edge), place + name in the row, select on the
+    // map or in the list (the list moves the camera), resize with +/-, search, sorting, Shift+click, undo.
+    [Test]
+    public async Task LocationToolTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Landmark);
+        Assert.That(editor.ShowLandmarkPalette, Is.True);
+        editor.SelectTool(MapEditorTool.Location);
+        Assert.That((editor.IsLocationTool, editor.HasBrush, editor.IsLocationsOpen, editor.HasNoLocationRows), Is.EqualTo((true, false, true, true)), "Picking the tool opens the list.");
+        Assert.That(editor.LocationsTitle, Is.EqualTo("Locations (0)"));
+
+        // Hover: a green 3x3 square and the name it will get; at the edge it moves inside the map (amber).
+        WorldPosition first = new(20, 20);
+        editor.UpdateHover(first);
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(21, 21)), Is.EqualTo(MapEditorTileState.Fits));
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(9));
+        Assert.That(editor.HoverText, Does.StartWith("Location (3x3): click places \"Location 1\"\n"));
+        editor.UpdateHover(new WorldPosition(0, 0));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(2, 2)), Is.EqualTo(MapEditorTileState.Changes));
+        Assert.That(editor.HoverText, Does.StartWith("Location (3x3): click places \"Location 1\" at 1, 1 (moved inside the map)"));
+
+        // Click: placed, selected, and its row opens for the name; Enter keeps the typed one.
+        editor.BeginStroke(first);
+        Assert.That(editor.Map.Locations.Select(location => (location.Id, location.Name, location.Center, location.Radius)), Is.EqualTo(new[] { (1, "Location 1", first, 1) }));
+        MapEditorLocationRowViewModel row = editor.SelectedLocationRow!;
+        Assert.That((row.Id, row.IsEditing, row.EditText, editor.CanUndo), Is.EqualTo((1, true, "Location 1", true)));
+        row.EditText = "  Northern Pass ";
+        row.CommitEditCommand.Execute(null);
+        Assert.That(editor.Map.Locations.Single().Name, Is.EqualTo("Northern Pass"));
+        Assert.That(editor.SelectedLocationRow!.Details, Is.EqualTo("3x3 · 20, 20"));
+        Assert.That(editor.PlacementPreview.Locations.Single(), Is.EqualTo(new MapEditorLocationMark(new WorldFootprint(new WorldPosition(19, 19), 3, 3), first, "Northern Pass", Marked: true)));
+
+        // + resizes the selected location; the radius stays 0-3.
+        editor.ChangeLocationRadius(1);
+        Assert.That((editor.Map.Locations.Single().Radius, editor.LocationSizeText), Is.EqualTo((2, "5x5")));
+        editor.ChangeLocationRadius(1);
+        editor.ChangeLocationRadius(1);
+        Assert.That((editor.Map.Locations.Single().Radius, editor.LocationRadiusUpCommand.CanExecute(null)), Is.EqualTo((3, false)));
+        editor.ChangeLocationRadius(-2);
+
+        // A second location, overlapping: the list is sorted by name, a blank name keeps the default.
+        editor.BeginStroke(new WorldPosition(30, 30));
+        editor.SelectedLocationRow!.EditText = " ";
+        editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
+        editor.BeginStroke(new WorldPosition(21, 21));
+        Assert.That(editor.SelectedLocationRow!.Name, Is.EqualTo("Northern Pass"), "A click inside a location selects it.");
+        editor.SelectedLocationRow!.CancelEditCommand.Execute(null);
+        editor.SelectTool(MapEditorTool.Army);
+        editor.SelectTool(MapEditorTool.Location);
+        editor.LocationRadius = 0;
+        editor.SelectedLocationRow = null;
+        editor.BeginStroke(new WorldPosition(21, 20));
+        Assert.That(editor.Map.Locations, Has.Count.EqualTo(2), "A click inside a location never places another.");
+        Assert.That(editor.LocationRows.Select(item => item.Name), Is.EqualTo(new[] { "Location 1", "Northern Pass" }));
+        Assert.That(editor.LocationsTitle, Is.EqualTo("Locations (2)"));
+        Assert.That(editor.TakeCameraTarget(), Is.Null, "Selecting on the map doesn't move the camera.");
+
+        // Selecting a row moves the camera to the location.
+        editor.SelectedLocationRow = editor.LocationRows[0];
+        Assert.That(editor.TakeCameraTarget(), Is.EqualTo(new WorldPosition(30, 30)));
+        Assert.That(editor.TakeCameraTarget(), Is.Null);
+
+        // Search filters by name, ignoring case.
+        editor.LocationSearch = "NORTH";
+        Assert.That(editor.LocationRows.Select(item => item.Name), Is.EqualTo(new[] { "Northern Pass" }));
+        editor.LocationSearch = string.Empty;
+
+        // Hovering a row lights its square up; the hover line lists every location on a tile, with any tool.
+        editor.SetHoveredLocation(1);
+        Assert.That(editor.PlacementPreview.Locations.Count(mark => mark.Marked), Is.EqualTo(2));
+        editor.SetHoveredLocation(null);
+        editor.SelectTool(MapEditorTool.Army);
+        editor.UpdateHover(new WorldPosition(21, 21));
+        Assert.That(editor.HoverText, Does.EndWith("\nLocations here: Northern Pass"));
+
+        // Shift+click removes the smallest location under the cursor (here the selected one wins); Undo brings it back.
+        editor.SelectTool(MapEditorTool.Location);
+        editor.SelectedLocationRow = editor.LocationRows.Single(item => item.Name == "Northern Pass");
+        editor.BeginStroke(new WorldPosition(21, 21), alternate: true);
+        Assert.That(editor.Map.Locations.Select(location => location.Name), Is.EqualTo(new[] { "Location 1" }));
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.LocationRows.Select(item => item.Name), Is.EqualTo(new[] { "Location 1", "Northern Pass" }));
+
+        // The row's delete button; the economy panel and the list share the left side.
+        editor.LocationRows[0].DeleteCommand.Execute(null);
+        Assert.That(editor.Map.Locations, Has.Count.EqualTo(1));
+        editor.IsEconomyOpen = true;
+        Assert.That(editor.IsLocationsOpen, Is.False);
+        editor.IsLocationsOpen = true;
+        Assert.That(editor.IsEconomyOpen, Is.False);
+
+        // With another tool and the list closed, nothing is drawn.
+        editor.SelectTool(MapEditorTool.Land);
+        editor.IsLocationsOpen = false;
+        Assert.That(editor.PlacementPreview.Locations, Is.Empty);
+    }
+
     private static MapEditorScreenViewModel PlaceCapitals(MapEditorScreenViewModel editor)
     {
         editor.SelectTool(MapEditorTool.Capital);

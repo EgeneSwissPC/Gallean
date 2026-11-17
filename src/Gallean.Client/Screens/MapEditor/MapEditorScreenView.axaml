@@ -470,13 +470,77 @@
       </DockPanel>
     </Border>
 
+    <!-- The locations list (L), over the left of the map like the economy panel: sorted by name, with a search box.
+         Names are edited in the row (double-click, or right after placing); hovering a row lights its square up. -->
+    <Border Grid.Column="0"
+            Classes="editor-panel"
+            Width="340"
+            HorizontalAlignment="Left"
+            Margin="0,0,0,60"
+            IsVisible="{Binding IsLocationsOpen}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Spacing="6">
+          <local:OutlinedTextBlock x:Name="LocationsTitle" Text="{Binding LocationsTitle}" Classes="h4" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+          <TextBlock Text="{local:Text 'Named zones for events and army orders; the game does not show them. Click a row to go there, double-click to rename.'}"
+                     Classes="caption"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource SecondaryTextBrush}" />
+          <TextBox x:Name="LocationSearchBox" Text="{Binding LocationSearch}" Watermark="{local:Text 'Search'}" IsVisible="{Binding HasLocations}" />
+        </StackPanel>
+        <Panel Margin="0,6,0,0">
+          <TextBlock Text="{local:Text 'No locations. Pick the Locations tool and click the map.'}"
+                     Classes="caption"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasNoLocationRows}"
+                     Foreground="{StaticResource SecondaryTextBrush}" />
+          <ListBox x:Name="LocationList"
+                   Classes="select-list"
+                   ItemsSource="{Binding LocationRows}"
+                   SelectedItem="{Binding SelectedLocationRow}"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:MapEditorLocationRowViewModel">
+                <Border Classes="row"
+                        Background="Transparent"
+                        PointerEntered="OnLocationRowPointerEntered"
+                        PointerExited="OnLocationRowPointerExited"
+                        DoubleTapped="OnLocationRowDoubleTapped">
+                  <DockPanel>
+                    <Button DockPanel.Dock="Right"
+                            Classes="pill"
+                            Width="28"
+                            Height="28"
+                            Padding="0"
+                            VerticalAlignment="Center"
+                            Content="×"
+                            ToolTip.Tip="{local:Text 'Delete'}"
+                            Command="{Binding DeleteCommand}" />
+                    <StackPanel Spacing="2" Margin="0,0,8,0">
+                      <TextBlock Text="{Binding Name}" Classes="body row-title" TextTrimming="CharacterEllipsis" IsVisible="{Binding !IsEditing}" />
+                      <TextBox Text="{Binding EditText}"
+                               MaxLength="60"
+                               IsVisible="{Binding IsEditing}"
+                               KeyDown="OnLocationNameKeyDown"
+                               LostFocus="OnLocationNameLostFocus"
+                               PropertyChanged="OnLocationNameBoxPropertyChanged" />
+                      <TextBlock Text="{Binding Details}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Panel>
+      </DockPanel>
+    </Border>
+
     <Border Grid.Column="1" Classes="editor-panel">
       <DockPanel>
         <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
           <Panel Width="170" Height="170" HorizontalAlignment="Center">
             <local:MinimapVisual x:Name="Minimap" Width="170" Height="170" MapScale="1" />
           </Panel>
-          <TextBlock Text="{local:Text 'Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview · E: economy'}"
+          <TextBlock Text="{local:Text 'Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview'}"
                      Classes="caption"
                      TextWrapping="Wrap"
                      Foreground="{StaticResource SecondaryTextBrush}" />
@@ -508,7 +572,7 @@
               </ListBox.ItemsPanel>
               <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="local:MapEditorLabeled">
-                  <TextBlock Text="{Binding Label}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" Margin="8,4" />
+                  <TextBlock Text="{Binding Label}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" Margin="8,2" />
                 </DataTemplate>
               </ListBox.ItemTemplate>
             </ListBox>
@@ -651,6 +715,20 @@
                 </ComboBox.ItemTemplate>
               </ComboBox>
               <TextBlock Text="{local:Text 'Click land to plant a rod: like in the game, it turns the nearest 2 tiles into its race land at once and 2 more every turn, and a mine those tiles reach changes owner. Rods need 2 free tiles between them. Click a rod or Shift+click to remove it; its land stays.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}"
+                         Margin="0,6,0,0" />
+            </StackPanel>
+            <StackPanel IsVisible="{Binding IsLocationTool}">
+              <local:OutlinedTextBlock Text="{local:Text 'Size'}" Classes="caption field-label" />
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button x:Name="LocationRadiusDownButton" Classes="pill" Width="28" Height="28" Padding="0" Content="-" Command="{Binding LocationRadiusDownCommand}" />
+                <TextBlock x:Name="LocationSizeText" Text="{Binding LocationSizeText}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" VerticalAlignment="Center" TextAlignment="Center" MinWidth="44" />
+                <Button x:Name="LocationRadiusUpButton" Classes="pill" Width="28" Height="28" Padding="0" Content="+" Command="{Binding LocationRadiusUpCommand}" />
+                <Button x:Name="LocationsButton" Classes="pill" local:PlateChrome.TextureSeed="6" Height="28" Padding="10,0" Margin="8,0,0,0" Content="{local:Text 'List (L)'}" Command="{Binding ToggleLocationsCommand}" />
+              </StackPanel>
+              <TextBlock Text="{local:Text 'Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}"

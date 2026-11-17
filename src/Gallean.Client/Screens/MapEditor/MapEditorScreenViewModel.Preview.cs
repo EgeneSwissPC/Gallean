@@ -65,16 +65,28 @@ internal sealed partial class MapEditorScreenViewModel
             preview = preview with { Highlight = highlight };
         }
 
+        IReadOnlyList<MapEditorLocationMark> locationMarks = BuildLocationMarks();
+
+        if (locationMarks.Count > 0)
+        {
+            preview = preview with { Locations = locationMarks };
+        }
+
         PlacementPreview = preview;
         OnPropertyChanged(nameof(PlacementPreview));
         HoverText = hoverTile is { } current
-            ? preview.Text.Length > 0 ? $"{preview.Text}\n{FormatTile(current)}" : FormatTile(current)
+            ? string.Join("\n", new[] { preview.Text, FormatTile(current), LocationHoverText(current) }.Where(line => line.Length > 0))
             : string.Empty;
         SetRenderRequest(CreateRenderRequest());
     }
 
     private MapEditorPlacementPreview BuildPreview(WorldPosition tile)
     {
+        if (SelectedTool.Value == MapEditorTool.Location)
+        {
+            return LocationPreview(tile);
+        }
+
         switch (SelectedTool.Value)
         {
             case MapEditorTool.Capital:

@@ -15,6 +15,10 @@ internal static class MapEditorPreviewColors
     public static Color GlowInner { get; } = Theme.World.HoverCursorInnerColor;
     public static Color Halo { get; } = Theme.World.CursorHaloColor;
     public static Color MovesFrom { get; } = Color.FromArgb(150, 236, 232, 222);
+    public static Color Location { get; } = Color.FromRgb(122, 196, 236);
+    public static Color LocationLabel { get; } = Theme.World.Path.UnreachedInnerColor;
+    public static Color LocationLabelOutline { get; } = Theme.World.Path.OutlineColor;
+    public const double LocationFillOpacity = 0.16;
     public const double FillOpacity = 0.36;
     public const double OutlineOpacity = 0.85;
 }
@@ -27,6 +31,10 @@ internal enum MapEditorTileState
 }
 
 internal readonly record struct MapEditorPreviewTile(WorldPosition Position, MapEditorTileState State);
+
+// A location drawn over the map: its square, centre (where the name goes) and name; Marked = selected or hovered
+// in the list (gold outline).
+internal readonly record struct MapEditorLocationMark(WorldFootprint Footprint, WorldPosition Center, string Name, bool Marked);
 
 // What the map editor shows under the cursor before a click: the tiles the click covers (green), changes in a way
 // you can see (amber) or that block it (red), the object a click opens or removes (outlined, or the game's hover
@@ -50,6 +58,9 @@ internal sealed record MapEditorPlacementPreview(
 
     // Tiles outlined in gold whatever the tool: the resources and rods of the race selected in the economy panel.
     public IReadOnlyList<WorldPosition> Highlight { get; init; } = [];
+
+    // Locations drawn while the locations tool is on or the list is open.
+    public IReadOnlyList<MapEditorLocationMark> Locations { get; init; } = [];
 
     public bool IsEmpty => Tiles.Count == 0 && Glow is null && MovesFrom is null && HoverObject is null && Text.Length == 0;
 

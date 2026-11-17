@@ -1,5 +1,7 @@
 using Avalonia;
+using System.Globalization;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -135,7 +137,12 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         // Take keyboard focus away from the panel, so WASD moves the map instead of typing into a field.
         Focus();
 
-        if (point.Properties.IsLeftButtonPressed)
+        if (point.Properties.IsLeftButtonPressed && ViewModel.IsLocationTool && e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            ViewModel.PlaceLocationAt(WorldTransform.FromWorldPoint(worldPoint));
+            e.Handled = true;
+        }
+        else if (point.Properties.IsLeftButtonPressed)
         {
             painting = true;
             e.Pointer.Capture(this);
@@ -278,6 +285,16 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.IsEconomyOpen = !ViewModel.IsEconomyOpen;
             e.Handled = true;
         }
+        else if (e.Key == Key.L && e.KeyModifiers == KeyModifiers.None)
+        {
+            ViewModel.IsLocationsOpen = !ViewModel.IsLocationsOpen;
+            e.Handled = true;
+        }
+        else if (ViewModel.IsLocationTool && e.Key is Key.OemPlus or Key.Add or Key.OemMinus or Key.Subtract)
+        {
+            ViewModel.ChangeLocationRadius(e.Key is Key.OemPlus or Key.Add ? 1 : -1);
+            e.Handled = true;
+        }
         else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && ViewModel.CancelRoad())
         {
             e.Handled = true;
@@ -316,6 +333,13 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         if (ViewModel.IsActive)
         {
             UpdateCameraBounds();
+
+            if (ViewModel.TakeCameraTarget() is { } target)
+            {
+                camera.LookAt(WorldTransform.ToWorldPoint(target));
+                redraw = true;
+            }
+
             redraw |= UpdateCamera(delta);
             redraw |= frameIndex != lastFrameIndex;
         }
@@ -400,7 +424,62 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.Game.DevTools.Diagnostics,
             contentLease));
 
+        DrawLocations(context);
         DrawPlacementPreview(context);
+    }
+
+    // Locations (editor only; the game never draws them): a pale square per zone and its name at its top corner, in the
+    // outlined style of the game's path cost labels. The selected location and the hovered list row are gold.
+    private void DrawLocations(DrawingContext context)
+    {
+        IReadOnlyList<MapEditorLocationMark> marks = ViewModel.PlacementPreview.Locations;
+
+        if (marks.Count == 0)
+        {
+            return;
+        }
+
+        Matrix view = camera.GetViewMatrix();
+        double pixel = 1.0 / Math.Max(0.01, Math.Abs(view.M11));
+        ImmutableSolidColorBrush fill = new(MapEditorPreviewColors.Location, MapEditorPreviewColors.LocationFillOpacity);
+        Pen outline = new(new SolidColorBrush(MapEditorPreviewColors.Location, MapEditorPreviewColors.OutlineOpacity), 1.5 * pixel);
+        Pen halo = new(new SolidColorBrush(MapEditorPreviewColors.Halo), 5 * pixel);
+        Pen glow = new(new SolidColorBrush(MapEditorPreviewColors.Glow), 2.5 * pixel);
+
+        using (context.PushTransform(view))
+        {
+            foreach (MapEditorLocationMark mark in marks)
+            {
+                Geometry square = PreviewGeometry.Square(mark.Footprint);
+                context.DrawGeometry(fill, mark.Marked ? null : outline, square);
+
+                if (mark.Marked)
+                {
+                    context.DrawGeometry(null, halo, square);
+                    context.DrawGeometry(null, glow, square);
+                }
+            }
+        }
+
+        Typeface typeface = new(TextElement.GetFontFamily(this), FontStyle.Normal, FontWeight.SemiBold);
+        IBrush labelFill = new SolidColorBrush(MapEditorPreviewColors.LocationLabel);
+        IBrush markedFill = new SolidColorBrush(MapEditorPreviewColors.GlowInner);
+        Pen labelOutline = new(new SolidColorBrush(MapEditorPreviewColors.LocationLabelOutline), 3, lineJoin: PenLineJoin.Round);
+
+        foreach (MapEditorLocationMark mark in marks)
+        {
+            FormattedText text = new(mark.Name, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, typeface, 14, labelFill);
+            // On the square's top corner tile, so zones sharing a centre (a small trap inside a larger warning zone)
+            // don't hide each other's names.
+            Point center = WorldTransform.ToWorldPoint(mark.Footprint.TopLeft).Transform(view);
+            Geometry? glyphs = text.BuildGeometry(new Point(center.X - (text.Width / 2), center.Y - (text.Height / 2)));
+
+            if (glyphs is not null)
+            {
+                context.DrawGeometry(null, labelOutline, glyphs);
+                context.DrawGeometry(mark.Marked ? markedFill : labelFill, null, glyphs);
+            }
+        }
     }
 
     // The placement preview, drawn over the map like the game's cursor: semi-transparent tile diamonds with an
@@ -521,6 +600,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             }
 
             return any ? geometry : null;
+        }
+
+        public static StreamGeometry Square(WorldFootprint footprint)
+        {
+            return Outline(footprint);
         }
 
         private static StreamGeometry Outline(WorldFootprint footprint)
