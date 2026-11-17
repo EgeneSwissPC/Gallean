@@ -5,7 +5,8 @@ placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07
 plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), after
 planning rods and the economy panel, after rods in the engine (commit `ca0330f`), after the rod tool (commit
 `97fe196`), after the economy panel (commit `687944d`), after the starting bank (commit `8ac6ac2`) and after the land
-spread preview (commit `caab9b3`). Each section is meant as a separate task.
+spread preview (commit `caab9b3`), and after the three locations phases (commits `8a6ffe2d`, `8b9ccde8`,
+`b31aa076`). Each section is meant as a separate task.
 
 ## Decisions so far
 
