@@ -24,6 +24,12 @@ location" / "defend location" army orders, but the editor can't place them and `
   - event effects: move army, unfog, change terrain, remove mountain, cast a spell on the map
   - AI victory zones (`WorldAiScenario.GetDefeatZones`)
 - On their own locations change nothing in a game, so adding them can't change game behaviour.
+- **Overlapping locations are independent.** Events trigger, not locations: after a move `ScenarioEventCalculator`
+  checks every event, and the entering-zone check only asks whether the army is inside that event's square
+  (`ConditionChecker.EnteringZone.cs`). An army on a tile covered by two zones fires both zones' events in the same
+  move; nothing ranks them by size. Orders also only look at their own square. The editor's "selected, then
+  smallest" rule is only for picking a location with the mouse. The overlay draws every square, and the hover line
+  lists every location under the cursor, so an overlap is never hidden.
 
 ## Decisions
 
