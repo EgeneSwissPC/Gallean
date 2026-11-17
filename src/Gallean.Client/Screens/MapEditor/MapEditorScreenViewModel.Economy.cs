@@ -10,6 +10,7 @@ namespace Gallean.Client;
 internal sealed partial class MapEditorScreenViewModel
 {
     private WorldState? economyState;
+    private CustomMap? economyMap;
     private bool updatingEconomy;
 
     [ObservableProperty]
@@ -34,6 +35,91 @@ internal sealed partial class MapEditorScreenViewModel
 
     public CustomMapEconomy? Economy { get; private set; }
 
+    // The starting bank editor under the race blocks: one race at a time, gold and all five manas.
+    public IReadOnlyList<MapEditorOption<WorldRace>> BankRaces => CapitalRaces;
+
+    [ObservableProperty]
+    public partial MapEditorOption<WorldRace>? SelectedBankRace { get; set; }
+
+    [ObservableProperty]
+    public partial IReadOnlyList<MapEditorBankFieldViewModel> BankFields { get; private set; } = [];
+
+    private (WorldRace Race, WorldResourceType Type)? bankEditKey;
+    private int bankEditUndoCount = -1;
+
+    partial void OnSelectedBankRaceChanged(MapEditorOption<WorldRace>? value) => ShowBank();
+
+    // Fills the bank fields from the map (after a race change, undo or open).
+    private void ShowBank()
+    {
+        WorldRace race = (SelectedBankRace ?? BankRaces[0]).Value;
+        WorldResourceSet bank = map.Players.First(player => player.Race == race).StartingBank;
+        WorldResourceType own = CustomMapPlayer.GetOwnMana(race);
+        WorldResourceType[] order =
+        [
+            WorldResourceType.Gold,
+            own,
+            .. new[] { WorldResourceType.LifeMana, WorldResourceType.InfernalMana, WorldResourceType.DeathMana, WorldResourceType.RuneMana, WorldResourceType.GroveMana }.Where(type => type != own)
+        ];
+
+        BankFields = [.. order.Select(type => new MapEditorBankFieldViewModel(type, CustomMapPlayer.Get(bank, type), type == own, amount => SetBankAmount(race, type, amount)))];
+    }
+
+    // One field changed: typing into the same field keeps one undo step.
+    private void SetBankAmount(WorldRace race, WorldResourceType type, int amount)
+    {
+        CustomMapPlayer player = map.Players.First(candidate => candidate.Race == race);
+        WorldResourceSet bank = CustomMapPlayer.With(player.StartingBank, type, amount);
+
+        if (bank == player.StartingBank)
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+
+        if (!map.SetStartingBank(race, bank))
+        {
+            return;
+        }
+
+        if (bankEditKey != (race, type) || bankEditUndoCount != undoSteps.Count)
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+        }
+
+        bankEditKey = (race, type);
+        bankEditUndoCount = undoSteps.Count;
+        CanUndo = true;
+        IsDirty = true;
+        RefreshEconomy();
+    }
+
+    [RelayCommand]
+    private void CopyBankToAll()
+    {
+        WorldRace race = (SelectedBankRace ?? BankRaces[0]).Value;
+        CustomMap before = map.Clone();
+
+        if (map.CopyStartingBankToAll(race))
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+            bankEditKey = null;
+            CanUndo = true;
+            IsDirty = true;
+            RefreshEconomy();
+        }
+    }
+
+    // The race blocks show each starting bank: recompute even when the shown state didn't change.
+    private void RefreshEconomy()
+    {
+        economyState = null;
+        RefreshPreview();
+    }
+
     [RelayCommand]
     private void ToggleEconomy()
     {
@@ -45,6 +131,11 @@ internal sealed partial class MapEditorScreenViewModel
         if (!value)
         {
             SelectedEconomyRace = null;
+        }
+        else
+        {
+            SelectedBankRace ??= BankRaces[0];
+            ShowBank();
         }
 
         RefreshPreview();
@@ -61,10 +152,13 @@ internal sealed partial class MapEditorScreenViewModel
     // Recomputes the numbers when the shown state changed (terrain strokes, objects, rods, undo, preview rebuilds).
     private void UpdateEconomy()
     {
-        if (!IsEconomyOpen || ReferenceEquals(state, economyState))
+        if (!IsEconomyOpen || (ReferenceEquals(state, economyState) && ReferenceEquals(map, economyMap)))
         {
             return;
         }
+
+        bool mapReplaced = !ReferenceEquals(map, economyMap);
+        economyMap = map;
 
         economyState = state;
         Economy = CustomMapEconomy.Calculate(state, editorGame.Session.EngineContext);
@@ -73,13 +167,19 @@ internal sealed partial class MapEditorScreenViewModel
 
         try
         {
-            EconomyRaces = [.. Economy.Races.Select(race => new MapEditorEconomyRaceViewModel(race))];
+            EconomyRaces = [.. Economy.Races.Select(race => new MapEditorEconomyRaceViewModel(race, map.Players.FirstOrDefault(player => player.Race == race.Race)?.StartingBank ?? WorldResourceSet.Empty))];
             UnclaimedResources = [.. Economy.Unclaimed.Select(entry => new MapEditorEconomyRowViewModel(new CustomMapEconomyRow(entry.Type, entry.Count, 0, 0)))];
             SelectedEconomyRace = EconomyRaces.FirstOrDefault(race => race.Race == selected);
         }
         finally
         {
             updatingEconomy = false;
+        }
+
+        // Undo swaps the whole map: show its banks.
+        if (mapReplaced)
+        {
+            ShowBank();
         }
     }
 
@@ -100,9 +200,26 @@ internal sealed partial class MapEditorScreenViewModel
 }
 
 // One race's block in the economy panel, laid out like the game's "Income per turn" table.
-internal sealed class MapEditorEconomyRaceViewModel(CustomMapEconomyRace race)
+internal sealed class MapEditorEconomyRaceViewModel(CustomMapEconomyRace race, WorldResourceSet bank)
 {
     public WorldRace Race => race.Race;
+
+    // "Start: 500 Gold · 1500 Life mana" (amounts above zero).
+    public string StartText
+    {
+        get
+        {
+            string[] parts =
+            [
+                .. new[] { WorldResourceType.Gold, WorldResourceType.LifeMana, WorldResourceType.InfernalMana, WorldResourceType.DeathMana, WorldResourceType.RuneMana, WorldResourceType.GroveMana }
+                    .Where(type => CustomMapPlayer.Get(bank, type) > 0)
+                    .Select(type => $"{CustomMapPlayer.Get(bank, type)} {new WorldIncomeRowViewModel(type, 0, 0, 0).Name}")
+            ];
+
+            return parts.Length > 0 ? Tr("Start: {0}", string.Join(" · ", parts)) : Tr("Start: nothing");
+        }
+    }
+
     public string Title => MapEditorLabels.Race(race.Race);
     public string Summary => race.Rods == 1
         ? Tr("Land: {0} tiles ({1}%) · 1 rod", race.LandTiles, race.LandPercent)
@@ -116,4 +233,48 @@ internal sealed class MapEditorEconomyRowViewModel(CustomMapEconomyRow row)
     public WorldIncomeRowViewModel Income { get; } = new(row.Type, row.CapitalIncome, row.ResourcesIncome, row.Total);
     public int Count => row.Resources;
     public string CountText => row.Resources.ToString();
+}
+
+// One amount of the starting bank editor: the resource's icon and name, and a box that takes 0-9999.
+internal sealed partial class MapEditorBankFieldViewModel : ObservableObject
+{
+    private readonly Action<int> commit;
+    private readonly WorldIncomeRowViewModel label;
+
+    public MapEditorBankFieldViewModel(WorldResourceType type, int amount, bool isOwnMana, Action<int> commit)
+    {
+        this.commit = commit;
+        label = new WorldIncomeRowViewModel(type, 0, 0, 0);
+        Type = type;
+        IsOwnMana = isOwnMana;
+        Text = amount.ToString(System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    public WorldResourceType Type { get; }
+    public bool IsOwnMana { get; }
+    public string Name => label.Name;
+    public IconMoniker Icon => label.Icon;
+
+    [ObservableProperty]
+    public partial string Text { get; set; }
+
+    partial void OnTextChanged(string value)
+    {
+        // An empty box counts as 0; anything else that isn't a number is ignored until it is one.
+        if (commit is null)
+        {
+            return;
+        }
+
+        string trimmed = value.Trim();
+
+        if (trimmed.Length == 0)
+        {
+            commit(0);
+        }
+        else if (int.TryParse(trimmed, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int amount))
+        {
+            commit(Math.Min(amount, CustomMapPlayer.MaxStartingAmount));
+        }
+    }
 }
