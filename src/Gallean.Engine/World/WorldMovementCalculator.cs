@@ -30,6 +30,9 @@ internal static class WorldMovementCalculator
         return new MovementProfile(moveAbility, isWaterOnly, leaderDead, isThief, isIllusion);
     }
 
+    // The highest finite cost GetMovementCost returns (water for a stack with a dead leader).
+    public const int MaxMovementCost = 12;
+
     public static int GetMovementCost(WorldMap map, WorldPosition position, MovementProfile profile)
     {
         WorldMapCell cell = map.GetCellAt(position);
