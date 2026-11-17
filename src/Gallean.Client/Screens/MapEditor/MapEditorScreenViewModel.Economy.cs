@@ -131,6 +131,7 @@ internal sealed partial class MapEditorScreenViewModel
         if (!value)
         {
             SelectedEconomyRace = null;
+            SpreadTurns = 0;
         }
         else
         {
@@ -152,7 +153,7 @@ internal sealed partial class MapEditorScreenViewModel
     // Recomputes the numbers when the shown state changed (terrain strokes, objects, rods, undo, preview rebuilds).
     private void UpdateEconomy()
     {
-        if (!IsEconomyOpen || (ReferenceEquals(state, economyState) && ReferenceEquals(map, economyMap)))
+        if (!IsEconomyOpen || (ReferenceEquals(ShownState, economyState) && ReferenceEquals(map, economyMap)))
         {
             return;
         }
@@ -160,8 +161,8 @@ internal sealed partial class MapEditorScreenViewModel
         bool mapReplaced = !ReferenceEquals(map, economyMap);
         economyMap = map;
 
-        economyState = state;
-        Economy = CustomMapEconomy.Calculate(state, editorGame.Session.EngineContext);
+        economyState = ShownState;
+        Economy = CustomMapEconomy.Calculate(ShownState, editorGame.Session.EngineContext);
         WorldRace? selected = SelectedEconomyRace?.Race;
         updatingEconomy = true;
 
@@ -191,9 +192,10 @@ internal sealed partial class MapEditorScreenViewModel
             return [];
         }
 
+        // Land as shown: during the spread preview, the land of that turn.
         return
         [
-            .. map.Resources.Where(resource => map.GetLandOwner(resource.Position) == selected.Race).Select(resource => resource.Position),
+            .. Economy?.GetRace(selected.Race)?.ResourcePositions ?? [],
             .. map.Rods.Where(rod => rod.Owner == selected.Race).Select(rod => rod.Position)
         ];
     }

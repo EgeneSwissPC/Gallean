@@ -1470,6 +1470,62 @@ public sealed class CustomMapTests
         Assert.That(map.CopyStartingBankToAll(WorldRace.Human), Is.False);
     }
 
+    // The spread preview gives the same land as the game's own turns when nobody does anything: every player human
+    // and only ending turns, so each turn start spreads land and nothing else changes it.
+    [Test]
+    public void SpreadPreviewAgreesWithGameTest()
+    {
+        CustomMap map = CreateRodMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        map.PlaceVillage(new WorldPosition(14, 36), 5, WorldRace.Human, "Big");
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        CustomMapSpreadPreview preview = new(scenario.State, context);
+        Assert.That(preview.TurnOrder, Is.EqualTo(new[] { WorldRace.Human, WorldRace.Elf }));
+        Assert.That(preview.GetState(0), Is.SameAs(scenario.State));
+
+        WorldState humans = scenario.State with
+        {
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = false })))
+        };
+        GameSession session = new(context, humans);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        int players = humans.Players.Count;
+        int changed = 0;
+
+        void EndRound()
+        {
+            for (int i = 0; i < players; i++)
+            {
+                Assert.That(session.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+            }
+        }
+
+        // All human: the neutral player (first by ID) starts each round, so a round's spread is complete when the
+        // next round begins. Turn 1 has no spread.
+        EndRound();
+
+        for (int turn = 1; turn <= 8; turn++)
+        {
+            EndRound();
+            Assert.That(session.World.State.TurnInfo.TurnNumber, Is.EqualTo(turn + 2));
+            Assert.That(preview.GetState(turn).Map.Cells.Select(cell => cell.Terrain), Is.EqualTo(session.World.State.Map.Cells.Select(cell => cell.Terrain)), $"After {turn} turns.");
+            changed += preview.GetState(turn).Map.Cells.Zip(preview.GetState(turn - 1).Map.Cells).Count(pair => pair.First.Terrain != pair.Second.Terrain);
+        }
+
+        TestContext.Out.WriteLine($"{changed} tiles changed owner in 8 turns");
+        Assert.That(changed, Is.GreaterThan(200));
+
+        Assert.That((preview.ComputedTurns, preview.AverageTurnTime > TimeSpan.Zero), Is.EqualTo((8, true)));
+
+        // Going back and forth reuses the turns already computed; more than MaxTurns is MaxTurns.
+        Assert.That(preview.GetState(3).Map, Is.SameAs(preview.GetState(3).Map));
+        Assert.That(preview.GetState(CustomMapSpreadPreview.MaxTurns + 50).Map, Is.SameAs(preview.GetState(CustomMapSpreadPreview.MaxTurns).Map));
+    }
+
     // A map with one of everything close together, for the preview tests.
     private CustomMap CreateBusyMap()
     {

@@ -764,6 +764,19 @@ public sealed partial class VisualTests
         await SkipFramesAsync(10);
         Assert.That(editor.Map.Players[1].StartingBank.Gold, Is.EqualTo(800));
         await CaptureAsync(window, "3-starting-bank");
+
+        // The land spread preview: the map and the numbers after 10 turns of the game's spread.
+        copyButton.FindAncestorOfType<Avalonia.Controls.ScrollViewer>()!.ScrollToHome();
+        editor.SpreadUpTenCommand.Execute(null);
+        await editor.SpreadTask;
+        await SkipFramesAsync(10);
+        Assert.That(editor.SpreadTurnText, Is.EqualTo("After 10 turns"));
+        await CaptureAsync(window, "4-after-10-turns");
+        editor.SpreadUpTenCommand.Execute(null);
+        editor.SpreadUpTenCommand.Execute(null);
+        await editor.SpreadTask;
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "5-after-30-turns");
     }
 
     [AvaloniaTest]

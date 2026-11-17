@@ -313,7 +313,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     // alternate: Shift is held (the road tool then removes a road tile, the rod tool a rod).
     public void BeginStroke(WorldPosition tile, bool alternate = false)
     {
-        if (!map.IsValidPosition(tile))
+        if (!map.IsValidPosition(tile) || LeaveSpreadPreview())
         {
             return;
         }
@@ -393,7 +393,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     public void ContinueStroke(WorldPosition tile)
     {
-        if (!HasBrush || lastStrokeTile == tile || !map.IsValidPosition(tile))
+        if (!HasBrush || lastStrokeTile == tile || !map.IsValidPosition(tile) || IsSpreadPreview)
         {
             return;
         }
@@ -925,6 +925,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     [RelayCommand(CanExecute = nameof(CanUndo))]
     private void Undo()
     {
+        LeaveSpreadPreview();
+
         if (undoSteps.Count == 0)
         {
             return;
@@ -1144,7 +1146,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         WorldCursor cursor = WorldCursor.Empty with { HoverTile = hoverTile, HoverObject = PlacementPreview.HoverObject };
 
         // The road tool shows the road it would lay as real road pieces, joined with the roads already there.
-        WorldState shown = roadGhostTiles is { } ghost ? state with { Map = map.ToWorldMap(ghost) } : state;
+        // The spread preview shows a later turn's land instead.
+        WorldState shown = spreadState ?? (roadGhostTiles is { } ghost ? state with { Map = map.ToWorldMap(ghost) } : state);
 
         return new WorldRenderRequest(shown, ViewPlayerId, cursor, FogEnabled: false, Animation: null, IsPlayingEvent: false);
     }

@@ -1032,6 +1032,13 @@
     "Same for all races": "Same for all races",
     "The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.": "The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.",
     "Start: {0}": "Start: {0}",
-    "Start: nothing": "Start: nothing"
+    "Start: nothing": "Start: nothing",
+    "The map now": "The map now",
+    "After 1 turn": "After 1 turn",
+    "After {0} turns": "After {0} turns",
+    "Back to the map": "Back to the map",
+    "{0} (preview, nothing is edited): click goes back to the map": "{0} (preview, nothing is edited): click goes back to the map",
+    "Land spread preview: capitals, villages and rods grow their land every turn as in the game, with nobody moving or fighting. Nothing is edited while a later turn is shown.": "Land spread preview: capitals, villages and rods grow their land every turn as in the game, with nobody moving or fighting. Nothing is edited while a later turn is shown.",
+    "Turn {0}: computing...": "Turn {0}: computing..."
   }
 }

@@ -1175,6 +1175,71 @@ public sealed class MapEditorScreenViewModelTests
     }
 
     [Test]
+    public async Task SpreadPreviewTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Resource);
+        editor.BeginStroke(new WorldPosition(14, 8));
+        editor.ToggleEconomyCommand.Execute(null);
+
+        int EmpireLand(WorldState shown) => shown.Map.Cells.Count(cell => cell.Terrain == WorldMapTerrain.Human);
+        int now = EmpireLand(editor.RenderRequest.State);
+        Assert.That((editor.SpreadTurns, editor.SpreadTurnText, editor.SpreadDownCommand.CanExecute(null)), Is.EqualTo((0, "The map now", false)));
+        Assert.That(editor.EconomyRaces[0].Rows[0].Count, Is.Zero, "The mine at 14, 8 is on neutral land now.");
+
+        // +1, +10, -: the map view and the panel show the land after that many turns; the map itself is untouched.
+        editor.SpreadUpCommand.Execute(null);
+        Assert.That(editor.SpreadTurnText, Is.EqualTo("After 1 turn"));
+        int afterOne = EmpireLand(editor.RenderRequest.State);
+        Assert.That(afterOne, Is.EqualTo(now + 10), "A capital grows 10 tiles a turn.");
+        editor.SpreadUpTenCommand.Execute(null);
+        Assert.That(editor.SpreadTurnText, Is.EqualTo("After 11 turns"));
+        Assert.That(EmpireLand(editor.RenderRequest.State), Is.GreaterThan(afterOne));
+        Assert.That(editor.EconomyRaces[0].Rows[0].Count, Is.EqualTo(1), "By then the Empire's land has reached the mine.");
+        Assert.That(editor.EconomyRaces[0].Summary, Does.StartWith($"Land: {EmpireLand(editor.RenderRequest.State)} tiles"));
+        Assert.That(editor.Map.Cells.Count(cell => cell.Terrain == WorldMapTerrain.Human), Is.EqualTo(now), "Only a preview.");
+        editor.SpreadDownCommand.Execute(null);
+        Assert.That(editor.SpreadTurns, Is.EqualTo(10));
+
+        // The selected race's outline follows the land of the turn shown.
+        editor.SelectedEconomyRace = editor.EconomyRaces[0];
+        Assert.That(editor.PlacementPreview.Highlight, Does.Contain(new WorldPosition(14, 8)));
+
+        // Nothing is edited while a later turn is shown: the hover line says so, a click goes back to the map.
+        editor.SelectTool(MapEditorTool.Land);
+        editor.UpdateHover(new WorldPosition(30, 30));
+        Assert.That(editor.HoverText, Does.StartWith("After 10 turns (preview, nothing is edited): click goes back to the map"));
+        bool couldUndo = editor.CanUndo;
+        editor.BeginStroke(new WorldPosition(30, 30));
+        editor.ContinueStroke(new WorldPosition(31, 30));
+        editor.EndStroke();
+        Assert.That((editor.SpreadTurns, EmpireLand(editor.RenderRequest.State)), Is.EqualTo((0, now)));
+        Assert.That(editor.Map.GetCell(new WorldPosition(30, 30)).Terrain, Is.EqualTo(WorldMapTerrain.Neutral));
+        Assert.That(editor.EconomyRaces[0].Rows[0].Count, Is.Zero);
+
+        // After an edit the preview starts from the new map; -10 and Back to the map return to it; closing the panel too.
+        editor.SelectedLandTerrain = editor.LandTerrains.Single(option => option.Value == WorldMapTerrain.Human);
+        editor.BrushRadius = 0;
+        editor.BeginStroke(new WorldPosition(30, 30));
+        editor.EndStroke();
+        editor.SpreadUpCommand.Execute(null);
+        Assert.That(EmpireLand(editor.RenderRequest.State), Is.GreaterThan(now + 10), "The new tile counts, and nothing spreads from it.");
+        editor.SpreadDownTenCommand.Execute(null);
+        Assert.That(editor.SpreadTurns, Is.Zero);
+        editor.SpreadUpTenCommand.Execute(null);
+        editor.BackToMapCommand.Execute(null);
+        Assert.That(editor.SpreadTurns, Is.Zero);
+        editor.SpreadUpTenCommand.Execute(null);
+        editor.ToggleEconomyCommand.Execute(null);
+        Assert.That((editor.SpreadTurns, EmpireLand(editor.RenderRequest.State)), Is.EqualTo((0, now + 1)));
+        Assert.That(couldUndo, Is.True);
+    }
+
+    [Test]
     public async Task SiteTest()
     {
         using Sandbox sb = Sandbox.Create();
