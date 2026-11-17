@@ -282,6 +282,38 @@ What was built (branch `upgrade/map-editor-starting-bank`, commits `8ac6ac2` and
   and play: the treasury on turn 1 shows 1384 gold, 1575 life, 50 rune and 350 infernal mana, which is the bank plus
   exactly the turn-1 income the economy panel shows (+150, +75, +50, +50).
 
+## Phase 5 — done
+
+What was built (branch `upgrade/map-editor-spread-preview`, commit `caab9b3`, merged as `a6e6b66`):
+- Engine `CustomMapSpreadPreview.cs`: from the editor's preview state, turn by turn, `ExpansionCalculator
+  .ExpandPlayerTerrain` for every playable race (the call `WorldEngine.Events.TurnStarting` makes), in the engine's turn
+  order with every player a computer player (Empire, Legions, Clans, Undead, Elves; in a game the human player moves
+  first). Turns are computed on demand and kept (up to `MaxTurns` = 200); `GetState` is thread-safe.
+- Economy panel: a turn bar under the description, built like the unit level bar: `-10` `-` "The map now" /
+  "After N turns" `+` `+10`, and "Back to the map" while a later turn is shown. The map view, the minimap, the
+  panel's numbers (land, resources per race, income, unowned land) and the selected race's outline all show that
+  turn. The map itself is never changed by it.
+- While a later turn is shown nothing is edited: the hover line says "After N turns (preview, nothing is edited):
+  click goes back to the map", and a click, a stroke or Ctrl+Z goes back to the map first (Ctrl+Z then undoes as
+  usual). Closing the panel goes back too. After an edit the preview starts again from the new map.
+- Speed: on a 512 map with 5 capitals, 143 villages and 143 rods one turn takes about 0.2 s (+10: 2.2 s; the
+  economy numbers for a turn: 9 ms). Steps the preview expects to take longer than 0.15 s run on a background
+  thread ("Turn N: computing..."), so the editor stays responsive; earlier turns are kept, so going back is instant.
+- Tests (suite 5209 -> 5211): `CustomMapTests.SpreadPreviewAgreesWithGameTest` (8 turns compared with the real engine
+  on the rod test map, every player human and only ending turns: same land every turn, 686 tiles changed owner;
+  caching and the cap), `MapEditorScreenViewModelTests.SpreadPreviewTest` (+1 is the capital's 10 tiles, +10, -,
+  numbers and outline follow, the map is untouched, a click and a stroke go back without editing, the preview
+  restarts after an edit, -10, Back to the map, closing the panel), `VisualTests.MapEditorEconomyTest` (after 10 and
+  30 turns).
+- Real client run (AOT build, Debian 12 image, `mapgen` map): +10 three times shows "After 30 turns" with the Empire
+  at 1028 tiles (20 %) and the Undead at 1305 (26 %); by then the Empire's land has also reached the grove mana
+  source that was unowned, and the panel shows it (+50 grove mana).
+
+Known limits:
+- Villages that level up over time (`GrowthTurn`) aren't simulated; the editor writes none.
+- Turn order: the human player moves first in a game, so where two races' land meets, the real split can differ by a
+  few tiles from the preview.
+
 ## Phases
 
 1. ~~Rods in the engine and writer: `CustomMapRod`, rules, paint, `SRod.json`, `FromState`, tests (about 1 day).~~
@@ -291,7 +323,8 @@ What was built (branch `upgrade/map-editor-starting-bank`, commits `8ac6ac2` and
 3. ~~Economy panel: `CustomMapEconomy`, panel, live update, highlight (about 1 day).~~ Done, see "Phase 3 — done".
 4. ~~Starting bank per race in the panel (gold + all five manas), "Same for all" (about half a day).~~ Done, see
    "Phase 4 — done".
-5. Land spread preview: turn bar, cached spread, numbers per turn, benchmark (about 1 day).
+5. ~~Land spread preview: turn bar, cached spread, numbers per turn, benchmark (about 1 day).~~ Done, see
+   "Phase 5 — done". All five phases are done.
 
 Each phase is its own `upgrade/` branch and roadmap update.
 

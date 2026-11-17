@@ -4,8 +4,8 @@ Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; u
 placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
 plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), after
 planning rods and the economy panel, after rods in the engine (commit `ca0330f`), after the rod tool (commit
-`97fe196`), after the economy panel (commit `687944d`) and after the starting bank (commit `8ac6ac2`). Each section is
-meant as a separate task.
+`97fe196`), after the economy panel (commit `687944d`), after the starting bank (commit `8ac6ac2`) and after the land
+spread preview (commit `caab9b3`). Each section is meant as a separate task.
 
 ## Decisions so far
 
@@ -80,6 +80,8 @@ meant as a separate task.
   - follows every change (paint, objects, rods, undo); click a race to outline its resources and rods on the map
   - starting bank per race: gold and all five manas (default 500 gold, 1500 own mana, the rest 0), "Same for all
     races"
+  - land spread preview: a turn bar (-10, -, +, +10) redraws the map and the numbers with the land after N turns of
+    the game's spread (nobody moving); nothing is edited meanwhile, a click goes back to the map
 - Roads (new): tool "Road"
   - click a tile to start, move the mouse: the road to the cursor takes the cheapest way around water, mountains,
     capitals, villages, ruins, sites and landmarks, follows existing roads, and avoids forests when it can
@@ -185,8 +187,13 @@ Phase 3 — done (branch `upgrade/map-editor-economy`, commit `687944d`, merged 
 Phase 4 — done (branch `upgrade/map-editor-starting-bank`, commits `8ac6ac2`, `97db6a5`, merged as `837acdf`):
 `CustomMapPlayer.StartingBank`, written as the `Splayer` bank; the panel's starting bank editor and "Start:" lines;
 "Economy (E)" moved into the title row. Real client: the turn-1 treasury equals the bank plus the panel's income.
-Tests: `CustomMapTests.StartingBankTest`, `MapEditorScreenViewModelTests.StartingBankTest`; suite 5209. Next: the
-land spread preview (phase 5).
+Tests: `CustomMapTests.StartingBankTest`, `MapEditorScreenViewModelTests.StartingBankTest`; suite 5209.
+
+Phase 5 — done (branch `upgrade/map-editor-spread-preview`, commit `caab9b3`, merged as `a6e6b66`):
+`CustomMapSpreadPreview` (the game's turn-start spread per race, cached, checked against the real engine for 8 turns)
+and the turn bar in the economy panel; far steps on a background thread (512 map: ~0.2 s a turn). Tests:
+`CustomMapTests.SpreadPreviewAgreesWithGameTest`, `MapEditorScreenViewModelTests.SpreadPreviewTest`; suite 5211. The
+rods and economy task is complete.
 
 ## Task: items (one shared item editor)
 
@@ -347,8 +354,9 @@ point at them once events exist.
 2. Items: should the leader's 7 slots work like the in-game equipment screen, or just be a list?
 3. ~~Landmarks: should they block armies like in the game, or be decoration only?~~ Decided: they block, like in the
    game (see "Decisions so far"). Say if you want decoration-only after all; that needs a game rule change.
-4. ~~Which comes next: player settings, items, or the mountain/forest looks?~~ Next: rods and the economy panel.
-   After that, still open: player settings, items, or the mountain/forest looks.
+4. ~~Which comes next: player settings, items, or the mountain/forest looks?~~ Rods and the economy panel are done.
+   Still open: the rest of player settings (human/computer, lord, buildings, spells, diplomacy), items, or the
+   mountain/forest looks.
 5. Landmarks: is the palette over the left of the map fine, or should it go into the right panel (it only fits there
    with scrolling at 1366x768)? ~~Is a footprint preview under the cursor worth adding?~~ Done, for every tool.
 6. Placement preview: should the "Placement preview (P)" checkbox move out of the scrolling panel (next to Undo/Save),
