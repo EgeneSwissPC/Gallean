@@ -13,7 +13,8 @@ internal sealed partial record WorldRenderState
         double Phase,
         bool LeftToRight);
 
-    public sealed record FogTile(WorldPosition Position);
+    // A struct: a large map has 100k hidden tiles, rebuilt whenever the fog changes.
+    public readonly record struct FogTile(WorldPosition Position);
 
     public sealed record ObjectiveMarker(WorldFootprint Footprint, bool HasRunes);
 

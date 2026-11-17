@@ -2876,6 +2876,26 @@ public sealed class WorldRenderComposerTests
     }
 
     [Test]
+    public void StackMoveKeepsMinimapHiddenTilesTest()
+    {
+        (WorldState state, IGameDefinitionProvider definitions, WorldStackId stackId) = BuildStackWorld(new WorldUnitId("leader"));
+        WorldPlayer player = state.Players[state.Stacks[stackId].OwnerId];
+        Gallean.Common.ImmutableBitmap.Builder fog = Gallean.Common.ImmutableBitmap.Create(state.Map.Width, state.Map.Height, true).ToBuilder();
+        fog.Clear(0, 0);
+        WorldState fogged = state with { Players = state.Players.SetItem(player.Id, player with { FogOfWar = fog.ToImmutable() }) };
+        WorldState moved = fogged with { Stacks = fogged.Stacks.SetItem(stackId, fogged.Stacks[stackId] with { Position = new WorldPosition(3, 2) }) };
+
+        WorldRenderComposer composer = new(definitions, GameScenarioProvider.Empty, new TestMetadataProviderBuilder().Build());
+        WorldRenderState first = composer.Compose(MakeSceneRequest(fogged, fogEnabled: true, cursor: WorldCursor.Empty));
+        WorldRenderState second = composer.Compose(MakeSceneRequest(moved, fogEnabled: true, cursor: WorldCursor.Empty));
+
+        // The minimap image is keyed on the hidden tiles list, so it must survive a stack move.
+        Assert.That(first.Minimap.HiddenPositions, Is.EqualTo(new[] { new WorldPosition(0, 0) }));
+        Assert.That(second.Minimap, Is.Not.SameAs(first.Minimap));
+        Assert.That(second.Minimap.HiddenPositions, Is.SameAs(first.Minimap.HiddenPositions));
+    }
+
+    [Test]
     public void SameAnimationTest()
     {
         (WorldState state, IGameDefinitionProvider definitions, WorldStackId stackId) = BuildStackWorld(new WorldUnitId("leader"));

@@ -1,4 +1,3 @@
-using Avalonia;
 using Avalonia.Media;
 using Avalonia.Skia;
 using SkiaSharp;
@@ -9,7 +8,14 @@ namespace Gallean.Client;
 
 internal sealed partial class WorldRenderContentProvider
 {
-    private static class Fog
+    // Builds the fog layer. The mask holds the fog's opacity (SamplesPerTile x SamplesPerTile samples per tile, zero
+    // on explored tiles), so the layer is drawn as one quad over the map plus a ring for the map edge band, and the
+    // shader's clamp mode carries the edge samples out into the band. Both meshes depend only on the map size.
+    //
+    // A tile's samples depend only on which tiles in its 3x3 neighbourhood are explored, so when the fog changes only
+    // the tiles around the changed ones are rewritten; the rest of the mask is kept from the previous build. On a
+    // large map this keeps a step that reveals a few tiles from redrawing the whole mask (100k tiles at 320x320).
+    private sealed class Fog
     {
         private const int MapEdgeBand = 8;
         private const int SamplesPerTile = 4;
@@ -17,96 +23,135 @@ internal sealed partial class WorldRenderContentProvider
         private const double ClearRadius = 0.7;
         private const double FadeDistance = 0.6;
 
-        public static FogContent Build(IReadOnlyList<FogTile> fogTiles, WorldMap map)
+        private int width;
+        private int height;
+        private bool[] explored = [];
+        private bool[] nextExplored = [];
+        private bool[] dirty = [];
+        private byte[] pixels = [];
+        private SKVertices? mapMesh;
+        private SKVertices? mapEdgeMesh;
+
+        public FogContent Build(IReadOnlyList<FogTile> fogTiles, WorldMap map)
         {
-            if (fogTiles.Count > 0)
-            {
-                List<WorldPosition> positions = [];
-
-                foreach (FogTile tile in fogTiles)
-                {
-                    positions.Add(tile.Position);
-                }
-
-                List<WorldPosition> mapEdgePositions = GetMapEdgePositions(fogTiles, map);
-                SKVertices? mapEdgeMesh = null;
-
-                if (mapEdgePositions.Count > 0)
-                {
-                    mapEdgeMesh = BuildMesh(mapEdgePositions);
-                }
-
-                return new FogContent(new FogLayer(BuildMesh(positions), mapEdgeMesh, BuildShader(fogTiles, map)));
-            }
-            else
+            if (fogTiles.Count == 0)
             {
                 return new FogContent(null);
             }
+
+            if (map.Width != width || map.Height != height)
+            {
+                Reset(map);
+            }
+
+            UpdateMask(fogTiles, map);
+
+            return new FogContent(new FogLayer(mapMesh!, mapEdgeMesh, BuildShader()));
         }
 
-        private static List<WorldPosition> GetMapEdgePositions(IReadOnlyList<FogTile> fogTiles, WorldMap map)
+        private void Reset(WorldMap map)
         {
-            HashSet<WorldPosition> unexplored = [];
+            width = map.Width;
+            height = map.Height;
+            explored = new bool[width * height];
+            Array.Fill(explored, true);
+            nextExplored = new bool[width * height];
+            dirty = new bool[width * height];
+            pixels = new byte[width * SamplesPerTile * height * SamplesPerTile * 4];
+            mapMesh = BuildRectanglesMesh([(0, 0, width, height)]);
+            mapEdgeMesh = BuildRectanglesMesh([
+                (-MapEdgeBand, -MapEdgeBand, width + MapEdgeBand, 0),
+                (-MapEdgeBand, height, width + MapEdgeBand, height + MapEdgeBand),
+                (-MapEdgeBand, 0, 0, height),
+                (width, 0, width + MapEdgeBand, height)
+            ]);
+        }
+
+        private void UpdateMask(IReadOnlyList<FogTile> fogTiles, WorldMap map)
+        {
+            Array.Fill(nextExplored, true);
 
             foreach (FogTile tile in fogTiles)
             {
-                unexplored.Add(tile.Position);
+                nextExplored[(tile.Position.Y * width) + tile.Position.X] = false;
             }
 
-            List<WorldPosition> positions = [];
+            List<int> dirtyTiles = [];
 
-            for (int y = -MapEdgeBand; y < map.Height + MapEdgeBand; y++)
+            for (int index = 0; index < explored.Length; index++)
             {
-                for (int x = -MapEdgeBand; x < map.Width + MapEdgeBand; x++)
+                if (explored[index] != nextExplored[index])
                 {
-                    WorldPosition position = new(x, y);
-                    WorldPosition nearest = new(Math.Clamp(x, 0, map.Width - 1), Math.Clamp(y, 0, map.Height - 1));
+                    MarkNeighborhood(index % width, index / width, dirtyTiles);
+                }
+            }
 
-                    if (position != nearest && unexplored.Contains(nearest))
+            foreach (int index in dirtyTiles)
+            {
+                WorldPosition position = new(index % width, index / width);
+
+                if (nextExplored[index])
+                {
+                    ClearTile(position);
+                }
+                else
+                {
+                    WriteTile(map, nextExplored, position);
+                }
+
+                dirty[index] = false;
+            }
+
+            (explored, nextExplored) = (nextExplored, explored);
+        }
+
+        private void MarkNeighborhood(int x, int y, List<int> dirtyTiles)
+        {
+            for (int neighborY = Math.Max(0, y - SearchRadius); neighborY <= Math.Min(height - 1, y + SearchRadius); neighborY++)
+            {
+                for (int neighborX = Math.Max(0, x - SearchRadius); neighborX <= Math.Min(width - 1, x + SearchRadius); neighborX++)
+                {
+                    int index = (neighborY * width) + neighborX;
+
+                    if (!dirty[index])
                     {
-                        positions.Add(position);
+                        dirty[index] = true;
+                        dirtyTiles.Add(index);
                     }
                 }
             }
-
-            return positions;
         }
 
-        private static SKVertices BuildMesh(IReadOnlyList<WorldPosition> fogPositions)
+        private static SKVertices BuildRectanglesMesh(IReadOnlyList<(int Left, int Top, int Right, int Bottom)> rectangles)
         {
-            Dictionary<(int X, int Y), int> corners = [];
             List<SKPoint> positions = [];
-            List<int> indexes = [];
+            List<ushort> indexes = [];
 
-            foreach (WorldPosition fogPosition in fogPositions)
+            foreach ((int left, int top, int right, int bottom) in rectangles)
             {
-                int top = Corner(fogPosition.X, fogPosition.Y);
-                int right = Corner(fogPosition.X + 1, fogPosition.Y);
-                int bottom = Corner(fogPosition.X + 1, fogPosition.Y + 1);
-                int left = Corner(fogPosition.X, fogPosition.Y + 1);
+                ushort first = (ushort)positions.Count;
 
-                indexes.AddRange([top, right, bottom, top, bottom, left]);
+                positions.Add(Corner(left, top));
+                positions.Add(Corner(right, top));
+                positions.Add(Corner(right, bottom));
+                positions.Add(Corner(left, bottom));
+                indexes.AddRange([first, (ushort)(first + 1), (ushort)(first + 2), first, (ushort)(first + 2), (ushort)(first + 3)]);
             }
 
-            return TileMeshVertices.Create(positions, indexes);
+            return SKVertices.CreateCopy(SKVertexMode.Triangles, [.. positions], null, null, [.. indexes]);
 
-            int Corner(int x, int y)
+            // Corner (x, y) is the top corner of tile (x, y) in tile space.
+            static SKPoint Corner(int x, int y)
             {
-                if (!corners.TryGetValue((x, y), out int index))
-                {
-                    Point point = WorldTransform.ToWorldPoint(x - 0.5, y - 0.5);
-                    index = positions.Count;
-                    positions.Add(point.ToSKPoint());
-                    corners[(x, y)] = index;
-                }
-
-                return index;
+                return WorldTransform.ToWorldPoint(x - 0.5, y - 0.5).ToSKPoint();
             }
         }
 
-        private static SKShader BuildShader(IReadOnlyList<FogTile> fogTiles, WorldMap map)
+        private SKShader BuildShader()
         {
-            SKImage mask = BuildMask(fogTiles, map);
+            SKImageInfo info = new(width * SamplesPerTile, height * SamplesPerTile, SKColorType.Bgra8888, SKAlphaType.Premul);
+            SKImage mask = SKImage.FromPixelCopy(info, pixels);
+            SkiaMemoryPressure.TrackImage(mask);
 
             float halfWidth = (float)WorldTransform.TileHalfWidth / SamplesPerTile;
             float halfHeight = (float)WorldTransform.TileHalfHeight / SamplesPerTile;
@@ -119,37 +164,23 @@ internal sealed partial class WorldRenderContentProvider
             return mask.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, RenderSamplingOptions.Linear, matrix);
         }
 
-        private static SKImage BuildMask(IReadOnlyList<FogTile> fogTiles, WorldMap map)
+        private void ClearTile(WorldPosition position)
         {
-            bool[] explored = new bool[map.Width * map.Height];
-            Array.Fill(explored, true);
+            int rowWidth = width * SamplesPerTile;
 
-            foreach (FogTile tile in fogTiles)
+            for (int sampleY = 0; sampleY < SamplesPerTile; sampleY++)
             {
-                explored[(tile.Position.Y * map.Width) + tile.Position.X] = false;
+                int pixelY = (position.Y * SamplesPerTile) + sampleY;
+                int offset = ((pixelY * rowWidth) + (position.X * SamplesPerTile)) * 4;
+
+                Array.Clear(pixels, offset, SamplesPerTile * 4);
             }
-
-            int width = map.Width * SamplesPerTile;
-            int height = map.Height * SamplesPerTile;
-            byte[] pixels = new byte[width * height * 4];
-
-            foreach (FogTile tile in fogTiles)
-            {
-                WriteTile(pixels, map, explored, tile.Position);
-            }
-
-            SKImageInfo info = new(width, height, SKColorType.Bgra8888, SKAlphaType.Premul);
-
-            SKImage image = SKImage.FromPixelCopy(info, pixels);
-            SkiaMemoryPressure.TrackImage(image);
-
-            return image;
         }
 
-        private static void WriteTile(byte[] pixels, WorldMap map, bool[] explored, WorldPosition position)
+        private void WriteTile(WorldMap map, bool[] tiles, WorldPosition position)
         {
             Color color = Theme.World.Tile.HiddenColor;
-            int width = map.Width * SamplesPerTile;
+            int rowWidth = width * SamplesPerTile;
 
             for (int sampleY = 0; sampleY < SamplesPerTile; sampleY++)
             {
@@ -161,8 +192,8 @@ internal sealed partial class WorldRenderContentProvider
                     int pixelX = (position.X * SamplesPerTile) + sampleX;
                     double x = ((pixelX + 0.5) / SamplesPerTile) - 0.5;
 
-                    byte alpha = (byte)Math.Round(color.A * GetOpacity(map, explored, position, x, y));
-                    int offset = ((pixelY * width) + pixelX) * 4;
+                    byte alpha = (byte)Math.Round(color.A * GetOpacity(map, tiles, position, x, y));
+                    int offset = ((pixelY * rowWidth) + pixelX) * 4;
 
                     pixels[offset + 0] = (byte)(color.B * alpha / 255);
                     pixels[offset + 1] = (byte)(color.G * alpha / 255);

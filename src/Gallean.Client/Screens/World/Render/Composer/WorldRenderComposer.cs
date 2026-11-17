@@ -23,6 +23,7 @@ internal sealed partial class WorldRenderComposer(
     private readonly Part<Landmarks.Input, IReadOnlyList<MapObject>> landmarksPart = new(Landmarks.Build);
     private readonly Part<MapFeatures.Input, IReadOnlyList<MapObject>> mapFeaturesPart = new(MapFeatures.Build);
     private readonly Part<MapObjects.Input, IReadOnlyList<MapObject>> mapObjectsPart = new(MapObjects.Build);
+    private readonly Part<Minimap.HiddenInput, IReadOnlyList<WorldPosition>> minimapHiddenPart = new(Minimap.BuildHidden);
     private readonly Part<Minimap.Input, MinimapState> minimapPart = new(Minimap.Build);
     private readonly Part<Mountains.Input, IReadOnlyList<MapObject>> mountainsPart = new(Mountains.Build);
     private readonly Part<Objectives.Input, IReadOnlyList<ObjectiveMarker>> objectivesPart = new(Objectives.Build);
@@ -64,7 +65,8 @@ internal sealed partial class WorldRenderComposer(
         IReadOnlyList<MapObject> mapObjects = mapObjectsPart.Resolve(new MapObjects.Input(landmarks, mountains, sites, mapFeatures, resourceNodes, rods, tombs, bags, fortifications));
         IReadOnlyList<ObjectiveMarker> objectiveMarkers = objectivesPart.Resolve(new Objectives.Input(objectives, visibility, animatedStackId));
         IReadOnlyList<AmbientSound> ambientSounds = ambientSoundsPart.Resolve(new AmbientSounds.Input(state.Fortifications, state.Landmarks, state.Sites, state.ResourceNodes, playerRaces, visibility));
-        MinimapState minimap = minimapPart.Resolve(new Minimap.Input(state.Map, state.Fortifications, state.Stacks, playerRaces, visibility, request.ViewPlayerId, request.FogEnabled));
+        IReadOnlyList<WorldPosition> minimapHidden = minimapHiddenPart.Resolve(new Minimap.HiddenInput(visibility, request.FogEnabled));
+        MinimapState minimap = minimapPart.Resolve(new Minimap.Input(state.Map, minimapHidden, state.Fortifications, state.Stacks, playerRaces, visibility, request.ViewPlayerId));
 
         ReachOverlay? reach = null;
         List<Highlight> highlights = [];
