@@ -93,6 +93,12 @@ spread preview (commit `caab9b3`). Each section is meant as a separate task.
     where it meets a road the pieces turn into junctions and crossroads
   - the next click lays it and the road carries on from that tile; the same tile again or Esc stops
   - Shift+click removes a road tile; a click where a road can't go, or can't reach, says why; Ctrl+Z undoes
+- Locations (new): tool "Locations" and list (L)
+  - click places a named zone (1x1 to 7x7, + / -), its name typed in the list row; click selects, drag moves (snaps
+    onto the map, Esc puts it back), Ctrl+click places a zone inside another, Shift+click removes; X/Y boxes
+  - drawn as pale squares with names while the tool or list is on; the hover line lists every zone on a tile
+  - list over the left of the map: sorted by name, search, size and position, rename in the row, delete, click to go
+    there; saved as `SLoc` rows with Tscen names, never shown in the game
 - Placement preview (new), for every tool:
   - green tiles where the object or brush goes, red where a tile blocks it, amber where a tile visibly changes
     (forest cleared, a whole mountain removed, water turned into land)
