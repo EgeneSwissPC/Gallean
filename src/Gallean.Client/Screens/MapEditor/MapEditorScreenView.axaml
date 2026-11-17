@@ -327,6 +327,24 @@
                      Classes="caption"
                      TextWrapping="Wrap"
                      Foreground="{StaticResource SecondaryTextBrush}" />
+          <!-- The land spread preview: like the unit level bar, steps the land forward by turns. -->
+          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center" Margin="0,8,0,0">
+            <Button x:Name="SpreadDownTenButton" Classes="pill" Height="28" Padding="10,0" Content="-10" Command="{Binding SpreadDownTenCommand}" />
+            <Button x:Name="SpreadDownButton" Classes="pill" Width="28" Height="28" Padding="0" Content="-" Command="{Binding SpreadDownCommand}" />
+            <TextBlock Text="{Binding SpreadTurnText}"
+                       Classes="body"
+                       Foreground="{StaticResource PrimaryTextBrush}"
+                       VerticalAlignment="Center"
+                       TextAlignment="Center"
+                       MinWidth="120" />
+            <Button x:Name="SpreadUpButton" Classes="pill" Width="28" Height="28" Padding="0" Content="+" Command="{Binding SpreadUpCommand}" />
+            <Button x:Name="SpreadUpTenButton" Classes="pill" Height="28" Padding="10,0" Content="+10" Command="{Binding SpreadUpTenCommand}" />
+          </StackPanel>
+          <Button x:Name="BackToMapButton" Classes="pill" Height="28" HorizontalAlignment="Center" Padding="12,0" Content="{local:Text 'Back to the map'}" Command="{Binding BackToMapCommand}" IsVisible="{Binding IsSpreadPreview}" />
+          <TextBlock Text="{local:Text 'Land spread preview: capitals, villages and rods grow their land every turn as in the game, with nobody moving or fighting. Nothing is edited while a later turn is shown.'}"
+                     Classes="caption"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource SecondaryTextBrush}" />
           <Grid Margin="16,8,14,0">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*" />

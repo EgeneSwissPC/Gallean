@@ -13,6 +13,9 @@ public sealed record CustomMapEconomyRow(WorldResourceType Type, int Resources, 
 // its rods, and one row per resource type it has or earns.
 public sealed record CustomMapEconomyRace(WorldRace Race, int LandTiles, int LandPercent, int Rods, ImmutableArray<CustomMapEconomyRow> Rows)
 {
+    // Where the resources on its land stand.
+    public ImmutableArray<WorldPosition> ResourcePositions { get; init; } = [];
+
     public CustomMapEconomyRow? GetRow(WorldResourceType type)
     {
         return Rows.FirstOrDefault(row => row.Type == type);
@@ -46,6 +49,7 @@ public sealed record CustomMapEconomy(ImmutableArray<CustomMapEconomyRace> Races
         WorldPlan plan = WorldPlan.For(average);
         Dictionary<WorldPlayerId, Dictionary<WorldResourceType, int>> counts = [];
         Dictionary<WorldResourceType, int> unclaimed = [];
+        Dictionary<WorldPlayerId, List<WorldPosition>> positions = [];
 
         foreach (WorldResourceNode node in average.ResourceNodes.Values)
         {
@@ -54,6 +58,11 @@ public sealed record CustomMapEconomy(ImmutableArray<CustomMapEconomyRace> Races
                 : unclaimed;
 
             bucket[node.ResourceType] = bucket.GetValueOrDefault(node.ResourceType) + 1;
+
+            if (plan.GetLandOwner(node.Position) is { } landOwner)
+            {
+                (positions.TryGetValue(landOwner, out List<WorldPosition>? list) ? list : positions[landOwner] = []).Add(node.Position);
+            }
         }
 
         List<CustomMapEconomyRace> races = [];
@@ -87,7 +96,10 @@ public sealed record CustomMapEconomy(ImmutableArray<CustomMapEconomyRace> Races
                 tiles,
                 TerrainTransformCalculator.GetTransformedPercentage(average.Map, terrain),
                 average.Rods.Values.Count(rod => rod.OwnerId == player.Id),
-                [.. rows]));
+                [.. rows])
+            {
+                ResourcePositions = [.. positions.GetValueOrDefault(player.Id) ?? []]
+            });
         }
 
         return new CustomMapEconomy(

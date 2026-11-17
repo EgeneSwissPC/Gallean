@@ -1032,6 +1032,13 @@
     "Same for all races": "Одинаково для всех рас",
     "The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.": "Мана своей расы переходит в ману своей расы у каждой. В игре игрок-человек получает 300% на лёгком уровне, 50% на трудном и 25% на очень трудном; компьютер получает столько, сколько задано.",
     "Start: {0}": "Старт: {0}",
-    "Start: nothing": "Старт: ничего"
+    "Start: nothing": "Старт: ничего",
+    "The map now": "Карта сейчас",
+    "After 1 turn": "Через 1 ход",
+    "After {0} turns": "Через ходов: {0}",
+    "Back to the map": "Вернуться к карте",
+    "{0} (preview, nothing is edited): click goes back to the map": "{0} (предпросмотр, ничего не меняется): щелчок возвращает к карте",
+    "Land spread preview: capitals, villages and rods grow their land every turn as in the game, with nobody moving or fighting. Nothing is edited while a later turn is shown.": "Предпросмотр распространения земли: столицы, деревни и жезлы расширяют свою землю каждый ход, как в игре, если никто не ходит и не сражается. Пока показан более поздний ход, ничего не меняется.",
+    "Turn {0}: computing...": "Ход {0}: расчёт..."
   }
 }

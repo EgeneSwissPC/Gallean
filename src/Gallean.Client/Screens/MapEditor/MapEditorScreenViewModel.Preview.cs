@@ -56,7 +56,7 @@ internal sealed partial class MapEditorScreenViewModel
         UpdateRoadGhost();
         UpdateEconomy();
         MapEditorPlacementPreview preview = hoverTile is { } tile && IsPreviewEnabled && !previewSuspended && PositionInfo is null
-            ? BuildPreview(tile)
+            ? IsSpreadPreview ? SpreadHoverPreview() : BuildPreview(tile)
             : MapEditorPlacementPreview.None;
         IReadOnlyList<WorldPosition> highlight = GetEconomyHighlight();
 
