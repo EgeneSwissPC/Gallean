@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Avalonia.Media;
 using SkiaSharp;
 using static Gallean.Client.WorldRenderState;
 
@@ -234,5 +235,69 @@ public sealed class WorldRenderContentProviderTests
 
         Assert.That(first.TerrainExpansion, Is.Not.Null);
         CheckSameState(first, second);
+    }
+
+    [Test]
+    public void MinimapMarkerMoveTest()
+    {
+        using TestAssetProvider assets = CreateAssets();
+        WorldRenderContentProvider provider = new();
+        WorldRenderState state = BuildState();
+        IReadOnlyList<WorldPosition> hidden = [new WorldPosition(0, 0), new WorldPosition(1, 0), new WorldPosition(5, 5)];
+        MinimapState.Marker marker = new(new WorldPosition(2, 2), Colors.Red, MinimapState.MarkerType.Stack);
+
+        WorldRenderContent first = provider.Get(state with { Minimap = new MinimapState(6, 6, hidden, [marker]) }, assets);
+        WorldRenderContent moved = provider.Get(state with { Minimap = new MinimapState(6, 6, hidden, [marker with { Position = new WorldPosition(3, 2) }]) }, assets);
+        WorldRenderContent revealed = provider.Get(state with { Minimap = new MinimapState(6, 6, [new WorldPosition(5, 5)], [marker]) }, assets);
+
+        // The markers are drawn over the image by MinimapRenderer: a moving stack must not rebuild it, a fog change must.
+        Assert.That(moved.MinimapImage, Is.SameAs(first.MinimapImage));
+        Assert.That(revealed.MinimapImage, Is.Not.SameAs(first.MinimapImage));
+    }
+
+    [Test]
+    public void FogUpdateMatchesFreshBuildTest()
+    {
+        using TestAssetProvider assets = CreateAssets();
+        WorldRenderContentProvider provider = new();
+        WorldRenderer renderer = new();
+        WorldRenderState state = BuildState();
+        WorldPosition[] all = [.. state.FogTiles.Select(tile => tile.Position)];
+
+        // Reveal a growing area, conceal part of it again, then clear the fog completely and bring it back.
+        HashSet<WorldPosition>[] explored =
+        [
+            [],
+            [new WorldPosition(2, 2)],
+            [.. all.Where(position => Math.Abs(position.X - 2) <= 1 && Math.Abs(position.Y - 2) <= 1)],
+            [.. all.Where(position => position.X <= 3 && position.Y >= 1)],
+            [.. all.Where(position => position.X == 0 || position.Y == 5)],
+            [.. all],
+            [new WorldPosition(5, 0)]
+        ];
+
+        foreach (HashSet<WorldPosition> step in explored)
+        {
+            WorldRenderState fogged = state with { FogTiles = [.. all.Where(position => !step.Contains(position)).Select(position => new FogTile(position))] };
+
+            SKColor[] updated = Render(renderer, provider.Get(fogged, assets), fogged, assets);
+            SKColor[] fresh = Render(renderer, new WorldRenderContentProvider().Get(fogged, assets), fogged, assets);
+
+            Assert.That(updated, Is.EqualTo(fresh), $"{step.Count} explored tiles");
+        }
+    }
+
+    private static SKColor[] Render(WorldRenderer renderer, WorldRenderContent content, WorldRenderState state, TestAssetProvider assets)
+    {
+        SKImageInfo info = new(512, 320, SKColorType.Rgba8888, SKAlphaType.Premul);
+        using SKSurface surface = SKSurface.Create(info);
+        surface.Canvas.Clear(SKColors.White);
+        surface.Canvas.Translate(256, 32);
+        renderer.Render(surface.Canvas, content, state, assets, TimeSpan.Zero, TimeSpan.Zero, TimeSpan.Zero, renderResolution: 1.0f, hitboxOverlay: false);
+
+        using SKBitmap bitmap = new(info);
+        surface.ReadPixels(info, bitmap.GetPixels(), bitmap.RowBytes, 0, 0);
+
+        return bitmap.Pixels;
     }
 }

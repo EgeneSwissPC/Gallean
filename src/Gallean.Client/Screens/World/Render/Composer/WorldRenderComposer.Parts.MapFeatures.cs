@@ -18,11 +18,11 @@ internal sealed partial class WorldRenderComposer
                 for (int x = 0; x < map.Width; x++)
                 {
                     WorldPosition position = new(x, y);
+                    WorldMapCell cell = map.GetCellAt(position);
 
-                    if (IsObjectVisible(input.Visibility, position))
+                    // The feature check first: IsObjectVisible scans an 8x8 window around hidden tiles.
+                    if (cell.Feature == WorldMapFeature.Forest && IsObjectVisible(input.Visibility, position))
                     {
-                        WorldMapCell cell = map.GetCellAt(position);
-
                         MapTileFeature? item = cell.Feature switch
                         {
                             WorldMapFeature.Forest => new MapTileFeature(

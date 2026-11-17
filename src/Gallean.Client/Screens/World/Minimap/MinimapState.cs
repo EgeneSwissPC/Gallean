@@ -35,7 +35,7 @@ internal sealed record MinimapState(
 
         return MapWidth == other.MapWidth &&
                MapHeight == other.MapHeight &&
-               HiddenPositions.SequenceEqual(other.HiddenPositions) &&
+               (ReferenceEquals(HiddenPositions, other.HiddenPositions) || HiddenPositions.SequenceEqual(other.HiddenPositions)) &&
                Markers.SequenceEqual(other.Markers);
     }
 

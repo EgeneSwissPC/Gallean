@@ -49,12 +49,16 @@ internal sealed partial class WorldRenderContentProvider
     private readonly Part<MapTerrain, SpriteAtlas> coastAtlasPart = new();
     private readonly TexturePart coastAtlasTexturePart = new();
     private readonly Part<DirectSpriteContent, DirectSpriteContent, IReadOnlyList<DirectSprite>> directSpritesPart = new(static content => content);
+    private readonly Fog fogBuilder = new();
     private readonly Part<IReadOnlyList<FogTile>, FogContent> fogPart = new();
     private readonly Part<MapTerrain, IReadOnlyList<GroundLayer>> groundLayersPart = new();
     private readonly Part<IReadOnlyList<MapObject>, IReadOnlyList<HitTarget>> hitTargetsPart = new();
     private readonly OverlayPart<IReadOnlyList<MapTileBorder>, LandOverlayKey> landOverlayPart = new();
     private readonly Part<MapTerrain, SKPath> mapClipPart = new();
-    private readonly Part<MinimapContent, MinimapContent, SKImage> minimapImagePart = new(static content => content);
+    // The image holds the terrain, the objects and the hidden tiles; the markers are drawn on top by MinimapRenderer.
+    // Keying on the hidden tiles list instead of the whole MinimapState keeps a moving stack from rebuilding it.
+    private readonly Part<MinimapContent, (SKImage, ObjectLayer, int, int, IReadOnlyList<WorldPosition>), SKImage> minimapImagePart =
+        new(static content => (content.TerrainImage, content.Objects, content.Minimap.MapWidth, content.Minimap.MapHeight, content.Minimap.HiddenPositions));
     private readonly Part<MapTerrain, SKImage> minimapTerrainPart = new();
     private readonly OverlayPart<IReadOnlyList<MapObject>, AssetSpriteKey> mountainCloudMaskPart = new();
     private readonly Part<IReadOnlyList<MapObject>, IReadOnlyList<MountainCloudSprite>> mountainCloudsPart = new();
@@ -91,7 +95,7 @@ internal sealed partial class WorldRenderContentProvider
         IReadOnlyList<MountainCloudSprite> mountainClouds = mountainCloudsPart.Resolve(state.MapObjects, objects => BuildMountainClouds(objects, assets));
         StackLayer stackLayer = stackLayerPart.Resolve(state.Stacks, objects => BuildStackLayer(objects, assets));
         IReadOnlyList<DirectSprite> directSprites = directSpritesPart.Resolve(new DirectSpriteContent(objectLayer.DirectSprites, stackLayer.DirectSprites), MergeDirectSprites);
-        FogContent fog = fogPart.Resolve(state.FogTiles, fogTiles => Fog.Build(fogTiles, state.Terrain.Map));
+        FogContent fog = fogPart.Resolve(state.FogTiles, fogTiles => fogBuilder.Build(fogTiles, state.Terrain.Map));
         ReachContent reach = reachPart.Resolve(state, source => Reach.Build(source.Reach));
         IReadOnlyList<HighlightLayer> highlights = highlightsPart.Resolve(state, source => Highlights.Build(source.Highlights, assets));
         SKPath mapClip = mapClipPart.Resolve(state.Terrain, terrain => BuildMapClip(terrain.Map));
@@ -960,17 +964,32 @@ internal sealed partial class WorldRenderContentProvider
         float halfWidth = (float)(layout.HalfWidth + MinimapTileOverlap);
         float halfHeight = (float)(layout.HalfHeight + (MinimapTileOverlap / 2.0));
         SKPathBuilder builder = new();
+        IReadOnlyList<WorldPosition> hidden = minimap.HiddenPositions;
+        int index = 0;
 
-        foreach (WorldPosition position in minimap.HiddenPositions)
+        // One shape per run of hidden tiles along a row instead of one diamond per tile (a large map has 100k).
+        // The layout is 2:1 isometric and so is the enlarged diamond, so stepping along X moves parallel to two of its
+        // edges and the diamonds of a run join into a parallelogram: the first tile's top and left corners and the
+        // last tile's right and bottom corners.
+        while (index < hidden.Count)
         {
-            Point center = layout.CellToScreen(position.X, position.Y);
-            float x = (float)center.X;
-            float y = (float)center.Y;
+            WorldPosition first = hidden[index];
+            WorldPosition last = first;
 
-            builder.MoveTo(x, y - halfHeight);
-            builder.LineTo(x + halfWidth, y);
-            builder.LineTo(x, y + halfHeight);
-            builder.LineTo(x - halfWidth, y);
+            while (index + 1 < hidden.Count && hidden[index + 1] == last with { X = last.X + 1 })
+            {
+                last = hidden[++index];
+            }
+
+            index++;
+
+            Point start = layout.CellToScreen(first.X, first.Y);
+            Point end = layout.CellToScreen(last.X, last.Y);
+
+            builder.MoveTo((float)start.X, (float)start.Y - halfHeight);
+            builder.LineTo((float)end.X + halfWidth, (float)end.Y);
+            builder.LineTo((float)end.X, (float)end.Y + halfHeight);
+            builder.LineTo((float)start.X - halfWidth, (float)start.Y);
             builder.Close();
         }
 

@@ -10,20 +10,26 @@ internal sealed partial class WorldRenderComposer
     {
         public static MinimapState Build(
             WorldMap map,
+            IReadOnlyList<WorldPosition> hiddenPositions,
             ImmutableSortedDictionary<WorldFortificationId, WorldFortification> fortifications,
             ImmutableSortedDictionary<WorldStackId, WorldStack> stacks,
             PlayerRaces playerRaces,
             WorldVisibility visibility,
-            WorldPlayerId viewPlayerId,
-            bool fogEnabled)
+            WorldPlayerId viewPlayerId)
+        {
+            return new MinimapState(map.Width, map.Height, hiddenPositions, [.. EnumerateMarkers(fortifications, stacks, playerRaces, visibility, viewPlayerId)]);
+        }
+
+        // Row by row, left to right: DrawMinimapHiddenTiles merges consecutive tiles of a row.
+        public static IReadOnlyList<WorldPosition> BuildHiddenPositions(WorldVisibility visibility, bool fogEnabled)
         {
             List<WorldPosition> hiddenPositions = [];
 
             if (fogEnabled)
             {
-                for (int y = 0; y < map.Height; y++)
+                for (int y = 0; y < visibility.Height; y++)
                 {
-                    for (int x = 0; x < map.Width; x++)
+                    for (int x = 0; x < visibility.Width; x++)
                     {
                         WorldPosition position = new(x, y);
 
@@ -35,7 +41,7 @@ internal sealed partial class WorldRenderComposer
                 }
             }
 
-            return new MinimapState(map.Width, map.Height, hiddenPositions, [.. EnumerateMarkers(fortifications, stacks, playerRaces, visibility, viewPlayerId)]);
+            return hiddenPositions;
         }
 
         private static IEnumerable<MinimapState.Marker> EnumerateMarkers(
