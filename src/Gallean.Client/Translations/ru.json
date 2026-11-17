@@ -1009,6 +1009,7 @@
     "1 new road tile": "1 новая клетка дороги",
     "{0} new road tiles": "новых клеток дороги: {0}",
     "click lays it": "щелчок прокладывает её",
-    "Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads.": "Щёлкните клетку, чтобы начать дорогу, и ведите мышь: дорога пойдёт лучшим путём в обход воды, гор и построек и соединится с встреченными дорогами. Щёлкните ещё раз, чтобы проложить её и продолжить оттуда. Щёлкните последнюю клетку ещё раз или нажмите Esc, чтобы закончить. Shift+щелчок убирает клетку дороги. По дорогам армии ходят быстрее."
+    "Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads.": "Щёлкните клетку, чтобы начать дорогу, и ведите мышь: дорога пойдёт лучшим путём в обход воды, гор и построек и соединится с встреченными дорогами. Щёлкните ещё раз, чтобы проложить её и продолжить оттуда. Щёлкните последнюю клетку ещё раз или нажмите Esc, чтобы закончить. Shift+щелчок убирает клетку дороги. По дорогам армии ходят быстрее.",
+    "a rod": "жезл власти"
   }
 }

@@ -92,10 +92,15 @@ public sealed record CustomMapBag(int Id, WorldPosition Position, int Variant, I
 // A landmark (WorldLandmark): decoration from the game's GLmark list (cemeteries, houses, statues, rocks...).
 // Like in the game it blocks movement on all its tiles. It may stand on land or water (the game then draws its
 // water sprite); landmarks of the mountain type also make their tiles count as mountains when the map loads.
-public sealed record CustomMapLandmark(int Id, WorldPosition TopLeft, WorldLandmarkDefinitionId Type, int Width, int Height)
+// Mountain: a landmark of the mountain type (WorldLandmarkDefinition.Mountain). In the game its tiles count as
+// mountains; the map keeps them free and remembers the flag for the rules that need it (land spread from rods).
+public sealed record CustomMapLandmark(int Id, WorldPosition TopLeft, WorldLandmarkDefinitionId Type, int Width, int Height, bool Mountain = false)
 {
     public WorldFootprint Footprint => new(TopLeft, Width, Height);
 }
+
+// A rod of a playable race (WorldRod). In the game it blocks armies and turns land into its race's land every turn.
+public sealed record CustomMapRod(int Id, WorldPosition Position, WorldRace Owner);
 
 // A merchant (Items), mage tower (Spells), mercenary camp (Units) or trainer (nothing for sale).
 public sealed record CustomMapSite(

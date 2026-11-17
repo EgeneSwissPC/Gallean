@@ -42,6 +42,12 @@ public sealed partial class CustomMap
             return CustomMapTileReason.Structure;
         }
 
+        if (GetRodAt(position) is not null)
+        {
+            // Rods block armies, so a road through one would lead nowhere.
+            return CustomMapTileReason.Rod;
+        }
+
         return GetLandmarkAt(position) is not null ? CustomMapTileReason.Landmark : CustomMapTileReason.None;
     }
 

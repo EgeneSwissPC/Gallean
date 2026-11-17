@@ -23,6 +23,9 @@ public enum CustomMapTileReason
     RemovesMountain,
     WaterToLand,
 
+    // A rod turns the tile into its race's land.
+    ClaimsLand,
+
     // Blocked.
     OutsideMap,
     Structure,
@@ -32,7 +35,10 @@ public enum CustomMapTileReason
     Army,
     Resource,
     Bag,
-    WrongOwner
+    WrongOwner,
+
+    // A rod stands here (an object in the way), or a rod is too close for another one.
+    Rod
 }
 
 public readonly record struct CustomMapPreviewTile(WorldPosition Position, CustomMapTileStatus Status, CustomMapTileReason Reason);

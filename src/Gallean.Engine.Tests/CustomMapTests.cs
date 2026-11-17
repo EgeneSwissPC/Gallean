@@ -1072,6 +1072,296 @@ public sealed class CustomMapTests
         TestContext.Out.WriteLine($"Turn {session.World.State.TurnInfo.TurnNumber}, Empire gold {goldBefore} -> {session.World.State.Players[empire.Id].Resources.Gold}");
     }
 
+    [Test]
+    public void RodRulesTest()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(1);
+
+        // On open land: the rod turns 2 tiles into its race's land, in the game's order (south, then north first).
+        CustomMapRod rod = map.PlaceRod(new WorldPosition(14, 14), WorldRace.Human).Rod!;
+        Assert.That((rod.Id, rod.Position, rod.Owner), Is.EqualTo((1, new WorldPosition(14, 14), WorldRace.Human)));
+        Assert.That(map.GetRodAt(new WorldPosition(14, 14)), Is.EqualTo(rod));
+        Assert.That(TerrainTiles(map, WorldMapTerrain.Human).Where(tile => tile.GetDistance(new WorldPosition(14, 14)) <= 3),
+            Is.EquivalentTo(new[] { new WorldPosition(14, 15), new WorldPosition(14, 13) }));
+        Assert.That(map.GetCell(new WorldPosition(14, 14)).Terrain, Is.EqualTo(WorldMapTerrain.Neutral), "The rod's own tile isn't claimed.");
+
+        // No other rod within 2 tiles; the preview points at the rod that is too close.
+        CustomMapPlacementPreview tooClose = map.PreviewRod(new WorldPosition(16, 16), WorldRace.Elf);
+        Assert.That(tooClose.Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(tooClose.FirstBlocked!.Value.Position, Is.EqualTo(new WorldPosition(14, 14)));
+        Assert.That(map.PlaceRod(new WorldPosition(16, 14), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Blocked));
+        Assert.That(map.PlaceRod(new WorldPosition(14, 14), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "A rod is already there.");
+
+        // Water, mountains, capitals and landmarks block it; an army, resource or bag is in the way.
+        map.PlaceLandmark(new WorldPosition(20, 4), Landmark(1));
+        map.PlaceStack(new WorldPosition(30, 14), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader)));
+        map.PlaceResource(new WorldPosition(12, 20), WorldResourceType.Gold);
+        map.PlaceBag(new WorldPosition(16, 22), 0);
+        Assert.That(map.PlaceRod(new WorldPosition(24, 24), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Water.");
+        Assert.That(map.PlaceRod(new WorldPosition(36, 10), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Mountain.");
+        Assert.That(map.PlaceRod(new WorldPosition(6, 6), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Capital.");
+        Assert.That(map.PlaceRod(new WorldPosition(20, 4), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Blocked), "Landmark.");
+        Assert.That(map.PlaceRod(new WorldPosition(30, 14), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Occupied), "Army.");
+        Assert.That(map.PlaceRod(new WorldPosition(12, 20), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Occupied), "Resource.");
+        Assert.That(map.PlaceRod(new WorldPosition(16, 22), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.Occupied), "Bag.");
+        Assert.That(map.PlaceRod(new WorldPosition(60, 4), WorldRace.Human).Error, Is.EqualTo(CustomMapPlacementError.OutsideMap));
+
+        // Only races on the map: no neutral rods.
+        Assert.That(map.PlaceRod(new WorldPosition(30, 20), WorldRace.Neutral).Error, Is.EqualTo(CustomMapPlacementError.UnknownOwner));
+        Assert.That(map.PlaceRod(new WorldPosition(30, 20), WorldRace.Dwarf).Error, Is.EqualTo(CustomMapPlacementError.UnknownOwner));
+
+        // Forests and roads are fine and stay.
+        Assert.That(map.PlaceRod(new WorldPosition(10, 30), WorldRace.Elf).Error, Is.Null);
+        Assert.That(map.GetCell(new WorldPosition(10, 30)).Feature, Is.EqualTo(WorldMapFeature.Forest));
+        Assert.That(map.GetCell(new WorldPosition(10, 31)), Is.EqualTo(map.GetCell(new WorldPosition(10, 31)) with { Terrain = WorldMapTerrain.Elf, Feature = WorldMapFeature.Forest }));
+        Assert.That(map.SetRoad(new WorldPosition(20, 10), true), Is.True);
+        Assert.That(map.PlaceRod(new WorldPosition(20, 10), WorldRace.Human).Error, Is.Null);
+        Assert.That(map.GetCell(new WorldPosition(20, 10)).Feature, Is.EqualTo(WorldMapFeature.Road));
+
+        // Nothing else goes on a rod; water and mountain brushes leave it alone, land can be painted under it.
+        WorldPosition at = new(14, 14);
+        Assert.That(map.PlaceStack(at, WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))).Error, Is.EqualTo(CustomMapStackError.Blocked));
+        Assert.That(map.PlaceResource(at, WorldResourceType.Gold), Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(map.PlaceBag(at, 0).Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(map.PlaceVillage(new WorldPosition(12, 12), 1, WorldRace.Neutral, "").Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(map.PlaceLandmark(new WorldPosition(13, 13), Landmark(3)).Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(map.SetRoad(at, true), Is.False);
+        Assert.That(map.FindRoadPath(new WorldPosition(14, 17), new WorldPosition(14, 11))!.Value, Does.Not.Contain(at), "Roads go around rods.");
+        Assert.That(map.Paint(at, 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.Paint(at, 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random), Is.False);
+        Assert.That(map.Paint(at, 0, CustomMapBrush.Land, WorldMapTerrain.Undead, random), Is.True);
+        Assert.That(map.GetCell(at).Terrain, Is.EqualTo(WorldMapTerrain.Undead));
+
+        // Removing a rod leaves its land, as in the game; IDs are not reused and copies keep their rods.
+        CustomMap copy = map.Clone();
+        Assert.That(map.RemoveRod(at), Is.True);
+        Assert.That(map.RemoveRod(at), Is.False);
+        Assert.That(map.GetCell(new WorldPosition(14, 15)).Terrain, Is.EqualTo(WorldMapTerrain.Human));
+        Assert.That((map.Rods.Count, copy.Rods.Count), Is.EqualTo((2, 3)));
+        Assert.That(map.PlaceRod(new WorldPosition(14, 14), WorldRace.Human).Rod!.Id, Is.EqualTo(4));
+    }
+
+    [Test]
+    public void RodResourceTest()
+    {
+        CustomMap map = CreateMap();
+
+        // Land that reaches a resource takes the whole 3x3 around it along: the mine changes owner.
+        map.PlaceResource(new WorldPosition(34, 18), WorldResourceType.Gold);
+        CustomMapPlacementPreview preview = map.PreviewRod(new WorldPosition(34, 20), WorldRace.Elf);
+        Assert.That(preview.Error, Is.Null);
+        Assert.That(preview.Count(CustomMapTileReason.ClaimsLand), Is.EqualTo(10), "2 tiles plus the mine's 3x3.");
+        Assert.That(TilesWith(preview, CustomMapTileStatus.Ok), Is.EquivalentTo(new[] { new WorldPosition(34, 20) }));
+        Assert.That(map.GetLandOwner(new WorldPosition(34, 18)), Is.Null);
+        map.PlaceRod(new WorldPosition(34, 20), WorldRace.Elf);
+        Assert.That(map.GetLandOwner(new WorldPosition(34, 18)), Is.EqualTo(WorldRace.Elf));
+        Assert.That(new WorldFootprint(new WorldPosition(33, 17), 3, 3).EnumerateTiles().All(tile => map.GetLandOwner(tile) == WorldRace.Elf), Is.True);
+        Assert.That(TerrainTiles(map, WorldMapTerrain.Elf).Count(tile => tile.GetDistance(new WorldPosition(34, 19)) <= 3), Is.EqualTo(10));
+
+        // A rod next to a mine protects it: another race's land doesn't spread into the 3x3 around it.
+        map.PlaceResource(new WorldPosition(40, 30), WorldResourceType.LifeMana);
+        map.PlaceRod(new WorldPosition(41, 31), WorldRace.Human);
+        Assert.That(map.GetLandOwner(new WorldPosition(40, 30)), Is.EqualTo(WorldRace.Human));
+        CustomMapPlacementPreview blocked = map.PreviewRod(new WorldPosition(40, 28), WorldRace.Elf);
+        Assert.That(blocked.Tiles.Where(tile => tile.Reason == CustomMapTileReason.ClaimsLand).Select(tile => tile.Position),
+            Is.EquivalentTo(new[] { new WorldPosition(40, 27), new WorldPosition(41, 28) }), "(40, 29) is next to the protected mine, so it is skipped.");
+        map.PlaceRod(new WorldPosition(40, 28), WorldRace.Elf);
+        Assert.That(map.GetLandOwner(new WorldPosition(40, 30)), Is.EqualTo(WorldRace.Human));
+
+        // Capitals and villages of a race stop the spread; tiles that are already the race's land are walked over.
+        CustomMap open = CustomMap.Create("S600SC0000", "Open", 32, WorldMapTerrain.Neutral, [WorldRace.Human, WorldRace.Elf]);
+        open.PlaceCapital(WorldRace.Elf, new WorldPosition(10, 11));
+        open.PlaceRod(new WorldPosition(10, 10), WorldRace.Human);
+        Assert.That(TerrainTiles(open, WorldMapTerrain.Human), Is.EquivalentTo(new[] { new WorldPosition(10, 9), new WorldPosition(11, 10) }), "South is the Elf capital.");
+        open.Paint(new WorldPosition(20, 20), 1, CustomMapBrush.Land, WorldMapTerrain.Human, new Random(1));
+        open.PlaceRod(new WorldPosition(20, 20), WorldRace.Human);
+        Assert.That(TerrainTiles(open, WorldMapTerrain.Human).Where(tile => tile.GetDistance(new WorldPosition(20, 20)) == 2),
+            Is.EquivalentTo(new[] { new WorldPosition(20, 22), new WorldPosition(20, 18) }), "Inside its own land the rod claims the nearest tiles beyond it.");
+    }
+
+    private static IEnumerable<WorldPosition> TerrainTiles(CustomMap map, WorldMapTerrain terrain)
+    {
+        for (int y = 0; y < map.Size; y++)
+        {
+            for (int x = 0; x < map.Size; x++)
+            {
+                if (map.GetCell(new WorldPosition(x, y)).Terrain == terrain)
+                {
+                    yield return new WorldPosition(x, y);
+                }
+            }
+        }
+    }
+
+    // A map for the rod tests: one of everything, race land patches, villages of both kinds, a mountain-type
+    // landmark, a cluster of resources and rods of both races, one of them guarding a mine.
+    private CustomMap CreateRodMap()
+    {
+        CustomMap map = CreateBusyMap();
+        Random random = new(3);
+
+        map.PlaceVillage(new WorldPosition(26, 10), 1, WorldRace.Neutral, "Free");
+        map.PlaceVillage(new WorldPosition(34, 30), 2, WorldRace.Elf, "Grove");
+        map.PlaceLandmark(new WorldPosition(10, 36), Landmark(3, mountain: true));
+        map.Paint(new WorldPosition(20, 36), 2, CustomMapBrush.Land, WorldMapTerrain.Human, random);
+        map.Paint(new WorldPosition(40, 20), 2, CustomMapBrush.Land, WorldMapTerrain.Elf, random);
+        map.Paint(new WorldPosition(14, 40), 1, CustomMapBrush.Forest, WorldMapTerrain.Neutral, random);
+
+        foreach (WorldPosition position in new WorldPosition[] { new(24, 34), new(25, 36), new(27, 35), new(36, 22), new(8, 40), new(30, 42), new(44, 12) })
+        {
+            Assert.That(map.PlaceResource(position, WorldResourceType.Gold), Is.Null, $"Resource at {position}.");
+        }
+
+        Assert.That(map.PlaceRod(new WorldPosition(31, 43), WorldRace.Elf).Error, Is.Null, "Guards the mine at 30, 42.");
+        Assert.That(map.PlaceRod(new WorldPosition(22, 32), WorldRace.Human).Error, Is.Null);
+        Assert.That(map.PlaceRod(new WorldPosition(42, 14), WorldRace.Elf).Error, Is.Null);
+
+        return map;
+    }
+
+    // The editor's rod spread is a port of the game's: on every tile where a rod fits, for both races, placing it in
+    // the editor gives the same land as the game's ExpansionCalculator does for a rod planted on the loaded map.
+    [Test]
+    public void RodPaintAgreesWithGameTest()
+    {
+        CustomMap map = CreateRodMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State;
+        Assert.That(state.Rods.Count, Is.EqualTo(3));
+        Assert.That(state.Map.Cells.Select(cell => cell.Terrain), Is.EqualTo(map.Cells.Select(cell => cell.Terrain)), "The game loads the editor's land.");
+
+        int placed = 0;
+        int withResources = 0;
+
+        foreach (WorldRace race in new[] { WorldRace.Human, WorldRace.Elf })
+        {
+            WorldPlayerId playerId = state.Players.Values.Single(player => player.Race == race).Id;
+            WorldMapTerrain terrain = WorldHelpers.GetNativeTerrain(race);
+
+            for (int y = 0; y < map.Size; y++)
+            {
+                for (int x = 0; x < map.Size; x++)
+                {
+                    WorldPosition tile = new(x, y);
+
+                    if (map.PreviewRod(tile, race).Error is not null)
+                    {
+                        continue;
+                    }
+
+                    CustomMap copy = map.Clone();
+                    Assert.That(copy.PlaceRod(tile, race).Error, Is.Null);
+
+                    WorldRod rod = new(new WorldRodId("Rod0001"), playerId, tile);
+                    WorldState planted = state with { Rods = state.Rods.Add(rod.Id, rod) };
+                    WorldMap game = ExpansionCalculator.ExpandRodTerrain(planted, context, rod, terrain);
+
+                    Assert.That(copy.Cells.Select(cell => cell.Terrain), Is.EqualTo(game.Cells.Select(cell => cell.Terrain)), $"{race} rod at {tile}");
+
+                    placed++;
+
+                    if (copy.Cells.Select(cell => cell.Terrain).Zip(map.Cells.Select(cell => cell.Terrain)).Count(pair => pair.First != pair.Second) > CustomMap.RodTilesPerTurn)
+                    {
+                        withResources++;
+                    }
+                }
+            }
+        }
+
+        TestContext.Out.WriteLine($"{placed} rods compared, {withResources} took a resource's 3x3 along");
+        Assert.That(placed, Is.GreaterThan(1000));
+        Assert.That(withResources, Is.GreaterThan(20));
+    }
+
+    [Test]
+    public void RodSaveAndLoadTest()
+    {
+        CustomMap map = CreateRodMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        store.Save(map);
+
+        // Saved as SRod rows owned by the race's player, the first rods ever read from a scenario file.
+        ScenarioDatabase database = store.LoadDatabase(map.Id);
+        Assert.That(database.ScenarioRodsByScenario[new Db.ScenarioId(map.Id)].Select(row => (row.RodId.Value, row.OwnerId.Value, row.PositionX, row.PositionY)), Is.EquivalentTo(new[]
+        {
+            ("S600RO0001", "S600PL0002", 31, 43),
+            ("S600RO0002", "S600PL0001", 22, 32),
+            ("S600RO0003", "S600PL0002", 42, 14)
+        }));
+
+        WorldState state = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        Assert.That(state.Rods.Values.Select(rod => (rod.Id.Value, state.Players[rod.OwnerId].Race, rod.Position)), Is.EquivalentTo(new[]
+        {
+            (CustomMapWriter.GetRodId(map.Id, 1), WorldRace.Elf, new WorldPosition(31, 43)),
+            (CustomMapWriter.GetRodId(map.Id, 2), WorldRace.Human, new WorldPosition(22, 32)),
+            (CustomMapWriter.GetRodId(map.Id, 3), WorldRace.Elf, new WorldPosition(42, 14))
+        }));
+        Assert.That(WorldPlan.For(state).IsObstacleAt(new WorldPosition(22, 32)), Is.True, "Rods block armies.");
+
+        // Reopened, the map is the same; the editor's quick preview update shows rods too.
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Rods, Is.EquivalentTo(map.Rods));
+        Assert.That(reopened.Cells, Is.EqualTo(map.Cells));
+        Assert.That(reopened.Landmarks.Single(landmark => landmark.Mountain).TopLeft, Is.EqualTo(new WorldPosition(10, 36)), "Mountain-type flag read back.");
+        Assert.That(reopened.Landmarks, Is.EquivalentTo(map.Landmarks));
+
+        WorldState preview = CustomMapStore.ApplyTerrain(state with { Rods = ImmutableSortedDictionary<WorldRodId, WorldRod>.Empty }, map);
+        Assert.That(preview.Rods, Is.EqualTo(state.Rods));
+    }
+
+    // The AI plays a map with rods: the game spreads their land every turn.
+    [Test]
+    public void RodPlayTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        WorldPosition humanRod = new(20, 40);
+
+        map.PlaceRod(humanRod, WorldRace.Human);
+        map.PlaceRod(new WorldPosition(40, 20), WorldRace.Elf);
+        map.PlaceResource(new WorldPosition(20, 43), WorldResourceType.Gold);
+        store.Save(map);
+
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState aiState = scenario.State with
+        {
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = true })))
+        };
+        GameSession session = new(context, aiState);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        int HumanLandNearRod()
+        {
+            WorldMap world = session.World.State.Map;
+
+            return Enumerable.Range(0, world.Width * world.Height)
+                .Select(index => new WorldPosition(index % world.Width, index / world.Width))
+                .Count(position => position.GetDistance(humanRod) <= 4 && world.GetCellAt(position).Terrain == WorldMapTerrain.Human);
+        }
+
+        int before = HumanLandNearRod();
+        TestWorldAiRunner runner = new(session, context);
+
+        for (int i = 0; i < 9; i++)
+        {
+            runner.PlayTurn();
+        }
+
+        int after = HumanLandNearRod();
+        TestContext.Out.WriteLine($"Turn {session.World.State.TurnInfo.TurnNumber}: Empire land near its rod {before} -> {after}, rods {session.World.State.Rods.Count}");
+        Assert.That(session.World.State.Rods.Count, Is.GreaterThanOrEqualTo(2));
+        Assert.That(after, Is.GreaterThanOrEqualTo(before + (2 * CustomMap.RodTilesPerTurn)));
+    }
+
     // A map with one of everything close together, for the preview tests.
     private CustomMap CreateBusyMap()
     {
@@ -1187,6 +1477,30 @@ public sealed class CustomMapTests
                 {
                     Check("resource", map.PreviewResource(tile), copy => (copy.PlaceResource(tile, WorldResourceType.LifeMana), new WorldFootprint(tile, 1, 1)));
                 }
+
+                // Rods: the amber tiles are exactly the tiles whose land changes owner.
+                CustomMapPlacementPreview rodPreview = map.PreviewRod(tile, WorldRace.Human);
+                CustomMap rodCopy = map.Clone();
+                CustomMapPlacementError? rodError = rodCopy.PlaceRod(tile, WorldRace.Human).Error;
+                Assert.That(rodPreview.Error, Is.EqualTo(rodError), $"rod at {tile}");
+
+                if (rodError is null)
+                {
+                    HashSet<WorldPosition> claimed = [.. Enumerable.Range(0, map.Size * map.Size)
+                        .Where(index => map.Cells[index].Terrain != rodCopy.Cells[index].Terrain)
+                        .Select(index => new WorldPosition(index % map.Size, index / map.Size))];
+                    Assert.That(TilesWith(rodPreview, CustomMapTileStatus.Changes), Is.EquivalentTo(claimed), $"rod at {tile}");
+                    Assert.That(TilesWith(rodPreview, CustomMapTileStatus.Blocked), Is.Empty, $"rod at {tile}");
+                }
+                else
+                {
+                    Assert.That(rodCopy.Cells, Is.EqualTo(map.Cells), $"rod at {tile}");
+                    Assert.That(rodCopy.Rods, Is.Empty, $"rod at {tile}");
+                    Assert.That(TilesWith(rodPreview, CustomMapTileStatus.Blocked), Is.Not.Empty, $"rod at {tile}: a blocked placement shows what blocks it.");
+                }
+
+                (int rodFits, int rodBlocked) = counts.GetValueOrDefault("rod");
+                counts["rod"] = rodError is null ? (rodFits + 1, rodBlocked) : (rodFits, rodBlocked + 1);
 
                 // Armies: the editor probes the tile with an empty army, which fails with NoLeader when the tile is fine.
                 foreach (WorldRace owner in new[] { WorldRace.Neutral, WorldRace.Human })

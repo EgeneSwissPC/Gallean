@@ -21,7 +21,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     internal const int FirstVillageNumber = 0x100;
     internal const int FirstVillageUnitNumber = 0x8000;
     // Ruin guards: UNA000 + 6n + k. Ruins RU + n, bags BG + n, sites SI + n, scenario items IM + running number,
-    // landmarks MM + n (the original scenarios use MM for landmarks too).
+    // landmarks MM + n (the original scenarios use MM for landmarks too), rods RO + n.
     internal const int FirstRuinUnitNumber = 0xA000;
 
     // Capital garrisons set in the editor: units UNB000 + 6i + k for player slot i.
@@ -67,6 +67,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SMercs.json", rows.Mercenaries);
         WriteTable(stagingDirectory, "SLmark.json", BuildLandmarks(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SMapEl.json", BuildMapElements(map, scenarioId, prefix));
+        WriteTable(stagingDirectory, "SRod.json", BuildRods(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
         // Original scenarios all ship an event table; custom maps get an empty one so they load the same way.
         WriteTable(stagingDirectory, "SEvent.json", new List<Db.ScenarioEvent>());
@@ -122,6 +123,11 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     public static string GetLandmarkId(string mapId, int landmarkId)
     {
         return MakeId(mapId[..4], "MM", landmarkId).Value;
+    }
+
+    public static string GetRodId(string mapId, int rodId)
+    {
+        return MakeId(mapId[..4], "RO", rodId).Value;
     }
 
     public static void Delete(string mapsDirectory, string mapId)
@@ -710,6 +716,24 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         }
 
         return elements;
+    }
+
+    // One SRod row per rod; the owner is the race's player. (None of the original scenarios has rods.)
+    private static List<Db.ScenarioRod> BuildRods(CustomMap map, Db.ScenarioId scenarioId, string prefix)
+    {
+        List<Db.ScenarioRod> rows = [];
+
+        foreach (CustomMapRod rod in map.Rods)
+        {
+            if (rod.Owner == WorldRace.Neutral || !map.Players.Any(player => player.Race == rod.Owner))
+            {
+                throw new InvalidOperationException($"Rod {rod.Id} belongs to {rod.Owner}, who is not a player on the map.");
+            }
+
+            rows.Add(new Db.ScenarioRod(scenarioId, MakeId(prefix, "RO", rod.Id), MakeId(prefix, "PL", GetPlayerIndex(map, rod.Owner)), rod.Position.X, rod.Position.Y));
+        }
+
+        return rows;
     }
 
     private static List<Db.ScenarioMountain> BuildMountains(CustomMap map, Db.ScenarioId scenarioId)
