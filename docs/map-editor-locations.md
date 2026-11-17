@@ -34,6 +34,10 @@ location" / "defend location" army orders, but the editor can't place them and `
 - **Looks like landmarks.** Landmarks have no labels drawn on the map: their name shows in the hover line and in the
   right-click info. Locations get the same, plus their name drawn on the map over the square, in the outlined text
   style the game uses for path cost labels (`WorldRenderer.DrawPathCostLabel`), so the zones can be found at a glance.
+- **Default names "Location 1", "Location 2" ...** (the next unused number). After placing, a small name box opens
+  with that name filled in and selected: type a new one, or press Enter / Save to keep it. Renaming later is in the
+  tool settings.
+- **Locations can be dragged to move them.** How the drag works is being worked out (open question 2).
 
 ## What the user would see
 
@@ -41,8 +45,9 @@ location" / "defend location" army orders, but the editor can't place them and `
 
 - A "Locations" tool in the tool list (Russian label must fit ~90 px).
 - Hovering shows the square that would be placed (placement preview: green; red where the square leaves the map).
-- Click: places a location centred on the tile with the current radius and a default name ("Location 1", ...).
-- Radius 0–3 in the tool settings, also with + / − (or the scroll wheel while the tool is on).
+- Click: places a location centred on the tile with the current radius and a default name ("Location 1", ...), then
+  opens the name box.
+- Radius 0–3 in the tool settings, also with + / −. Not the scroll wheel: it zooms the map in the editor.
 - Click an existing location's centre: selects it; the settings then show its name (editable), radius, position and
   a Delete button. Shift+click deletes. Ctrl+Z undoes every change.
 - Locations may overlap and may cover water, mountains and objects (the original maps do this); they block nothing.
@@ -88,6 +93,6 @@ location" / "defend location" army orders, but the editor can't place them and `
 
 ## Open questions
 
-1. Default name: "Location 1", "Location 2" ..., or ask for a name on placing?
-2. Should a location's centre be movable by drag, or is delete + place again enough?
+1. ~~Default name, or ask for a name on placing?~~ Decided: default "Location N", editable in a name box on placing.
+2. Dragging is wanted: what should the drag feel like (grab anywhere or the centre, overlaps, cancel, edge scroll)?
 3. Where does the list go (right panel vs left overlay)? Decided in phase 3.
