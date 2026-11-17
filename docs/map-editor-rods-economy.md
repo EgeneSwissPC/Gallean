@@ -256,6 +256,32 @@ What was built (branch `upgrade/map-editor-economy`, commit `687944d`, merged as
   Gold 0 · 100 · 0 · +100 and Death mana 1 · 25 · 50 · +75, unowned: 1 Grove mana; selecting the Empire outlines its
   4 resources and its rod.
 
+## Phase 4 — done
+
+What was built (branch `upgrade/map-editor-starting-bank`, commits `8ac6ac2` and `97db6a5`, merged as `837acdf`):
+- Engine: `CustomMapPlayer.StartingBank` (a `WorldResourceSet`: gold and all five manas; default 500 gold, 1500 of
+  the race's own mana, the others 0), `CustomMap.SetStartingBank` (each amount kept within 0 and 9999, the game's
+  `MaxResourceAmount`) and `CopyStartingBankToAll`. The writer writes it as the `Splayer` bank (the old fixed
+  `StartingGold`/`StartingMana` constants are gone); `FromState` reads it back from the player's resources. Maps saved
+  before this read back as the old 500/1500, so nothing changes for them.
+- Economy panel: under "Unowned land", a "Starting bank" editor: a race box, the six amounts (gold, the race's own
+  mana, then the other four) and "Same for all races"; each race block shows a "Start:" line with its non-zero
+  amounts. Typing into one field keeps one undo step; anything that isn't a number is ignored, an empty box is 0,
+  more than 9999 is 9999.
+- "Same for all races" decision: gold and the other manas are copied as they are, and the source's own mana and the
+  target's own mana swap amounts (Empire 1500 life + 250 rune -> Clans 1500 rune + 250 life).
+- The game's rule, shown as a note: a human player's bank is scaled by difficulty when the game starts (Easy 300 %,
+  Average 100 %, Hard 50 %, Very hard 25 %); computer players get it as set (`ScenarioLoader`, `!isAi`).
+- "Economy (E)" moved into the right panel's title row: above Undo/Save it took a row of height, and at 1366x768
+  tool settings scrolled out of view.
+- Tests (suite 5207 -> 5209): `CustomMapTests.StartingBankTest` (defaults, clamping, undo copies, save as
+  `Splayer` bank, load, reopen, a human at Hard gets 50 % and a computer player the full amount, same for all),
+  `MapEditorScreenViewModelTests.StartingBankTest` (fields, typing, one undo step per field, same for all, undo,
+  save and reopen), `VisualTests.MapEditorEconomyTest` (starting bank shot); all 13 map editor visual tests pass.
+- Real client run (AOT build, Debian 12 image): Empire gold set to 1234 and infernal mana to 300 in the panel, Save
+  and play: the treasury on turn 1 shows 1384 gold, 1575 life, 50 rune and 350 infernal mana, which is the bank plus
+  exactly the turn-1 income the economy panel shows (+150, +75, +50, +50).
+
 ## Phases
 
 1. ~~Rods in the engine and writer: `CustomMapRod`, rules, paint, `SRod.json`, `FromState`, tests (about 1 day).~~
@@ -263,7 +289,8 @@ What was built (branch `upgrade/map-editor-economy`, commit `687944d`, merged as
 2. ~~Rod tool in the client: tool, preview, hover line, Shift+click, visual test, real client run (about half a
    day).~~ Done, see "Phase 2 — done".
 3. ~~Economy panel: `CustomMapEconomy`, panel, live update, highlight (about 1 day).~~ Done, see "Phase 3 — done".
-4. Starting bank per race in the panel (gold + all five manas), "Same for all" (about half a day).
+4. ~~Starting bank per race in the panel (gold + all five manas), "Same for all" (about half a day).~~ Done, see
+   "Phase 4 — done".
 5. Land spread preview: turn bar, cached spread, numbers per turn, benchmark (about 1 day).
 
 Each phase is its own `upgrade/` branch and roadmap update.

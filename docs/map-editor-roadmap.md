@@ -4,7 +4,8 @@ Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; u
 placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
 plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), after
 planning rods and the economy panel, after rods in the engine (commit `ca0330f`), after the rod tool (commit
-`97fe196`) and after the economy panel (commit `687944d`). Each section is meant as a separate task.
+`97fe196`), after the economy panel (commit `687944d`) and after the starting bank (commit `8ac6ac2`). Each section is
+meant as a separate task.
 
 ## Decisions so far
 
@@ -77,6 +78,8 @@ planning rods and the economy panel, after rods in the engine (commit `ca0330f`)
     resources income and total per turn, at Average difficulty, from the game's own income code; then resources on
     unowned land
   - follows every change (paint, objects, rods, undo); click a race to outline its resources and rods on the map
+  - starting bank per race: gold and all five manas (default 500 gold, 1500 own mana, the rest 0), "Same for all
+    races"
 - Roads (new): tool "Road"
   - click a tile to start, move the mouse: the road to the cursor takes the cheapest way around water, mountains,
     capitals, villages, ruins, sites and landmarks, follows existing roads, and avoids forests when it can
@@ -109,7 +112,7 @@ planning rods and the economy panel, after rods in the engine (commit `ca0330f`)
   - There are no victory conditions. This is also why the AI never gets map goals: it only gets them from victory
     events.
 - **Players:**
-  - Starting gold and mana are fixed at 500 and 1500 (planned in "Task: rods and the economy panel").
+  - ~~Starting gold and mana are fixed at 500 and 1500.~~ Done: starting bank per race in the economy panel.
   - There are no starting buildings or spells.
   - You can't choose human or computer per race, or set the difficulty.
   - All races get the same relations, and the lord type is fixed.
@@ -177,8 +180,13 @@ race-land change (any tool) showed the old land until the next change; it now sh
 Phase 3 — done (branch `upgrade/map-editor-economy`, commit `687944d`, merged as `fedcdeb`): the economy panel
 (`CustomMapEconomy` on the preview state with the game's `PlayerIncomeCalculator`, at Average as a human player;
 `MapEditorScreenViewModel.Economy.cs`; E key; selected race outlined on the map). Tests: `CustomMapTests.EconomyTest`,
-`MapEditorScreenViewModelTests.EconomyPanelTest`, `VisualTests.MapEditorEconomyTest`; suite 5207. Next: starting
-bank per race (phase 4), then the land spread preview (phase 5).
+`MapEditorScreenViewModelTests.EconomyPanelTest`, `VisualTests.MapEditorEconomyTest`; suite 5207.
+
+Phase 4 — done (branch `upgrade/map-editor-starting-bank`, commits `8ac6ac2`, `97db6a5`, merged as `837acdf`):
+`CustomMapPlayer.StartingBank`, written as the `Splayer` bank; the panel's starting bank editor and "Start:" lines;
+"Economy (E)" moved into the title row. Real client: the turn-1 treasury equals the bank plus the panel's income.
+Tests: `CustomMapTests.StartingBankTest`, `MapEditorScreenViewModelTests.StartingBankTest`; suite 5209. Next: the
+land spread preview (phase 5).
 
 ## Task: items (one shared item editor)
 
