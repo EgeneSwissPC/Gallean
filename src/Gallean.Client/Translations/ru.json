@@ -1019,7 +1019,6 @@
     "takes {0} from {1}": "забирает {0} у: {1}",
     "{0}: another rod at {1}, {2} is too close (rods need {3} free tiles between them)": "{0}: другой жезл на {1}, {2} слишком близко (между жезлами нужно свободных клеток: {3})",
     "Rods": "Жезлы",
-    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview · E: economy": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки · E: экономика",
     "Economy": "Экономика",
     "Economy (E)": "Экономика (E)",
     "Count": "Кол-во",
@@ -1039,6 +1038,21 @@
     "Back to the map": "Вернуться к карте",
     "{0} (preview, nothing is edited): click goes back to the map": "{0} (предпросмотр, ничего не меняется): щелчок возвращает к карте",
     "Land spread preview: capitals, villages and rods grow their land every turn as in the game, with nobody moving or fighting. Nothing is edited while a later turn is shown.": "Предпросмотр распространения земли: столицы, деревни и жезлы расширяют свою землю каждый ход, как в игре, если никто не ходит и не сражается. Пока показан более поздний ход, ничего не меняется.",
-    "Turn {0}: computing...": "Ход {0}: расчёт..."
+    "Turn {0}: computing...": "Ход {0}: расчёт...",
+    "Locations": "Локации",
+    "Locations ({0})": "Локации ({0})",
+    "Location ": "Локация ",
+    "{0} · {1}, {2}": "{0} · {1}, {2}",
+    "Location ({0}): click places \"{1}\" at {2}, {3} (moved inside the map)": "Локация ({0}): щелчок ставит «{1}» на {2}, {3} (сдвинута внутрь карты)",
+    "Location ({0}): click places \"{1}\"": "Локация ({0}): щелчок ставит «{1}»",
+    "Locations here: {0}": "Локации здесь: {0}",
+    "Named zones for events and army orders; the game does not show them. Click a row to go there, double-click to rename.": "Именованные зоны для событий и приказов армиям; в игре они не видны. Щелчок по строке переносит к зоне, двойной щелчок переименовывает.",
+    "Search": "Поиск",
+    "No locations. Pick the Locations tool and click the map.": "Локаций нет. Выберите инструмент «Локации» и щёлкните по карте.",
+    "List (L)": "Список (L)",
+    "{0} ({1}): selected · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): выбрана · Ctrl+щелчок ставит зону внутри · Shift+щелчок удаляет её",
+    "{0} ({1}): click selects it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): щелчок выбирает её · Ctrl+щелчок ставит зону внутри · Shift+щелчок удаляет её",
+    "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.": "Щёлкните по карте, чтобы поставить именованную зону (+ и - меняют размер), затем введите её имя. Щелчок по зоне выбирает её, Ctrl+щелчок ставит зону внутри неё, Shift+щелчок удаляет. Зоны могут перекрываться; у края карты они сдвигаются внутрь.",
+    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки"
   }
 }

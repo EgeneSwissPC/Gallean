@@ -23,6 +23,78 @@ internal sealed partial class MapEditorScreenView : UserControl
         AvaloniaXamlLoader.Load(this);
 
         this.FindControl<MapEditorVisual>("Map")!.AddHandler(PointerPressedEvent, OnMapPointerPressed, RoutingStrategies.Tunnel);
+
+        // Selecting a location on the map scrolls the list to its row.
+        ListBox locationList = this.FindControl<ListBox>("LocationList")!;
+        locationList.SelectionChanged += (_, _) =>
+        {
+            if (locationList.SelectedItem is { } item)
+            {
+                locationList.ScrollIntoView(item);
+            }
+        };
+    }
+
+    private MapEditorScreenViewModel? EditorViewModel => DataContext as MapEditorScreenViewModel;
+
+    private void OnLocationRowPointerEntered(object? sender, PointerEventArgs e)
+    {
+        if (sender is Control { DataContext: MapEditorLocationRowViewModel row })
+        {
+            EditorViewModel?.SetHoveredLocation(row.Id);
+        }
+    }
+
+    private void OnLocationRowPointerExited(object? sender, PointerEventArgs e)
+    {
+        EditorViewModel?.SetHoveredLocation(null);
+    }
+
+    private void OnLocationRowDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: MapEditorLocationRowViewModel row })
+        {
+            row.BeginEditCommand.Execute(null);
+        }
+    }
+
+    // The name box: Enter keeps the typed name, Esc the old one.
+    private void OnLocationNameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (sender is Control { DataContext: MapEditorLocationRowViewModel row })
+        {
+            if (e.Key == Key.Enter)
+            {
+                row.CommitEditCommand.Execute(null);
+                e.Handled = true;
+            }
+            else if (e.Key == Key.Escape)
+            {
+                row.CancelEditCommand.Execute(null);
+                e.Handled = true;
+            }
+        }
+    }
+
+    private void OnLocationNameLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Control { DataContext: MapEditorLocationRowViewModel row })
+        {
+            row.CommitEditCommand.Execute(null);
+        }
+    }
+
+    // When the box appears (a new location, or a double-click), it takes the focus with the name selected.
+    private void OnLocationNameBoxPropertyChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
+    {
+        if (e.Property == IsVisibleProperty && e.NewValue is true && sender is TextBox box)
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                box.Focus();
+                box.SelectAll();
+            });
+        }
     }
 
     // Like the world screen: the right-click info popup opens next to the cursor.

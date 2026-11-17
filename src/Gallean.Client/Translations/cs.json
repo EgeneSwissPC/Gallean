@@ -1019,7 +1019,6 @@
     "takes {0} from {1}": "takes {0} from {1}",
     "{0}: another rod at {1}, {2} is too close (rods need {3} free tiles between them)": "{0}: another rod at {1}, {2} is too close (rods need {3} free tiles between them)",
     "Rods": "Rods",
-    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview · E: economy": "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview · E: economy",
     "Economy": "Economy",
     "Economy (E)": "Economy (E)",
     "Count": "Count",
@@ -1039,6 +1038,21 @@
     "Back to the map": "Back to the map",
     "{0} (preview, nothing is edited): click goes back to the map": "{0} (preview, nothing is edited): click goes back to the map",
     "Land spread preview: capitals, villages and rods grow their land every turn as in the game, with nobody moving or fighting. Nothing is edited while a later turn is shown.": "Land spread preview: capitals, villages and rods grow their land every turn as in the game, with nobody moving or fighting. Nothing is edited while a later turn is shown.",
-    "Turn {0}: computing...": "Turn {0}: computing..."
+    "Turn {0}: computing...": "Turn {0}: computing...",
+    "Locations": "Locations",
+    "Locations ({0})": "Locations ({0})",
+    "Location ": "Location ",
+    "{0} · {1}, {2}": "{0} · {1}, {2}",
+    "Location ({0}): click places \"{1}\" at {2}, {3} (moved inside the map)": "Location ({0}): click places \"{1}\" at {2}, {3} (moved inside the map)",
+    "Location ({0}): click places \"{1}\"": "Location ({0}): click places \"{1}\"",
+    "Locations here: {0}": "Locations here: {0}",
+    "Named zones for events and army orders; the game does not show them. Click a row to go there, double-click to rename.": "Named zones for events and army orders; the game does not show them. Click a row to go there, double-click to rename.",
+    "Search": "Search",
+    "No locations. Pick the Locations tool and click the map.": "No locations. Pick the Locations tool and click the map.",
+    "List (L)": "List (L)",
+    "{0} ({1}): selected · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): selected · Ctrl+click places a zone inside · Shift+click removes it",
+    "{0} ({1}): click selects it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): click selects it · Ctrl+click places a zone inside · Shift+click removes it",
+    "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.": "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.",
+    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview"
   }
 }

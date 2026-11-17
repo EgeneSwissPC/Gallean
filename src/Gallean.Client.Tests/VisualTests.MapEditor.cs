@@ -716,6 +716,69 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task MapEditorLocationsTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+        view.Camera.SetZoom(1);
+        // The list covers the left of the map: look left of the zones so they show to the right of it.
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(17, 17)));
+
+        async Task ShowAsync(WorldPosition? hover, string step)
+        {
+            editor.UpdateHover(null);
+            editor.UpdateHover(hover);
+            await SkipFramesAsync(10);
+            await CaptureAsync(window, step);
+        }
+
+        // The tool opens the empty list; hovering shows the 3x3 square it would place.
+        editor.SelectTool(MapEditorTool.Location);
+        await ShowAsync(new WorldPosition(20, 14), "1-hover");
+        Assert.That(editor.IsLocationsOpen, Is.True);
+
+        // Placed: its row opens for the name.
+        editor.BeginStroke(new WorldPosition(20, 14));
+        await ShowAsync(null, "2-naming");
+        Assert.That(editor.SelectedLocationRow!.IsEditing, Is.True);
+        editor.SelectedLocationRow!.EditText = "Northern Pass";
+        editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
+
+        // Grown to 7x7, and a small zone inside it: both drawn with their names, the selected one in gold.
+        editor.ChangeLocationRadius(2);
+        editor.SelectedLocationRow = null;
+        editor.BeginStroke(new WorldPosition(22, 16));
+        Assert.That(editor.Map.Locations, Has.Count.EqualTo(1), "A click inside a zone selects it.");
+        editor.SelectedLocationRow = null;
+        editor.LocationRadius = 0;
+        editor.PlaceLocationAt(new WorldPosition(22, 16));
+        editor.SelectedLocationRow!.EditText = "Trap";
+        editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
+        editor.BeginStroke(new WorldPosition(30, 8));
+        editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
+        await ShowAsync(new WorldPosition(22, 16), "3-overlay");
+        Assert.That(editor.LocationRows.Select(row => (row.Name, row.Details)), Is.EqualTo(new[] { ("Location 1", "1x1 · 30, 8"), ("Northern Pass", "7x7 · 20, 14"), ("Trap", "1x1 · 22, 16") }));
+        Assert.That(editor.HoverText, Does.EndWith("Locations here: Northern Pass, Trap"));
+
+        // Hovering a row in the list lights its zone up.
+        editor.SetHoveredLocation(editor.LocationRows.Single(row => row.Name == "Northern Pass").Id);
+        await ShowAsync(null, "4-row-hover");
+        editor.SetHoveredLocation(null);
+
+        // Another tool with the list closed: the zones aren't drawn.
+        editor.SelectTool(MapEditorTool.Army);
+        editor.IsLocationsOpen = false;
+        await ShowAsync(new WorldPosition(22, 16), "5-hidden");
+        Assert.That(editor.PlacementPreview.Locations, Is.Empty);
+    }
+
+    [AvaloniaTest]
     public async Task MapEditorEconomyTest()
     {
         using Sandbox sb = Sandbox.Create();

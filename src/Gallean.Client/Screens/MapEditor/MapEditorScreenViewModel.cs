@@ -21,7 +21,8 @@ internal enum MapEditorTool
     Site,
     Landmark,
     Road,
-    Rod
+    Rod,
+    Location
 }
 
 // Paints a CustomMap and shows it through the game's world renderer. Terrain strokes update the preview state
@@ -83,7 +84,8 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             new MapEditorOption<MapEditorTool>(MapEditorTool.Site, Tr("Site")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Landmark, Tr("Landmark")),
             new MapEditorOption<MapEditorTool>(MapEditorTool.Road, Tr("Road")),
-            new MapEditorOption<MapEditorTool>(MapEditorTool.Rod, Tr("Rods"))
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Rod, Tr("Rods")),
+            new MapEditorOption<MapEditorTool>(MapEditorTool.Location, Tr("Locations"))
         ];
         SelectedTool = Tools[0];
         LandTerrains =
@@ -248,6 +250,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     {
         roadStart = null;
         renderRequest = CreateRenderRequest();
+        OnToolChangedForLocations(value.Value);
         RefreshPreview();
     }
 
@@ -327,6 +330,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         if (SelectedTool.Value == MapEditorTool.Rod)
         {
             ClickRod(tile, alternate);
+            return;
+        }
+
+        if (SelectedTool.Value == MapEditorTool.Location)
+        {
+            ClickLocation(tile, alternate);
             return;
         }
 
@@ -943,6 +952,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
                                !previous.Landmarks.SequenceEqual(map.Landmarks);
         map = undoSteps.Pop();
         roadStart = null;
+        RebuildLocationRows();
 
         CanUndo = undoSteps.Count > 0;
         IsDirty = true;
