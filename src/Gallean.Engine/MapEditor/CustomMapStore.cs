@@ -94,7 +94,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             .GroupBy(text => $"{text.IdObject.Value}/{text.IdString}", StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First().Text!, StringComparer.OrdinalIgnoreCase);
 
-        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, (objectId, textId) => texts.GetValueOrDefault($"{objectId}/{textId}"));
+        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, (objectId, textId) => texts.GetValueOrDefault($"{objectId}/{textId}"), scenario.Provider.Locations);
     }
 
     // Builds the world state the editor renders by saving the map to a scratch folder and loading it through the
@@ -175,7 +175,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
     }
 
     // getText returns a scenario text of an object (scenario object ID, text ID such as NAME_TXT), when known.
-    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions, Func<string, string, string?>? getText = null)
+    // locations are the scenario's SLoc zones (Scenario.Provider.Locations); they aren't part of the world state.
+    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions, Func<string, string, string?>? getText = null, IReadOnlyList<ScenarioLocationDefinition>? locations = null)
     {
         if (state.Map.Width != state.Map.Height)
         {
@@ -348,7 +349,20 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             }
         }
 
-        return new CustomMap(mapId, name, description, state.Map.Width, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods);
+        List<CustomMapLocation> mapLocations = [];
+
+        foreach (ScenarioLocationDefinition location in locations ?? [])
+        {
+            int id = ParseObjectNumber(location.Id.Value, 0) ?? mapLocations.Count + 1;
+            string locationName = getText?.Invoke(location.Id.Value, Db.TextScenario.NameTextId) is { } text && !string.IsNullOrWhiteSpace(text)
+                ? text
+                : $"Location {id}";
+
+            // The editor keeps radius 0-3 (all the original maps use); larger zones are clamped.
+            mapLocations.Add(new CustomMapLocation(id, locationName, location.Position, Math.Clamp(location.Radius, 0, CustomMap.MaxLocationRadius)));
+        }
+
+        return new CustomMap(mapId, name, description, state.Map.Width, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, mapLocations);
     }
 
     // The editor's object number from a saved ID such as S600KC0101 (first = 0x100 gives 1).

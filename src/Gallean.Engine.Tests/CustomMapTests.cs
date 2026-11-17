@@ -1315,6 +1315,125 @@ public sealed class CustomMapTests
         Assert.That(preview.Rods, Is.EqualTo(state.Rods));
     }
 
+    // Locations: default names, snapping onto the map, picking among overlaps, move/resize/rename/remove.
+    [Test]
+    public void LocationRulesTest()
+    {
+        CustomMap map = CreateMap();
+
+        CustomMapLocation first = map.PlaceLocation(new WorldPosition(10, 10), 2);
+        CustomMapLocation second = map.PlaceLocation(new WorldPosition(11, 11), 0, "  Trap  ");
+        CustomMapLocation third = map.PlaceLocation(new WorldPosition(0, 47), 3);
+        Assert.Multiple(() =>
+        {
+            Assert.That(first, Is.EqualTo(new CustomMapLocation(1, "Location 1", new WorldPosition(10, 10), 2)));
+            Assert.That(second.Name, Is.EqualTo("Trap"), "Names are trimmed.");
+            Assert.That(third.Name, Is.EqualTo("Location 2"), "Default names count only default names.");
+            Assert.That(third.Center, Is.EqualTo(new WorldPosition(3, 44)), "A square leaving the map snaps to the nearest fitting centre.");
+            Assert.That(first.Footprint, Is.EqualTo(new WorldFootprint(new WorldPosition(8, 8), 5, 5)));
+        });
+
+        // Overlaps: the selected location wins, otherwise the smallest; both are listed under the cursor.
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.PickLocation(new WorldPosition(11, 11))!.Id, Is.EqualTo(second.Id));
+            Assert.That(map.PickLocation(new WorldPosition(11, 11), first.Id)!.Id, Is.EqualTo(first.Id));
+            Assert.That(map.PickLocation(new WorldPosition(12, 12), second.Id)!.Id, Is.EqualTo(first.Id), "The selected one only wins where it covers the tile.");
+            Assert.That(map.PickLocation(new WorldPosition(20, 20)), Is.Null);
+            Assert.That(map.GetLocationsAt(new WorldPosition(11, 11)).Select(location => location.Id), Is.EqualTo(new[] { first.Id, second.Id }));
+        });
+
+        // Move and resize keep ID and name and snap; a blank rename is ignored.
+        Assert.That(map.MoveLocation(first.Id, new WorldPosition(47, 0)), Is.EqualTo(first with { Center = new WorldPosition(45, 2) }));
+        Assert.That(map.ResizeLocation(first.Id, 3)!.Center, Is.EqualTo(new WorldPosition(44, 3)));
+        Assert.That(map.RenameLocation(first.Id, "Northern Pass")!.Name, Is.EqualTo("Northern Pass"));
+        Assert.That(map.RenameLocation(first.Id, "   ")!.Name, Is.EqualTo("Northern Pass"));
+        Assert.That(() => map.ResizeLocation(first.Id, 4), Throws.TypeOf<ArgumentOutOfRangeException>(), "Radius stays 0-3 like the engine.");
+        Assert.That(map.MoveLocation(99, new WorldPosition(5, 5)), Is.Null);
+
+        // Removing frees the default name and the clone is independent.
+        CustomMap clone = map.Clone();
+        Assert.That(map.RemoveLocation(third.Id), Is.True);
+        Assert.That(map.RemoveLocation(third.Id), Is.False);
+        Assert.That(clone.Locations, Has.Count.EqualTo(3));
+        Assert.That(map.PlaceLocation(new WorldPosition(30, 30), 1).Name, Is.EqualTo("Location 1"));
+        Assert.That(map.Locations.Max(location => location.Id), Is.EqualTo(3), "New IDs are the highest + 1, like the other objects.");
+    }
+
+    // Locations save as SLoc rows with Tscen names, load into the game's scenario provider with the same tiles, and
+    // read back into the editor unchanged. On their own they change nothing in the game.
+    [Test]
+    public void LocationSaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        WorldState before = ScenarioLoader.Load(globalDb, SaveAndLoadDatabase(store, map), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+
+        map.PlaceLocation(new WorldPosition(20, 20), 0, "Северный перевал");
+        map.PlaceLocation(new WorldPosition(21, 21), 1);
+        map.PlaceLocation(new WorldPosition(30, 12), 2, "Silk Wood Warning");
+        map.PlaceLocation(new WorldPosition(47, 47), 3);
+        ScenarioDatabase database = SaveAndLoadDatabase(store, map);
+
+        Assert.That(database.ScenarioLocationsByScenario[new Db.ScenarioId(map.Id)].Select(row => (row.LocationId.Value, row.PositionX, row.PositionY, row.Radius)), Is.EqualTo(new[]
+        {
+            ("S600LO0001", 20, 20, 0),
+            ("S600LO0002", 21, 21, 1),
+            ("S600LO0003", 30, 12, 2),
+            ("S600LO0004", 44, 44, 3)
+        }));
+        Assert.That(database.TextScenariosByScenario[new Db.ScenarioId(map.Id)].Single(text => text.IdObject.Value == "S600LO0001").Text, Is.EqualTo("Северный перевал"));
+
+        Scenario scenario = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables());
+        Assert.That(scenario.Provider.Locations.Select(location => location.Id.Value), Is.EqualTo(map.Locations.Select(location => CustomMapWriter.GetLocationId(map.Id, location.Id))));
+
+        // Agreement: the editor's square is exactly the game's zone, tile for tile.
+        foreach (CustomMapLocation location in map.Locations)
+        {
+            ScenarioLocationDefinition loaded = scenario.Provider.GetLocation(new ScenarioLocationId(CustomMapWriter.GetLocationId(map.Id, location.Id)));
+            Assert.That(ScenarioLocationCalculator.EnumerateTiles(loaded, scenario.State.Map), Is.EquivalentTo(location.Footprint.EnumerateTiles()), location.Name);
+
+            for (int y = 0; y < map.Size; y++)
+            {
+                for (int x = 0; x < map.Size; x++)
+                {
+                    WorldPosition position = new(x, y);
+
+                    if (ScenarioLocationCalculator.Contains(loaded, position) != location.Contains(position))
+                    {
+                        Assert.Fail($"{location.Name}: editor and game disagree at {position}.");
+                    }
+                }
+            }
+        }
+
+        // Nothing in the world changes: locations aren't world objects.
+        Assert.That(scenario.State.Stacks.Keys, Is.EqualTo(before.Stacks.Keys));
+        Assert.That(scenario.State.Fortifications.Keys, Is.EqualTo(before.Fortifications.Keys));
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Locations, Is.EqualTo(map.Locations));
+
+        // Saving the reopened map keeps the IDs, so later events and orders still point at the same zones.
+        reopened.RemoveLocation(2);
+        reopened.PlaceLocation(new WorldPosition(5, 5), 0);
+        store.Save(reopened);
+        Assert.That(store.Open(map.Id, definitions).Locations.Select(location => (location.Id, location.Name)), Is.EqualTo(new[]
+        {
+            (1, "Северный перевал"),
+            (3, "Silk Wood Warning"),
+            (4, "Location 2"),
+            (5, "Location 1")
+        }));
+    }
+
+    private static ScenarioDatabase SaveAndLoadDatabase(CustomMapStore store, CustomMap map)
+    {
+        store.Save(map);
+
+        return store.LoadDatabase(map.Id);
+    }
+
     // The AI plays a map with rods: the game spreads their land every turn.
     [Test]
     public void RodPlayTest()

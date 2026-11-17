@@ -141,6 +141,7 @@ public sealed partial class CustomMap
     private readonly List<CustomMapSite> sites;
     private readonly List<CustomMapLandmark> landmarks;
     private readonly List<CustomMapRod> rods;
+    private readonly List<CustomMapLocation> locations;
 
     public CustomMap(
         string id,
@@ -157,7 +158,8 @@ public sealed partial class CustomMap
         IEnumerable<CustomMapBag>? bags = null,
         IEnumerable<CustomMapSite>? sites = null,
         IEnumerable<CustomMapLandmark>? landmarks = null,
-        IEnumerable<CustomMapRod>? rods = null)
+        IEnumerable<CustomMapRod>? rods = null,
+        IEnumerable<CustomMapLocation>? locations = null)
     {
         if (size is < MinSize or > MaxSize)
         {
@@ -179,6 +181,7 @@ public sealed partial class CustomMap
         this.sites = [.. sites ?? []];
         this.landmarks = [.. landmarks ?? []];
         this.rods = [.. rods ?? []];
+        this.locations = [.. locations ?? []];
 
         if (this.cells.Length != size * size)
         {
@@ -201,6 +204,7 @@ public sealed partial class CustomMap
     public IReadOnlyList<CustomMapSite> Sites => sites;
     public IReadOnlyList<CustomMapLandmark> Landmarks => landmarks;
     public IReadOnlyList<CustomMapRod> Rods => rods;
+    public IReadOnlyList<CustomMapLocation> Locations => locations;
 
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
@@ -233,7 +237,7 @@ public sealed partial class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, locations);
     }
 
     public WorldMapCell GetCell(WorldPosition position)

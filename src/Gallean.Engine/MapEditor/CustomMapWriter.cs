@@ -66,6 +66,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SLmark.json", BuildLandmarks(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SMapEl.json", BuildMapElements(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SRod.json", BuildRods(map, scenarioId, prefix));
+        WriteTable(stagingDirectory, "SLoc.json", BuildLocations(map, scenarioId, prefix, rows.Texts));
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
         // Original scenarios all ship an event table; custom maps get an empty one so they load the same way.
         WriteTable(stagingDirectory, "SEvent.json", new List<Db.ScenarioEvent>());
@@ -126,6 +127,12 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     public static string GetRodId(string mapId, int rodId)
     {
         return MakeId(mapId[..4], "RO", rodId).Value;
+    }
+
+    // The scenario location ID (SLoc LOC_ID) a location gets; events and army orders point at it.
+    public static string GetLocationId(string mapId, int locationId)
+    {
+        return MakeId(mapId[..4], "LO", locationId).Value;
     }
 
     public static void Delete(string mapsDirectory, string mapId)
@@ -714,6 +721,21 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         }
 
         return elements;
+    }
+
+    // One SLoc row per location (LO + id), with its name as the Tscen NAME_TXT of that ID, as in the original maps.
+    private static List<Db.ScenarioLocation> BuildLocations(CustomMap map, Db.ScenarioId scenarioId, string prefix, List<Db.TextScenario> texts)
+    {
+        List<Db.ScenarioLocation> rows = [];
+
+        foreach (CustomMapLocation location in map.Locations.OrderBy(location => location.Id))
+        {
+            Db.Id locationId = MakeId(prefix, "LO", location.Id);
+            rows.Add(new Db.ScenarioLocation(scenarioId, locationId, location.Center.X, location.Center.Y, location.Radius));
+            texts.Add(Text(scenarioId, locationId, Db.TextScenario.NameTextId, location.Name));
+        }
+
+        return rows;
     }
 
     // One SRod row per rod; the owner is the race's player. (None of the original scenarios has rods.)
