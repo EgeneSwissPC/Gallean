@@ -95,6 +95,8 @@ internal sealed partial class MapEditorScreenViewModel
 
         selectedLocationId = value?.Id;
 
+        UpdateLocationPositionFields();
+
         if (value is not null && GetLocation(value.Id) is { } location)
         {
             SetLocationRadius(location.Radius);
@@ -299,6 +301,7 @@ internal sealed partial class MapEditorScreenViewModel
             SetLocationRadius(current.Radius);
         }
 
+        UpdateLocationPositionFields();
         OnPropertyChanged(nameof(LocationsTitle));
         OnPropertyChanged(nameof(HasLocations));
         OnPropertyChanged(nameof(HasNoLocationRows));
@@ -316,11 +319,16 @@ internal sealed partial class MapEditorScreenViewModel
 
     private MapEditorPlacementPreview LocationPreview(WorldPosition tile)
     {
+        if (LocationDragPreview() is { } drag)
+        {
+            return drag;
+        }
+
         if (map.PickLocation(tile, SelectedLocationId) is { } picked)
         {
             string action = picked.Id == SelectedLocationId
-                ? Tr("{0} ({1}): selected · Ctrl+click places a zone inside · Shift+click removes it", picked.Name, SizeText(picked.Radius))
-                : Tr("{0} ({1}): click selects it · Ctrl+click places a zone inside · Shift+click removes it", picked.Name, SizeText(picked.Radius));
+                ? Tr("{0} ({1}): selected · drag moves it · Ctrl+click places a zone inside · Shift+click removes it", picked.Name, SizeText(picked.Radius))
+                : Tr("{0} ({1}): click selects it · drag moves it · Ctrl+click places a zone inside · Shift+click removes it", picked.Name, SizeText(picked.Radius));
 
             return new MapEditorPlacementPreview([], picked.Footprint, null, null, action);
         }

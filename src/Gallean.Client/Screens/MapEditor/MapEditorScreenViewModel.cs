@@ -335,7 +335,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
         if (SelectedTool.Value == MapEditorTool.Location)
         {
-            ClickLocation(tile, alternate);
+            PressLocation(tile, alternate);
             return;
         }
 
@@ -402,6 +402,11 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     public void ContinueStroke(WorldPosition tile)
     {
+        if (MoveLocationPress(tile))
+        {
+            return;
+        }
+
         if (!HasBrush || lastStrokeTile == tile || !map.IsValidPosition(tile) || IsSpreadPreview)
         {
             return;
@@ -420,6 +425,11 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     public void EndStroke()
     {
+        if (ReleaseLocationPress())
+        {
+            return;
+        }
+
         if (lastStrokeTile is null)
         {
             return;

@@ -1050,9 +1050,13 @@
     "Search": "Search",
     "No locations. Pick the Locations tool and click the map.": "No locations. Pick the Locations tool and click the map.",
     "List (L)": "List (L)",
-    "{0} ({1}): selected · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): selected · Ctrl+click places a zone inside · Shift+click removes it",
-    "{0} ({1}): click selects it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): click selects it · Ctrl+click places a zone inside · Shift+click removes it",
-    "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.": "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.",
-    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview"
+    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview",
+    "{0} ({1}): selected · drag moves it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): selected · drag moves it · Ctrl+click places a zone inside · Shift+click removes it",
+    "{0} ({1}): click selects it · drag moves it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): click selects it · drag moves it · Ctrl+click places a zone inside · Shift+click removes it",
+    "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, drag it to move it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.": "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, drag it to move it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.",
+    "{0}: {1}, {2} -> {3}, {4} (snapped to the map edge) · Esc puts it back": "{0}: {1}, {2} -> {3}, {4} (snapped to the map edge) · Esc puts it back",
+    "{0}: {1}, {2} -> {3}, {4} · Esc puts it back": "{0}: {1}, {2} -> {3}, {4} · Esc puts it back",
+    "X": "X",
+    "Y": "Y"
   }
 }

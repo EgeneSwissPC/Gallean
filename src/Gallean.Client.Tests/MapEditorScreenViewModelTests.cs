@@ -743,6 +743,7 @@ public sealed class MapEditorScreenViewModelTests
 
         // Click: placed, selected, and its row opens for the name; Enter keeps the typed one.
         editor.BeginStroke(first);
+        editor.EndStroke();
         Assert.That(editor.Map.Locations.Select(location => (location.Id, location.Name, location.Center, location.Radius)), Is.EqualTo(new[] { (1, "Location 1", first, 1) }));
         MapEditorLocationRowViewModel row = editor.SelectedLocationRow!;
         Assert.That((row.Id, row.IsEditing, row.EditText, editor.CanUndo), Is.EqualTo((1, true, "Location 1", true)));
@@ -762,9 +763,11 @@ public sealed class MapEditorScreenViewModelTests
 
         // A second location, overlapping: the list is sorted by name, a blank name keeps the default.
         editor.BeginStroke(new WorldPosition(30, 30));
+        editor.EndStroke();
         editor.SelectedLocationRow!.EditText = " ";
         editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
         editor.BeginStroke(new WorldPosition(21, 21));
+        editor.EndStroke();
         Assert.That(editor.SelectedLocationRow!.Name, Is.EqualTo("Northern Pass"), "A click inside a location selects it.");
         editor.SelectedLocationRow!.CancelEditCommand.Execute(null);
         editor.SelectTool(MapEditorTool.Army);
@@ -772,6 +775,7 @@ public sealed class MapEditorScreenViewModelTests
         editor.LocationRadius = 0;
         editor.SelectedLocationRow = null;
         editor.BeginStroke(new WorldPosition(21, 20));
+        editor.EndStroke();
         Assert.That(editor.Map.Locations, Has.Count.EqualTo(2), "A click inside a location never places another.");
         Assert.That(editor.LocationRows.Select(item => item.Name), Is.EqualTo(new[] { "Location 1", "Northern Pass" }));
         Assert.That(editor.LocationsTitle, Is.EqualTo("Locations (2)"));
@@ -815,6 +819,79 @@ public sealed class MapEditorScreenViewModelTests
         editor.SelectTool(MapEditorTool.Land);
         editor.IsLocationsOpen = false;
         Assert.That(editor.PlacementPreview.Locations, Is.Empty);
+    }
+
+    // Dragging a location: the grabbed tile stays under the cursor, the drop snaps onto the map, Esc and losing the
+    // drag put it back, a drag from empty ground does nothing, and the X/Y boxes move it exactly.
+    [Test]
+    public async Task LocationDragTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Location);
+        editor.LocationRadius = 2;
+        editor.BeginStroke(new WorldPosition(20, 20));
+        editor.EndStroke();
+        editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
+        editor.SelectedLocationRow = null;
+
+        // Grab the zone off-centre and carry it 5 right, 3 down: the preview follows, the old place is dashed.
+        editor.BeginStroke(new WorldPosition(21, 19));
+        Assert.That(editor.IsDraggingLocation, Is.False, "A press alone doesn't drag.");
+        editor.ContinueStroke(new WorldPosition(26, 22));
+        editor.UpdateHover(new WorldPosition(26, 22));
+        Assert.That(editor.IsDraggingLocation, Is.True);
+        Assert.That(editor.PlacementPreview.Footprint, Is.EqualTo(new WorldFootprint(new WorldPosition(23, 21), 5, 5)));
+        Assert.That(editor.PlacementPreview.MovesFrom, Is.EqualTo(new WorldFootprint(new WorldPosition(18, 18), 5, 5)));
+        Assert.That(editor.HoverText, Does.StartWith("Location 1: 20, 20 -> 25, 23 · Esc puts it back"));
+        Assert.That(editor.Map.Locations.Single().Center, Is.EqualTo(new WorldPosition(20, 20)), "Nothing moves before the drop.");
+        editor.EndStroke();
+        Assert.That(editor.Map.Locations.Single(), Is.EqualTo(new CustomMapLocation(1, "Location 1", new WorldPosition(25, 23), 2)));
+        Assert.That((editor.SelectedLocationRow!.Id, editor.LocationXText, editor.LocationYText), Is.EqualTo((1, "25", "23")));
+        Assert.That(editor.SelectedLocationRow!.IsEditing, Is.False, "A drop doesn't open the name.");
+
+        // Past the edge: amber at the snapped place, dropped there.
+        editor.BeginStroke(new WorldPosition(25, 23));
+        editor.ContinueStroke(new WorldPosition(60, 23));
+        editor.UpdateHover(new WorldPosition(47, 23));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(47, 23)), Is.EqualTo(MapEditorTileState.Changes));
+        Assert.That(editor.HoverText, Does.Contain("-> 45, 23 (snapped to the map edge)"));
+        editor.EndStroke();
+        Assert.That(editor.Map.Locations.Single().Center, Is.EqualTo(new WorldPosition(45, 23)));
+
+        // Esc puts it back; so does losing the drag.
+        editor.BeginStroke(new WorldPosition(45, 23));
+        editor.ContinueStroke(new WorldPosition(30, 30));
+        Assert.That(editor.CancelLocationDrag(), Is.True);
+        editor.EndStroke();
+        Assert.That(editor.Map.Locations.Single().Center, Is.EqualTo(new WorldPosition(45, 23)));
+        Assert.That(editor.CancelLocationDrag(), Is.False);
+
+        // A drag from empty ground places nothing; a press and release on empty ground places.
+        editor.BeginStroke(new WorldPosition(10, 30));
+        editor.ContinueStroke(new WorldPosition(12, 30));
+        editor.EndStroke();
+        Assert.That(editor.Map.Locations, Has.Count.EqualTo(1));
+
+        // One undo step per drop: Undo takes the zone back to its previous place.
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Locations.Single().Center, Is.EqualTo(new WorldPosition(25, 23)));
+
+        // X/Y boxes: exact move, snapped; junk text is put back.
+        editor.SelectedLocationRow = editor.LocationRows.Single();
+        editor.LocationXText = "3";
+        editor.LocationYText = "40";
+        editor.ApplyLocationPosition();
+        Assert.That(editor.Map.Locations.Single().Center, Is.EqualTo(new WorldPosition(3, 40)));
+        editor.LocationXText = "0";
+        editor.ApplyLocationPosition();
+        Assert.That((editor.Map.Locations.Single().Center, editor.LocationXText), Is.EqualTo((new WorldPosition(2, 40), "2")));
+        editor.LocationYText = "abc";
+        editor.ApplyLocationPosition();
+        Assert.That((editor.Map.Locations.Single().Center, editor.LocationYText), Is.EqualTo((new WorldPosition(2, 40), "40")));
     }
 
     private static MapEditorScreenViewModel PlaceCapitals(MapEditorScreenViewModel editor)

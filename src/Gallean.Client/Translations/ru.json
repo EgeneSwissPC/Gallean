@@ -1050,9 +1050,13 @@
     "Search": "Поиск",
     "No locations. Pick the Locations tool and click the map.": "Локаций нет. Выберите инструмент «Локации» и щёлкните по карте.",
     "List (L)": "Список (L)",
-    "{0} ({1}): selected · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): выбрана · Ctrl+щелчок ставит зону внутри · Shift+щелчок удаляет её",
-    "{0} ({1}): click selects it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): щелчок выбирает её · Ctrl+щелчок ставит зону внутри · Shift+щелчок удаляет её",
-    "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.": "Щёлкните по карте, чтобы поставить именованную зону (+ и - меняют размер), затем введите её имя. Щелчок по зоне выбирает её, Ctrl+щелчок ставит зону внутри неё, Shift+щелчок удаляет. Зоны могут перекрываться; у края карты они сдвигаются внутрь.",
-    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки"
+    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки",
+    "{0} ({1}): selected · drag moves it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): выбрана · перетаскивание двигает её · Ctrl+щелчок ставит зону внутри · Shift+щелчок удаляет её",
+    "{0} ({1}): click selects it · drag moves it · Ctrl+click places a zone inside · Shift+click removes it": "{0} ({1}): щелчок выбирает её · перетаскивание двигает её · Ctrl+щелчок ставит зону внутри · Shift+щелчок удаляет её",
+    "Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, drag it to move it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.": "Щёлкните по карте, чтобы поставить именованную зону (+ и - меняют размер), затем введите её имя. Щелчок по зоне выбирает её, перетаскивание двигает, Ctrl+щелчок ставит зону внутри неё, Shift+щелчок удаляет. Зоны могут перекрываться; у края карты они сдвигаются внутрь.",
+    "{0}: {1}, {2} -> {3}, {4} (snapped to the map edge) · Esc puts it back": "{0}: {1}, {2} -> {3}, {4} (прижата к краю карты) · Esc возвращает её",
+    "{0}: {1}, {2} -> {3}, {4} · Esc puts it back": "{0}: {1}, {2} -> {3}, {4} · Esc возвращает её",
+    "X": "X",
+    "Y": "Y"
   }
 }

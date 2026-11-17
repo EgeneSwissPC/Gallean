@@ -39,6 +39,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
     private WorldScreenSnapshotWorker snapshotWorker = null!;
     private WorldCamera camera = null!;
     private Point? panAnchor;
+    private Point? lastPointer;
     private bool painting;
     private CleanupList? cleanupList;
     private bool redrawRequested = true;
@@ -149,6 +150,10 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.BeginStroke(WorldTransform.FromWorldPoint(worldPoint), e.KeyModifiers.HasFlag(KeyModifiers.Shift));
             e.Handled = true;
         }
+        else if (point.Properties.IsRightButtonPressed && ViewModel.CancelLocationDrag())
+        {
+            e.Handled = true;
+        }
         else if (point.Properties.IsRightButtonPressed)
         {
             ViewModel.ShowPositionInfo(WorldTransform.FromWorldPoint(worldPoint));
@@ -193,6 +198,9 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         ViewModel.SetPreviewSuspended(false);
         ViewModel.HidePositionInfo();
 
+        // Losing the mouse mid-drag (another window took it) puts a dragged location back instead of dropping it.
+        ViewModel.CancelLocationDrag();
+
         if (painting)
         {
             painting = false;
@@ -211,6 +219,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
 
         // Edge scrolling only looks at the map view, so the side panel never scrolls the map.
         scrollHelper.HandlePointerMoved(e.GetPosition(this));
+        lastPointer = e.GetPosition(this);
 
         if (panAnchor is not null)
         {
@@ -295,7 +304,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.ChangeLocationRadius(e.Key is Key.OemPlus or Key.Add ? 1 : -1);
             e.Handled = true;
         }
-        else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && ViewModel.CancelRoad())
+        else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && (ViewModel.CancelLocationDrag() || ViewModel.CancelRoad()))
         {
             e.Handled = true;
         }
@@ -340,7 +349,18 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
                 redraw = true;
             }
 
-            redraw |= UpdateCamera(delta);
+            if (UpdateCamera(delta))
+            {
+                redraw = true;
+
+                // The map scrolled under a still mouse (edge scrolling while dragging or painting): follow the cursor.
+                if (painting && lastPointer is { } pointer)
+                {
+                    WorldPosition tile = WorldTransform.FromWorldPoint(camera.ScreenToWorld(pointer));
+                    ViewModel.ContinueStroke(tile);
+                    ViewModel.UpdateHover(tile);
+                }
+            }
             redraw |= frameIndex != lastFrameIndex;
         }
 
