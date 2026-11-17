@@ -1,8 +1,8 @@
 # Gallean Upgrade – map editor: what's missing and next steps
 
 Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; updated 2026-11-16 after landmark
-placement (commit `2931c5c`) and 2026-11-17 after the placement preview (commit `07c76c6`). Each section is meant as a
-separate task.
+placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
+plus the MapFromPlan generator (commits `418e463`, `9d96d14`). Each section is meant as a separate task.
 
 ## Decisions so far
 
@@ -46,6 +46,9 @@ separate task.
   - click to place centred on the tile, click a landmark to remove it, Ctrl+Z to undo
   - the hover line and the right-click info show the landmark's name
 - Right-click info for capitals and villages shows them as their owner sees them (editor only).
+- Roads (new, engine and file format only): `CustomMap.SetRoad` and `SRoad.json` rows, so maps keep their roads when
+  opened and saved in the editor and the game loads them. There is no road brush yet; generated maps (MapFromPlan)
+  are the only way to get roads for now.
 - Placement preview (new), for every tool:
   - green tiles where the object or brush goes, red where a tile blocks it, amber where a tile visibly changes
     (forest cleared, a whole mountain removed, water turned into land)
@@ -58,7 +61,7 @@ separate task.
 
 | Object | Notes |
 | --- | --- |
-| Roads | 16 road pieces in 2 variants |
+| Roads (brush) | the engine and the writer handle roads now (`CustomMap.SetRoad`); only the brush is missing |
 | Rods | terraforming rods |
 | Locations | named zones (see below) |
 | Events | scenario scripting (see below); every custom map is saved with no events |
@@ -156,6 +159,12 @@ Full description, what differs from the plan and known limits: `docs/map-editor-
 
 ## Task: roads and looks
 
+Done so far (commit `418e463`): roads in `CustomMap` (`SetRoad`: open or forest land, the forest is cleared; never on
+water, mountains, structures or landmarks; land brushes keep a road, water and forest brushes replace it) and in the
+writer (`SRoad.json`, one row per tile, INDEX = neighbour mask N1 E2 S4 W8 like the original maps; the loader only
+reads the position and the renderer joins the 16 pieces itself). Test: `CustomMapTests.RoadTest`. Still to do: the
+brush (paint/erase, a road tool next to Land/Water) and the looks.
+
 Ideas:
 - Roads painted like a brush; the 16 road pieces join up automatically.
 - Pick the mountain look (4 sizes with 11/10/9/8 looks) and the forest look, or keep random.
@@ -165,6 +174,25 @@ Technical pointers:
 - sprites in the asset pack (see `~/work/gallean-tools/map_object_catalogue.py` for the inventory)
 - the landmark palette (`MapEditorLandmarkOption` + the `palette` ListBox in `MapEditorScreenView.axaml`) can be
   reused for a mountain/forest look picker
+
+## Task: maps from a description (MapFromPlan) — done
+
+What was built (commit `9d96d14`): `tools/MapFromPlan`, a console tool that turns a JSON map plan into a custom map.
+The plan describes a land in miles on a north-up map (regions, seas, rivers with fords, ranges with passes, hills,
+forests, roads, capitals, villages, ruins, sites, landmarks, mines, neutral army templates by tier, treasure). Objects
+go through `CustomMap.Preview*`/`Place*`, so a generated map follows the same rules as a hand-made one, opens in the
+editor and plays as a custom quest. The tool prints what it couldn't place, travel costs and gate checks, and writes a
+labelled overview PNG. Usage and plan format: `tools/MapFromPlan/README.md`.
+
+First plan: `tools/MapFromPlan/plans/middle-earth.json` (320x320, 7 miles per tile; Empire = Gondor and Rohan, elves,
+dwarves, Legions = Mordor with Harad and Rhun, Undead = Dol Guldur, Minas Morgul and Angmar). Checked: Mordor is sealed
+except for the Black Gate, Cirith Ungol and the Morgul pass; the Misty Mountains only open at the High Pass, the
+Redhorn Pass and the Gap of Rohan; the map loads in the published client and in the editor, and turn 1 to 2 runs.
+
+Known limits:
+- One player per race, so allies of one race share a player (Gondor and Rohan are both the Empire).
+- Capitals keep the writer's "<Race> Capital" name (there is no name field on `CustomMapPlayer` yet).
+- Only existing objects: hobbits are peasants, Ents are the elves' Ent Minor.
 
 ## Task (later): victory settings
 
@@ -227,3 +255,6 @@ point at them once events exist.
    with scrolling at 1366x768)? ~~Is a footprint preview under the cursor worth adding?~~ Done, for every tool.
 6. Placement preview: should the "Placement preview (P)" checkbox move out of the scrolling panel (next to Undo/Save),
    so it is always visible at 1366x768?
+7. Capital names: add a name to `CustomMapPlayer` (a field on the capital screen and in the writer), so generated and
+   hand-made maps can have "Minas Tirith" instead of "Empire Capital"?
+8. Roads: is the road brush the next editor task, now that the engine and the file format handle roads?
