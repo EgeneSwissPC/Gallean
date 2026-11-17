@@ -459,7 +459,12 @@ public sealed class WorldPlan
         WorldMovementCalculator.MovementProfile profile,
         WorldMovementLimit limit)
     {
-        WorldPathMap? pathMap = GetPathMap(start, fogOfWar, profile);
+        // A bounded map from an earlier GetPathMap call answers targets within its bound without a full search.
+        if (!pathMaps.TryGetValue(new PathMapKey(start, fogOfWar, profile), out WorldPathMap? pathMap) ||
+            (pathMap is not null && !pathMap.IsSettled(end)))
+        {
+            pathMap = GetPathMap(start, fogOfWar, profile);
+        }
 
         if (pathMap is null)
         {
@@ -469,14 +474,17 @@ public sealed class WorldPlan
         return pathMap.TryGetPath(end, limit, out WorldPath? path) ? path : null;
     }
 
+    // maxCost limits the search to cells that cost at most maxCost to reach (see PathMapCalculator.Calculate); the
+    // returned map may still cover more when an unbounded or wider map is already cached.
     internal WorldPathMap? GetPathMap(
         WorldPosition start,
         ImmutableBitmap? fogOfWar,
-        WorldMovementCalculator.MovementProfile profile)
+        WorldMovementCalculator.MovementProfile profile,
+        int maxCost = int.MaxValue)
     {
         PathMapKey key = new(start, fogOfWar, profile);
 
-        if (!pathMaps.TryGetValue(key, out WorldPathMap? pathMap))
+        if (!pathMaps.TryGetValue(key, out WorldPathMap? pathMap) || (pathMap is not null && pathMap.MaxCost < maxCost))
         {
             pathMap = PathMapCalculator.Calculate(
                 state.Map,
@@ -484,9 +492,10 @@ public sealed class WorldPlan
                 fogOfWar,
                 GetBlockedCells(profile),
                 terminalCells.Value,
-                (from, to) => GetStepCost(from, to, profile));
+                (from, to) => GetStepCost(from, to, profile),
+                maxCost);
 
-            pathMaps.Add(key, pathMap);
+            pathMaps[key] = pathMap;
         }
 
         return pathMap;
@@ -560,9 +569,9 @@ public sealed class WorldPlan
             for (int x = 0; x < state.Map.Width; x++)
             {
                 WorldPosition position = new(x, y);
-                WorldStack? stack = GetStackAt(position);
 
-                if (stack is null && !WorldMovementCalculator.IsPassable(state.Map, position, profile))
+                // Passability first: the stack lookup is the expensive part and only matters for impassable cells.
+                if (!WorldMovementCalculator.IsPassable(state.Map, position, profile) && GetStackAt(position) is null)
                 {
                     cells.Set(x, y);
                 }

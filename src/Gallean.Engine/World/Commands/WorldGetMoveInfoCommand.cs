@@ -43,7 +43,12 @@ public sealed record WorldGetMoveInfoCommand(WorldStackId StackId) : IWorldComma
         WorldPlan plan = WorldPlan.For(state);
         WorldMovementCalculator.MovementProfile profile = WorldMovementCalculator.GetMovementProfile(stack, context.Definitions);
         WorldPlayer player = state.Players[stack.OwnerId];
-        WorldPathMap? pathMap = plan.GetPathMap(stack.Position, player.FogOfWar, profile);
+        // A step can begin while the cost so far is below the movement points, so nothing reachable this turn costs
+        // more than movement points + one step. Bounding the search keeps it local on large maps.
+        int maxCost = stack.MovementPoints > int.MaxValue - WorldMovementCalculator.MaxMovementCost
+            ? int.MaxValue
+            : stack.MovementPoints + WorldMovementCalculator.MaxMovementCost;
+        WorldPathMap? pathMap = plan.GetPathMap(stack.Position, player.FogOfWar, profile, maxCost);
         ImmutableArray<WorldPosition>.Builder positions = ImmutableArray.CreateBuilder<WorldPosition>();
 
         if (pathMap is not null)

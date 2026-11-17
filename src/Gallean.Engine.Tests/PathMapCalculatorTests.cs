@@ -616,6 +616,109 @@ public sealed class PathMapCalculatorTests
     }
 
     [Test]
+    public void BoundedSearchMatchesUnboundedTest()
+    {
+        // Forests, water, roads and mountains give unequal step costs, so a truncated search could pick a worse
+        // predecessor if it stopped settling cells too early.
+        WorldMap map = TestHelpers.BuildMap([
+            "..++~~..==..",
+            ".^^+~~.==...",
+            "..++..==.^^.",
+            "~~..==...++.",
+            "~~==....~~+.",
+            "..=..^^.~~..",
+            ".==.++..^...",
+            "=....++....."
+        ]);
+        WorldPosition start = new(0, 0);
+        WorldMovementCalculator.MovementProfile deadLeader = DefaultProfile with { IsLeaderDead = true };
+
+        foreach (WorldMovementCalculator.MovementProfile profile in (WorldMovementCalculator.MovementProfile[])[DefaultProfile, deadLeader])
+        {
+            WorldPathMap full = Assert.NotNull(WorldPlan.For(CreateEmptyState(map)).GetPathMap(start, CreateFullFog(map), profile));
+
+            foreach (int maxCost in (int[])[0, 5, 9, 14, 20])
+            {
+                WorldPathMap bounded = Assert.NotNull(WorldPlan.For(CreateEmptyState(map)).GetPathMap(start, CreateFullFog(map), profile, maxCost));
+
+                for (int y = 0; y < map.Height; y++)
+                {
+                    for (int x = 0; x < map.Width; x++)
+                    {
+                        WorldPosition target = new(x, y);
+                        bool inFull = full.TryGetPath(target, WorldMovementLimit.Unlimited, out WorldPath? fullPath);
+                        bool inBounded = bounded.TryGetPath(target, WorldMovementLimit.Unlimited, out WorldPath? boundedPath);
+
+                        if (inFull && fullPath!.Cost <= maxCost)
+                        {
+                            Assert.That(inBounded, Is.True, $"{target} within {maxCost}");
+                            Assert.That(boundedPath!.Positions, Is.EqualTo(fullPath.Positions), $"{target} within {maxCost}");
+                            Assert.That(bounded.IsSettled(target), Is.True);
+                        }
+                        else if (target != start)
+                        {
+                            Assert.That(inBounded, Is.False, $"{target} beyond {maxCost}");
+                            Assert.That(bounded.IsSettled(target), Is.False);
+                        }
+                    }
+                }
+
+                Assert.That(bounded.GetReachablePositions(maxCost - WorldMovementCalculator.MaxMovementCost), Is.EqualTo(full.GetReachablePositions(maxCost - WorldMovementCalculator.MaxMovementCost)));
+            }
+        }
+    }
+
+    [Test]
+    public void BoundedMapFallbackTest()
+    {
+        WorldMap map = TestHelpers.SimpleMap(20, 1);
+        WorldPlan plan = WorldPlan.For(CreateEmptyState(map));
+        ImmutableBitmap fog = CreateFullFog(map);
+
+        WorldPathMap bounded = Assert.NotNull(plan.GetPathMap(new WorldPosition(0, 0), fog, DefaultProfile, maxCost: 6));
+        Assert.That(bounded.IsSettled(new WorldPosition(3, 0)), Is.True);
+        Assert.That(bounded.IsSettled(new WorldPosition(4, 0)), Is.False);
+
+        // A near target is answered from the bounded map, a far one runs the full search and replaces it.
+        Assert.That(plan.GetPath(new WorldPosition(0, 0), new WorldPosition(3, 0), fog, DefaultProfile, WorldMovementLimit.Unlimited)?.Cost, Is.EqualTo(6));
+        Assert.That(plan.GetPathMap(new WorldPosition(0, 0), fog, DefaultProfile), Is.Not.SameAs(bounded));
+        Assert.That(plan.GetPath(new WorldPosition(0, 0), new WorldPosition(19, 0), fog, DefaultProfile, WorldMovementLimit.Unlimited)?.Cost, Is.EqualTo(38));
+        Assert.That(plan.GetPathMap(new WorldPosition(0, 0), fog, DefaultProfile, maxCost: 6)!.MaxCost, Is.EqualTo(int.MaxValue));
+    }
+
+    [Test]
+    public void MaxMovementCostTest()
+    {
+        WorldMap map = TestHelpers.BuildMap([
+            ".+=^~"
+        ]);
+        int max = 0;
+
+        foreach (UnitMoveAbility ability in (UnitMoveAbility[])[UnitMoveAbility.None, UnitMoveAbility.Water, UnitMoveAbility.Forest, UnitMoveAbility.Plain])
+        {
+            foreach (bool waterOnly in (bool[])[false, true])
+            {
+                foreach (bool leaderDead in (bool[])[false, true])
+                {
+                    WorldMovementCalculator.MovementProfile profile = DefaultProfile with { MoveAbility = ability, IsWaterOnly = waterOnly, IsLeaderDead = leaderDead };
+
+                    for (int x = 0; x < map.Width; x++)
+                    {
+                        int cost = WorldMovementCalculator.GetMovementCost(map, new WorldPosition(x, 0), profile);
+
+                        if (cost != int.MaxValue)
+                        {
+                            max = Math.Max(max, cost);
+                        }
+                    }
+                }
+            }
+        }
+
+        Assert.That(WorldMovementCalculator.MaxMovementCost, Is.EqualTo(max));
+    }
+
+    [Test]
     public void CityEntranceFreeTest()
     {
         WorldMap map = TestHelpers.SimpleMap(3, 1);

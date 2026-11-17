@@ -7,8 +7,18 @@ internal sealed class WorldPathMap(
     WorldMap map,
     WorldPosition start,
     int[] costs,
-    int[] predecessors)
+    int[] predecessors,
+    int maxCost = int.MaxValue)
 {
+    public int MaxCost => maxCost;
+
+    // True when the map holds the final answer for the target: an unbounded map always does, a bounded map only for
+    // targets it reached within its cost bound.
+    public bool IsSettled(WorldPosition target)
+    {
+        return maxCost == int.MaxValue || costs[GetIndex(target)] <= maxCost;
+    }
+
     public bool TryGetPath(WorldPosition target, WorldMovementLimit limit, [NotNullWhen(true)] out WorldPath? path)
     {
         if (costs[GetIndex(target)] >= int.MaxValue)

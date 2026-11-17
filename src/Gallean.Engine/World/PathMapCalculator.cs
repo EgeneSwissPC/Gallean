@@ -5,13 +5,17 @@ namespace Gallean.Engine;
 
 internal static class PathMapCalculator
 {
+    // maxCost bounds the search: cells that cost more than maxCost to reach are left unreachable in the result. Every
+    // cell within maxCost gets the same cost and predecessor as in an unbounded search, because cells are settled in
+    // cost order and a cell's best predecessor always costs less than the cell itself.
     public static WorldPathMap? Calculate(
         WorldMap map,
         WorldPosition start,
         ImmutableBitmap? fogOfWar,
         ImmutableBitmap blockedCells,
         ImmutableBitmap terminalCells,
-        Func<WorldPosition, WorldPosition, int> stepCost)
+        Func<WorldPosition, WorldPosition, int> stepCost,
+        int maxCost = int.MaxValue)
     {
         if (blockedCells.Get(start.X, start.Y))
         {
@@ -40,9 +44,13 @@ internal static class PathMapCalculator
         PriorityQueue<WorldPosition, long> openSet = new();
         openSet.Enqueue(start, GetPriority(0, startIndex));
 
-        while (openSet.Count > 0)
+        while (openSet.TryDequeue(out WorldPosition current, out long priority))
         {
-            WorldPosition current = openSet.Dequeue();
+            if (priority >> 32 > maxCost)
+            {
+                break;
+            }
+
             int currentIndex = GetIndex(map, current);
 
             if (closedSet[currentIndex])
@@ -98,7 +106,20 @@ internal static class PathMapCalculator
         ArrayPool<int>.Shared.Return(diagonalScore);
         ArrayPool<bool>.Shared.Return(closedSet);
 
-        return new WorldPathMap(map, start, distanceScore, predecessors);
+        if (maxCost < int.MaxValue)
+        {
+            // Drop the cells that were reached but not settled: their cost may not be final.
+            for (int index = 0; index < cellCount; index++)
+            {
+                if (distanceScore[index] > maxCost)
+                {
+                    distanceScore[index] = int.MaxValue;
+                    predecessors[index] = -1;
+                }
+            }
+        }
+
+        return new WorldPathMap(map, start, distanceScore, predecessors, maxCost);
     }
 
     private static int GetNeighbors(
