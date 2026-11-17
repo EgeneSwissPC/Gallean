@@ -53,6 +53,7 @@ internal sealed partial class MapEditorScreenViewModel
             return;
         }
 
+        UpdateRoadGhost();
         MapEditorPlacementPreview preview = hoverTile is { } tile && IsPreviewEnabled && !previewSuspended && PositionInfo is null
             ? BuildPreview(tile)
             : MapEditorPlacementPreview.None;
@@ -175,6 +176,9 @@ internal sealed partial class MapEditorScreenViewModel
                     Sized(option.Name, definition.Width, definition.Height),
                     map.PreviewLandmark(map.CenterFootprint(tile, definition.Width, definition.Height), definition.Width, definition.Height),
                     []);
+
+            case MapEditorTool.Road:
+                return RoadPreview(tile);
 
             default:
                 return BrushPreview(tile);

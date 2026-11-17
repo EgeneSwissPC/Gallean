@@ -996,6 +996,19 @@
     "Show the army path under the cursor": "Показывать путь армии под курсором",
     "Heal and defend": "Лечение и защита",
     "Healers heal the army and all other units defend, until you press it again": "Лекари лечат армию, остальные воины защищаются, пока вы не нажмёте кнопку снова",
-    "Would you like to heal the army instantly and then resolve the rest of the battle automatically?": "Мгновенно вылечить армию, а затем завершить битву автоматически?"
+    "Would you like to heal the army instantly and then resolve the rest of the battle automatically?": "Мгновенно вылечить армию, а затем завершить битву автоматически?",
+    "Road": "Дорога",
+    "A road cannot go here: {0} at {1}, {2}.": "Здесь нельзя проложить дорогу: {0} на {1}, {2}.",
+    "No way for a road from {0}, {1} to {2}, {3}.": "Дорогу от {0}, {1} до {2}, {3} проложить нельзя.",
+    "Road: blocked by {0} at {1}, {2}": "Дорога: мешает {0} на {1}, {2}",
+    "Road: click starts a road here · Shift+click removes this road tile": "Дорога: щелчок начинает здесь дорогу · Shift+щелчок убирает эту клетку дороги",
+    "Road: click starts a road here": "Дорога: щелчок начинает здесь дорогу",
+    "Road from {0}, {1}: move the mouse to where it goes · click here again or press Esc to stop": "Дорога от {0}, {1}: наведите мышь туда, куда она ведёт · щёлкните здесь ещё раз или нажмите Esc, чтобы закончить",
+    "Road from {0}, {1}: no way to here": "Дорога от {0}, {1}: сюда пути нет",
+    "Road from {0}, {1}: {2} tiles long": "Дорога от {0}, {1}: длина {2} клеток",
+    "1 new road tile": "1 новая клетка дороги",
+    "{0} new road tiles": "новых клеток дороги: {0}",
+    "click lays it": "щелчок прокладывает её",
+    "Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads.": "Щёлкните клетку, чтобы начать дорогу, и ведите мышь: дорога пойдёт лучшим путём в обход воды, гор и построек и соединится с встреченными дорогами. Щёлкните ещё раз, чтобы проложить её и продолжить оттуда. Щёлкните последнюю клетку ещё раз или нажмите Esc, чтобы закончить. Shift+щелчок убирает клетку дороги. По дорогам армии ходят быстрее."
   }
 }

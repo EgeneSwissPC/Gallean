@@ -45,6 +45,9 @@ internal sealed record MapEditorPlacementPreview(
 
     public bool Fits { get; init; } = true;
 
+    // Tiles drawn as outlines only, so what is under them stays visible (the road tool's road pieces).
+    public bool OutlineOnly { get; init; }
+
     public bool IsEmpty => Tiles.Count == 0 && Glow is null && MovesFrom is null && HoverObject is null && Text.Length == 0;
 
     public int Count(MapEditorTileState state)

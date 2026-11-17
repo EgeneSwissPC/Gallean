@@ -996,6 +996,19 @@
     "Show the army path under the cursor": "Show the army path under the cursor",
     "Heal and defend": "Heal and defend",
     "Healers heal the army and all other units defend, until you press it again": "Healers heal the army and all other units defend, until you press it again",
-    "Would you like to heal the army instantly and then resolve the rest of the battle automatically?": "Would you like to heal the army instantly and then resolve the rest of the battle automatically?"
+    "Would you like to heal the army instantly and then resolve the rest of the battle automatically?": "Would you like to heal the army instantly and then resolve the rest of the battle automatically?",
+    "Road": "Road",
+    "A road cannot go here: {0} at {1}, {2}.": "A road cannot go here: {0} at {1}, {2}.",
+    "No way for a road from {0}, {1} to {2}, {3}.": "No way for a road from {0}, {1} to {2}, {3}.",
+    "Road: blocked by {0} at {1}, {2}": "Road: blocked by {0} at {1}, {2}",
+    "Road: click starts a road here · Shift+click removes this road tile": "Road: click starts a road here · Shift+click removes this road tile",
+    "Road: click starts a road here": "Road: click starts a road here",
+    "Road from {0}, {1}: move the mouse to where it goes · click here again or press Esc to stop": "Road from {0}, {1}: move the mouse to where it goes · click here again or press Esc to stop",
+    "Road from {0}, {1}: no way to here": "Road from {0}, {1}: no way to here",
+    "Road from {0}, {1}: {2} tiles long": "Road from {0}, {1}: {2} tiles long",
+    "1 new road tile": "1 new road tile",
+    "{0} new road tiles": "{0} new road tiles",
+    "click lays it": "click lays it",
+    "Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads.": "Click a tile to start a road, then move the mouse: the road takes the best way there, around water, mountains and buildings, and joins the roads it meets. Click again to lay it and carry on from there. Click the last tile again or press Esc to stop. Shift+click removes a road tile. Armies move faster on roads."
   }
 }

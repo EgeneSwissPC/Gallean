@@ -889,6 +889,93 @@ public sealed class MapEditorScreenViewModelTests
     }
 
     [Test]
+    public async Task RoadTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Road);
+        Assert.That((editor.IsRoadTool, editor.HasBrush), Is.EqualTo((true, false)));
+
+        bool IsRoad(WorldMap shown, int x, int y) => shown.GetCellAt(new WorldPosition(x, y)).Feature == WorldMapFeature.Road;
+        int CountRoads(WorldMap shown) => Enumerable.Range(0, shown.Width * shown.Height).Count(i => IsRoad(shown, i % shown.Width, i / shown.Width));
+
+        // Hover: a road can start on free land, not on a capital (a click there shows why).
+        editor.UpdateHover(new WorldPosition(20, 20));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(20, 20)), Is.EqualTo(MapEditorTileState.Fits));
+        Assert.That(editor.HoverText, Does.StartWith("Road: click starts a road here"));
+        editor.UpdateHover(new WorldPosition(8, 8));
+        Assert.That(editor.PlacementPreview.GetState(new WorldPosition(8, 8)), Is.EqualTo(MapEditorTileState.Blocked));
+        editor.BeginStroke(new WorldPosition(8, 8));
+        Assert.That((editor.RoadStart, game.Alert.Current?.Caption), Is.EqualTo(((WorldPosition?)null, "A road cannot go here: a capital at 8, 8.")));
+
+        // First click: the start shows as a road piece, nothing is laid yet.
+        editor.BeginStroke(new WorldPosition(20, 20));
+        Assert.That(editor.RoadStart, Is.EqualTo(new WorldPosition(20, 20)));
+        Assert.That((IsRoad(editor.RenderRequest.State.Map, 20, 20), CountRoads(editor.Map.ToWorldMap())), Is.EqualTo((true, 0)));
+
+        // Moving the mouse shows the whole road to the cursor, joined edge to edge, still not laid.
+        editor.UpdateHover(new WorldPosition(26, 24));
+        WorldMap ghost = editor.RenderRequest.State.Map;
+        Assert.That(CountRoads(ghost), Is.EqualTo(11));
+        Assert.That(CountRoads(editor.Map.ToWorldMap()), Is.Zero);
+        Assert.That(editor.PlacementPreview.Count(MapEditorTileState.Fits), Is.EqualTo(11));
+        Assert.That(editor.HoverText, Does.StartWith("Road from 20, 20: 11 tiles long · 11 new road tiles · click lays it"));
+
+        // Second click lays exactly what was shown, and the road carries on from there.
+        editor.BeginStroke(new WorldPosition(26, 24));
+        Assert.That(editor.Map.ToWorldMap().Cells, Is.EqualTo(ghost.Cells));
+        Assert.That(editor.State.Map.Cells, Is.EqualTo(ghost.Cells));
+        Assert.That((editor.RoadStart, editor.CanUndo), Is.EqualTo(((WorldPosition?)new WorldPosition(26, 24), true)));
+
+        // Esc stops; a road across the first one joins it with junction pieces (three or four road neighbours).
+        Assert.That((editor.CancelRoad(), editor.CancelRoad(), editor.RoadStart), Is.EqualTo((true, false, (WorldPosition?)null)));
+        editor.BeginStroke(new WorldPosition(23, 16));
+        editor.UpdateHover(new WorldPosition(23, 28));
+        WorldMap crossing = editor.RenderRequest.State.Map;
+        Assert.That(Enumerable.Range(16, 13).All(y => IsRoad(crossing, 23, y)), Is.True, "Straight down the column.");
+        int Neighbours(WorldPosition tile) => new[] { (0, -1), (1, 0), (0, 1), (-1, 0) }.Count(step => IsRoad(crossing, tile.X + step.Item1, tile.Y + step.Item2));
+        WorldPosition[] junctions = [.. Enumerable.Range(17, 11).Select(y => new WorldPosition(23, y)).Where(tile => Neighbours(tile) >= 3)];
+        Assert.That(junctions, Is.Not.Empty);
+        Assert.That(junctions.All(tile => !IsRoad(editor.Map.ToWorldMap(), tile.X, tile.Y) || Neighbours(tile) >= 3), Is.True);
+        editor.BeginStroke(new WorldPosition(23, 28));
+        Assert.That(CountRoads(editor.Map.ToWorldMap()), Is.EqualTo(CountRoads(crossing)));
+
+        // No way to a tile ringed by water; a click there shows why and keeps the start.
+        editor.SelectTool(MapEditorTool.Water);
+        editor.BrushRadius = 1;
+        editor.BeginStroke(new WorldPosition(32, 12));
+        editor.EndStroke();
+        editor.SelectTool(MapEditorTool.Land);
+        editor.BrushRadius = 0;
+        editor.BeginStroke(new WorldPosition(32, 12));
+        editor.EndStroke();
+        editor.SelectTool(MapEditorTool.Road);
+        editor.BeginStroke(new WorldPosition(30, 20));
+        editor.UpdateHover(new WorldPosition(32, 12));
+        Assert.That(editor.HoverText, Does.StartWith("Road from 30, 20: no way to here"));
+        Assert.That(CountRoads(editor.RenderRequest.State.Map), Is.EqualTo(CountRoads(editor.Map.ToWorldMap()) + 1), "Only the start is shown.");
+        editor.BeginStroke(new WorldPosition(32, 12));
+        Assert.That((editor.RoadStart, game.Alert.Current?.Caption), Is.EqualTo(((WorldPosition?)new WorldPosition(30, 20), "No way for a road from 30, 20 to 32, 12.")));
+
+        // Shift+click removes a road tile; undo puts it back, then takes the crossing road away.
+        int roads = CountRoads(editor.Map.ToWorldMap());
+        editor.BeginStroke(new WorldPosition(23, 16), alternate: true);
+        Assert.That((CountRoads(editor.Map.ToWorldMap()), editor.RoadStart), Is.EqualTo((roads - 1, (WorldPosition?)null)));
+        editor.UndoCommand.Execute(null);
+        Assert.That(CountRoads(editor.Map.ToWorldMap()), Is.EqualTo(roads));
+        editor.UndoCommand.Execute(null);
+        editor.UndoCommand.Execute(null);
+        editor.UndoCommand.Execute(null);
+        Assert.That(CountRoads(editor.Map.ToWorldMap()), Is.EqualTo(11));
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions()).Cells, Is.EqualTo(editor.Map.Cells));
+    }
+
+    [Test]
     public async Task SiteTest()
     {
         using Sandbox sb = Sandbox.Create();

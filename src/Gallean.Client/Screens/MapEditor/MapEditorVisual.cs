@@ -134,7 +134,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         {
             painting = true;
             e.Pointer.Capture(this);
-            ViewModel.BeginStroke(WorldTransform.FromWorldPoint(worldPoint));
+            ViewModel.BeginStroke(WorldTransform.FromWorldPoint(worldPoint), e.KeyModifiers.HasFlag(KeyModifiers.Shift));
             e.Handled = true;
         }
         else if (point.Properties.IsRightButtonPressed)
@@ -266,6 +266,10 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         else if (e.Key == Key.P && e.KeyModifiers == KeyModifiers.None)
         {
             ViewModel.IsPreviewEnabled = !ViewModel.IsPreviewEnabled;
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && ViewModel.CancelRoad())
+        {
             e.Handled = true;
         }
     }
@@ -412,8 +416,9 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
 
         using (context.PushTransform(view))
         {
-            DrawTiles(context, geometry.Fits, FitsBrush, MapEditorPreviewColors.Fits, pixel);
-            DrawTiles(context, geometry.Changes, ChangesBrush, MapEditorPreviewColors.Changes, pixel);
+            bool fill = !preview.OutlineOnly;
+            DrawTiles(context, geometry.Fits, fill ? FitsBrush : null, MapEditorPreviewColors.Fits, pixel);
+            DrawTiles(context, geometry.Changes, fill ? ChangesBrush : null, MapEditorPreviewColors.Changes, pixel);
             DrawTiles(context, geometry.Blocked, BlockedBrush, MapEditorPreviewColors.Blocked, pixel);
 
             if (geometry.Footprint is not null)
@@ -436,7 +441,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
         }
     }
 
-    private static void DrawTiles(DrawingContext context, Geometry? tiles, IBrush fill, Color outline, double pixel)
+    private static void DrawTiles(DrawingContext context, Geometry? tiles, IBrush? fill, Color outline, double pixel)
     {
         if (tiles is not null)
         {

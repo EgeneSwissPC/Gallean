@@ -728,8 +728,12 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         ];
     }
 
-    // One SRoad row per road tile. The loader only reads the position; INDEX holds the neighbour mask like the
-    // original maps (north 1, east 2, south 4, west 8), which the renderer works out again by itself.
+    // The original maps' SRoad INDEX for each neighbour mask (north 1, east 2, south 4, west 8): one fixed number
+    // per road piece, measured on all 95 scenarios (e.g. east-west 2, north-south 3, crossroads 1, no neighbour 0).
+    private static readonly int[] RoadIndexByMask = [0, 14, 12, 8, 13, 3, 9, 7, 15, 11, 2, 5, 10, 4, 6, 1];
+
+    // One SRoad row per road tile. The loader only reads the position (the renderer picks the piece from the road
+    // neighbours); INDEX is written as the original maps write it.
     private static List<Db.ScenarioRoad> BuildRoads(CustomMap map, Db.ScenarioId scenarioId, string prefix)
     {
         List<Db.ScenarioRoad> roads = [];
@@ -749,7 +753,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                 }
 
                 int mask = (IsRoad(x, y - 1) ? 1 : 0) | (IsRoad(x + 1, y) ? 2 : 0) | (IsRoad(x, y + 1) ? 4 : 0) | (IsRoad(x - 1, y) ? 8 : 0);
-                roads.Add(new Db.ScenarioRoad(scenarioId, MakeId(prefix, "RA", roads.Count), x, y, mask, 0));
+                roads.Add(new Db.ScenarioRoad(scenarioId, MakeId(prefix, "RA", roads.Count), x, y, RoadIndexByMask[mask], 0));
             }
         }
 

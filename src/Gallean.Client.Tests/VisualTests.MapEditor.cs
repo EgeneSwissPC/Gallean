@@ -623,6 +623,52 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task MapEditorRoadsTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+        view.Camera.SetZoom(1);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(20, 16)));
+        editor.SelectTool(MapEditorTool.Road);
+
+        async Task ShowAsync(WorldPosition? click, WorldPosition hover, string step)
+        {
+            if (click is { } tile)
+            {
+                editor.BeginStroke(tile);
+            }
+
+            editor.UpdateHover(null);
+            editor.UpdateHover(hover);
+            await SkipFramesAsync(10);
+            await CaptureAsync(window, step);
+        }
+
+        // Start next to the capital, then the road to the cursor: through the forest (amber, cleared), not laid yet.
+        await ShowAsync(new WorldPosition(13, 13), new WorldPosition(13, 13), "1-start");
+        await ShowAsync(null, new WorldPosition(22, 16), "2-path");
+
+        // Laid; it carries on from there towards the lake shore.
+        await ShowAsync(new WorldPosition(22, 16), new WorldPosition(30, 20), "3-continues");
+        editor.BeginStroke(new WorldPosition(30, 20));
+        editor.CancelRoad();
+
+        // A second road across the first: junction pieces where they meet.
+        await ShowAsync(new WorldPosition(18, 9), new WorldPosition(18, 21), "4-crossing");
+        editor.BeginStroke(new WorldPosition(18, 21));
+
+        // On the lake: red, no way there.
+        await ShowAsync(null, new WorldPosition(23, 22), "5-water");
+        Assert.That(editor.PlacementPreview.Fits, Is.False);
+    }
+
+    [AvaloniaTest]
     public async Task MapEditorGarrisonsAndLevelsTest()
     {
         using Sandbox sb = Sandbox.Create();
