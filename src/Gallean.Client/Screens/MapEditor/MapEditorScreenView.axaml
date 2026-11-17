@@ -728,7 +728,13 @@
                 <Button x:Name="LocationRadiusUpButton" Classes="pill" Width="28" Height="28" Padding="0" Content="+" Command="{Binding LocationRadiusUpCommand}" />
                 <Button x:Name="LocationsButton" Classes="pill" local:PlateChrome.TextureSeed="6" Height="28" Padding="10,0" Margin="8,0,0,0" Content="{local:Text 'List (L)'}" Command="{Binding ToggleLocationsCommand}" />
               </StackPanel>
-              <TextBlock Text="{local:Text 'Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.'}"
+              <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,6,0,0" IsVisible="{Binding HasSelectedLocation}">
+                <TextBlock Text="{local:Text 'X'}" Classes="body" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" />
+                <TextBox x:Name="LocationXBox" Width="56" Text="{Binding LocationXText}" KeyDown="OnLocationPositionKeyDown" LostFocus="OnLocationPositionLostFocus" />
+                <TextBlock Text="{local:Text 'Y'}" Classes="body" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" />
+                <TextBox x:Name="LocationYBox" Width="56" Text="{Binding LocationYText}" KeyDown="OnLocationPositionKeyDown" LostFocus="OnLocationPositionLostFocus" />
+              </StackPanel>
+              <TextBlock Text="{local:Text 'Click the map to place a named zone (+ and - change its size), then type its name. Click a zone to select it, drag it to move it, Ctrl+click to place a zone inside it, Shift+click to remove it. Zones may overlap; near the edge they move inside the map.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}"

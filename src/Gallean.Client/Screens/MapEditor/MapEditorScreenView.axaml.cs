@@ -76,6 +76,21 @@ internal sealed partial class MapEditorScreenView : UserControl
         }
     }
 
+    // The X/Y boxes of the selected location: Enter or leaving the box moves it.
+    private void OnLocationPositionKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            EditorViewModel?.ApplyLocationPosition();
+            e.Handled = true;
+        }
+    }
+
+    private void OnLocationPositionLostFocus(object? sender, RoutedEventArgs e)
+    {
+        EditorViewModel?.ApplyLocationPosition();
+    }
+
     private void OnLocationNameLostFocus(object? sender, RoutedEventArgs e)
     {
         if (sender is Control { DataContext: MapEditorLocationRowViewModel row })

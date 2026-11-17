@@ -745,6 +745,7 @@ public sealed partial class VisualTests
 
         // Placed: its row opens for the name.
         editor.BeginStroke(new WorldPosition(20, 14));
+        editor.EndStroke();
         await ShowAsync(null, "2-naming");
         Assert.That(editor.SelectedLocationRow!.IsEditing, Is.True);
         editor.SelectedLocationRow!.EditText = "Northern Pass";
@@ -754,6 +755,7 @@ public sealed partial class VisualTests
         editor.ChangeLocationRadius(2);
         editor.SelectedLocationRow = null;
         editor.BeginStroke(new WorldPosition(22, 16));
+        editor.EndStroke();
         Assert.That(editor.Map.Locations, Has.Count.EqualTo(1), "A click inside a zone selects it.");
         editor.SelectedLocationRow = null;
         editor.LocationRadius = 0;
@@ -761,10 +763,20 @@ public sealed partial class VisualTests
         editor.SelectedLocationRow!.EditText = "Trap";
         editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
         editor.BeginStroke(new WorldPosition(30, 8));
+        editor.EndStroke();
         editor.SelectedLocationRow!.CommitEditCommand.Execute(null);
         await ShowAsync(new WorldPosition(22, 16), "3-overlay");
         Assert.That(editor.LocationRows.Select(row => (row.Name, row.Details)), Is.EqualTo(new[] { ("Location 1", "1x1 · 30, 8"), ("Northern Pass", "7x7 · 20, 14"), ("Trap", "1x1 · 22, 16") }));
         Assert.That(editor.HoverText, Does.EndWith("Locations here: Northern Pass, Trap"));
+
+        // Dragging Northern Pass: the new place follows the cursor, the old one dashed; dropped, the X/Y boxes follow.
+        editor.BeginStroke(new WorldPosition(19, 13));
+        editor.ContinueStroke(new WorldPosition(23, 12));
+        await ShowAsync(new WorldPosition(23, 12), "3b-dragging");
+        Assert.That(editor.IsDraggingLocation, Is.True);
+        editor.EndStroke();
+        Assert.That(editor.Map.Locations.Single(location => location.Name == "Northern Pass").Center, Is.EqualTo(new WorldPosition(24, 13)));
+        Assert.That((editor.LocationXText, editor.LocationYText), Is.EqualTo(("24", "13")));
 
         // Hovering a row in the list lights its zone up.
         editor.SetHoveredLocation(editor.LocationRows.Single(row => row.Name == "Northern Pass").Id);
