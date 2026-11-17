@@ -203,11 +203,38 @@ Known limits:
   use `PlaceRod`).
 - Whether the original game's rod ID type is `RO` is unchecked; the loader takes any ID.
 
+## Phase 2 — done
+
+What was built (branch `upgrade/map-editor-rod-tool`, commit `97fe196`, merged as `1e3fd51`):
+- Tool "Rods" (15th in the tool list) with a "Rod owner" box listing the races on the map
+  (`MapEditorScreenViewModel.Rod.cs`).
+- Hover: the rod tile green, the land it claims amber, and the line says what a click does: "Rod (Undead Hordes):
+  fits · turns 10 tiles into Undead Hordes land · takes Gold mine from nobody". When another rod is too close, both
+  rods are red and the line says "another rod at 20, 20 is too close (rods need 2 free tiles between them)"; other
+  blocks read like the other tools ("blocked by a capital at 8, 8").
+- Click places the rod (terrain-only commit: the rod and its land show at once, no preview rebuild). Clicking a rod,
+  or Shift+click on it, removes it; its land stays. Ctrl+Z undoes either.
+- The tool list now has 3 columns (5 rows instead of 8), so the settings of every tool stay visible at 1366x768.
+  The rod tool is labelled "Rods" (ru "Жезлы") because the game's "Rod" is "Жезл власти" in Russian, too long for a
+  column.
+- Fix found on the way: the editor drew the game's terrain expansion (the fade-in of new race land) at time zero,
+  so after any change of race land (land brush, capital, village, rod) the last changed tiles kept showing the old
+  land, and cleared trees stayed visible, until the next change. `MapEditorVisual` now draws expansions as finished,
+  so changes show at once (no fade in the editor).
+- Tests (suite 5204 -> 5205): `MapEditorScreenViewModelTests.RodTest` (owners, hover states and lines, placing,
+  too close, a mine taken, other tools blocked by a rod, removing by click and Shift+click, undo, save and reopen),
+  `VisualTests.MapEditorRodsTest` (hover, too close, a mine's 3x3, both placed); all 12 map editor visual tests
+  pass with the 3-column tool list.
+- Real client run (AOT build, Debian 12 image): Rods tool selected from the new tool grid, hover line "Rod (Empire):
+  fits · turns 2 tiles into Empire land", rods planted on a forest and on open land, drawn at once with their land,
+  hovering one says "Rod of Empire: click removes it (its land stays)".
+
 ## Phases
 
 1. ~~Rods in the engine and writer: `CustomMapRod`, rules, paint, `SRod.json`, `FromState`, tests (about 1 day).~~
    Done, see "Phase 1 — done".
-2. Rod tool in the client: tool, preview, hover line, Shift+click, visual test, real client run (about half a day).
+2. ~~Rod tool in the client: tool, preview, hover line, Shift+click, visual test, real client run (about half a
+   day).~~ Done, see "Phase 2 — done".
 3. Economy panel: `CustomMapEconomy`, panel, live update, highlight (about 1 day).
 4. Starting bank per race in the panel (gold + all five manas), "Same for all" (about half a day).
 5. Land spread preview: turn bar, cached spread, numbers per turn, benchmark (about 1 day).

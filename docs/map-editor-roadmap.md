@@ -3,8 +3,8 @@
 Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; updated 2026-11-16 after landmark
 placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
 plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), after
-planning rods and the economy panel, and after rods in the engine (commit `ca0330f`). Each section is meant as a
-separate task.
+planning rods and the economy panel, after rods in the engine (commit `ca0330f`) and after the rod tool (commit
+`97fe196`). Each section is meant as a separate task.
 
 ## Decisions so far
 
@@ -65,6 +65,13 @@ separate task.
   - click to place centred on the tile, click a landmark to remove it, Ctrl+Z to undo
   - the hover line and the right-click info show the landmark's name
 - Right-click info for capitals and villages shows them as their owner sees them (editor only).
+- Rods (new): tool "Rods"
+  - pick a race on the map, click land to plant a rod: like the game on the turn a rod is planted, it turns the
+    nearest 2 tiles into the race's land, and a mine they reach changes owner (amber in the preview, with "takes
+    Gold mine from nobody")
+  - game rules: no water, mountains, buildings or landmarks, nothing on the tile, no other rod within 2 tiles (both
+    rods shown red, the line says where the other one is)
+  - click a rod or Shift+click to remove it (its land stays); Ctrl+Z undoes; saved and loaded like the game's rods
 - Roads (new): tool "Road"
   - click a tile to start, move the mouse: the road to the cursor takes the cheapest way around water, mountains,
     capitals, villages, ruins, sites and landmarks, follows existing roads, and avoids forests when it can
@@ -84,7 +91,7 @@ separate task.
 
 | Object | Notes |
 | --- | --- |
-| Rods | terraforming rods; engine, save and load done (commit `ca0330f`), the Rod tool is next (see "Task: rods and the economy panel") |
+| ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
 | Locations | named zones (see below) |
 | Events | scenario scripting (see below); every custom map is saved with no events |
 | Army templates | armies that events create |
@@ -155,6 +162,12 @@ and `ApplyTerrain` read rods, landmarks remember the mountain type. Tests: `Cust
 against the game's `ExpansionCalculator` on 3,996 placements), suite 5204. Real client: the rod is drawn in the editor
 and the game, and the mines it took pay from turn 1. Finding: neighbouring mines flip together (one mine's 3x3 can
 reach the next). Details: `docs/map-editor-rods-economy.md` ("Phase 1 — done").
+
+Phase 2 — done (branch `upgrade/map-editor-rod-tool`, commit `97fe196`): tool "Rods" with a race box, hover
+preview and line, click or Shift+click on a rod removes it, undo. The tool list has 3 columns now, so every tool's
+settings stay visible at 1366x768. Fix on the way: the editor drew the game's land fade-in at time zero, so the last
+race-land change (any tool) showed the old land until the next change; it now shows changes at once. Tests:
+`MapEditorScreenViewModelTests.RodTest`, `VisualTests.MapEditorRodsTest`; suite 5205. Next: the economy panel.
 
 ## Task: items (one shared item editor)
 
