@@ -23,7 +23,7 @@ internal sealed class FogSpellResolver : IWorldSpellResolver<WorldFogSpellEffect
 
                 foreach (WorldPosition tile in SpellTargetCalculator.GetArea(state, target?.Center, spell.AreaRadius))
                 {
-                    if (player.FogOfWar.Get(tile.X, tile.Y))
+                    if (player.FogOfWar.Get(tile.X, tile.Y) && !OwnLandVisionCalculator.IsOwnLand(state, player, tile))
                     {
                         positions.Add(tile);
                     }
