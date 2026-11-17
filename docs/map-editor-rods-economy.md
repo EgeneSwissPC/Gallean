@@ -310,7 +310,10 @@ What was built (branch `upgrade/map-editor-spread-preview`, commit `caab9b3`, me
   source that was unowned, and the panel shows it (+50 grove mana).
 
 Known limits:
-- Villages that level up over time (`GrowthTurn`) aren't simulated; the editor writes none.
+- Villages keep the level set in the editor. In a game a village only levels up when its owner pays for it (at most
+  once per turn; `GROWTH_T` is just the turn of the last upgrade, not a timer), and a higher level spreads faster
+  (15/15/20/20/25 tiles a turn for levels 1-5, `T_CITY1`-`T_CITY5`). Those purchases are left out like moves and
+  fights.
 - Turn order: the human player moves first in a game, so where two races' land meets, the real split can differ by a
   few tiles from the preview.
 
@@ -334,5 +337,6 @@ Each phase is its own `upgrade/` branch and roadmap update.
    default.
 2. ~~"After N turns" estimate?~~ Decided: yes, the turn bar above.
 3. ~~Hotkey?~~ Decided: yes, E.
-4. Spread preview: should village growth turns (`GrowthTurn`, villages that level up over time) be simulated? The
-   editor writes none today, so not planned.
+4. ~~Spread preview: should villages that level up over time be simulated?~~ Answered: villages never level up on
+   their own; only the owner's paid upgrade raises a level (`GROWTH_T` is the turn of the last one). The preview uses
+   the levels set in the editor.
