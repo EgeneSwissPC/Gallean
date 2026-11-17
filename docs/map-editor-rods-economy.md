@@ -229,13 +229,40 @@ What was built (branch `upgrade/map-editor-rod-tool`, commit `97fe196`, merged a
   fits · turns 2 tiles into Empire land", rods planted on a forest and on open land, drawn at once with their land,
   hovering one says "Rod of Empire: click removes it (its land stays)".
 
+## Phase 3 — done
+
+What was built (branch `upgrade/map-editor-economy`, commit `687944d`, merged as `fedcdeb`):
+- Engine `CustomMapEconomy.cs`: `CustomMapEconomy.Calculate(state, context)` on the editor's preview state, with
+  `PlayerIncomeCalculator` (the code behind the game's "Income per turn" table), at Average difficulty and as a human
+  player. Per race: land tiles, land % (`TerrainTransformCalculator.GetTransformedPercentage`, the game's "transform
+  land" share), rods, and per resource type the number of resources on its land, capital income, resources income
+  and total; plus the resources on nobody's land.
+- Client `MapEditorScreenViewModel.Economy.cs`: the "Economy (E)" button above Undo/Save and the E key open a panel
+  over the left of the map (the landmark palette steps aside while it is open). One block per race, laid out like
+  the game's income table (icon, name, Count, Capital, Sources, Total), then "Unowned land". Rows the race neither
+  owns nor earns are left out. The panel is recomputed only while open and only when the shown state changed, so
+  hovering costs nothing.
+- Selecting a race (it uses the game's quest-list row style) outlines its resources and rods on the map in the
+  hover-cursor gold, whatever tool is active; click again to clear. The outline follows changes.
+- "Unowned land" includes resources on the land of races that aren't on the map (e.g. Undead land on a map without
+  the Undead): nobody earns from those.
+- Tests (suite 5205 -> 5207): `CustomMapTests.EconomyTest` (counts by land, 100 + 25 base income, 50 per
+  resource, rods, land %, nobody's land incl. a missing race's land, same numbers as `WorldGetPlayerInfoCommand` for a
+  human at Average, an Easy map shows the same), `MapEditorScreenViewModelTests.EconomyPanelTest` (live after land
+  paint, resources, a rod taking a mine, undo; outline; palette; close), `VisualTests.MapEditorEconomyTest` (E key,
+  panel, a selected race's outline); all 13 map editor visual tests pass.
+- Real client run (AOT build, Debian 12 image, `mapgen` test map): E opens the panel; Empire Gold 1 · 100 · 50 ·
+  +150, Life mana 1 · 25 · 50 · +75, Infernal and Rune mana 1 · 0 · 50 · +50 each (both taken by its rod), Undead
+  Gold 0 · 100 · 0 · +100 and Death mana 1 · 25 · 50 · +75, unowned: 1 Grove mana; selecting the Empire outlines its
+  4 resources and its rod.
+
 ## Phases
 
 1. ~~Rods in the engine and writer: `CustomMapRod`, rules, paint, `SRod.json`, `FromState`, tests (about 1 day).~~
    Done, see "Phase 1 — done".
 2. ~~Rod tool in the client: tool, preview, hover line, Shift+click, visual test, real client run (about half a
    day).~~ Done, see "Phase 2 — done".
-3. Economy panel: `CustomMapEconomy`, panel, live update, highlight (about 1 day).
+3. ~~Economy panel: `CustomMapEconomy`, panel, live update, highlight (about 1 day).~~ Done, see "Phase 3 — done".
 4. Starting bank per race in the panel (gold + all five manas), "Same for all" (about half a day).
 5. Land spread preview: turn bar, cached spread, numbers per turn, benchmark (about 1 day).
 

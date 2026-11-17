@@ -3,8 +3,8 @@
 Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; updated 2026-11-16 after landmark
 placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
 plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), after
-planning rods and the economy panel, after rods in the engine (commit `ca0330f`) and after the rod tool (commit
-`97fe196`). Each section is meant as a separate task.
+planning rods and the economy panel, after rods in the engine (commit `ca0330f`), after the rod tool (commit
+`97fe196`) and after the economy panel (commit `687944d`). Each section is meant as a separate task.
 
 ## Decisions so far
 
@@ -72,6 +72,11 @@ planning rods and the economy panel, after rods in the engine (commit `ca0330f`)
   - game rules: no water, mountains, buildings or landmarks, nothing on the tile, no other rod within 2 tiles (both
     rods shown red, the line says where the other one is)
   - click a rod or Shift+click to remove it (its land stays); Ctrl+Z undoes; saved and loaded like the game's rods
+- Economy panel (new): "Economy (E)" button or E key
+  - per race: land tiles and %, rods, and for each resource type how many stand on its land, capital income,
+    resources income and total per turn, at Average difficulty, from the game's own income code; then resources on
+    unowned land
+  - follows every change (paint, objects, rods, undo); click a race to outline its resources and rods on the map
 - Roads (new): tool "Road"
   - click a tile to start, move the mouse: the road to the cursor takes the cheapest way around water, mountains,
     capitals, villages, ruins, sites and landmarks, follows existing roads, and avoids forests when it can
@@ -167,7 +172,13 @@ Phase 2 — done (branch `upgrade/map-editor-rod-tool`, commit `97fe196`): tool 
 preview and line, click or Shift+click on a rod removes it, undo. The tool list has 3 columns now, so every tool's
 settings stay visible at 1366x768. Fix on the way: the editor drew the game's land fade-in at time zero, so the last
 race-land change (any tool) showed the old land until the next change; it now shows changes at once. Tests:
-`MapEditorScreenViewModelTests.RodTest`, `VisualTests.MapEditorRodsTest`; suite 5205. Next: the economy panel.
+`MapEditorScreenViewModelTests.RodTest`, `VisualTests.MapEditorRodsTest`; suite 5205.
+
+Phase 3 — done (branch `upgrade/map-editor-economy`, commit `687944d`, merged as `fedcdeb`): the economy panel
+(`CustomMapEconomy` on the preview state with the game's `PlayerIncomeCalculator`, at Average as a human player;
+`MapEditorScreenViewModel.Economy.cs`; E key; selected race outlined on the map). Tests: `CustomMapTests.EconomyTest`,
+`MapEditorScreenViewModelTests.EconomyPanelTest`, `VisualTests.MapEditorEconomyTest`; suite 5207. Next: starting
+bank per race (phase 4), then the land spread preview (phase 5).
 
 ## Task: items (one shared item editor)
 
