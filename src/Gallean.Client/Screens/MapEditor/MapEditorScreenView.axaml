@@ -268,7 +268,7 @@
             Classes="editor-panel"
             HorizontalAlignment="Left"
             Margin="0,0,0,40"
-            IsVisible="{Binding IsLandmarkTool}">
+            IsVisible="{Binding ShowLandmarkPalette}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Top">
           <local:OutlinedTextBlock Text="{local:Text 'Landmarks'}" Classes="h4" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
@@ -312,16 +312,125 @@
       </DockPanel>
     </Border>
 
+    <!-- The economy panel (E), over the left of the map like the landmark palette; laid out like the game's
+         "Income per turn" table. Selecting a race outlines its resources and rods on the map. -->
+    <Border Grid.Column="0"
+            Classes="editor-panel"
+            Width="430"
+            HorizontalAlignment="Left"
+            Margin="0,0,0,40"
+            IsVisible="{Binding IsEconomyOpen}">
+      <DockPanel Grid.IsSharedSizeScope="True">
+        <StackPanel DockPanel.Dock="Top" Spacing="4">
+          <local:OutlinedTextBlock Text="{local:Text 'Economy'}" Classes="h4" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+          <TextBlock Text="{local:Text 'Income per turn at Average difficulty, as the game counts it. A resource pays the race whose land it stands on. Click a race to outline its resources and rods on the map.'}"
+                     Classes="caption"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource SecondaryTextBrush}" />
+          <Grid Margin="16,8,14,0">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="EconomyCount" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeCapital" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeNodes" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTotal" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="1" Classes="income-cell caption" Text="{local:Text 'Count'}" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock Grid.Column="2" Classes="income-cell caption" Text="{local:Text 'Capital'}" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock Grid.Column="3" Classes="income-cell caption" Text="{local:Text 'Sources'}" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock Grid.Column="4" Classes="income-cell caption" Text="{local:Text 'Total'}" Foreground="{StaticResource SecondaryTextBrush}" />
+          </Grid>
+        </StackPanel>
+        <ScrollViewer HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
+          <StackPanel Spacing="10">
+            <ListBox x:Name="EconomyRaceList"
+                     Classes="select-list"
+                     ItemsSource="{Binding EconomyRaces}"
+                     SelectedItem="{Binding SelectedEconomyRace}"
+                     SelectionMode="Single,Toggle"
+                     ScrollViewer.VerticalScrollBarVisibility="Disabled">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorEconomyRaceViewModel">
+                  <Border Classes="row">
+                  <StackPanel Spacing="4">
+                    <TextBlock Text="{Binding Title}" Classes="body row-title" />
+                    <TextBlock Text="{Binding Summary}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <ItemsControl ItemsSource="{Binding Rows}">
+                      <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                          <StackPanel Spacing="2" />
+                        </ItemsPanelTemplate>
+                      </ItemsControl.ItemsPanel>
+                      <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="local:MapEditorEconomyRowViewModel">
+                          <Grid>
+                            <Grid.ColumnDefinitions>
+                              <ColumnDefinition Width="*" />
+                              <ColumnDefinition Width="Auto" SharedSizeGroup="EconomyCount" />
+                              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeCapital" />
+                              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeNodes" />
+                              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTotal" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                              <local:IconVisual Moniker="{Binding Income.Icon}" Width="18" Height="18" VerticalAlignment="Center" />
+                              <TextBlock Classes="body" Text="{Binding Income.Name}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Classes="income-cell body" Text="{Binding CountText}" />
+                            <TextBlock Grid.Column="2" Classes="income-cell body" Text="{Binding Income.CapitalIncomeText}" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock Grid.Column="3" Classes="income-cell body" Text="{Binding Income.ResourceNodesIncomeText}" Foreground="{StaticResource SecondaryTextBrush}" />
+                            <TextBlock Grid.Column="4" Classes="income-cell body" Text="{Binding Income.IncomeText}" />
+                          </Grid>
+                        </DataTemplate>
+                      </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                  </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel Spacing="4" Margin="16,0,14,0">
+              <local:OutlinedTextBlock Text="{local:Text 'Unowned land'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+              <TextBlock Text="{local:Text 'No resource stands on unowned land.'}"
+                         Classes="caption"
+                         IsVisible="{Binding !HasUnclaimed}"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
+              <ItemsControl ItemsSource="{Binding UnclaimedResources}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorEconomyRowViewModel">
+                    <Grid>
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="EconomyCount" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeCapital" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeNodes" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTotal" />
+                      </Grid.ColumnDefinitions>
+                      <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
+                        <local:IconVisual Moniker="{Binding Income.Icon}" Width="18" Height="18" VerticalAlignment="Center" />
+                        <TextBlock Classes="body" Text="{Binding Income.Name}" VerticalAlignment="Center" />
+                      </StackPanel>
+                      <TextBlock Grid.Column="1" Classes="income-cell body" Text="{Binding CountText}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
+          </StackPanel>
+        </ScrollViewer>
+      </DockPanel>
+    </Border>
+
     <Border Grid.Column="1" Classes="editor-panel">
       <DockPanel>
         <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
           <Panel Width="170" Height="170" HorizontalAlignment="Center">
             <local:MinimapVisual x:Name="Minimap" Width="170" Height="170" MapScale="1" />
           </Panel>
-          <TextBlock Text="{local:Text 'Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview'}"
+          <TextBlock Text="{local:Text 'Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview · E: economy'}"
                      Classes="caption"
                      TextWrapping="Wrap"
                      Foreground="{StaticResource SecondaryTextBrush}" />
+          <Button x:Name="EconomyButton" Classes="pill" local:PlateChrome.TextureSeed="5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{local:Text 'Economy (E)'}" Command="{Binding ToggleEconomyCommand}" />
           <Grid Classes="focus-group pill-group" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" >
             <Button x:Name="UndoButton" Grid.Row="0" Grid.Column="0" Classes="pill" local:PlateChrome.TextureSeed="1" Content="{local:Text 'Undo'}" Command="{Binding UndoCommand}" />
             <Button x:Name="SaveButton" Grid.Row="0" Grid.Column="1" Classes="pill primary" local:PlateChrome.TextureSeed="2" Content="{local:Text 'Save'}" Command="{Binding SaveCommand}" />

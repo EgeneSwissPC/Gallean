@@ -1058,6 +1058,68 @@ public sealed class MapEditorScreenViewModelTests
     }
 
     [Test]
+    public async Task EconomyPanelTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        Assert.That((editor.IsEconomyOpen, editor.EconomyRaces.Count), Is.EqualTo((false, 0)), "Computed only while open.");
+
+        editor.ToggleEconomyCommand.Execute(null);
+        Assert.That(editor.EconomyRaces.Select(race => race.Title), Is.EqualTo(new[] { "Empire", "Mountain Clans" }));
+        MapEditorEconomyRaceViewModel empire = editor.EconomyRaces[0];
+        Assert.That(empire.Rows.Select(row => (row.Income.Name, row.Count, row.Income.CapitalIncome, row.Income.ResourceNodesIncome, row.Income.IncomeText)), Is.EqualTo(new[]
+        {
+            ("Gold", 0, 100, 0, "+100"),
+            ("Life mana", 0, 25, 0, "+25")
+        }));
+        Assert.That(empire.Summary, Is.EqualTo("Land: 25 tiles (1%) · 0 rods"), "The capital's 5x5.");
+        Assert.That(editor.HasUnclaimed, Is.False);
+
+        // Live: Empire land with a gold mine, and a mine on neutral land.
+        editor.SelectTool(MapEditorTool.Land);
+        editor.SelectedLandTerrain = editor.LandTerrains.Single(option => option.Value == WorldMapTerrain.Human);
+        editor.BrushRadius = 1;
+        editor.BeginStroke(new WorldPosition(20, 20));
+        editor.EndStroke();
+        editor.SelectTool(MapEditorTool.Resource);
+        editor.BeginStroke(new WorldPosition(20, 20));
+        editor.BeginStroke(new WorldPosition(26, 30));
+        empire = editor.EconomyRaces[0];
+        Assert.That(empire.Rows[0].Count, Is.EqualTo(1));
+        Assert.That(empire.Rows[0].Income.IncomeText, Is.EqualTo("+150"));
+        Assert.That(editor.UnclaimedResources.Select(row => (row.Income.Name, row.Count)), Is.EqualTo(new[] { ("Gold", 1) }));
+
+        // A rod counts, and its land can take the neutral mine.
+        editor.SelectTool(MapEditorTool.Rod);
+        editor.BeginStroke(new WorldPosition(26, 32));
+        Assert.That(editor.EconomyRaces[0].Summary, Does.EndWith("· 1 rod"));
+        Assert.That(editor.EconomyRaces[0].Rows[0].Count, Is.EqualTo(2), "Its 2 tiles reached the mine at 26, 30.");
+        Assert.That(editor.HasUnclaimed, Is.False);
+
+        // Selecting a race outlines its resources and rods on the map, whatever the tool; toggling clears it.
+        editor.SelectedEconomyRace = editor.EconomyRaces[0];
+        Assert.That(editor.PlacementPreview.Highlight, Is.EquivalentTo(new[] { new WorldPosition(20, 20), new WorldPosition(26, 30), new WorldPosition(26, 32) }));
+        editor.SelectedEconomyRace = editor.EconomyRaces[1];
+        Assert.That(editor.PlacementPreview.Highlight, Is.Empty, "The Clans have nothing yet.");
+
+        // Undo follows, and the selection survives the refresh.
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.EconomyRaces[0].Rows[0].Count, Is.EqualTo(1));
+        Assert.That(editor.SelectedEconomyRace?.Race, Is.EqualTo(WorldRace.Dwarf));
+
+        // The landmark palette makes room while the panel is open; closing clears the outline.
+        editor.SelectTool(MapEditorTool.Landmark);
+        Assert.That(editor.ShowLandmarkPalette, Is.False);
+        editor.SelectedEconomyRace = editor.EconomyRaces[0];
+        editor.ToggleEconomyCommand.Execute(null);
+        Assert.That((editor.IsEconomyOpen, editor.ShowLandmarkPalette, editor.SelectedEconomyRace), Is.EqualTo((false, true, (MapEditorEconomyRaceViewModel?)null)));
+        Assert.That(editor.PlacementPreview.Highlight, Is.Empty);
+    }
+
+    [Test]
     public async Task SiteTest()
     {
         using Sandbox sb = Sandbox.Create();

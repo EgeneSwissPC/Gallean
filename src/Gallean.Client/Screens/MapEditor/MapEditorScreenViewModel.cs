@@ -172,7 +172,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLandTool), nameof(IsCapitalTool), nameof(IsArmyTool), nameof(IsVillageTool), nameof(IsResourceTool))]
-    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(IsLandmarkTool), nameof(IsRoadTool), nameof(IsRodTool), nameof(HasBrush))]
+    [NotifyPropertyChangedFor(nameof(IsRuinTool), nameof(IsBagTool), nameof(IsSiteTool), nameof(IsLandmarkTool), nameof(IsRoadTool), nameof(IsRodTool), nameof(HasBrush), nameof(ShowLandmarkPalette))]
     public partial MapEditorOption<MapEditorTool> SelectedTool { get; set; }
 
     [ObservableProperty]

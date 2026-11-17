@@ -991,7 +991,6 @@
     "{0}: click opens it": "{0}: щелчок откроет",
     "{0}: click removes it": "{0}: щелчок уберёт",
     "{0}: fits": "{0}: помещается",
-    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки",
     "{0} brush, size {1}: paints 1 tile": "Кисть «{0}», размер {1}: 1 клетка",
     "Show the army path under the cursor": "Показывать путь армии под курсором",
     "Heal and defend": "Лечение и защита",
@@ -1019,6 +1018,15 @@
     "turns {0} tiles into {1} land": "превращает клеток в землю ({1}): {0}",
     "takes {0} from {1}": "забирает {0} у: {1}",
     "{0}: another rod at {1}, {2} is too close (rods need {3} free tiles between them)": "{0}: другой жезл на {1}, {2} слишком близко (между жезлами нужно свободных клеток: {3})",
-    "Rods": "Жезлы"
+    "Rods": "Жезлы",
+    "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview · E: economy": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки · E: экономика",
+    "Economy": "Экономика",
+    "Economy (E)": "Экономика (E)",
+    "Count": "Кол-во",
+    "Unowned land": "Ничья земля",
+    "No resource stands on unowned land.": "На ничьей земле нет ресурсов.",
+    "Income per turn at Average difficulty, as the game counts it. A resource pays the race whose land it stands on. Click a race to outline its resources and rods on the map.": "Доход за ход на среднем уровне сложности, как его считает игра. Ресурс приносит доход расе, на чьей земле он стоит. Щёлкните по расе, чтобы выделить её ресурсы и жезлы на карте.",
+    "Land: {0} tiles ({1}%) · 1 rod": "Земля: клеток {0} ({1}%) · 1 жезл",
+    "Land: {0} tiles ({1}%) · {2} rods": "Земля: клеток {0} ({1}%) · жезлов: {2}"
   }
 }
