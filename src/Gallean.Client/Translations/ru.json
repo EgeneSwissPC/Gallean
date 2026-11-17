@@ -992,6 +992,9 @@
     "{0}: click removes it": "{0}: щелчок уберёт",
     "{0}: fits": "{0}: помещается",
     "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Левая кнопка: рисовать · Правая кнопка: сведения · Край экрана, WASD или средняя кнопка: двигать карту · Колесо: масштаб · Ctrl+Z: отменить · Ctrl+S: сохранить · P: предпросмотр установки",
-    "{0} brush, size {1}: paints 1 tile": "Кисть «{0}», размер {1}: 1 клетка"
+    "{0} brush, size {1}: paints 1 tile": "Кисть «{0}», размер {1}: 1 клетка",
+    "Heal and defend": "Лечение и защита",
+    "Healers heal the army and all other units defend, until you press it again": "Лекари лечат армию, остальные воины защищаются, пока вы не нажмёте кнопку снова",
+    "Would you like to heal the army instantly and then resolve the rest of the battle automatically?": "Мгновенно вылечить армию, а затем завершить битву автоматически?"
   }
 }

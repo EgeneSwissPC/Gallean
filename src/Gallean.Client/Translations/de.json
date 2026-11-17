@@ -992,6 +992,9 @@
     "{0}: click removes it": "{0}: click removes it",
     "{0}: fits": "{0}: fits",
     "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview": "Left button: paint · Right button: info · Screen edge, WASD or middle button: move map · Wheel: zoom · Ctrl+Z: undo · Ctrl+S: save · P: placement preview",
-    "{0} brush, size {1}: paints 1 tile": "{0} brush, size {1}: paints 1 tile"
+    "{0} brush, size {1}: paints 1 tile": "{0} brush, size {1}: paints 1 tile",
+    "Heal and defend": "Heal and defend",
+    "Healers heal the army and all other units defend, until you press it again": "Healers heal the army and all other units defend, until you press it again",
+    "Would you like to heal the army instantly and then resolve the rest of the battle automatically?": "Would you like to heal the army instantly and then resolve the rest of the battle automatically?"
   }
 }
