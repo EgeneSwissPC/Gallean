@@ -1362,6 +1362,69 @@ public sealed class CustomMapTests
         Assert.That(after, Is.GreaterThanOrEqualTo(before + (2 * CustomMap.RodTilesPerTurn)));
     }
 
+    // The economy overview counts resources by the land under them and takes income from the game's own code, at
+    // Average difficulty whatever the map's difficulty.
+    [Test]
+    public void EconomyTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Random random = new(1);
+
+        map.Paint(new WorldPosition(14, 12), 1, CustomMapBrush.Land, WorldMapTerrain.Human, random);
+        map.Paint(new WorldPosition(34, 16), 1, CustomMapBrush.Land, WorldMapTerrain.Elf, random);
+        Assert.That(map.PlaceResource(new WorldPosition(14, 12), WorldResourceType.Gold), Is.Null);
+        Assert.That(map.PlaceResource(new WorldPosition(14, 13), WorldResourceType.LifeMana), Is.Null);
+        Assert.That(map.PlaceResource(new WorldPosition(34, 16), WorldResourceType.GroveMana), Is.Null);
+        Assert.That(map.PlaceResource(new WorldPosition(20, 40), WorldResourceType.Gold), Is.Null, "Neutral land.");
+        Assert.That(map.PlaceResource(new WorldPosition(30, 36), WorldResourceType.Gold), Is.Null, "Undead land: no Undead player, so nobody's.");
+        Assert.That(map.PlaceResource(new WorldPosition(30, 37), WorldResourceType.DeathMana), Is.Null);
+        Assert.That(map.PlaceRod(new WorldPosition(16, 20), WorldRace.Human).Error, Is.Null);
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        CustomMapEconomy economy = CustomMapEconomy.Calculate(scenario.State, context);
+
+        // Base income: 100 gold and 25 of the race's own mana; 50 per resource on its land.
+        CustomMapEconomyRace empire = economy.GetRace(WorldRace.Human)!;
+        Assert.That(empire.Rows, Is.EqualTo(new[]
+        {
+            new CustomMapEconomyRow(WorldResourceType.Gold, 1, 100, 50),
+            new CustomMapEconomyRow(WorldResourceType.LifeMana, 1, 25, 50)
+        }));
+        Assert.That(empire.GetRow(WorldResourceType.Gold)!.Total, Is.EqualTo(150));
+        Assert.That(empire.Rods, Is.EqualTo(1));
+        Assert.That(empire.LandTiles, Is.EqualTo(map.Cells.Count(cell => cell.Terrain == WorldMapTerrain.Human)));
+        Assert.That(empire.LandPercent, Is.EqualTo(TerrainTransformCalculator.GetTransformedPercentage(scenario.State.Map, WorldMapTerrain.Human)));
+        Assert.That(empire.LandPercent, Is.GreaterThan(0));
+
+        CustomMapEconomyRace elves = economy.GetRace(WorldRace.Elf)!;
+        Assert.That(elves.Rows, Is.EqualTo(new[]
+        {
+            new CustomMapEconomyRow(WorldResourceType.Gold, 0, 100, 0),
+            new CustomMapEconomyRow(WorldResourceType.GroveMana, 1, 25, 50)
+        }));
+        Assert.That(elves.Rods, Is.Zero);
+        Assert.That(economy.Races.Select(race => race.Race), Is.EquivalentTo(new[] { WorldRace.Human, WorldRace.Elf }));
+        Assert.That(economy.Unclaimed, Is.EqualTo(new[] { (WorldResourceType.Gold, 2), (WorldResourceType.DeathMana, 1) }));
+
+        // The same numbers as the game's own income query for a human player at Average.
+        WorldPlayer player = scenario.State.Players.Values.Single(candidate => candidate.Race == WorldRace.Human);
+        WorldState humanAverage = scenario.State with
+        {
+            Difficulty = WorldDifficulty.Average,
+            Players = scenario.State.Players.SetItem(player.Id, player with { IsAi = false })
+        };
+        WorldGetPlayerInfoCommand.Result info = new WorldGetPlayerInfoCommand(player.Id).Execute(humanAverage, context).Data!;
+        Assert.That((info.TotalIncome.Gold, info.TotalIncome.LifeMana), Is.EqualTo((150, 75)));
+
+        // Always Average: an Easy map (+30 % income) shows the same numbers.
+        CustomMapEconomy easy = CustomMapEconomy.Calculate(scenario.State with { Difficulty = WorldDifficulty.Easy }, context);
+        Assert.That(easy.GetRace(WorldRace.Human)!.Rows, Is.EqualTo(empire.Rows));
+    }
+
     // A map with one of everything close together, for the preview tests.
     private CustomMap CreateBusyMap()
     {

@@ -48,6 +48,9 @@ internal sealed record MapEditorPlacementPreview(
     // Tiles drawn as outlines only, so what is under them stays visible (the road tool's road pieces).
     public bool OutlineOnly { get; init; }
 
+    // Tiles outlined in gold whatever the tool: the resources and rods of the race selected in the economy panel.
+    public IReadOnlyList<WorldPosition> Highlight { get; init; } = [];
+
     public bool IsEmpty => Tiles.Count == 0 && Glow is null && MovesFrom is null && HoverObject is null && Text.Length == 0;
 
     public int Count(MapEditorTileState state)

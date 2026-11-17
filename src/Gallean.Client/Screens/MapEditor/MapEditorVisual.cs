@@ -273,6 +273,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.IsPreviewEnabled = !ViewModel.IsPreviewEnabled;
             e.Handled = true;
         }
+        else if (e.Key == Key.E && e.KeyModifiers == KeyModifiers.None)
+        {
+            ViewModel.IsEconomyOpen = !ViewModel.IsEconomyOpen;
+            e.Handled = true;
+        }
         else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && ViewModel.CancelRoad())
         {
             e.Handled = true;
@@ -437,6 +442,12 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.MovesFrom), 1.5 * pixel, new DashStyle([4, 3], 0)), geometry.MovesFrom);
             }
 
+            if (geometry.Highlight is not null)
+            {
+                context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.Halo), 5 * pixel), geometry.Highlight);
+                context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.Glow), 2.5 * pixel), geometry.Highlight);
+            }
+
             if (geometry.Glow is not null)
             {
                 context.DrawGeometry(null, new Pen(new SolidColorBrush(MapEditorPreviewColors.Halo), 6 * pixel), geometry.Glow);
@@ -456,9 +467,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
 
     private sealed record PreviewGeometry(Geometry? Fits, Geometry? Changes, Geometry? Blocked, Geometry? Glow, Geometry? MovesFrom, Geometry? Footprint)
     {
+        public Geometry? Highlight { get; init; }
+
         public static PreviewGeometry? Build(MapEditorPlacementPreview preview)
         {
-            if (preview.Tiles.Count == 0 && preview.Glow is null && preview.MovesFrom is null)
+            if (preview.Tiles.Count == 0 && preview.Glow is null && preview.MovesFrom is null && preview.Highlight.Count == 0)
             {
                 return null;
             }
@@ -469,7 +482,25 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
                 Tiles(preview, MapEditorTileState.Blocked),
                 preview.Glow is { } glow ? Outline(glow) : null,
                 preview.MovesFrom is { } moves ? Outline(moves) : null,
-                preview.Footprint is { } footprint ? Outline(footprint) : null);
+                preview.Footprint is { } footprint ? Outline(footprint) : null)
+            {
+                Highlight = preview.Highlight.Count > 0 ? Diamonds(preview.Highlight) : null
+            };
+        }
+
+        private static StreamGeometry Diamonds(IReadOnlyList<WorldPosition> tiles)
+        {
+            StreamGeometry geometry = new();
+
+            using (StreamGeometryContext stream = geometry.Open())
+            {
+                foreach (WorldPosition tile in tiles)
+                {
+                    AddDiamond(stream, tile.X - 0.5, tile.Y - 0.5, tile.X + 0.5, tile.Y + 0.5);
+                }
+            }
+
+            return geometry;
         }
 
         private static StreamGeometry? Tiles(MapEditorPlacementPreview preview, MapEditorTileState state)

@@ -716,6 +716,47 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task MapEditorEconomyTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ =>
+        {
+            CustomMap map = CreateSampleMap("S600SC0000", "Two kingdoms");
+            map.PlaceResource(new WorldPosition(13, 11), WorldResourceType.Gold);
+            map.PlaceResource(new WorldPosition(10, 13), WorldResourceType.LifeMana);
+            map.PlaceResource(new WorldPosition(31, 12), WorldResourceType.DeathMana);
+            map.PlaceResource(new WorldPosition(20, 16), WorldResourceType.Gold);
+            map.PlaceResource(new WorldPosition(22, 18), WorldResourceType.RuneMana);
+            map.PlaceRod(new WorldPosition(14, 14), WorldRace.Human);
+            map.PlaceRod(new WorldPosition(30, 18), WorldRace.Undead);
+
+            return map;
+        });
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+        view.Camera.SetZoom(0.6);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(8, 19)));
+
+        // E opens the panel: both races and the resources on nobody's land.
+        window.KeyPress(Key.E, RawInputModifiers.None, PhysicalKey.E, "e");
+        window.KeyRelease(Key.E, RawInputModifiers.None, PhysicalKey.E, "e");
+        await SkipFramesAsync(10);
+        Assert.That(editor.IsEconomyOpen, Is.True);
+        Assert.That(editor.EconomyRaces.Count, Is.EqualTo(2));
+        await CaptureAsync(window, "1-panel");
+
+        // Selecting the Empire outlines its mines and its rod.
+        editor.SelectedEconomyRace = editor.EconomyRaces[0];
+        await SkipFramesAsync(10);
+        Assert.That(editor.PlacementPreview.Highlight, Is.Not.Empty);
+        await CaptureAsync(window, "2-empire-selected");
+    }
+
+    [AvaloniaTest]
     public async Task MapEditorGarrisonsAndLevelsTest()
     {
         using Sandbox sb = Sandbox.Create();
