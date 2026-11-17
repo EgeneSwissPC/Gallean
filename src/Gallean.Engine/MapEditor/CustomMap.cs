@@ -248,6 +248,42 @@ public sealed class CustomMap
         return changed;
     }
 
+    // Lays (road = true) or lifts a road on one tile. Roads go on open or forest land (the forest is cleared); never
+    // on water, mountains, structures or landmarks. Land brushes keep a road, water and forest brushes replace it.
+    // Returns true when the tile changed.
+    public bool SetRoad(WorldPosition position, bool road)
+    {
+        if (!IsValidPosition(position))
+        {
+            return false;
+        }
+
+        int index = (position.Y * Size) + position.X;
+        WorldMapCell cell = cells[index];
+
+        if (!road)
+        {
+            if (cell.Feature != WorldMapFeature.Road)
+            {
+                return false;
+            }
+
+            cells[index] = cell with { Feature = WorldMapFeature.None, FeatureVariant = new WorldObjectVariant(0) };
+
+            return true;
+        }
+
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature is WorldMapFeature.Mountain or WorldMapFeature.Road ||
+            IsUnderStructure(position) || GetLandmarkAt(position) is not null)
+        {
+            return false;
+        }
+
+        cells[index] = cell with { Feature = WorldMapFeature.Road, FeatureVariant = new WorldObjectVariant(0) };
+
+        return true;
+    }
+
     // Why a brush leaves a tile alone: structures for every brush, armies and resources for Water, resources, bags
     // and landmarks for Forest. (Mountains have their own rule, GetMountainBlock.)
     private CustomMapTileReason GetBrushBlock(WorldPosition position, CustomMapBrush brush)
