@@ -1027,6 +1027,11 @@
     "No resource stands on unowned land.": "No resource stands on unowned land.",
     "Income per turn at Average difficulty, as the game counts it. A resource pays the race whose land it stands on. Click a race to outline its resources and rods on the map.": "Income per turn at Average difficulty, as the game counts it. A resource pays the race whose land it stands on. Click a race to outline its resources and rods on the map.",
     "Land: {0} tiles ({1}%) · 1 rod": "Land: {0} tiles ({1}%) · 1 rod",
-    "Land: {0} tiles ({1}%) · {2} rods": "Land: {0} tiles ({1}%) · {2} rods"
+    "Land: {0} tiles ({1}%) · {2} rods": "Land: {0} tiles ({1}%) · {2} rods",
+    "Starting bank": "Starting bank",
+    "Same for all races": "Same for all races",
+    "The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.": "The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.",
+    "Start: {0}": "Start: {0}",
+    "Start: nothing": "Start: nothing"
   }
 }

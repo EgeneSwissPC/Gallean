@@ -9,8 +9,6 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
 
     private const int UnsetPlayer = 99;
     private const int MaxPlayerSlots = 13;
-    private const int StartingGold = 500;
-    private const int StartingMana = 1500;
     private const int GuardianGridPosition = 2;
     private const int BlockWidth = 8;
     private const int BlockHeight = 4;
@@ -210,7 +208,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                 ConstructTurn: 0,
                 MakeId(prefix, "PB", i),
                 MakeId(prefix, "KS", i),
-                mapPlayer is null ? Db.ResourceSet.Empty : GetStartingBank(raceType),
+                mapPlayer is null ? Db.ResourceSet.Empty : GetStartingBank(mapPlayer),
                 Db.ResourceSet.Empty,
                 mapPlayer is null ? Db.AiAttitudeType.Medium : Db.AiAttitudeType.Humongous,
                 Face: 0,
@@ -862,17 +860,12 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         return new Db.Id($"{prefix}{kind}{index:x4}");
     }
 
-    private static Db.ResourceSet GetStartingBank(Db.RaceType race)
+    // The player bank: the gold and mana set in the editor (CustomMapPlayer.StartingBank).
+    private static Db.ResourceSet GetStartingBank(CustomMapPlayer player)
     {
-        return race switch
-        {
-            Db.RaceType.Human => new Db.ResourceSet(StartingGold, 0, 0, StartingMana, 0, 0),
-            Db.RaceType.Undead => new Db.ResourceSet(StartingGold, StartingMana, 0, 0, 0, 0),
-            Db.RaceType.Heretic => new Db.ResourceSet(StartingGold, 0, 0, 0, StartingMana, 0),
-            Db.RaceType.Dwarf => new Db.ResourceSet(StartingGold, 0, StartingMana, 0, 0, 0),
-            Db.RaceType.Elf => new Db.ResourceSet(StartingGold, 0, 0, 0, 0, StartingMana),
-            _ => Db.ResourceSet.Empty
-        };
+        WorldResourceSet bank = player.StartingBank;
+
+        return new Db.ResourceSet(bank.Gold, bank.DeathMana, bank.RuneMana, bank.LifeMana, bank.InfernalMana, bank.GroveMana);
     }
 
     private static int GetSubrace(Db.RaceType race)

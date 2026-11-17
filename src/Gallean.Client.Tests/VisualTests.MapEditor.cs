@@ -754,6 +754,16 @@ public sealed partial class VisualTests
         await SkipFramesAsync(10);
         Assert.That(editor.PlacementPreview.Highlight, Is.Not.Empty);
         await CaptureAsync(window, "2-empire-selected");
+
+        // The starting bank: the Empire's gold and mana, then the same for all races.
+        editor.BankFields[0].Text = "800";
+        editor.BankFields[2].Text = "300";
+        editor.CopyBankToAllCommand.Execute(null);
+        Avalonia.Controls.Button copyButton = view.GetVisualDescendants().OfType<Avalonia.Controls.Button>().First(button => button.Name == "CopyBankButton");
+        copyButton.FindAncestorOfType<Avalonia.Controls.ScrollViewer>()!.ScrollToEnd();
+        await SkipFramesAsync(10);
+        Assert.That(editor.Map.Players[1].StartingBank.Gold, Is.EqualTo(800));
+        await CaptureAsync(window, "3-starting-bank");
     }
 
     [AvaloniaTest]

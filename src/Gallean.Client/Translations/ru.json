@@ -1027,6 +1027,11 @@
     "No resource stands on unowned land.": "На ничьей земле нет ресурсов.",
     "Income per turn at Average difficulty, as the game counts it. A resource pays the race whose land it stands on. Click a race to outline its resources and rods on the map.": "Доход за ход на среднем уровне сложности, как его считает игра. Ресурс приносит доход расе, на чьей земле он стоит. Щёлкните по расе, чтобы выделить её ресурсы и жезлы на карте.",
     "Land: {0} tiles ({1}%) · 1 rod": "Земля: клеток {0} ({1}%) · 1 жезл",
-    "Land: {0} tiles ({1}%) · {2} rods": "Земля: клеток {0} ({1}%) · жезлов: {2}"
+    "Land: {0} tiles ({1}%) · {2} rods": "Земля: клеток {0} ({1}%) · жезлов: {2}",
+    "Starting bank": "Начальная казна",
+    "Same for all races": "Одинаково для всех рас",
+    "The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.": "Мана своей расы переходит в ману своей расы у каждой. В игре игрок-человек получает 300% на лёгком уровне, 50% на трудном и 25% на очень трудном; компьютер получает столько, сколько задано.",
+    "Start: {0}": "Старт: {0}",
+    "Start: nothing": "Старт: ничего"
   }
 }

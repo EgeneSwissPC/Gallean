@@ -202,7 +202,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
                              garrison[CustomMapWriter.GuardianSlot.ToIndex()] is { IsGuardian: true } guardian &&
                              guardian == CustomMapUnit.From(definitions.GetUnit(guardian.TypeId));
 
-            players.Add(new CustomMapPlayer(player.Race, capital?.Footprint.TopLeft) { Garrison = isDefault ? [] : [.. garrison] });
+            // The loader scales a human player's bank by difficulty; custom maps are saved as Average (100 %).
+            players.Add(new CustomMapPlayer(player.Race, capital?.Footprint.TopLeft) { Garrison = isDefault ? [] : [.. garrison], StartingBank = player.Resources });
         }
 
         ImmutableArray<CustomMapMountain> mountains =

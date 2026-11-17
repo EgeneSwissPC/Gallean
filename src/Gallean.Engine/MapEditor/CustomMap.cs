@@ -14,13 +14,73 @@ public enum CustomMapBrush
 
 // A playable race and its capital. The capital's garrison holds the race's guardian and up to GarrisonCapacity
 // units in all (large ones count twice); it stays empty until set in the editor, and the writer then puts the
-// guardian in alone. An army on the capital's entrance is stationed in it, like in a village.
+// guardian in alone. An army on the capital's entrance is stationed in it, like in a village. StartingBank is the
+// gold and mana the race starts with (the scenario's player bank; in the game a human player gets it scaled by
+// difficulty, a computer player as it is).
 public sealed record CustomMapPlayer(WorldRace Race, WorldPosition? Capital)
 {
     // GlobalVariables.CapitalCityLevel.
     public const int GarrisonCapacity = 6;
 
+    public const int DefaultStartingGold = 500;
+    public const int DefaultStartingMana = 1500;
+
+    // GlobalVariables.MaxResourceAmount: the game clamps every amount to it.
+    public const int MaxStartingAmount = 9999;
+
     public ImmutableArray<CustomMapUnit?> Garrison { get; init; } = [];
+
+    public WorldResourceSet StartingBank { get; init; } = GetDefaultStartingBank(Race);
+
+    // 500 gold and 1500 of the race's own mana, as every custom map had before banks could be set.
+    public static WorldResourceSet GetDefaultStartingBank(WorldRace race)
+    {
+        return WorldHelpers.IsRacePlayable(race)
+            ? With(new WorldResourceSet(DefaultStartingGold, 0, 0, 0, 0, 0), GetOwnMana(race), DefaultStartingMana)
+            : WorldResourceSet.Empty;
+    }
+
+    // The mana a race's own buildings and spells use.
+    public static WorldResourceType GetOwnMana(WorldRace race)
+    {
+        return race switch
+        {
+            WorldRace.Human => WorldResourceType.LifeMana,
+            WorldRace.Undead => WorldResourceType.DeathMana,
+            WorldRace.Heretic => WorldResourceType.InfernalMana,
+            WorldRace.Dwarf => WorldResourceType.RuneMana,
+            WorldRace.Elf => WorldResourceType.GroveMana,
+            _ => throw new ArgumentOutOfRangeException(nameof(race), race, "Not a playable race.")
+        };
+    }
+
+    public static int Get(WorldResourceSet bank, WorldResourceType type)
+    {
+        return type switch
+        {
+            WorldResourceType.Gold => bank.Gold,
+            WorldResourceType.DeathMana => bank.DeathMana,
+            WorldResourceType.RuneMana => bank.RuneMana,
+            WorldResourceType.LifeMana => bank.LifeMana,
+            WorldResourceType.InfernalMana => bank.InfernalMana,
+            WorldResourceType.GroveMana => bank.GroveMana,
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
+    }
+
+    public static WorldResourceSet With(WorldResourceSet bank, WorldResourceType type, int amount)
+    {
+        return type switch
+        {
+            WorldResourceType.Gold => bank with { Gold = amount },
+            WorldResourceType.DeathMana => bank with { DeathMana = amount },
+            WorldResourceType.RuneMana => bank with { RuneMana = amount },
+            WorldResourceType.LifeMana => bank with { LifeMana = amount },
+            WorldResourceType.InfernalMana => bank with { InfernalMana = amount },
+            WorldResourceType.GroveMana => bank with { GroveMana = amount },
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
+    }
 
     public WorldFootprint? Footprint => Capital is { } capital ? new WorldFootprint(capital, CustomMap.CapitalSize, CustomMap.CapitalSize) : null;
 
@@ -30,7 +90,7 @@ public sealed record CustomMapPlayer(WorldRace Race, WorldPosition? Capital)
 
     public bool Equals(CustomMapPlayer? other)
     {
-        return other is not null && Race == other.Race && Capital == other.Capital && Garrison.SequenceEqual(other.Garrison);
+        return other is not null && Race == other.Race && Capital == other.Capital && StartingBank == other.StartingBank && Garrison.SequenceEqual(other.Garrison);
     }
 
     public override int GetHashCode()
@@ -39,6 +99,7 @@ public sealed record CustomMapPlayer(WorldRace Race, WorldPosition? Capital)
 
         hash.Add(Race);
         hash.Add(Capital);
+        hash.Add(StartingBank);
 
         foreach (CustomMapUnit? unit in Garrison)
         {
@@ -649,6 +710,62 @@ public sealed partial class CustomMap
         players[index] = players[index] with { Garrison = [.. garrison] };
 
         return null;
+    }
+
+    // Sets the gold and mana a race starts with; every amount is kept within 0 and MaxStartingAmount. Returns false
+    // when the race isn't on the map or nothing changed.
+    public bool SetStartingBank(WorldRace race, WorldResourceSet bank)
+    {
+        int index = players.FindIndex(player => player.Race == race);
+
+        if (index < 0)
+        {
+            return false;
+        }
+
+        WorldResourceSet clamped = new(
+            Math.Clamp(bank.Gold, 0, CustomMapPlayer.MaxStartingAmount),
+            Math.Clamp(bank.DeathMana, 0, CustomMapPlayer.MaxStartingAmount),
+            Math.Clamp(bank.RuneMana, 0, CustomMapPlayer.MaxStartingAmount),
+            Math.Clamp(bank.LifeMana, 0, CustomMapPlayer.MaxStartingAmount),
+            Math.Clamp(bank.InfernalMana, 0, CustomMapPlayer.MaxStartingAmount),
+            Math.Clamp(bank.GroveMana, 0, CustomMapPlayer.MaxStartingAmount));
+
+        if (players[index].StartingBank == clamped)
+        {
+            return false;
+        }
+
+        players[index] = players[index] with { StartingBank = clamped };
+
+        return true;
+    }
+
+    // Gives every race the bank of source: the same gold, its own mana as much as source has of source's own mana,
+    // and source's own mana as much as source has of the race's own mana (the two amounts swap); other manas stay
+    // as source has them. Returns true when any bank changed.
+    public bool CopyStartingBankToAll(WorldRace source)
+    {
+        if (players.Find(player => player.Race == source) is not { } from)
+        {
+            return false;
+        }
+
+        WorldResourceType sourceMana = CustomMapPlayer.GetOwnMana(source);
+        bool changed = false;
+
+        foreach (CustomMapPlayer player in players.ToList())
+        {
+            WorldResourceType ownMana = CustomMapPlayer.GetOwnMana(player.Race);
+            WorldResourceSet bank = from.StartingBank;
+            int sourceAmount = CustomMapPlayer.Get(bank, sourceMana);
+            int ownAmount = CustomMapPlayer.Get(bank, ownMana);
+            bank = CustomMapPlayer.With(bank, sourceMana, ownAmount);
+            bank = CustomMapPlayer.With(bank, ownMana, sourceAmount);
+            changed |= SetStartingBank(player.Race, bank);
+        }
+
+        return changed;
     }
 
     // The race whose land a tile is: it earns from a resource there (like WorldPlan.GetLandOwner). Null for neutral

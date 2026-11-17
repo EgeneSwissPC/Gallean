@@ -1120,6 +1120,61 @@ public sealed class MapEditorScreenViewModelTests
     }
 
     [Test]
+    public async Task StartingBankTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.ToggleEconomyCommand.Execute(null);
+
+        // The first race's bank: gold, its own mana, then the other four.
+        Assert.That(editor.SelectedBankRace!.Value, Is.EqualTo(WorldRace.Human));
+        Assert.That(editor.BankFields.Select(field => (field.Name, field.Text)), Is.EqualTo(new[]
+        {
+            ("Gold", "500"), ("Life mana", "1500"), ("Infernal mana", "0"), ("Death mana", "0"), ("Rune mana", "0"), ("Grove mana", "0")
+        }));
+        Assert.That(editor.EconomyRaces[0].StartText, Is.EqualTo("Start: 500 Gold · 1500 Life mana"));
+
+        // Typing: the map and the race block follow; one field typed into keeps one undo step; too much is 9999.
+        bool couldUndo = editor.CanUndo;
+        editor.BankFields[0].Text = "7";
+        editor.BankFields[0].Text = "75";
+        editor.BankFields[0].Text = "750";
+        editor.BankFields[4].Text = "";
+        editor.BankFields[4].Text = "250";
+        editor.BankFields[2].Text = "12345";
+        editor.BankFields[3].Text = "abc";
+        Assert.That(editor.Map.Players[0].StartingBank, Is.EqualTo(new WorldResourceSet(750, 0, 250, 1500, 9999, 0)));
+        Assert.That(editor.EconomyRaces[0].StartText, Is.EqualTo("Start: 750 Gold · 1500 Life mana · 9999 Infernal mana · 250 Rune mana"));
+        Assert.That((couldUndo, editor.IsDirty), Is.EqualTo((true, true)));
+
+        // Same for all: the Clans get the same, with the Empire's life mana as their rune mana (the two swap).
+        editor.CopyBankToAllCommand.Execute(null);
+        Assert.That(editor.Map.Players[1].StartingBank, Is.EqualTo(new WorldResourceSet(750, 0, 1500, 250, 9999, 0)));
+        editor.SelectedBankRace = editor.BankRaces[1];
+        Assert.That(editor.BankFields.Select(field => field.Name).Take(2), Is.EqualTo(new[] { "Gold", "Rune mana" }));
+        Assert.That(editor.BankFields[1].Text, Is.EqualTo("1500"));
+
+        // Undo steps: same for all, the infernal field, the rune field, the gold field.
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Players[1].StartingBank, Is.EqualTo(CustomMapPlayer.GetDefaultStartingBank(WorldRace.Dwarf)));
+        Assert.That(editor.BankFields[1].Text, Is.EqualTo("1500"), "The Clans' own default.");
+        editor.UndoCommand.Execute(null);
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Players[0].StartingBank, Is.EqualTo(new WorldResourceSet(750, 0, 0, 1500, 0, 0)));
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Players[0].StartingBank, Is.EqualTo(CustomMapPlayer.GetDefaultStartingBank(WorldRace.Human)));
+
+        // Saved and opened again.
+        editor.SelectedBankRace = editor.BankRaces[0];
+        editor.BankFields[0].Text = "1234";
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).Players[0].StartingBank.Gold, Is.EqualTo(1234));
+    }
+
+    [Test]
     public async Task SiteTest()
     {
         using Sandbox sb = Sandbox.Create();

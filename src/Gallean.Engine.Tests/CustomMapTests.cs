@@ -1425,6 +1425,51 @@ public sealed class CustomMapTests
         Assert.That(easy.GetRace(WorldRace.Human)!.Rows, Is.EqualTo(empire.Rows));
     }
 
+    [Test]
+    public void StartingBankTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+
+        // By default 500 gold and 1500 of the race's own mana, the others 0.
+        Assert.That(map.Players[0].StartingBank, Is.EqualTo(new WorldResourceSet(500, 0, 0, 1500, 0, 0)), "Empire: life mana.");
+        Assert.That(map.Players[1].StartingBank, Is.EqualTo(new WorldResourceSet(500, 0, 0, 0, 0, 1500)), "Elves: grove mana.");
+
+        // Every amount can be set; each stays within 0 and 9999.
+        Assert.That(map.SetStartingBank(WorldRace.Human, new WorldResourceSet(800, 50, 0, 2000, 12000, -5)), Is.True);
+        WorldResourceSet empire = new(800, 50, 0, 2000, 9999, 0);
+        Assert.That(map.Players[0].StartingBank, Is.EqualTo(empire));
+        Assert.That(map.SetStartingBank(WorldRace.Human, empire), Is.False, "Nothing changed.");
+        Assert.That(map.SetStartingBank(WorldRace.Dwarf, empire), Is.False, "Not on the map.");
+        CustomMap copy = map.Clone();
+        Assert.That(copy.Players, Is.EqualTo(map.Players));
+        Assert.That(map.SetStartingBank(WorldRace.Human, empire with { Gold = 1 }), Is.True);
+        Assert.That(copy.Players, Is.Not.EqualTo(map.Players), "Undo copies keep their banks.");
+        map.SetStartingBank(WorldRace.Human, empire);
+
+        // Saved as the player's bank, loaded as the player's resources, read back by the editor.
+        store.Save(map);
+        ScenarioDatabase database = store.LoadDatabase(map.Id);
+        Assert.That(database.ScenarioPlayersByScenario[new Db.ScenarioId(map.Id)].Single(row => row.PlayerId.Value == "S600PL0001").Bank,
+            Is.EqualTo(new Db.ResourceSet(800, 50, 0, 2000, 9999, 0)));
+        WorldState state = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        Assert.That(state.Players.Values.Single(player => player.Race == WorldRace.Human).Resources, Is.EqualTo(empire));
+        Assert.That(state.Players.Values.Single(player => player.Race == WorldRace.Elf).Resources, Is.EqualTo(new WorldResourceSet(500, 0, 0, 0, 0, 1500)));
+        Assert.That(store.Open(map.Id, definitions).Players, Is.EqualTo(map.Players));
+
+        // In the game a human player gets it scaled by difficulty (Hard: 50 %), a computer player as it is.
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Hard, Leader: null);
+        WorldState hard = ScenarioLoader.Create(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables(), configuration).State;
+        Assert.That(hard.Players.Values.Single(player => player.Race == WorldRace.Human).Resources, Is.EqualTo(new WorldResourceSet(400, 25, 0, 1000, 4999, 0)));
+        Assert.That(hard.Players.Values.Single(player => player.Race == WorldRace.Elf).Resources.GroveMana, Is.EqualTo(1500));
+
+        // Same for all: gold and the other manas as they are, the race's own mana gets the source's own mana (the two swap).
+        Assert.That(map.CopyStartingBankToAll(WorldRace.Human), Is.True);
+        Assert.That(map.Players[1].StartingBank, Is.EqualTo(new WorldResourceSet(800, 50, 0, 0, 9999, 2000)), "Elves: 2000 grove, the Empire's 0 grove as life.");
+        Assert.That(map.Players[0].StartingBank, Is.EqualTo(empire));
+        Assert.That(map.CopyStartingBankToAll(WorldRace.Human), Is.False);
+    }
+
     // A map with one of everything close together, for the preview tests.
     private CustomMap CreateBusyMap()
     {

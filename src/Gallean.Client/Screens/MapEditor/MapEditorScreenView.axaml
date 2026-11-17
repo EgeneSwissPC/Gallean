@@ -355,6 +355,7 @@
                   <StackPanel Spacing="4">
                     <TextBlock Text="{Binding Title}" Classes="body row-title" />
                     <TextBlock Text="{Binding Summary}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                    <TextBlock Text="{Binding StartText}" Classes="caption" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
                     <ItemsControl ItemsSource="{Binding Rows}">
                       <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -414,6 +415,37 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+            </StackPanel>
+            <StackPanel Spacing="6" Margin="16,6,14,0">
+              <local:OutlinedTextBlock Text="{local:Text 'Starting bank'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+              <ComboBox x:Name="BankRaceBox" HorizontalAlignment="Stretch" ItemsSource="{Binding BankRaces}" SelectedItem="{Binding SelectedBankRace}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <ItemsControl ItemsSource="{Binding BankFields}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="2" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorBankFieldViewModel">
+                    <Grid ColumnDefinitions="Auto,*,54" Margin="0,2,6,2">
+                      <local:IconVisual Grid.Column="0" Moniker="{Binding Icon}" Width="18" Height="18" VerticalAlignment="Center" ToolTip.Tip="{Binding Name}" />
+                      <TextBlock Grid.Column="1" Classes="caption" Text="{Binding Name}" VerticalAlignment="Center" Margin="4,0" TextTrimming="CharacterEllipsis" />
+                      <TextBox Grid.Column="2" Text="{Binding Text}" MaxLength="4" HorizontalContentAlignment="Right" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button x:Name="CopyBankButton" Classes="pill" local:PlateChrome.TextureSeed="6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{local:Text 'Same for all races'}" Command="{Binding CopyBankToAllCommand}" />
+              <TextBlock Text="{local:Text 'The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
             </StackPanel>
           </StackPanel>
         </ScrollViewer>
