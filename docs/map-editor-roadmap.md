@@ -37,6 +37,9 @@ spread preview (commit `caab9b3`). Each section is meant as a separate task.
 - **Land spread preview**: a turn bar like the unit level bar (-10, -, Turn N, +, +10) redraws the map with N turns of
   spread from capitals, villages and rods, and the panel's numbers follow. Editing is off while N > 0. Hotkey E opens
   the panel.
+- **Locations are editor-only, radius 0–3, no army orders yet**: not shown in the game (not even dev tools; maybe
+  later); radius 0–3 like the engine, so maps stay upstream-compatible; the move-to/defend-location orders belong to
+  the separate armies task. Names show like landmarks (hover line, right-click info) plus a label on the map.
 
 ## Already in the editor
 
@@ -102,7 +105,7 @@ spread preview (commit `caab9b3`). Each section is meant as a separate task.
 | Object | Notes |
 | --- | --- |
 | ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
-| Locations | named zones (see below) |
+| Locations | named zones; planned in `docs/map-editor-locations.md` (see "Task: locations") |
 | Events | scenario scripting (see below); every custom map is saved with no events |
 | Army templates | armies that events create |
 
@@ -306,6 +309,10 @@ Ready-made events instead of a full event editor, for example:
 - survive a number of turns
 
 Side effect: the AI would then get map goals (from turn 60/50/40/30, easy to very hard), without any AI code change.
+
+## Task: locations
+
+Planned in `docs/map-editor-locations.md` (decisions, tool, overlay, list, tests, 3 phases). Not started.
 
 ## Task (later): full events and locations
 
