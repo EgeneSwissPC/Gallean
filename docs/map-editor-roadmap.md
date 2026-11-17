@@ -2,8 +2,8 @@
 
 Brainstorm notes, started 2026-11-16 on branch `gallean-upgrade` at `84072f5`; updated 2026-11-16 after landmark
 placement (commit `2931c5c`), 2026-11-17 after the placement preview (commit `07c76c6`) and after roads in the engine
-plus the MapFromPlan generator (commits `418e463`, `9d96d14`), and after the road tool (commit `219ecd5`). Each section
-is meant as a separate task.
+plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road tool (commit `219ecd5`), and after
+planning rods and the economy panel. Each section is meant as a separate task.
 
 ## Decisions so far
 
@@ -24,6 +24,13 @@ is meant as a separate task.
   stays 0 (the original maps use 0 and 1).
 - **Placement preview**: green/red/amber, on by default (checkbox and P key to switch it off), no ghost sprites for
   now. Its rules are the editor's placement rules; `Place*` run the same checks, so preview and click can't disagree.
+- **Rods paint their first 2 tiles like in the game**: placing a rod turns 2 tiles into its race's land (and flips the
+  3x3 of any resource they touch), as the game does on the turn a rod is planted. Removing a rod leaves the land, as
+  in the game.
+- **No neutral rods** for now: neutral land doesn't spread, so a neutral rod would only block other races. Maybe later.
+- **Economy panel at Average difficulty**: income is shown at Average (no difficulty bonus, AI attitude 100 %). It
+  also shows the race's base income from its capital, so totals match what the game pays on turn 1.
+- **Starting gold and mana per race**, with a "Same for all races" button, in the economy panel.
 
 ## Already in the editor
 
@@ -72,7 +79,7 @@ is meant as a separate task.
 
 | Object | Notes |
 | --- | --- |
-| Rods | terraforming rods |
+| Rods | terraforming rods; planned, see "Task: rods and the economy panel" |
 | Locations | named zones (see below) |
 | Events | scenario scripting (see below); every custom map is saved with no events |
 | Army templates | armies that events create |
@@ -85,7 +92,7 @@ is meant as a separate task.
   - There are no victory conditions. This is also why the AI never gets map goals: it only gets them from victory
     events.
 - **Players:**
-  - Starting gold and mana are fixed at 500 and 1500.
+  - Starting gold and mana are fixed at 500 and 1500 (planned in "Task: rods and the economy panel").
   - There are no starting buildings or spells.
   - You can't choose human or computer per race, or set the difficulty.
   - All races get the same relations, and the lord type is fixed.
@@ -118,6 +125,21 @@ Technical pointers:
   - `StartingGold`/`StartingMana` constants and `GetStartingBank`
   - relations (`SRel`), currently all set to the same value
 - `CustomMapPlayer` (in `CustomMap.cs`) would get the new fields. Save/load goes through `CustomMapStore.FromState`.
+
+Starting gold and own mana per race moved to "Task: rods and the economy panel".
+
+## Task: rods and the economy panel
+
+Full description: `docs/map-editor-rods-economy.md`. Summary:
+- Rod tool: pick a playable race, click to place (game rules: not on water, mountains, structures, armies or bags; no
+  other rod within 2 tiles), the 2 tiles the rod converts and any flipped resources shown amber, Shift+click removes,
+  Ctrl+Z undoes. The writer gets `SRod.json`; no original map has rods, so the loader's rod path gets its first test.
+- Economy panel: one block per race laid out like the game's "Income per turn" table (resources of each type on the
+  race's land, capital income, resources income, total at Average difficulty), land %, rods, plus a block for
+  resources on nobody's land. Numbers come from `WorldGetPlayerInfoCommand` on the editor's preview state, so they
+  match the game. Clicking a race outlines its resources and rods.
+- Starting gold and own mana per race in the panel, "Same for all races".
+- Phases: rods in engine and writer (~1 day), rod tool (~0.5 day), economy panel (~1 day), starting bank (~0.5 day).
 
 ## Task: items (one shared item editor)
 
@@ -278,8 +300,8 @@ point at them once events exist.
 2. Items: should the leader's 7 slots work like the in-game equipment screen, or just be a list?
 3. ~~Landmarks: should they block armies like in the game, or be decoration only?~~ Decided: they block, like in the
    game (see "Decisions so far"). Say if you want decoration-only after all; that needs a game rule change.
-4. Which comes next: player settings, items, or the mountain/forest looks? (The placement preview and the road tool
-   are done; the road tool is "good enough for now".)
+4. ~~Which comes next: player settings, items, or the mountain/forest looks?~~ Next: rods and the economy panel.
+   After that, still open: player settings, items, or the mountain/forest looks.
 5. Landmarks: is the palette over the left of the map fine, or should it go into the right panel (it only fits there
    with scrolling at 1366x768)? ~~Is a footprint preview under the cursor worth adding?~~ Done, for every tool.
 6. Placement preview: should the "Placement preview (P)" checkbox move out of the scrolling panel (next to Undo/Save),
@@ -289,3 +311,5 @@ point at them once events exist.
 8. ~~Roads: is the road brush the next editor task?~~ Done as a path tool (click, move, click).
 9. Roads: should a road also be allowed to run onto a village's or capital's entrance tile, so it visibly reaches the
    gate? Today structures block roads, as before.
+10. Starting bank: only gold and the race's own mana (planned), or all five mana types per race?
+11. Economy panel: is an "after N turns" estimate of the land spread wanted, and a hotkey for the panel?
