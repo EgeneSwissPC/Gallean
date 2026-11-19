@@ -1185,7 +1185,6 @@
     "Looting {0}": "Грабёж: {0}",
     "Lose if a city falls": "Поражение при падении города",
     "Message when looting a ruin": "Сообщение при грабеже руин",
-    "Pick a recipe: it adds ready-made events you can then change.": "Выберите рецепт: он добавит готовые события, которые потом можно менять.",
     "Reach a zone to win": "Дойти до зоны для победы",
     "Recipes: ready-made events": "Рецепты: готовые события",
     "Scout\n\"Beware, my lord: danger lies ahead in {0}.\"": "Разведчик\n\"Осторожно, мой господин: впереди, в месте «{0}», опасность.\"",
@@ -1203,12 +1202,13 @@
     "{0} falls": "Падение: {0}",
     "{0} has captured {1}!": "{0} захватывает {1}!",
     "{0} has fallen.": "{0} пал.",
-    "{0} has held out for {1} turns!": "{0} продержалась {1} ходов!",
     "{0} has taken the {1} capital!": "{0} захватывает столицу: {1}!",
-    "{0} holds out {1} turns": "{0} держится {1} ходов",
     "{0} reaches {1}": "{0} доходит до {1}",
-    "{0} survives {1} turns": "{0} выживает {1} ходов",
     "{0} takes the {1} capital": "{0} берёт столицу: {1}",
-    "The first race wins when one of its armies enters the zone. The computer gets no goal from zones.": "Первая раса побеждает, когда одна из её армий входит в зону. Компьютер не получает целей от зон."
+    "The first race wins when one of its armies enters the zone. The computer gets no goal from zones.": "Первая раса побеждает, когда одна из её армий входит в зону. Компьютер не получает целей от зон.",
+    "{0} survives": "{0} выживает",
+    "{0} holds out": "{0} держится",
+    "{0} has held out to the end!": "{0} продержалась до конца!",
+    "Pick a recipe: it adds ready-made events you can then change.": "Выберите рецепт: он добавит готовые события, которые потом можно менять."
   }
 }

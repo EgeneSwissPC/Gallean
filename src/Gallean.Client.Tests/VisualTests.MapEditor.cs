@@ -1044,6 +1044,6 @@ public sealed partial class VisualTests
         Assert.IsOfType<MapEditorEventScreenViewModel>(gameViewModel.TopScreen).Close();
         await SkipFramesAsync(10);
         await CaptureAsync(window, "10-recipe-list");
-        Assert.That(editor.EventRows.Select(row => row.Name), Is.SupersetOf(new[] { "Empire holds out 30 turns", "Undead takes the Empire capital", "Empire conquers all capitals", "Undead conquers all capitals" }));
+        Assert.That(editor.EventRows.Select(row => row.Name), Is.SupersetOf(new[] { "Empire holds out", "Undead takes the Empire capital", "Empire conquers all capitals", "Undead conquers all capitals" }));
     }
 }

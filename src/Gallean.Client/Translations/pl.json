@@ -1185,7 +1185,6 @@
     "Looting {0}": "Looting {0}",
     "Lose if a city falls": "Lose if a city falls",
     "Message when looting a ruin": "Message when looting a ruin",
-    "Pick a recipe: it adds ready-made events you can then change.": "Pick a recipe: it adds ready-made events you can then change.",
     "Reach a zone to win": "Reach a zone to win",
     "Recipes: ready-made events": "Recipes: ready-made events",
     "Scout\n\"Beware, my lord: danger lies ahead in {0}.\"": "Scout\n\"Beware, my lord: danger lies ahead in {0}.\"",
@@ -1203,12 +1202,13 @@
     "{0} falls": "{0} falls",
     "{0} has captured {1}!": "{0} has captured {1}!",
     "{0} has fallen.": "{0} has fallen.",
-    "{0} has held out for {1} turns!": "{0} has held out for {1} turns!",
     "{0} has taken the {1} capital!": "{0} has taken the {1} capital!",
-    "{0} holds out {1} turns": "{0} holds out {1} turns",
     "{0} reaches {1}": "{0} reaches {1}",
-    "{0} survives {1} turns": "{0} survives {1} turns",
     "{0} takes the {1} capital": "{0} takes the {1} capital",
-    "The first race wins when one of its armies enters the zone. The computer gets no goal from zones.": "The first race wins when one of its armies enters the zone. The computer gets no goal from zones."
+    "The first race wins when one of its armies enters the zone. The computer gets no goal from zones.": "The first race wins when one of its armies enters the zone. The computer gets no goal from zones.",
+    "{0} survives": "{0} survives",
+    "{0} holds out": "{0} holds out",
+    "{0} has held out to the end!": "{0} has held out to the end!",
+    "Pick a recipe: it adds ready-made events you can then change.": "Pick a recipe: it adds ready-made events you can then change."
   }
 }

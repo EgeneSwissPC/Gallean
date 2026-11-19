@@ -120,6 +120,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         ];
         SelectedSiteType = SiteTypes[0];
         allLandmarks = MapEditorLandmarkOption.Create(library.Landmarks ?? [], editorGame);
+        InitRecipes();
         LandmarkCategories =
         [
             .. new[] { WorldLandmarkType.Misc, WorldLandmarkType.Building, WorldLandmarkType.Structure, WorldLandmarkType.Terrain }

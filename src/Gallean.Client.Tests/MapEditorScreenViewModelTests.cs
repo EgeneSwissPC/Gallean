@@ -1720,7 +1720,7 @@ public sealed class MapEditorScreenViewModelTests
             Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen).Close();
         }
 
-        Assert.That(editor.RecipeDescription, Does.StartWith("Pick a recipe"));
+        Assert.That((editor.SelectedRecipe!.Value, editor.RecipeDescription), Is.EqualTo((MapEditorRecipe.CaptureCity, "The first race wins when it owns the chosen city.")));
         Add(MapEditorRecipe.CaptureCity);
         Assert.That(editor.Map.Events.Select(ev => ev.Name), Is.EqualTo(new[] { $"Empire captures {village}", "Empire conquers all capitals" }));
         Assert.That(editor.Map.Events[0].Groups.Single().Single(), Is.EqualTo(new CustomMapOwnCityCondition(new CustomMapCity.Village(1))));
@@ -1732,7 +1732,7 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(editor.Map.Events.Count(ev => ev.Name.EndsWith("conquers all capitals", StringComparison.Ordinal)), Is.EqualTo(1), "One conquest event per race.");
 
         Add(MapEditorRecipe.HoldOut);
-        Assert.That(editor.Map.Events.Select(ev => ev.Name).TakeLast(3), Is.EqualTo(new[] { "Empire holds out 30 turns", "Clans takes the Empire capital", "Clans conquers all capitals" }));
+        Assert.That(editor.Map.Events.Select(ev => ev.Name).TakeLast(3), Is.EqualTo(new[] { "Empire holds out", "Clans takes the Empire capital", "Clans conquers all capitals" }));
         Assert.That(editor.Map.Events.Single(ev => ev.Name == "Clans takes the Empire capital").Races, Is.EqualTo(new[] { WorldRace.Dwarf }));
 
         Add(MapEditorRecipe.LoseCity);

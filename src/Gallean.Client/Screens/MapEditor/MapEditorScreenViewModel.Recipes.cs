@@ -40,6 +40,9 @@ internal sealed partial class MapEditorScreenViewModel
     [NotifyPropertyChangedFor(nameof(RecipeDescription))]
     public partial MapEditorOption<MapEditorRecipe>? SelectedRecipe { get; set; }
 
+    // The box starts on the first recipe: an empty drop-down looked like nothing was there.
+    private void InitRecipes() => SelectedRecipe = Recipes[0];
+
     public string RecipeDescription => SelectedRecipe?.Value switch
     {
         MapEditorRecipe.CaptureCity => Tr("The first race wins when it owns the chosen city."),
@@ -117,18 +120,18 @@ internal sealed partial class MapEditorScreenViewModel
                     new CustomMapWinEffect(race))).Id;
             case MapEditorRecipe.SurviveTurns:
                 return current.AddEvent(Event(
-                    Tr("{0} survives {1} turns", raceName, DefaultRecipeTurns),
+                    Tr("{0} survives", raceName),
                     race,
                     [new CustomMapTurnCondition(DefaultRecipeTurns, Repeat: false)],
-                    Message(Tr("{0} has held out for {1} turns!", raceName, DefaultRecipeTurns)),
+                    Message(Tr("{0} has held out to the end!", raceName)),
                     new CustomMapWinEffect(race))).Id;
             case MapEditorRecipe.HoldOut:
             {
                 int main = current.AddEvent(Event(
-                    Tr("{0} holds out {1} turns", raceName, DefaultRecipeTurns),
+                    Tr("{0} holds out", raceName),
                     race,
                     [new CustomMapTurnCondition(DefaultRecipeTurns, Repeat: false)],
-                    Message(Tr("{0} has held out for {1} turns!", raceName, DefaultRecipeTurns)),
+                    Message(Tr("{0} has held out to the end!", raceName)),
                     new CustomMapWinEffect(race))).Id;
 
                 foreach (WorldRace attacker in others)
