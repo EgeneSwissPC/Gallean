@@ -552,6 +552,17 @@
                      Classes="caption"
                      TextWrapping="Wrap"
                      Foreground="{StaticResource SecondaryTextBrush}" />
+          <DockPanel>
+            <Button x:Name="AddRecipeButton" DockPanel.Dock="Right" Classes="pill" Height="28" Padding="10,0" Margin="6,0,0,0" Content="{local:Text 'Add'}" Command="{Binding AddRecipeCommand}" />
+            <ComboBox x:Name="RecipeBox" HorizontalAlignment="Stretch" ItemsSource="{Binding Recipes}" SelectedItem="{Binding SelectedRecipe}" PlaceholderText="{local:Text 'Recipes: ready-made events'}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorLabeled">
+                  <TextBlock Text="{Binding Label}" Classes="body" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+          </DockPanel>
+          <TextBlock Text="{Binding RecipeDescription}" Classes="caption" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
           <TextBox x:Name="EventSearchBox" Text="{Binding EventSearch}" Watermark="{local:Text 'Search'}" IsVisible="{Binding HasEvents}" />
         </StackPanel>
         <Panel Margin="0,6,0,0">

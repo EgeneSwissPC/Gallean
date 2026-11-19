@@ -1695,4 +1695,63 @@ public sealed class MapEditorScreenViewModelTests
         editor.UndoCommand.Execute(null);
         Assert.That((editor.Map.Villages.Count, editor.EventRows.Single(row => row.Name == "Take the village").HasProblem), Is.EqualTo((1, false)));
     }
+
+    // Recipes add ready-made events from ordinary blocks, pointed at the map's first village, zone and ruin; every
+    // race that a recipe can end the game for gets a conquest event once; all of them load in the game.
+    [Test]
+    public async Task EventRecipesTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Village);
+        editor.BeginStroke(new WorldPosition(24, 24));
+        string village = editor.Map.Villages.Single().Name;
+        editor.Map.PlaceLocation(new WorldPosition(20, 14), 1, "North Gate");
+        Assert.That(editor.Map.PlaceRuin(new WorldPosition(12, 30), 0, "Old tower").Error, Is.Null);
+        editor.IsEventsOpen = true;
+
+        void Add(MapEditorRecipe recipe)
+        {
+            editor.SelectedRecipe = editor.Recipes.Single(option => option.Value == recipe);
+            editor.AddRecipeCommand.Execute(null);
+            Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen).Close();
+        }
+
+        Assert.That((editor.SelectedRecipe!.Value, editor.RecipeDescription), Is.EqualTo((MapEditorRecipe.CaptureCity, "The first race wins when it owns the chosen city.")));
+        Add(MapEditorRecipe.CaptureCity);
+        Assert.That(editor.Map.Events.Select(ev => ev.Name), Is.EqualTo(new[] { $"Empire captures {village}", "Empire conquers all capitals" }));
+        Assert.That(editor.Map.Events[0].Groups.Single().Single(), Is.EqualTo(new CustomMapOwnCityCondition(new CustomMapCity.Village(1))));
+        Assert.That(editor.Map.Events[0].Effects[^1], Is.EqualTo(new CustomMapWinEffect(WorldRace.Human)));
+        Assert.That(editor.Map.Events[1].Groups.Single().Single(), Is.EqualTo(new CustomMapOwnCityCondition(new CustomMapCity.Capital(WorldRace.Dwarf))));
+
+        Add(MapEditorRecipe.ReachZone);
+        Add(MapEditorRecipe.SurviveTurns);
+        Assert.That(editor.Map.Events.Count(ev => ev.Name.EndsWith("conquers all capitals", StringComparison.Ordinal)), Is.EqualTo(1), "One conquest event per race.");
+
+        Add(MapEditorRecipe.HoldOut);
+        Assert.That(editor.Map.Events.Select(ev => ev.Name).TakeLast(3), Is.EqualTo(new[] { "Empire holds out", "Clans takes the Empire capital", "Clans conquers all capitals" }));
+        Assert.That(editor.Map.Events.Single(ev => ev.Name == "Clans takes the Empire capital").Races, Is.EqualTo(new[] { WorldRace.Dwarf }));
+
+        Add(MapEditorRecipe.LoseCity);
+        Add(MapEditorRecipe.ZoneWarning);
+        Add(MapEditorRecipe.RuinTreasure);
+        Assert.That(editor.Map.Events.Single(ev => ev.Name == "Warning at North Gate").Effects[1], Is.EqualTo(new CustomMapRevealZoneEffect(1, [])));
+        Assert.That(editor.Map.Events.Single(ev => ev.Name == "Looting Old tower").Races, Is.EqualTo(new[] { WorldRace.Human, WorldRace.Dwarf }));
+        Assert.That(editor.Map.GetRacesNeedingConquestWin(), Is.Empty);
+        Assert.That(editor.Map.GetSaveableEvents().Count, Is.EqualTo(editor.Map.Events.Count), "Every recipe event can be saved.");
+        Assert.That(editor.EventRows.Count(row => row.HasProblem), Is.Zero);
+
+        // One undo step per recipe.
+        int before = editor.Map.Events.Count;
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.Events.Count, Is.EqualTo(before - 1));
+        Add(MapEditorRecipe.RuinTreasure);
+
+        // The game loads them all (no "or" sets, so one game event each).
+        Scenario scenario = loader.CreateMapStore()!.BuildPreview(editor.Map, loader.CreateDefinitions());
+        Assert.That(scenario.Provider.Events.Count, Is.EqualTo(editor.Map.Events.Count));
+    }
 }

@@ -1034,5 +1034,16 @@ public sealed partial class VisualTests
         await SkipFramesAsync(10);
         await CaptureAsync(window, "8-delete-warning");
         Assert.IsOfType<ConfirmPromptViewModel>(gameViewModel.TopScreen).Close();
+
+        // Phase 4: a recipe adds ready-made events (here one per race plus the conquest events) and opens the main one.
+        editor.IsEventsOpen = true;
+        editor.SelectedRecipe = editor.Recipes.Single(option => option.Value == MapEditorRecipe.HoldOut);
+        editor.AddRecipeCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "9-recipe-event");
+        Assert.IsOfType<MapEditorEventScreenViewModel>(gameViewModel.TopScreen).Close();
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "10-recipe-list");
+        Assert.That(editor.EventRows.Select(row => row.Name), Is.SupersetOf(new[] { "Empire holds out", "Undead takes the Empire capital", "Empire conquers all capitals", "Undead conquers all capitals" }));
     }
 }
