@@ -344,6 +344,12 @@ armies (targets glow gold, Esc cancels), "Used by events: ..." in the hover line
 zone, village, ruin, army or switched event that events use, and the save names the events left out (also those that
 switch a left-out event). Tests: `EventsUsingTest`, `EventSafetyTest`, visual steps 7-8; suite 5222.
 
+Phase 4 — done (merged as `ed8a952f`): recipes in the events list (capture a city, reach a zone, survive N turns, hold
+out against attackers, lose if a city falls, warning when entering a zone, message when looting a ruin), built from
+ordinary blocks; every race a recipe can end the game for gets a "conquers all capitals" event so conquest still
+ends the game. Tests: `ConquestWinTest`, `HoldOutGivesTheAiAGoalTest`, `EventRecipesTest`; suite 5225. Real client:
+a "Survive 2 turns" recipe ended in the Victory screen on turn 2.
+
 ## Task (later): victory settings
 
 Folded into the events task as recipes ("Capture a city to win", "Hold a zone to win", "Survive N turns").

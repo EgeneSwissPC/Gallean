@@ -164,7 +164,7 @@ Full screen like the army screen, three columns:
    OR groups.
 2. ~~**Block event screen + events list** (~2.5 days):~~ done, see "Phase 2 — done". palette, script with drag-drop, settings, message preview.
 3. ~~**Pick on the map, "used by", safe deletes, red broken blocks** (~1 day).~~ done, see "Phase 3 — done".
-4. **Recipes** (~1 day).
+4. ~~**Recipes** (~1 day).~~ done, see "Phase 4 — done".
 5. **Army templates + army effects** (~2 days): create/move/remove/owner/order/battle, template editor on the army
    screen.
 6. **Remaining kinds + variables** (~2 days).
@@ -290,6 +290,53 @@ Known limits:
   as usual.
 - The reveal block's race choice and a "pick" for events (switch block) are not there: events are picked from the
   drop-down.
+
+## Phase 4 — done
+
+Feature commits `ea0bf51f` (engine), `ce85eecb`, `ecacad2d`, merged as `ed8a952f` (branch `upgrade/map-editor-event-recipes`).
+
+Decision taken while building: **recipes live in the events list**, not in the block palette. A recipe can make
+several events (one win per attacking race, plus conquest events), which a palette block inside one event can't.
+The list has a recipe box (starts on the first recipe), "Add", and a line saying what the recipe does; Add makes the
+events as one undo step and opens the main one in the block editor.
+
+The recipes (targets start at the first race, the map's first village / zone / ruin; "On map" changes them):
+- **Capture a city to win**: owns [city] → message to all, [race] wins.
+- **Reach a zone to win**: an army enters [zone] → message, win. The game's AI takes no goal from zone conditions,
+  so the line says "The computer gets no goal from zones".
+- **Survive N turns** (plain): on turn 30 → message, win. No AI goal.
+- **Hold out against attackers**: the defender wins on turn 30; one event per other race "takes the [defender]
+  capital" → that race wins. The capital becomes the attackers' AI goal (checked with the game's `WorldAiScenario`).
+- **Lose if a city falls**: for the other races, owns [city] → message, the players lose (for maps where the player
+  defends with the first race).
+- **Warning when entering a zone**: message from a scout + reveal the zone. The planned "Ambush" needs "create an
+  army", which comes with army templates (phase 5).
+- **Message when looting a ruin**: for every race, loots [ruin] → message to the looter.
+
+**Conquest wins**: after a recipe, every playable race that an event ending in win or lose concerns (the game's
+`HasWinEvent` rule) and that has no conquest event gets "[race] conquers all capitals": one set of "owns [capital]"
+blocks for every other race → [race] wins. Engine: `GetRacesNeedingConquestWin`, `AddConquestWin`, `IsConquestWin`.
+"Hold out for N turns in a zone" needs variables (phase 6).
+
+Message texts and event names carry no turn numbers (changing the number would leave them wrong).
+
+Tests: `CustomMapEventTests.ConquestWinTest` (the game ends for the Empire through its conquest event once it holds
+the elven capital; without the event the game goes on — the check that the test sees the conquest event and not
+something else), `HoldOutGivesTheAiAGoalTest` (attackers' objective targets = the defender's capital; a zone
+condition adds none); `MapEditorScreenViewModelTests.EventRecipesTest` (all 7 recipes, one conquest event per race,
+every event saveable, undo, the game loads them); `VisualTests.MapEditorEventsTest` steps 9-10. Suite 5225 (+3);
+all 15 map editor visual tests pass.
+
+Real client (AOT build, `mapgen` map): picked "Survive N turns" in the recipe box, Add opened "Empire survives 30
+turns"; typed 2 into the turn box, Save event, Save and play; turn 1 showed the welcome message, End turn, turn 2
+showed "Empire has held out for 30 turns!" and then the Victory screen. The saved map had the recipe event and
+"Empire conquers all capitals". The text and name were then changed to carry no number (`ecacad2d`, checked by the
+tests); the box starting on the first recipe was found in the same run (it looked empty).
+
+Known limits:
+- A recipe always starts with the first race; pick another race in the hat afterwards (conquest events are only
+  added when the recipe is added).
+- Removing a recipe's main event leaves its conquest events; delete them in the list if no longer wanted.
 
 ## Open questions
 
