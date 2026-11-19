@@ -76,10 +76,10 @@
 
   <UserControl.DataTemplates>
     <DataTemplate x:DataType="local:MapEditorBlockText">
-      <TextBlock Text="{Binding Text}" Classes="body block-text" />
+      <TextBlock Text="{Binding Text}" Classes="body block-text" IsVisible="{Binding !IsHidden}" />
     </DataTemplate>
     <DataTemplate x:DataType="local:MapEditorBlockChoice">
-      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center" IsVisible="{Binding !IsHidden}">
         <ComboBox Classes="block-field" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" PlaceholderText="{local:Text '(none)'}">
           <ComboBox.ItemTemplate>
             <DataTemplate x:DataType="local:MapEditorLabeled">
@@ -92,9 +92,12 @@
       </StackPanel>
     </DataTemplate>
     <DataTemplate x:DataType="local:MapEditorBlockNumber">
-      <TextBox Text="{Binding Text}" Width="56" Margin="0,2,6,2" VerticalAlignment="Center" TextAlignment="Center" />
+      <TextBox Text="{Binding Text}" Width="56" Margin="0,2,6,2" VerticalAlignment="Center" TextAlignment="Center" IsVisible="{Binding !IsHidden}" />
     </DataTemplate>
     <DataTemplate x:DataType="local:MapEditorBlockItem">
+      <Button Classes="pill" Height="28" Padding="10,0" Margin="0,2,6,2" Content="{Binding Name}" Command="{Binding ChooseCommand}" />
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockSpell">
       <Button Classes="pill" Height="28" Padding="10,0" Margin="0,2,6,2" Content="{Binding Name}" Command="{Binding ChooseCommand}" />
     </DataTemplate>
     <DataTemplate x:DataType="local:MapEditorBlockPortrait">

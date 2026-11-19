@@ -22,6 +22,16 @@ internal enum MapEditorBlockKind
     LootRuin,
     DestroyArmy,
     ArmyExists,
+    OwnItem,
+    LeaderItem,
+    Relation,
+    Alliance,
+    Land,
+    VisitSite,
+    ArmyToZone,
+    ArmyToCity,
+    ItemToZone,
+    Variable,
     Message,
     Objective,
     Win,
@@ -39,7 +49,18 @@ internal enum MapEditorBlockKind
     OrderDefendZone,
     OrderDefendCity,
     OrderAttack,
-    Battle
+    Battle,
+    CastSpell,
+    CastSpellZone,
+    GiveSpell,
+    Ally,
+    SetRelation,
+    RemoveMountains,
+    RemoveLandmark,
+    ChangeLandmark,
+    ChangeTerrain,
+    SetVariable,
+    DestroyItem
 }
 
 internal enum MapEditorBlockCategory
@@ -69,7 +90,9 @@ internal sealed class MapEditorEventContext(
     GameModel editorGame,
     Action<Action<ItemDefinitionId>> pickItem,
     Action<Action<UnitDefinitionId?>> pickPortrait,
-    Action<MapEditorPickKind, Action<object>>? pickOnMap = null)
+    Action<MapEditorPickKind, Action<object>>? pickOnMap = null,
+    Action<Action<WorldSpellDefinitionId>>? pickSpell = null,
+    IReadOnlyList<MapEditorLandmarkOption>? landmarkTypes = null)
 {
     public CustomMap Map { get; } = map;
 
@@ -118,6 +141,32 @@ internal sealed class MapEditorEventContext(
 
     public void PickItem(Action<ItemDefinitionId> picked) => pickItem(picked);
 
+    public void PickSpell(Action<WorldSpellDefinitionId> picked) => pickSpell?.Invoke(picked);
+
+    public string SpellName(WorldSpellDefinitionId id) => MapEditorLibrary.GetSpellName(EditorGame, id);
+
+    public IReadOnlyList<MapEditorOption<object?>> Sites =>
+        [.. Map.Sites.OrderBy(site => site.Name, StringComparer.CurrentCultureIgnoreCase).Select(site => new MapEditorOption<object?>(site.Id, Tr("{0} ({1}, {2})", site.Name, site.TopLeft.X, site.TopLeft.Y)))];
+
+    public IReadOnlyList<MapEditorOption<object?>> PlacedLandmarks =>
+    [
+        .. Map.Landmarks.OrderBy(landmark => landmark.Id).Select(landmark => new MapEditorOption<object?>(
+            landmark.Id,
+            Tr("{0} ({1}, {2})", landmarkTypes?.FirstOrDefault(option => option.Definition.Id == landmark.Type)?.Name ?? landmark.Type.Value, landmark.TopLeft.X, landmark.TopLeft.Y)))
+    ];
+
+    public IReadOnlyList<MapEditorOption<object?>> LandmarkTypes =>
+        [.. (landmarkTypes ?? []).OrderBy(option => option.Name, StringComparer.CurrentCultureIgnoreCase).Select(option => new MapEditorOption<object?>(option.Definition.Id, option.Caption))];
+
+    public IReadOnlyList<MapEditorOption<object?>> Variables =>
+        [.. Map.Variables.OrderBy(variable => variable.Name, StringComparer.CurrentCultureIgnoreCase).Select(variable => new MapEditorOption<object?>(variable.Id, variable.Name))];
+
+    public IReadOnlyList<MapEditorOption<object?>> Terrains =>
+    [
+        .. Map.Players.Select(player => new MapEditorOption<object?>(CustomMap.GetRaceTerrain(player.Race), Tr("{0} land", MapEditorLabels.RaceShort(player.Race)))),
+        new MapEditorOption<object?>(WorldMapTerrain.Neutral, Tr("neutral land"))
+    ];
+
     public bool CanPickOnMap => pickOnMap is not null;
 
     public void PickOnMap(MapEditorPickKind kind, Action<object> picked) => pickOnMap?.Invoke(kind, picked);
@@ -137,7 +186,12 @@ internal sealed class MapEditorEventContext(
     }
 }
 
-internal abstract class MapEditorBlockPart : ObservableObject;
+internal abstract partial class MapEditorBlockPart : ObservableObject
+{
+    // Parts that only matter for some settings (the second range of a variable test) hide when unused.
+    [ObservableProperty]
+    public partial bool IsHidden { get; set; }
+}
 
 internal sealed class MapEditorBlockText(string text) : MapEditorBlockPart
 {
@@ -215,6 +269,25 @@ internal sealed partial class MapEditorBlockItem(MapEditorEventContext context, 
         context.PickItem(picked =>
         {
             Item = picked;
+            OnPropertyChanged(nameof(Name));
+            changed();
+        });
+    }
+}
+
+// A spell: name plus a button that opens the game's spell list.
+internal sealed partial class MapEditorBlockSpell(MapEditorEventContext context, WorldSpellDefinitionId spell, Action changed) : MapEditorBlockPart
+{
+    public WorldSpellDefinitionId Spell { get; private set; } = spell;
+
+    public string Name => string.IsNullOrEmpty(Spell.Value) ? Tr("(choose)") : context.SpellName(Spell);
+
+    [RelayCommand]
+    private void Choose()
+    {
+        context.PickSpell(picked =>
+        {
+            Spell = picked;
             OnPropertyChanged(nameof(Name));
             changed();
         });
@@ -381,18 +454,20 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
     [ObservableProperty]
     public partial bool HasProblem { get; set; }
 
-    public static bool IsConditionKind(MapEditorBlockKind kind) => kind <= MapEditorBlockKind.ArmyExists;
+    public static bool IsConditionKind(MapEditorBlockKind kind) => kind < MapEditorBlockKind.Message;
 
     public static MapEditorBlockCategory GetCategory(MapEditorBlockKind kind)
     {
         return kind switch
         {
             MapEditorBlockKind.OnTurn or MapEditorBlockKind.EveryTurns => MapEditorBlockCategory.Time,
-            MapEditorBlockKind.EnterZone or MapEditorBlockKind.RevealZone => MapEditorBlockCategory.Zones,
-            MapEditorBlockKind.OwnCity or MapEditorBlockKind.EnterCity or MapEditorBlockKind.LootRuin => MapEditorBlockCategory.Places,
-            MapEditorBlockKind.DestroyArmy or MapEditorBlockKind.ArmyExists => MapEditorBlockCategory.Armies,
-            MapEditorBlockKind.GiveItem => MapEditorBlockCategory.Items,
-            >= MapEditorBlockKind.CreateArmy => MapEditorBlockCategory.Armies,
+            MapEditorBlockKind.EnterZone or MapEditorBlockKind.RevealZone or MapEditorBlockKind.ArmyToZone or MapEditorBlockKind.ItemToZone or
+                MapEditorBlockKind.RemoveMountains or MapEditorBlockKind.RemoveLandmark or MapEditorBlockKind.ChangeLandmark or MapEditorBlockKind.ChangeTerrain => MapEditorBlockCategory.Zones,
+            MapEditorBlockKind.OwnCity or MapEditorBlockKind.EnterCity or MapEditorBlockKind.LootRuin or MapEditorBlockKind.ArmyToCity or MapEditorBlockKind.VisitSite or
+                MapEditorBlockKind.Land => MapEditorBlockCategory.Places,
+            MapEditorBlockKind.DestroyArmy or MapEditorBlockKind.ArmyExists or (>= MapEditorBlockKind.CreateArmy and <= MapEditorBlockKind.Battle) => MapEditorBlockCategory.Armies,
+            MapEditorBlockKind.GiveItem or MapEditorBlockKind.OwnItem or MapEditorBlockKind.LeaderItem or MapEditorBlockKind.DestroyItem or MapEditorBlockKind.CastSpell or
+                MapEditorBlockKind.CastSpellZone or MapEditorBlockKind.GiveSpell => MapEditorBlockCategory.Items,
             MapEditorBlockKind.Message or MapEditorBlockKind.Objective => MapEditorBlockCategory.Messages,
             _ => MapEditorBlockCategory.Flow
         };
@@ -421,14 +496,29 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             ?
             [
                 new MapEditorPaletteGroup(Tr("Time"), [Block(MapEditorBlockKind.OnTurn, Tr("on turn N")), Block(MapEditorBlockKind.EveryTurns, Tr("every N turns"))]),
-                new MapEditorPaletteGroup(Tr("Zones"), [Block(MapEditorBlockKind.EnterZone, Tr("an army enters a zone"))]),
+                new MapEditorPaletteGroup(Tr("Zones"),
+                [
+                    Block(MapEditorBlockKind.EnterZone, Tr("an army enters a zone")),
+                    Block(MapEditorBlockKind.ArmyToZone, Tr("a certain army is in a zone")),
+                    Block(MapEditorBlockKind.ItemToZone, Tr("an item is brought to a zone"))
+                ]),
                 new MapEditorPaletteGroup(Tr("Places"),
                 [
                     Block(MapEditorBlockKind.OwnCity, Tr("owns a city")),
                     Block(MapEditorBlockKind.EnterCity, Tr("an army is in a city")),
-                    Block(MapEditorBlockKind.LootRuin, Tr("loots a ruin"))
+                    Block(MapEditorBlockKind.ArmyToCity, Tr("a certain army is in a city")),
+                    Block(MapEditorBlockKind.LootRuin, Tr("loots a ruin")),
+                    Block(MapEditorBlockKind.VisitSite, Tr("visits a site")),
+                    Block(MapEditorBlockKind.Land, Tr("owns a share of the land"))
                 ]),
-                new MapEditorPaletteGroup(Tr("Armies"), [Block(MapEditorBlockKind.DestroyArmy, Tr("destroys an army")), Block(MapEditorBlockKind.ArmyExists, Tr("an army exists"))])
+                new MapEditorPaletteGroup(Tr("Armies"), [Block(MapEditorBlockKind.DestroyArmy, Tr("destroys an army")), Block(MapEditorBlockKind.ArmyExists, Tr("an army exists"))]),
+                new MapEditorPaletteGroup(Tr("Items"), [Block(MapEditorBlockKind.OwnItem, Tr("owns an item")), Block(MapEditorBlockKind.LeaderItem, Tr("an army carries an item"))]),
+                new MapEditorPaletteGroup(Tr("Game"),
+                [
+                    Block(MapEditorBlockKind.Variable, Tr("a variable is in a range")),
+                    Block(MapEditorBlockKind.Relation, Tr("relations between races")),
+                    Block(MapEditorBlockKind.Alliance, Tr("two races are allies"))
+                ])
             ]
             :
             [
@@ -437,7 +527,10 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
                 [
                     Block(MapEditorBlockKind.Win, Tr("a race wins")),
                     Block(MapEditorBlockKind.Lose, Tr("the players lose")),
-                    Block(MapEditorBlockKind.SwitchEvent, Tr("switch an event on or off"))
+                    Block(MapEditorBlockKind.SwitchEvent, Tr("switch an event on or off")),
+                    Block(MapEditorBlockKind.SetVariable, Tr("change a variable")),
+                    Block(MapEditorBlockKind.Ally, Tr("make two races allies")),
+                    Block(MapEditorBlockKind.SetRelation, Tr("set relations between races"))
                 ]),
                 new MapEditorPaletteGroup(Tr("Armies"),
                 [
@@ -453,8 +546,22 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
                     Block(MapEditorBlockKind.OrderDefendCity, Tr("order: defend a city")),
                     Block(MapEditorBlockKind.OrderAttack, Tr("order: attack an army"))
                 ]),
-                new MapEditorPaletteGroup(Tr("Zones"), [Block(MapEditorBlockKind.RevealZone, Tr("reveal a zone"))]),
-                new MapEditorPaletteGroup(Tr("Items"), [Block(MapEditorBlockKind.GiveItem, Tr("give an item"))])
+                new MapEditorPaletteGroup(Tr("Zones"),
+                [
+                    Block(MapEditorBlockKind.RevealZone, Tr("reveal a zone")),
+                    Block(MapEditorBlockKind.ChangeTerrain, Tr("change the land in a zone")),
+                    Block(MapEditorBlockKind.RemoveMountains, Tr("remove mountains in a zone")),
+                    Block(MapEditorBlockKind.RemoveLandmark, Tr("remove a landmark")),
+                    Block(MapEditorBlockKind.ChangeLandmark, Tr("change a landmark"))
+                ]),
+                new MapEditorPaletteGroup(Tr("Items and spells"),
+                [
+                    Block(MapEditorBlockKind.GiveItem, Tr("give an item")),
+                    Block(MapEditorBlockKind.DestroyItem, Tr("destroy an item")),
+                    Block(MapEditorBlockKind.GiveSpell, Tr("teach a spell")),
+                    Block(MapEditorBlockKind.CastSpell, Tr("cast a spell on the army")),
+                    Block(MapEditorBlockKind.CastSpellZone, Tr("cast a spell on a zone"))
+                ])
             ];
     }
 
@@ -470,7 +577,17 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.EnterCity => FromCondition(new CustomMapEnterCityCondition(FirstCity(context)), context, changed),
             MapEditorBlockKind.LootRuin => FromCondition(new CustomMapLootRuinCondition(First<int>(context.Ruins)), context, changed),
             MapEditorBlockKind.DestroyArmy => FromCondition(new CustomMapDestroyArmyCondition(First<int>(context.Armies)), context, changed),
-            MapEditorBlockKind.ArmyExists => FromCondition(new CustomMapArmyExistsCondition(First<int>(context.Armies), Exists: true), context, changed),
+            MapEditorBlockKind.ArmyExists => FromCondition(new CustomMapArmyExistsCondition(FirstArmy(context, false), true), context, changed),
+            MapEditorBlockKind.OwnItem => FromCondition(new CustomMapOwnItemCondition(new ItemDefinitionId(string.Empty)), context, changed),
+            MapEditorBlockKind.LeaderItem => FromCondition(new CustomMapLeaderItemCondition(FirstArmy(context, false), new ItemDefinitionId(string.Empty)), context, changed),
+            MapEditorBlockKind.Relation => FromCondition(new CustomMapRelationCondition(FirstRace(context, 0), FirstRace(context, 1), CustomMapRelation.War), context, changed),
+            MapEditorBlockKind.Alliance => FromCondition(new CustomMapAllianceCondition(FirstRace(context, 0), FirstRace(context, 1)), context, changed),
+            MapEditorBlockKind.Land => FromCondition(new CustomMapLandCondition(40), context, changed),
+            MapEditorBlockKind.VisitSite => FromCondition(new CustomMapVisitSiteCondition(First<int>(context.Sites)), context, changed),
+            MapEditorBlockKind.ArmyToZone => FromCondition(new CustomMapArmyToZoneCondition(FirstArmy(context, false), First<int>(context.Locations)), context, changed),
+            MapEditorBlockKind.ArmyToCity => FromCondition(new CustomMapArmyToCityCondition(FirstArmy(context, false), FirstCity(context)), context, changed),
+            MapEditorBlockKind.ItemToZone => FromCondition(new CustomMapItemToZoneCondition(new ItemDefinitionId(string.Empty), First<int>(context.Locations)), context, changed),
+            MapEditorBlockKind.Variable => FromCondition(new CustomMapVariableCondition(First<int>(context.Variables), 1, 1), context, changed),
             MapEditorBlockKind.Message => FromEffect(new CustomMapMessageEffect(CustomMapText.Of(string.Empty), CustomMapMessageAudience.Triggerer, null, true), context, changed, preview),
             MapEditorBlockKind.Objective => FromEffect(new CustomMapObjectiveEffect(CustomMapText.Of(string.Empty)), context, changed, preview),
             MapEditorBlockKind.Win => FromEffect(new CustomMapWinEffect(context.Map.Players.FirstOrDefault()?.Race ?? WorldRace.Human), context, changed, preview),
@@ -489,6 +606,17 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.OrderDefendCity => FromEffect(new CustomMapChangeOrderEffect(FirstArmy(context, false), MapEditorOrders.Make(CustomMapOrderKind.DefendCity, FirstCity(context))), context, changed, preview),
             MapEditorBlockKind.OrderAttack => FromEffect(new CustomMapChangeOrderEffect(FirstArmy(context, false), MapEditorOrders.Make(CustomMapOrderKind.AttackArmy, context.Armies.FirstOrDefault()?.Value)), context, changed, preview),
             MapEditorBlockKind.Battle => FromEffect(new CustomMapBattleEffect(FirstArmy(context, false)), context, changed, preview),
+            MapEditorBlockKind.CastSpell => FromEffect(new CustomMapCastSpellEffect(new WorldSpellDefinitionId(string.Empty), null), context, changed, preview),
+            MapEditorBlockKind.CastSpellZone => FromEffect(new CustomMapCastSpellZoneEffect(new WorldSpellDefinitionId(string.Empty), First<int>(context.Locations), null), context, changed, preview),
+            MapEditorBlockKind.GiveSpell => FromEffect(new CustomMapGiveSpellEffect(new WorldSpellDefinitionId(string.Empty)), context, changed, preview),
+            MapEditorBlockKind.Ally => FromEffect(new CustomMapAllyEffect(FirstRace(context, 0), FirstRace(context, 1), Permanent: false), context, changed, preview),
+            MapEditorBlockKind.SetRelation => FromEffect(new CustomMapRelationEffect(FirstRace(context, 0), FirstRace(context, 1), CustomMapRelation.War), context, changed, preview),
+            MapEditorBlockKind.RemoveMountains => FromEffect(new CustomMapRemoveMountainsEffect(First<int>(context.Locations)), context, changed, preview),
+            MapEditorBlockKind.RemoveLandmark => FromEffect(new CustomMapRemoveLandmarkEffect(First<int>(context.PlacedLandmarks)), context, changed, preview),
+            MapEditorBlockKind.ChangeLandmark => FromEffect(new CustomMapChangeLandmarkEffect(First<int>(context.PlacedLandmarks), context.LandmarkTypes.FirstOrDefault()?.Value is WorldLandmarkDefinitionId type ? type : new WorldLandmarkDefinitionId(string.Empty)), context, changed, preview),
+            MapEditorBlockKind.ChangeTerrain => FromEffect(new CustomMapChangeTerrainEffect(First<int>(context.Locations), context.Map.Players.FirstOrDefault() is { } player ? CustomMap.GetRaceTerrain(player.Race) : WorldMapTerrain.Neutral, 5), context, changed, preview),
+            MapEditorBlockKind.SetVariable => FromEffect(new CustomMapVariableEffect(First<int>(context.Variables), ScenarioVariableOperation.Add, 1), context, changed, preview),
+            MapEditorBlockKind.DestroyItem => FromEffect(new CustomMapDestroyItemEffect(new ItemDefinitionId(string.Empty), TriggererOnly: true), context, changed, preview),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
     }
@@ -508,12 +636,75 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             case CustomMapLootRuinCondition loot:
                 return Make(MapEditorBlockKind.LootRuin, Tr("loots"), new MapEditorBlockChoice(context.Ruins, loot.RuinId, changed, context, MapEditorPickKind.Ruin));
             case CustomMapDestroyArmyCondition destroy:
-                return Make(MapEditorBlockKind.DestroyArmy, Tr("destroys"), new MapEditorBlockChoice(context.Armies, destroy.ArmyId, changed, context, MapEditorPickKind.Army));
+                return Make(MapEditorBlockKind.DestroyArmy, Tr("destroys"), ArmyChoice(context, destroy.Army, false, changed));
+            case CustomMapOwnItemCondition own:
+                return Make(MapEditorBlockKind.OwnItem, Tr("owns"), new MapEditorBlockItem(context, own.Item, changed));
+            case CustomMapLeaderItemCondition leader:
+                return Make(MapEditorBlockKind.LeaderItem, null, ArmyChoice(context, leader.Army, false, changed), new MapEditorBlockText(Tr("carries")), new MapEditorBlockItem(context, leader.Item, changed));
+            case CustomMapRelationCondition relation:
+                return Make(MapEditorBlockKind.Relation, Tr("relations of"), RaceChoice(context, relation.Race1, changed), new MapEditorBlockText(Tr("and")), RaceChoice(context, relation.Race2, changed), new MapEditorBlockText(Tr("are")), RelationChoice(relation.Level, changed));
+            case CustomMapAllianceCondition alliance:
+                return Make(MapEditorBlockKind.Alliance, null, RaceChoice(context, alliance.Race1, changed), new MapEditorBlockText(Tr("and")), RaceChoice(context, alliance.Race2, changed), new MapEditorBlockText(Tr("are allies")));
+            case CustomMapLandCondition land:
+                return Make(MapEditorBlockKind.Land, Tr("owns at least"), new MapEditorBlockNumber(land.Percent, 1, 100, changed), new MapEditorBlockText(Tr("% of the land")));
+            case CustomMapVisitSiteCondition visit:
+                return Make(MapEditorBlockKind.VisitSite, Tr("visits"), new MapEditorBlockChoice(context.Sites, visit.SiteId, changed, context, MapEditorPickKind.Site));
+            case CustomMapArmyToZoneCondition toZone:
+                return Make(MapEditorBlockKind.ArmyToZone, null, ArmyChoice(context, toZone.Army, false, changed), new MapEditorBlockText(Tr("is in")), new MapEditorBlockChoice(context.Locations, toZone.LocationId, changed, context, MapEditorPickKind.Zone));
+            case CustomMapArmyToCityCondition toCity:
+                return Make(MapEditorBlockKind.ArmyToCity, null, ArmyChoice(context, toCity.Army, false, changed), new MapEditorBlockText(Tr("is in")), new MapEditorBlockChoice(context.Cities, toCity.City, changed, context, MapEditorPickKind.City));
+            case CustomMapItemToZoneCondition item:
+                return Make(MapEditorBlockKind.ItemToZone, Tr("an army brings"), new MapEditorBlockItem(context, item.Item, changed), new MapEditorBlockText(Tr("into")), new MapEditorBlockChoice(context.Locations, item.LocationId, changed, context, MapEditorPickKind.Zone));
+            case CustomMapVariableCondition variable:
+            {
+                MapEditorBlockPart[] second =
+                [
+                    new MapEditorBlockChoice(context.Variables, variable.SecondVariableId == 0 ? null : variable.SecondVariableId, changed),
+                    new MapEditorBlockText(Tr("is from")),
+                    new MapEditorBlockNumber(variable.SecondMinimum, -9999, 9999, changed),
+                    new MapEditorBlockText(Tr("to")),
+                    new MapEditorBlockNumber(variable.SecondMaximum, -9999, 9999, changed)
+                ];
+                MapEditorBlockChoice? join = null;
+
+                void JoinChanged()
+                {
+                    foreach (MapEditorBlockPart part in second)
+                    {
+                        part.IsHidden = join?.Value is not (CustomMapVariableJoin.And or CustomMapVariableJoin.Or);
+                    }
+
+                    changed();
+                }
+
+                join = new MapEditorBlockChoice(
+                    [new MapEditorOption<object?>(CustomMapVariableJoin.None, Tr("(nothing else)")), new MapEditorOption<object?>(CustomMapVariableJoin.And, Tr("and")), new MapEditorOption<object?>(CustomMapVariableJoin.Or, Tr("or"))],
+                    variable.Join,
+                    JoinChanged);
+
+                foreach (MapEditorBlockPart part in second)
+                {
+                    part.IsHidden = variable.Join == CustomMapVariableJoin.None;
+                }
+
+                return Make(
+                    MapEditorBlockKind.Variable,
+                    null,
+                    [
+                        new MapEditorBlockChoice(context.Variables, variable.VariableId, changed),
+                        new MapEditorBlockText(Tr("is from")),
+                        new MapEditorBlockNumber(variable.Minimum, -9999, 9999, changed),
+                        new MapEditorBlockText(Tr("to")),
+                        new MapEditorBlockNumber(variable.Maximum, -9999, 9999, changed),
+                        join,
+                        .. second
+                    ]);
+            }
             case CustomMapArmyExistsCondition exists:
                 return Make(
                     MapEditorBlockKind.ArmyExists,
                     null,
-                    new MapEditorBlockChoice(context.Armies, exists.ArmyId, changed, context, MapEditorPickKind.Army),
+                    ArmyChoice(context, exists.Army, false, changed),
                     new MapEditorBlockChoice([new MapEditorOption<object?>(true, Tr("still exists")), new MapEditorOption<object?>(false, Tr("is gone"))], exists.Exists, changed));
             default:
                 throw new ArgumentOutOfRangeException(nameof(condition), condition, null);
@@ -559,7 +750,12 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             case CustomMapRevealZoneEffect reveal:
             {
                 // The block reveals for the event's races; a race list set elsewhere is kept as it was.
-                MapEditorEventBlockViewModel block = Make(MapEditorBlockKind.RevealZone, Tr("reveal"), new MapEditorBlockChoice(context.Locations, reveal.LocationId, changed, context, MapEditorPickKind.Zone), new MapEditorBlockText(Tr("to the event races")));
+                MapEditorEventBlockViewModel block = Make(
+                    MapEditorBlockKind.RevealZone,
+                    Tr("reveal"),
+                    new MapEditorBlockChoice(context.Locations, reveal.LocationId, changed, context, MapEditorPickKind.Zone),
+                    new MapEditorBlockText(Tr("to")),
+                    new MapEditorBlockChoice([new MapEditorOption<object?>(null, Tr("the event races")), .. context.PlayableRaces], reveal.Races.Length == 1 ? reveal.Races[0] : null, changed));
                 block.revealRaces = reveal.Races;
 
                 return block;
@@ -592,6 +788,59 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
                 return OrderBlock(order, context, changed);
             case CustomMapBattleEffect battle:
                 return Make(MapEditorBlockKind.Battle, null, ArmyChoice(context, battle.Army, false, changed), new MapEditorBlockText(Tr("attacks the army that fired it")));
+            case CustomMapCastSpellEffect cast:
+                return Make(MapEditorBlockKind.CastSpell, Tr("cast"), new MapEditorBlockSpell(context, cast.Spell, changed), new MapEditorBlockText(Tr("on the army that fired it, by")), CasterChoice(context, cast.Caster, changed));
+            case CustomMapCastSpellZoneEffect cast:
+                return Make(MapEditorBlockKind.CastSpellZone, Tr("cast"), new MapEditorBlockSpell(context, cast.Spell, changed), new MapEditorBlockText(Tr("on")), new MapEditorBlockChoice(context.Locations, cast.LocationId, changed, context, MapEditorPickKind.Zone), new MapEditorBlockText(Tr("by")), CasterChoice(context, cast.Caster, changed));
+            case CustomMapGiveSpellEffect give:
+                return Make(MapEditorBlockKind.GiveSpell, Tr("teach"), new MapEditorBlockSpell(context, give.Spell, changed), new MapEditorBlockText(Tr("to the player who fired it")));
+            case CustomMapAllyEffect ally:
+                return Make(
+                    MapEditorBlockKind.Ally,
+                    Tr("make"),
+                    RaceChoice(context, ally.Race1, changed),
+                    new MapEditorBlockText(Tr("and")),
+                    RaceChoice(context, ally.Race2, changed),
+                    new MapEditorBlockChoice([new MapEditorOption<object?>(false, Tr("allies")), new MapEditorOption<object?>(true, Tr("allies for good"))], ally.Permanent, changed));
+            case CustomMapRelationEffect relation:
+                return Make(MapEditorBlockKind.SetRelation, Tr("set relations of"), RaceChoice(context, relation.Race1, changed), new MapEditorBlockText(Tr("and")), RaceChoice(context, relation.Race2, changed), new MapEditorBlockText(Tr("to")), RelationChoice(relation.Level, changed));
+            case CustomMapRemoveMountainsEffect mountains:
+                return Make(MapEditorBlockKind.RemoveMountains, Tr("remove the mountains in"), new MapEditorBlockChoice(context.Locations, mountains.LocationId, changed, context, MapEditorPickKind.Zone));
+            case CustomMapRemoveLandmarkEffect remove:
+                return Make(MapEditorBlockKind.RemoveLandmark, Tr("remove"), new MapEditorBlockChoice(context.PlacedLandmarks, remove.LandmarkId, changed, context, MapEditorPickKind.Landmark));
+            case CustomMapChangeLandmarkEffect change:
+                return Make(MapEditorBlockKind.ChangeLandmark, Tr("turn"), new MapEditorBlockChoice(context.PlacedLandmarks, change.LandmarkId, changed, context, MapEditorPickKind.Landmark), new MapEditorBlockText(Tr("into")), new MapEditorBlockChoice(context.LandmarkTypes, change.Type, changed));
+            case CustomMapChangeTerrainEffect terrain:
+                return Make(
+                    MapEditorBlockKind.ChangeTerrain,
+                    Tr("turn a square of"),
+                    new MapEditorBlockNumber(terrain.Size, 1, 15, changed),
+                    new MapEditorBlockText(Tr("tiles around")),
+                    new MapEditorBlockChoice(context.Locations, terrain.LocationId, changed, context, MapEditorPickKind.Zone),
+                    new MapEditorBlockText(Tr("into")),
+                    new MapEditorBlockChoice(context.Terrains, terrain.Terrain, changed));
+            case CustomMapVariableEffect variable:
+                return Make(
+                    MapEditorBlockKind.SetVariable,
+                    null,
+                    new MapEditorBlockChoice(context.Variables, variable.VariableId, changed),
+                    new MapEditorBlockChoice(
+                        [
+                            new MapEditorOption<object?>(ScenarioVariableOperation.Add, "+"),
+                            new MapEditorOption<object?>(ScenarioVariableOperation.Subtract, "-"),
+                            new MapEditorOption<object?>(ScenarioVariableOperation.Multiply, "×"),
+                            new MapEditorOption<object?>(ScenarioVariableOperation.Divide, "÷"),
+                            new MapEditorOption<object?>(ScenarioVariableOperation.Replace, "=")
+                        ],
+                        variable.Operation,
+                        changed),
+                    new MapEditorBlockNumber(variable.Value, -9999, 9999, changed));
+            case CustomMapDestroyItemEffect destroy:
+                return Make(
+                    MapEditorBlockKind.DestroyItem,
+                    Tr("destroy"),
+                    new MapEditorBlockItem(context, destroy.Item, changed),
+                    new MapEditorBlockChoice([new MapEditorOption<object?>(true, Tr("carried by the army that fired it")), new MapEditorOption<object?>(false, Tr("everywhere"))], destroy.TriggererOnly, changed));
             default:
                 throw new ArgumentOutOfRangeException(nameof(effect), effect, null);
         }
@@ -614,6 +863,39 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
                 new MapEditorBlockText(Tr("to")),
                 new MapEditorBlockChoice([.. MapEditorOrders.Kinds.Where(kind => !MapEditorOrders.NeedsTarget(kind.Value)).Select(kind => new MapEditorOption<object?>(kind.Value, kind.Label))], order.Order.Kind, changed))
         };
+    }
+
+    // The second range only counts with "and" / "or"; without it the condition keeps zeros there.
+    private CustomMapVariableCondition VariableCondition()
+    {
+        CustomMapVariableJoin join = Choice(1) is CustomMapVariableJoin value ? value : CustomMapVariableJoin.None;
+
+        return join == CustomMapVariableJoin.None
+            ? new CustomMapVariableCondition(ChoiceInt(0), Number(0), Number(1))
+            : new CustomMapVariableCondition(ChoiceInt(0), Number(0), Number(1), join, ChoiceInt(2), Number(2), Number(3));
+    }
+
+    private static MapEditorBlockChoice RaceChoice(MapEditorEventContext context, WorldRace race, Action changed)
+    {
+        return new MapEditorBlockChoice(context.PlayableRaces, race, changed);
+    }
+
+    private static MapEditorBlockChoice RelationChoice(CustomMapRelation level, Action changed)
+    {
+        return new MapEditorBlockChoice(
+            [new MapEditorOption<object?>(CustomMapRelation.War, Tr("at war")), new MapEditorOption<object?>(CustomMapRelation.Neutral, Tr("neutral")), new MapEditorOption<object?>(CustomMapRelation.Peace, Tr("at peace"))],
+            level,
+            changed);
+    }
+
+    private static MapEditorBlockChoice CasterChoice(MapEditorEventContext context, WorldRace? caster, Action changed)
+    {
+        return new MapEditorBlockChoice([new MapEditorOption<object?>(null, Tr("nobody")), .. context.PlayableRaces], caster, changed);
+    }
+
+    private static WorldRace FirstRace(MapEditorEventContext context, int index)
+    {
+        return context.Map.Players.ElementAtOrDefault(index)?.Race ?? context.Map.Players.FirstOrDefault()?.Race ?? WorldRace.Human;
     }
 
     private static MapEditorBlockChoice ZoneChoice(MapEditorEventContext context, int locationId, Action changed)
@@ -641,8 +923,18 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.OwnCity => new CustomMapOwnCityCondition(ChoiceCity(0)),
             MapEditorBlockKind.EnterCity => new CustomMapEnterCityCondition(ChoiceCity(0)),
             MapEditorBlockKind.LootRuin => new CustomMapLootRuinCondition(ChoiceInt(0)),
-            MapEditorBlockKind.DestroyArmy => new CustomMapDestroyArmyCondition(ChoiceInt(0)),
-            MapEditorBlockKind.ArmyExists => new CustomMapArmyExistsCondition(ChoiceInt(0), Choice(1) is true),
+            MapEditorBlockKind.DestroyArmy => new CustomMapDestroyArmyCondition(ChoiceArmy(0)),
+            MapEditorBlockKind.ArmyExists => new CustomMapArmyExistsCondition(ChoiceArmy(0), Choice(1) is true),
+            MapEditorBlockKind.OwnItem => new CustomMapOwnItemCondition(Field<MapEditorBlockItem>().Item),
+            MapEditorBlockKind.LeaderItem => new CustomMapLeaderItemCondition(ChoiceArmy(0), Field<MapEditorBlockItem>().Item),
+            MapEditorBlockKind.Relation => new CustomMapRelationCondition(ChoiceRace(0), ChoiceRace(1), Choice(2) is CustomMapRelation level ? level : CustomMapRelation.War),
+            MapEditorBlockKind.Alliance => new CustomMapAllianceCondition(ChoiceRace(0), ChoiceRace(1)),
+            MapEditorBlockKind.Land => new CustomMapLandCondition(Number(0)),
+            MapEditorBlockKind.VisitSite => new CustomMapVisitSiteCondition(ChoiceInt(0)),
+            MapEditorBlockKind.ArmyToZone => new CustomMapArmyToZoneCondition(ChoiceArmy(0), ChoiceInt(1)),
+            MapEditorBlockKind.ArmyToCity => new CustomMapArmyToCityCondition(ChoiceArmy(0), ChoiceCity(1)),
+            MapEditorBlockKind.ItemToZone => new CustomMapItemToZoneCondition(Field<MapEditorBlockItem>().Item, ChoiceInt(0)),
+            MapEditorBlockKind.Variable => VariableCondition(),
             _ => throw new InvalidOperationException($"{Kind} is an effect.")
         };
     }
@@ -661,7 +953,7 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.Win => new CustomMapWinEffect(Choice(0) is WorldRace race ? race : WorldRace.Neutral),
             MapEditorBlockKind.Lose => new CustomMapLoseEffect(),
             MapEditorBlockKind.SwitchEvent => new CustomMapSwitchEventEffect(ChoiceInt(0), Choice(1) is not false),
-            MapEditorBlockKind.RevealZone => new CustomMapRevealZoneEffect(ChoiceInt(0), revealRaces),
+            MapEditorBlockKind.RevealZone => new CustomMapRevealZoneEffect(ChoiceInt(0), Choice(1) is WorldRace race ? [race] : revealRaces.Length > 1 ? revealRaces : []),
             MapEditorBlockKind.GiveItem => new CustomMapGiveItemEffect(Field<MapEditorBlockItem>().Item, Choice(0) is true),
             MapEditorBlockKind.CreateArmy => new CustomMapCreateArmyEffect(ChoiceInt(0), ChoiceInt(1)),
             MapEditorBlockKind.RemoveArmy => new CustomMapRemoveArmyEffect(ChoiceArmy(0)),
@@ -674,6 +966,17 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.OrderDefendCity => new CustomMapChangeOrderEffect(ChoiceArmy(0), MapEditorOrders.Make(CustomMapOrderKind.DefendCity, Choice(1))),
             MapEditorBlockKind.OrderAttack => new CustomMapChangeOrderEffect(ChoiceArmy(0), MapEditorOrders.Make(CustomMapOrderKind.AttackArmy, Choice(1))),
             MapEditorBlockKind.Battle => new CustomMapBattleEffect(ChoiceArmy(0)),
+            MapEditorBlockKind.CastSpell => new CustomMapCastSpellEffect(Field<MapEditorBlockSpell>().Spell, Choice(0) as WorldRace?),
+            MapEditorBlockKind.CastSpellZone => new CustomMapCastSpellZoneEffect(Field<MapEditorBlockSpell>().Spell, ChoiceInt(0), Choice(1) as WorldRace?),
+            MapEditorBlockKind.GiveSpell => new CustomMapGiveSpellEffect(Field<MapEditorBlockSpell>().Spell),
+            MapEditorBlockKind.Ally => new CustomMapAllyEffect(ChoiceRace(0), ChoiceRace(1), Choice(2) is true),
+            MapEditorBlockKind.SetRelation => new CustomMapRelationEffect(ChoiceRace(0), ChoiceRace(1), Choice(2) is CustomMapRelation level ? level : CustomMapRelation.War),
+            MapEditorBlockKind.RemoveMountains => new CustomMapRemoveMountainsEffect(ChoiceInt(0)),
+            MapEditorBlockKind.RemoveLandmark => new CustomMapRemoveLandmarkEffect(ChoiceInt(0)),
+            MapEditorBlockKind.ChangeLandmark => new CustomMapChangeLandmarkEffect(ChoiceInt(0), Choice(1) is WorldLandmarkDefinitionId type ? type : new WorldLandmarkDefinitionId(string.Empty)),
+            MapEditorBlockKind.ChangeTerrain => new CustomMapChangeTerrainEffect(ChoiceInt(0), Choice(1) is WorldMapTerrain terrain ? terrain : WorldMapTerrain.Neutral, Number(0)),
+            MapEditorBlockKind.SetVariable => new CustomMapVariableEffect(ChoiceInt(0), Choice(1) is ScenarioVariableOperation operation ? operation : ScenarioVariableOperation.Add, Number(0)),
+            MapEditorBlockKind.DestroyItem => new CustomMapDestroyItemEffect(Field<MapEditorBlockItem>().Item, Choice(0) is not false),
             _ => throw new InvalidOperationException($"{Kind} is a condition.")
         };
     }
@@ -726,6 +1029,11 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
     private int ChoiceInt(int index)
     {
         return Choice(index) is int value ? value : 0;
+    }
+
+    private WorldRace ChoiceRace(int index)
+    {
+        return Choice(index) is WorldRace race ? race : WorldRace.Neutral;
     }
 
     // A missing army (deleted, or a removed template) saves as army 0, which the engine reports: the block stays red.

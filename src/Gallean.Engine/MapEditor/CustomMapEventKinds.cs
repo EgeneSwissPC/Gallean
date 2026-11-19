@@ -7,6 +7,12 @@ namespace Gallean.Engine;
 // ("3 villages taken") or hold state across events ("the elder was met").
 public sealed partial class CustomMap
 {
+    // The land a race turns tiles into (for "change the land" blocks).
+    public static WorldMapTerrain GetRaceTerrain(WorldRace race)
+    {
+        return WorldHelpers.GetNativeTerrain(race);
+    }
+
     public CustomMapVariable? GetVariable(int id)
     {
         return variables.FirstOrDefault(variable => variable.Id == id);

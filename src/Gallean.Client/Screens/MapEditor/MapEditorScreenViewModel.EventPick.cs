@@ -55,6 +55,8 @@ internal sealed partial class MapEditorScreenViewModel
             MapEditorPickKind.Ruin => map.GetRuinAt(tile)?.Id,
             MapEditorPickKind.Army => map.GetStackAt(tile)?.Id,
             MapEditorPickKind.ArmyRef => map.GetStackAt(tile) is { } stack ? new CustomMapArmyRef.Army(stack.Id) : null,
+            MapEditorPickKind.Site => map.Sites.FirstOrDefault(site => site.Footprint.Contains(tile))?.Id,
+            MapEditorPickKind.Landmark => map.GetLandmarkAt(tile)?.Id,
             _ => null
         };
 
@@ -91,6 +93,8 @@ internal sealed partial class MapEditorScreenViewModel
             MapEditorPickKind.City => [.. map.Players.Select(player => player.Footprint).OfType<WorldFootprint>(), .. map.Villages.Select(village => village.Footprint)],
             MapEditorPickKind.Ruin => map.Ruins.Select(ruin => ruin.Footprint),
             MapEditorPickKind.Army or MapEditorPickKind.ArmyRef => map.Stacks.Select(stack => new WorldFootprint(stack.Position, 1, 1)),
+            MapEditorPickKind.Site => map.Sites.Select(site => site.Footprint),
+            MapEditorPickKind.Landmark => map.Landmarks.Select(landmark => landmark.Footprint),
             _ => []
         };
 
@@ -109,6 +113,8 @@ internal sealed partial class MapEditorScreenViewModel
             MapEditorPickKind.Zone => Tr("Pick a zone: click one of the gold squares · Esc cancels"),
             MapEditorPickKind.City => Tr("Pick a city: click a gold capital or village · Esc cancels"),
             MapEditorPickKind.Ruin => Tr("Pick a ruin: click a gold ruin · Esc cancels"),
+            MapEditorPickKind.Site => Tr("Pick a site: click a gold site · Esc cancels"),
+            MapEditorPickKind.Landmark => Tr("Pick a landmark: click a gold landmark · Esc cancels"),
             _ => Tr("Pick an army: click a gold army · Esc cancels")
         };
     }
@@ -196,5 +202,7 @@ internal enum MapEditorPickKind
     Ruin,
     Army,
     // An army effect's subject: the picked army as a CustomMapArmyRef.
-    ArmyRef
+    ArmyRef,
+    Site,
+    Landmark
 }

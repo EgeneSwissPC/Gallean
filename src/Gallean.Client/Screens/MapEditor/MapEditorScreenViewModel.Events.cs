@@ -190,6 +190,11 @@ internal sealed partial class MapEditorScreenViewModel
         Game.OpenScreen(new MapEditorListPickerViewModel(Game, Tr("Choose item"), library.CreateItemOptions(editorGame), value => picked((ItemDefinitionId)value)));
     }
 
+    private void PickEventSpell(Action<WorldSpellDefinitionId> picked)
+    {
+        Game.OpenScreen(new MapEditorListPickerViewModel(Game, Tr("Choose spell"), library.CreateSpellOptions(editorGame), value => picked((WorldSpellDefinitionId)value)));
+    }
+
     private void PickEventPortrait(Action<UnitDefinitionId?> picked)
     {
         WorldRace race = map.Players.FirstOrDefault()?.Race ?? WorldRace.Human;
