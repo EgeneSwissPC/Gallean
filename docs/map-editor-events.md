@@ -21,6 +21,11 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
   box in the default language (English). An "Add translation" button adds a box for another of the game's 7
   translations (ru, de, fr, it, pl, cs, es); each can be removed again. A language without a translation falls back
   to the default text. The writer fills the base Tscen and each `Languages/<lang>/Scens` copy.
+- **Deleting a used object: warn once, then allow.** Deleting (any tool, Delete key, list) an object that events use
+  asks once: "Northgate is used by 2 events: Capture Northgate, Village falls. Delete anyway?" (Enter = yes, Esc =
+  no). Yes deletes it; the blocks stay, drawn red with an empty slot, and the event gets a red mark in the list.
+  Saving works and leaves broken events out of the file, with a note "2 events skipped because of missing targets".
+  Fixing the block brings the event back into the next save. Undo restores the object and its references together.
 
 ## How events work in the game (engine facts)
 
@@ -100,7 +105,7 @@ Full screen like the army screen, three columns:
   field is outlined red and its event shows a red mark in the list.
 
 ### Map side
-- The hover line on any object used by events says "used by 2 events"; deleting it asks first.
+- The hover line on any object used by events says "used by 2 events"; deleting it asks once (see Decisions).
 - While picking, the map shows only valid targets.
 
 ## Technical approach
@@ -147,7 +152,7 @@ Full screen like the army screen, three columns:
 
 1. ~~Recipes in phase 4 — or before the full screen as a quick win?~~ Decided: phase 4, after the full screen.
 2. ~~Popup texts in one language, or per language?~~ Decided: default language (English) plus optional translations, fallback to the default.
-3. Deleting an object used by events: block saving, or drop the block with a warning (it stays red until fixed)?
+3. ~~Deleting an object used by events: block saving, or drop the block with a warning?~~ Decided: confirm once, blocks turn red, saving skips broken events with a note.
 4. Removing a race: re-map events automatically (proposed) or warn?
 5. A tree view of event chains (which event switches which) — later?
 6. Should "Survive N turns" also make the AI target something, or just win on turn N?
