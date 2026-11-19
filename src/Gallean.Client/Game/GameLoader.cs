@@ -174,9 +174,13 @@ internal sealed class GameLoader(IRandomProvider random, string? customMapsDirec
 
     private IGameTextProvider CreateTextProvider(ScenarioDatabase scenarioDatabase, string scenarioId, Language language)
     {
+        // Custom maps keep their translations (map editor events) under <maps>/Languages/<code>/<map id>.
+        string languageScenarios = GetScenarioDirectory(scenarioId) == customMapsDirectory && customMapsDirectory is not null
+            ? CustomMapWriter.GetLanguageDirectory(customMapsDirectory, language.Code)
+            : RiseOfTheElves.GetLanguageScenarioDatabasePath(language.Code);
         LanguageDatabase languageDatabase = LanguageDatabaseLoader.Load(
             RiseOfTheElves.GetLanguageGlobalDatabasePath(language.Code),
-            RiseOfTheElves.GetLanguageScenarioDatabasePath(language.Code),
+            languageScenarios,
             scenarioId);
 
         return new GameTextProvider(globalDatabase.Value, scenarioDatabase, scenarioDatabase.TextScenarios, languageDatabase);
