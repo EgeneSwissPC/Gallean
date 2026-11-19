@@ -15,6 +15,8 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
   several game events; "on turn N" is saved as "every N turns" + "only once".
 - **Recipes** (ready-made filled scripts) replace the separate "victory settings" task: they are the first blocks in
   the palette.
+- **Order: the full block editor first, recipes after it (phase 4)**, built from real blocks so every recipe can be
+  opened and changed. No temporary victory panel.
 
 ## How events work in the game (engine facts)
 
@@ -135,7 +137,7 @@ Full screen like the army screen, three columns:
 
 ## Open questions
 
-1. Recipes in phase 4 — or before the full screen as a quick win?
+1. ~~Recipes in phase 4 — or before the full screen as a quick win?~~ Decided: phase 4, after the full screen.
 2. Popup texts in one language, or per language?
 3. Deleting an object used by events: block saving, or drop the block with a warning (it stays red until fixed)?
 4. Removing a race: re-map events automatically (proposed) or warn?
