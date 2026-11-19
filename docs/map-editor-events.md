@@ -30,6 +30,9 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
   store races by name; the writer turns them into player IDs (PL + slot) at save time, so renumbering is automatic.
   Removing a race that events name asks once; blocks naming it turn red and are skipped on save; a race set that
   also has other races just drops it. Putting the race back (placing its capital) turns those blocks normal again.
+- **Event chains get a separate chain screen, later (phase 7).** Each event is a box, arrows for "switches on" /
+  "switches off", events that are never switched on (and start off) in a warning colour, click a box to open its
+  script. The block screen gets no chain strip.
 
 ## How events work in the game (engine facts)
 
@@ -151,6 +154,8 @@ Full screen like the army screen, three columns:
 5. **Army templates + army effects** (~2 days): create/move/remove/owner/order/battle, template editor on the army
    screen.
 6. **Remaining kinds + variables** (~2 days).
+7. **Chain screen** (~1.5 days): events as boxes with switch-on/off arrows, unreachable events marked, click opens
+   the script.
 
 ## Open questions
 
@@ -158,6 +163,6 @@ Full screen like the army screen, three columns:
 2. ~~Popup texts in one language, or per language?~~ Decided: default language (English) plus optional translations, fallback to the default.
 3. ~~Deleting an object used by events: block saving, or drop the block with a warning?~~ Decided: confirm once, blocks turn red, saving skips broken events with a note.
 4. ~~Removing a race: re-map events automatically or warn?~~ Decided: same as deleting an object (confirm once, red blocks, skipped on save, restored when the race returns).
-5. A tree view of event chains (which event switches which) — later?
+5. ~~A tree view of event chains — later?~~ Decided: a separate chain screen, phase 7.
 6. Should "Survive N turns" also make the AI target something, or just win on turn N?
 7. OR + "only once": use a hidden variable, or have each sibling switch the others off (no variables needed)?
