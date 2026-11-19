@@ -414,7 +414,7 @@ Findings from the game's code (in the block help and here):
 Tests: `CustomMapEventTests.RemainingKindsSaveAndLoadTest` (12 conditions incl. template references and 12 effects
 through the game's loader, `SVars` rows, editor copy round trip), `VariablePlayTest` (a counter +1 each turn wins at
 3 on turn 3, in the game engine); `MapEditorScreenViewModelTests.EventKindsTest` (every block kind is in a palette
-exactly once, an event with all 46 block kinds survives blocks → save → blocks unchanged, variables screen, delete
+exactly once, an event with all 47 block kinds (18 conditions, 29 effects) survives blocks → save → blocks unchanged, variables screen, delete
 warning); `VisualTests.MapEditorEventsTest` steps 13-14. Suite 5232 (+3); all 15 map editor visual tests pass.
 
 Real client (AOT build, `mapgen` map with a "Turns counted" variable, +1 every Empire turn, and a message at 2):

@@ -358,7 +358,7 @@ ambush recipe. Tests: `TemplateSaveAndLoadTest`, `AmbushPlayTest`, `AmbushBattle
 Phase 6 — done (merged as `1fe6e210`): every condition and effect kind of the game (items, spells, diplomacy,
 alliances, land share, sites, certain armies in zones and cities, items brought to zones, terrain, mountains,
 landmarks, variables) and the variables screen. Tests: `RemainingKindsSaveAndLoadTest`, `VariablePlayTest`,
-`EventKindsTest` (all 46 block kinds round-trip); suite 5232. Real client: a counter variable showed its message on
+`EventKindsTest` (all 47 block kinds round-trip); suite 5232. Real client: a counter variable showed its message on
 turn 2. Left: the chain screen (phase 7).
 
 ## Task (later): victory settings
