@@ -38,6 +38,10 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
   wins on turn N; the capital becomes the AI's goal from its objective turn). Every win recipe also adds a win event
   for capturing every enemy capital, so conquering everyone still ends the game early (a race with a win event no
   longer wins by elimination).
+- **OR + "only once": the copies switch each other off.** An OR event is saved as one game event per condition group
+  with the same effects; with "only once" each copy gets a hidden effect (before any Win effect) "switch off the other
+  copies" (the game's normal EnableEvent effect, no variables). "Switch [X] on/off" blocks elsewhere switch all
+  copies of X. The reader folds the copies back into one event and hides the extra effects.
 
 ## How events work in the game (engine facts)
 
@@ -126,8 +130,8 @@ Full screen like the army screen, three columns:
   ConcernsRaces?, Once, Enabled, Chance, Order, ImmutableArray<ImmutableArray<CustomMapCondition>> Groups,
   ImmutableArray<CustomMapEffect> Effects)`; condition/effect records point at editor objects by editor ID (location,
   stack, village, capital race, ruin, site, landmark, template, event) and races, not raw scenario IDs.
-- **Writer:** one game event per OR group (same effects; "Occurs once" across groups via a shared variable or by
-  switching the sibling events off — open question 7); Tscen `NAME_TXT`, `POPUP_TXT` (SEQ_NUM = effect NUM),
+- **Writer:** one game event per OR group (same effects; with "only once" each copy switches the other copies off,
+  inserted before a Win effect so the engine's "last effect is Win" checks still hold); Tscen `NAME_TXT`, `POPUP_TXT` (SEQ_NUM = effect NUM),
   `OBJECT_TXT`; player IDs from the current race slots, so removing a race re-maps events instead of breaking them.
 - **Texts:** `CustomMapText(Default, ImmutableDictionary<string, string> Translations)` for every event text; the
   writer puts the default into the base Tscen and translation-or-default into each language's Tscen.
@@ -170,4 +174,6 @@ Full screen like the army screen, three columns:
 4. ~~Removing a race: re-map events automatically or warn?~~ Decided: same as deleting an object (confirm once, red blocks, skipped on save, restored when the race returns).
 5. ~~A tree view of event chains — later?~~ Decided: a separate chain screen, phase 7.
 6. ~~Should "Survive N turns" also make the AI target something?~~ Decided: two recipes, plain and "Hold out against attackers".
-7. OR + "only once": use a hidden variable, or have each sibling switch the others off (no variables needed)?
+7. ~~OR + "only once": hidden variable or siblings switch each other off?~~ Decided: siblings switch each other off.
+
+All open questions are answered; new ones get added here as the phases go.
