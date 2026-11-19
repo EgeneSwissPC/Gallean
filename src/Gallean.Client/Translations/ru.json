@@ -1157,6 +1157,23 @@
     "{0} effects": "действий: {0}",
     "{0} · {1} · {2}": "{0} · {1} · {2}",
     "+ or": "+ или",
-    "Another set of conditions: the event fires when all blocks of any one set hold.": "Другой набор условий: событие срабатывает, когда выполнены все блоки любого набора."
+    "Another set of conditions: the event fires when all blocks of any one set hold.": "Другой набор условий: событие срабатывает, когда выполнены все блоки любого набора.",
+    "\"{0}\" is used by the event {1}. Delete it anyway? That block turns red, and the event is left out of the saved map until you fix it.": "«{0}» используется в событии {1}. Всё равно удалить? Этот блок станет красным, и событие не попадёт в сохранённую карту, пока вы его не исправите.",
+    "\"{0}\" is used by {1} events: {2}. Delete it anyway? Their blocks turn red, and the events are left out of the saved map until you fix them.": "«{0}» используется в событиях ({1}): {2}. Всё равно удалить? Их блоки станут красными, и события не попадут в сохранённую карту, пока вы их не исправите.",
+    "Delete anyway": "Всё равно удалить",
+    "Delete {0}": "Удалить: {0}",
+    "On map": "На карте",
+    "Pick a city: click a gold capital or village · Esc cancels": "Выберите город: щёлкните золотую столицу или деревню · Esc — отмена",
+    "Pick a ruin: click a gold ruin · Esc cancels": "Выберите руины: щёлкните золотые руины · Esc — отмена",
+    "Pick a zone: click one of the gold squares · Esc cancels": "Выберите зону: щёлкните один из золотых квадратов · Esc — отмена",
+    "Pick an army: click a gold army · Esc cancels": "Выберите армию: щёлкните золотую армию · Esc — отмена",
+    "Pick it on the map (Esc cancels)": "Выбрать на карте (Esc — отмена)",
+    "Saved. Play it from New quest. {0}": "Сохранено. Играйте через «Новый квест». {0}",
+    "Used by events: {0}": "Используется в событиях: {0}",
+    "this army": "эту армию",
+    "The event {0} was left out of the game until it is fixed.": "Событие {0} не попадёт в игру, пока его не исправят.",
+    "{0} events were left out of the game until they are fixed: {1}.": "Событий не попадёт в игру, пока их не исправят: {0} ({1}).",
+    "it switches an event that is left out": "оно переключает событие, которое не сохраняется",
+    "Saved": "Сохранено"
   }
 }

@@ -1157,6 +1157,23 @@
     "{0} effects": "{0} effects",
     "{0} · {1} · {2}": "{0} · {1} · {2}",
     "+ or": "+ or",
-    "Another set of conditions: the event fires when all blocks of any one set hold.": "Another set of conditions: the event fires when all blocks of any one set hold."
+    "Another set of conditions: the event fires when all blocks of any one set hold.": "Another set of conditions: the event fires when all blocks of any one set hold.",
+    "\"{0}\" is used by the event {1}. Delete it anyway? That block turns red, and the event is left out of the saved map until you fix it.": "\"{0}\" is used by the event {1}. Delete it anyway? That block turns red, and the event is left out of the saved map until you fix it.",
+    "\"{0}\" is used by {1} events: {2}. Delete it anyway? Their blocks turn red, and the events are left out of the saved map until you fix them.": "\"{0}\" is used by {1} events: {2}. Delete it anyway? Their blocks turn red, and the events are left out of the saved map until you fix them.",
+    "Delete anyway": "Delete anyway",
+    "Delete {0}": "Delete {0}",
+    "On map": "On map",
+    "Pick a city: click a gold capital or village · Esc cancels": "Pick a city: click a gold capital or village · Esc cancels",
+    "Pick a ruin: click a gold ruin · Esc cancels": "Pick a ruin: click a gold ruin · Esc cancels",
+    "Pick a zone: click one of the gold squares · Esc cancels": "Pick a zone: click one of the gold squares · Esc cancels",
+    "Pick an army: click a gold army · Esc cancels": "Pick an army: click a gold army · Esc cancels",
+    "Pick it on the map (Esc cancels)": "Pick it on the map (Esc cancels)",
+    "Saved. Play it from New quest. {0}": "Saved. Play it from New quest. {0}",
+    "Used by events: {0}": "Used by events: {0}",
+    "this army": "this army",
+    "The event {0} was left out of the game until it is fixed.": "The event {0} was left out of the game until it is fixed.",
+    "{0} events were left out of the game until they are fixed: {1}.": "{0} events were left out of the game until they are fixed: {1}.",
+    "it switches an event that is left out": "it switches an event that is left out",
+    "Saved": "Saved"
   }
 }

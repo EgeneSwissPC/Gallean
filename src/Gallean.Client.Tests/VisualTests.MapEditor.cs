@@ -1008,5 +1008,31 @@ public sealed partial class VisualTests
         await SkipFramesAsync(10);
         await CaptureAsync(window, "6-list-after");
         Assert.That(editor.EventRows.Select(row => row.Name), Is.EqualTo(new[] { "Event 3", "Lost scout", "Welcome" }));
+
+        // Phase 3: pick the zone on the map (the zones glow gold, the screen steps aside), then the hover line names
+        // the events using a zone, and deleting it asks first.
+        MapEditorScreenView view = window.GetVisualDescendants().OfType<MapEditorScreenView>().First();
+        view.Camera.SetZoom(1);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(24, 16)));
+        editor.IsEventsOpen = false;
+        editor.OpenEvent(3);
+        MapEditorBlockChoice zone = Assert.IsOfType<MapEditorEventScreenViewModel>(gameViewModel.TopScreen).Groups[0].Blocks[0].Parts.OfType<MapEditorBlockChoice>().First();
+        zone.PickOnMapCommand.Execute(null);
+        editor.UpdateHover(new WorldPosition(30, 20));
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "7-pick-zone");
+        Assert.That(editor.IsPickingEventTarget, Is.True);
+        editor.BeginStroke(new WorldPosition(30, 20));
+        editor.EndStroke();
+        Assert.That(zone.Value, Is.EqualTo(2));
+        Assert.IsOfType<MapEditorEventScreenViewModel>(gameViewModel.TopScreen).ConfirmCommand.Execute(null);
+
+        editor.UpdateHover(null);
+        editor.UpdateHover(new WorldPosition(30, 20));
+        Assert.That(editor.HoverText, Does.EndWith("Used by events: Event 3"));
+        editor.DeleteLocation(2);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "8-delete-warning");
+        Assert.IsOfType<ConfirmPromptViewModel>(gameViewModel.TopScreen).Close();
     }
 }

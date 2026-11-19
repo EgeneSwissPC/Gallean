@@ -541,7 +541,7 @@
             Width="360"
             HorizontalAlignment="Left"
             Margin="0,0,0,60"
-            IsVisible="{Binding IsEventsOpen}">
+            IsVisible="{Binding ShowEventsList}">
       <DockPanel>
         <StackPanel DockPanel.Dock="Top" Spacing="6">
           <DockPanel>

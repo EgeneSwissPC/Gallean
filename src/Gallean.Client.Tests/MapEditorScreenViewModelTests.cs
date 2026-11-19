@@ -1603,4 +1603,96 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(reopened.Events.Single().Name, Is.EqualTo("Gates"));
         Assert.That(reopened.GetSaveableEvents(), Is.Empty);
     }
+
+    // Phase 3: "used by" in the hover line, picking a block's target on the map, a warning before deleting what
+    // events use (once; then the event turns red and is left out of the save), and the save note.
+    [Test]
+    public async Task EventSafetyTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Village);
+        editor.BeginStroke(new WorldPosition(24, 24));
+        CustomMapVillage village = editor.Map.Villages.Single();
+        editor.Map.PlaceLocation(new WorldPosition(20, 14), 1, "North Gate");
+        editor.Map.PlaceLocation(new WorldPosition(30, 14), 0, "Trap");
+        editor.Map.AddEvent(CustomMapEvent.Create("Take the village", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapOwnCityCondition(new CustomMapCity.Village(village.Id))]],
+            Effects = [new CustomMapWinEffect(WorldRace.Human)]
+        });
+        editor.Map.AddEvent(CustomMapEvent.Create("Gate", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapSwitchEventEffect(1, On: true)]
+        });
+        editor.SelectTool(MapEditorTool.Land);
+
+        // Hover: what the objects under the cursor are used by.
+        editor.UpdateHover(new WorldPosition(20, 14));
+        Assert.That(editor.HoverText, Does.EndWith("Locations here: North Gate\nUsed by events: Gate"));
+        editor.UpdateHover(new WorldPosition(village.TopLeft.X + 1, village.TopLeft.Y + 1));
+        Assert.That(editor.HoverText, Does.EndWith("Used by events: Take the village"));
+
+        // Pick on the map: the screen steps aside, the zones glow, a miss keeps picking, a hit comes back.
+        editor.IsEventsOpen = true;
+        editor.OpenEvent(2);
+        MapEditorEventScreenViewModel screen = Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen);
+        MapEditorBlockChoice zone = screen.Groups[0].Blocks[0].Parts.OfType<MapEditorBlockChoice>().Single();
+        Assert.That((zone.CanPick, zone.Value), Is.EqualTo((true, (object)1)));
+        zone.PickOnMapCommand.Execute(null);
+        Assert.That((game.TopScreen, editor.IsPickingEventTarget, editor.ShowLocations, editor.ShowEventsList), Is.EqualTo(((object)editor, true, true, false)));
+        editor.UpdateHover(new WorldPosition(5, 40));
+        Assert.That(editor.PlacementPreview.Highlight, Is.EquivalentTo(editor.Map.Locations.SelectMany(location => location.Footprint.EnumerateTiles())));
+        Assert.That(editor.HoverText, Does.StartWith("Pick a zone: click one of the gold squares"));
+        editor.BeginStroke(new WorldPosition(5, 40));
+        editor.EndStroke();
+        Assert.That((editor.IsPickingEventTarget, editor.Map.Locations.Count), Is.EqualTo((true, 2)), "A miss places nothing and keeps picking.");
+        editor.BeginStroke(new WorldPosition(30, 14));
+        editor.EndStroke();
+        Assert.That((game.TopScreen, editor.IsPickingEventTarget, zone.Value), Is.EqualTo(((object)screen, false, (object)2)));
+
+        // Esc cancels: the screen comes back unchanged.
+        zone.PickOnMapCommand.Execute(null);
+        Assert.That(editor.CancelEventPick(), Is.True);
+        Assert.That((game.TopScreen, zone.Value), Is.EqualTo(((object)screen, (object)2)));
+        screen.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.GetEvent(2)!.Groups[0][0], Is.EqualTo(new CustomMapEnterZoneCondition(2)));
+
+        // Deleting an unused zone asks nothing; a used one asks once, and No keeps it.
+        editor.DeleteLocation(1);
+        Assert.That((editor.Map.Locations.Single().Name, game.TopScreen), Is.EqualTo(("Trap", (object)editor)));
+        editor.DeleteLocation(2);
+        ConfirmPromptViewModel prompt = Assert.IsOfType<ConfirmPromptViewModel>(game.TopScreen);
+        Assert.That(prompt.Message.Text, Does.Contain("\"Trap\" is used by the event Gate"));
+        prompt.Close();
+        Assert.That(editor.Map.Locations, Has.Count.EqualTo(1));
+
+        // The village from its screen: Delete anyway removes it and the event turns red.
+        editor.SelectTool(MapEditorTool.Village);
+        editor.BeginStroke(new WorldPosition(village.TopLeft.X + 1, village.TopLeft.Y + 1));
+        Assert.IsOfType<MapEditorVillageScreenViewModel>(game.TopScreen).DeleteCommand.Execute(null);
+        prompt = Assert.IsOfType<ConfirmPromptViewModel>(game.TopScreen);
+        await prompt.ConfirmCommand.ExecuteAsync(null);
+        Assert.That(editor.Map.Villages, Is.Empty);
+        Assert.That(editor.EventRows.Select(row => (row.Name, row.HasProblem)), Is.EquivalentTo(new[] { ("Take the village", true), ("Gate", true) }), "Gate switches it, so Gate is left out too.");
+        editor.OpenEvent(2);
+        Assert.That(Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen).ProblemText, Is.EqualTo("Not saved with the map yet: it switches an event that is left out."));
+        ((MapEditorEventScreenViewModel)game.TopScreen).Close();
+
+        // Deleting an event that another event switches asks too.
+        editor.DeleteEvent(1);
+        Assert.That(Assert.IsOfType<ConfirmPromptViewModel>(game.TopScreen).Message.Text, Does.Contain("is used by the event Gate"));
+        ((ConfirmPromptViewModel)game.TopScreen).Close();
+
+        // Saving says which events were left out; Undo brings the village back and the event is fine again.
+        editor.SaveCommand.Execute(null);
+        Assert.That(editor.Status, Is.EqualTo("Saved. Play it from New quest. 2 events were left out of the game until they are fixed: Take the village, Gate."));
+        Assert.That(game.Alert.Current!.Details, Is.EqualTo("2 events were left out of the game until they are fixed: Take the village, Gate."));
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.Villages.Count, editor.EventRows.Single(row => row.Name == "Take the village").HasProblem), Is.EqualTo((1, false)));
+    }
 }

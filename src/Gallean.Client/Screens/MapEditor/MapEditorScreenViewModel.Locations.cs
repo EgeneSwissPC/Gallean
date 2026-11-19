@@ -23,7 +23,7 @@ internal sealed partial class MapEditorScreenViewModel
     public bool IsLocationTool => SelectedTool.Value == MapEditorTool.Location;
 
     // The squares are drawn while the tool is on or the list is open.
-    public bool ShowLocations => IsLocationTool || IsLocationsOpen;
+    public bool ShowLocations => IsLocationTool || IsLocationsOpen || EventPickKind == MapEditorPickKind.Zone;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowLandmarkPalette), nameof(ShowLocations))]
@@ -167,7 +167,8 @@ internal sealed partial class MapEditorScreenViewModel
 
     public void DeleteLocation(int id)
     {
-        CommitLocations(current => current.RemoveLocation(id), SelectedLocationId == id ? null : SelectedLocationId);
+        string name = GetLocation(id)?.Name ?? string.Empty;
+        ConfirmRemoval(new CustomMapEventTarget.Location(id), name, () => CommitLocations(current => current.RemoveLocation(id), SelectedLocationId == id ? null : SelectedLocationId));
     }
 
     private void OnToolChangedForLocations(MapEditorTool tool)

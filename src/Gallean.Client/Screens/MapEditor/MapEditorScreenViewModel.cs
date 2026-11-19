@@ -316,6 +316,14 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     // alternate: Shift is held (the road tool then removes a road tile, the rod tool a rod).
     public void BeginStroke(WorldPosition tile, bool alternate = false)
     {
+        if (IsPickingEventTarget)
+        {
+            // The press picks an event target; its move and release do nothing else.
+            swallowStroke = true;
+            ClickEventPick(tile);
+            return;
+        }
+
         if (!map.IsValidPosition(tile) || LeaveSpreadPreview())
         {
             return;
@@ -402,6 +410,11 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     public void ContinueStroke(WorldPosition tile)
     {
+        if (swallowStroke)
+        {
+            return;
+        }
+
         if (MoveLocationPress(tile))
         {
             return;
@@ -425,6 +438,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     public void EndStroke()
     {
+        if (swallowStroke)
+        {
+            swallowStroke = false;
+            return;
+        }
+
         if (ReleaseLocationPress())
         {
             return;
@@ -542,7 +561,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
                 library,
                 existing,
                 (variant, name, gold, item, guards) => Commit(current => current.UpdateRuin(existing.Id, variant, name, gold, item, guards)),
-                () => CommitRemoval(current => current.RemoveRuin(existing.Id))));
+                () => ConfirmRemoval(new CustomMapEventTarget.Ruin(existing.Id), existing.Name, () => CommitRemoval(current => current.RemoveRuin(existing.Id)))));
             return;
         }
 
@@ -703,12 +722,15 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     private void DeleteArmy(int armyId)
     {
-        CustomMap before = map.Clone();
-
-        if (map.RemoveStack(armyId))
+        ConfirmRemoval(new CustomMapEventTarget.Army(armyId), Tr("this army"), () =>
         {
-            CommitArmyChange(before);
-        }
+            CustomMap before = map.Clone();
+
+            if (map.RemoveStack(armyId))
+            {
+                CommitArmyChange(before);
+            }
+        });
     }
 
     // Village tool: clicking free land places a village centred on the tile, clicking a village opens it.
@@ -839,12 +861,16 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
     private void DeleteVillage(int id)
     {
-        CustomMap before = map.Clone();
-
-        if (map.RemoveVillage(id))
+        string name = map.Villages.FirstOrDefault(village => village.Id == id)?.Name ?? string.Empty;
+        ConfirmRemoval(new CustomMapEventTarget.Village(id), name, () =>
         {
-            CommitArmyChange(before);
-        }
+            CustomMap before = map.Clone();
+
+            if (map.RemoveVillage(id))
+            {
+                CommitArmyChange(before);
+            }
+        });
     }
 
     // Resource tool: clicking land places the chosen resource; clicking a resource of that type removes it, one of
@@ -1016,7 +1042,14 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         }
 
         IsDirty = false;
-        Status = Tr("Saved. Play it from New quest.");
+        string skipped = SkippedEventsText();
+        Status = skipped.Length == 0 ? Tr("Saved. Play it from New quest.") : Tr("Saved. Play it from New quest. {0}", skipped);
+
+        if (skipped.Length > 0)
+        {
+            // The status line can be out of view at 1366x768; the alert can't.
+            Game.ShowInfo(IconMoniker.Warning, Tr("Saved"), skipped);
+        }
         HasProblems = false;
 
         return true;
