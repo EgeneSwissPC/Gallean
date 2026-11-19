@@ -17,6 +17,10 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
   the palette.
 - **Order: the full block editor first, recipes after it (phase 4)**, built from real blocks so every recipe can be
   opened and changed. No temporary victory panel.
+- **Texts: a default language plus optional translations.** Every text field (message, objective, event name) has one
+  box in the default language (English). An "Add translation" button adds a box for another of the game's 7
+  translations (ru, de, fr, it, pl, cs, es); each can be removed again. A language without a translation falls back
+  to the default text. The writer fills the base Tscen and each `Languages/<lang>/Scens` copy.
 
 ## How events work in the game (engine facts)
 
@@ -88,6 +92,8 @@ Full screen like the army screen, three columns:
   cancels).
 - **Right – settings in plain words:** Only once, Starts switched on, Chance %. *Advanced*: the "concerns" race set
   (defaults to the When race; 77 % of original events use the same set for both), order.
+- **Text fields** show the default-language box and an "Add translation" button (language drop-down, a small
+  "+ ru" style tag per added language, × removes it). The popup preview has a language switch to check each version.
 - **Message block** opens a preview copied from the game's event popup (text, portrait picker, left/right side,
   audience: the triggering player / everyone / the races concerned).
 - Shape rules: condition blocks only fit under When, effect blocks only inside Then. A block with an empty or broken
@@ -106,6 +112,8 @@ Full screen like the army screen, three columns:
 - **Writer:** one game event per OR group (same effects; "Occurs once" across groups via a shared variable or by
   switching the sibling events off — open question 7); Tscen `NAME_TXT`, `POPUP_TXT` (SEQ_NUM = effect NUM),
   `OBJECT_TXT`; player IDs from the current race slots, so removing a race re-maps events instead of breaking them.
+- **Texts:** `CustomMapText(Default, ImmutableDictionary<string, string> Translations)` for every event text; the
+  writer puts the default into the base Tscen and translation-or-default into each language's Tscen.
 - **Reader:** `CustomMapStore.Open` reads events back (like locations, through an optional `FromState` parameter);
   sibling events written for an OR group carry a marker in the name text so they fold back into one event.
 - **Client:** `MapEditorEventsListViewModel` (overlay), `MapEditorEventScreenViewModel` + view (palette, script,
@@ -138,7 +146,7 @@ Full screen like the army screen, three columns:
 ## Open questions
 
 1. ~~Recipes in phase 4 — or before the full screen as a quick win?~~ Decided: phase 4, after the full screen.
-2. Popup texts in one language, or per language?
+2. ~~Popup texts in one language, or per language?~~ Decided: default language (English) plus optional translations, fallback to the default.
 3. Deleting an object used by events: block saving, or drop the block with a warning (it stays red until fixed)?
 4. Removing a race: re-map events automatically (proposed) or warn?
 5. A tree view of event chains (which event switches which) — later?
