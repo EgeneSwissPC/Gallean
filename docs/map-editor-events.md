@@ -165,7 +165,7 @@ Full screen like the army screen, three columns:
 2. ~~**Block event screen + events list** (~2.5 days):~~ done, see "Phase 2 — done". palette, script with drag-drop, settings, message preview.
 3. ~~**Pick on the map, "used by", safe deletes, red broken blocks** (~1 day).~~ done, see "Phase 3 — done".
 4. ~~**Recipes** (~1 day).~~ done, see "Phase 4 — done".
-5. **Army templates + army effects** (~2 days): create/move/remove/owner/order/battle, template editor on the army
+5. ~~**Army templates + army effects** (~2 days):~~ done, see "Phase 5 — done". create/move/remove/owner/order/battle, template editor on the army
    screen.
 6. **Remaining kinds + variables** (~2 days).
 7. **Chain screen** (~1.5 days): events as boxes with switch-on/off arrows, unreachable events marked, click opens
@@ -337,6 +337,54 @@ Known limits:
 - A recipe always starts with the first race; pick another race in the hat afterwards (conquest events are only
   added when the recipe is added).
 - Removing a recipe's main event leaves its conquest events; delete them in the list if no longer wanted.
+
+## Phase 5 — done
+
+Feature commits `a9a919c4` (engine), `dbaccc60` (editor), merged as `6fdf1a8c` (branch `upgrade/map-editor-event-armies`).
+
+What was built:
+- Engine (`CustomMapTemplates.cs`): `CustomMapArmyTemplate` (name, owner race or Neutral, six army slots, the order a
+  created army gets), `CustomMapArmyOrder` (normal, stand, guard, roam, berserk, explore, go to a zone, defend a zone,
+  defend a city, attack an army), `CustomMapArmyRef` (a placed army, every army from a template, or the army that
+  fired the event). Effects: create an army from a template at a zone, remove, move to a zone (also the triggering
+  army), move next to the triggering army, change owner (a race or the player who fired it), change the order, battle
+  (the army attacks the triggering army; the game moves it next to it first). Templates are checked like armies (one
+  leader, leadership) and their order target must exist; an event using a broken template is left out, as is the
+  template itself.
+- Writer: `SStkTemp` rows (`TM` + id, units and positions laid out like an army's unit group, leader, owner and
+  subrace by player slot, order and target), effect rows with `ID_STACK` or `ID_STKTEMP`, new owner as the race's
+  subrace (`SR` + slot), "the army that fired it" for moves as `BOOLVALUE`. Templates are also kept in the editor's
+  `EditorEvents.json`.
+- Editor: "Armies" button in the events list opens the **army templates** screen: a row per template with the name
+  (edited in the row), owner, order and its target, a details line ("Peasant · 3 units" or what is wrong, red dot),
+  Units (the army screen, reused with its own title and "Save template") and ×. New template opens its army screen at
+  once. Deleting a template events use asks first.
+- **Army blocks** (red "Armies" group under Then): create [template] at [zone]; [army] attacks the army that fired
+  it; move [army] to [zone]; move [army] next to the army that fired it; remove [army]; [army] goes over to [race /
+  the player who fired it]; order [army] to [stand…] / to go to [zone] / to defend [zone] / to defend [city] / to
+  attack [army]. Army drop-downs list placed armies and "every [template] army" (and "the army that fired it" for
+  moves); "On map" picks a placed army.
+- **Ambush recipe**: when an army of the first race enters the zone, an army from the first template (a neutral
+  "Ambushers" template is made when the map has none) appears there and attacks it, after a scout's message.
+
+Tests: `CustomMapEventTests.TemplateSaveAndLoadTest` (template row through the game's loader slot by slot, every army
+effect compared with the expected `ScenarioEventEffect`s, editor copy round trip, a template without a leader left
+out with its event), `AmbushPlayTest` (entering North Gate creates the raiders inside South Gate with the template's
+order), `AmbushBattleTest` (create + battle: the raiders move next to the army and a battle starts);
+`MapEditorScreenViewModelTests.EventArmiesTest` (ambush recipe, templates screen rows, owner/order/target, army
+blocks saved as expected, delete warning and undo, the game loads both templates); `VisualTests.MapEditorEventsTest`
+steps 11-12. Suite 5229 (+4); all 15 map editor visual tests pass.
+
+Real client (AOT build, `mapgen` map): added the ambush recipe from the list (it made "Ambushers"), Save event, Save
+and play; selected the capital army and moved it one tile into the Northern Pass: the scout's message "An ambush!
+They were waiting for us in Northern Pass!" popped up, and Continue opened the battle against three peasants.
+
+Known limits:
+- The made-up "Ambushers" are the first neutral leader and soldier in the data (peasants); change their units on the
+  templates screen.
+- "Destroys an army" and "an army exists" conditions still point at placed armies only, not templates.
+- Deleting a zone or army a template's order points at doesn't warn (only events are checked); the template turns
+  red.
 
 ## Open questions
 

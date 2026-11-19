@@ -124,7 +124,7 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
 | ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
 | ~~Locations~~ | done: tool "Locations" (`docs/map-editor-locations.md`, see "Task: locations") |
 | Events | phases 1-2 done (list and block editor); map picking, recipes, army templates, more kinds and the chain screen to come (`docs/map-editor-events.md`) |
-| Army templates | armies that events create |
+| ~~Army templates~~ | done: "Armies" in the events list (events phase 5) |
 
 ## Missing: settings on things you can place
 
@@ -349,6 +349,11 @@ out against attackers, lose if a city falls, warning when entering a zone, messa
 ordinary blocks; every race a recipe can end the game for gets a "conquers all capitals" event so conquest still
 ends the game. Tests: `ConquestWinTest`, `HoldOutGivesTheAiAGoalTest`, `EventRecipesTest`; suite 5225. Real client:
 a "Survive 2 turns" recipe ended in the Victory screen on turn 2.
+
+Phase 5 — done (merged as `6fdf1a8c`): army templates (screen from the events list, units on the army screen, owner,
+order) and the army blocks (create, attack, move, move next to, remove, change sides, five order blocks), plus the
+ambush recipe. Tests: `TemplateSaveAndLoadTest`, `AmbushPlayTest`, `AmbushBattleTest`, `EventArmiesTest`; suite
+5229. Real client: moving into the pass showed the ambush message and opened the battle.
 
 ## Task (later): victory settings
 
