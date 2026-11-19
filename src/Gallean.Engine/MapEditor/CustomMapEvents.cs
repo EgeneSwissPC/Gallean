@@ -161,6 +161,36 @@ public sealed partial class CustomMap
         {
             (CustomMapRevealZoneEffect reveal, CustomMapEventTarget.Location location) => reveal.LocationId == location.Id,
             (CustomMapSwitchEventEffect switchEvent, CustomMapEventTarget.Event ev) => switchEvent.EventId == ev.Id,
+            (CustomMapCreateArmyEffect create, CustomMapEventTarget.Template template) => create.TemplateId == template.Id,
+            (CustomMapCreateArmyEffect create, CustomMapEventTarget.Location location) => create.LocationId == location.Id,
+            (CustomMapMoveArmyEffect move, CustomMapEventTarget.Location location) => move.LocationId == location.Id,
+            (CustomMapRemoveArmyEffect remove, _) => UsesArmy(remove.Army, target),
+            (CustomMapMoveArmyEffect move, _) => UsesArmy(move.Army, target),
+            (CustomMapMoveBesideEffect beside, _) => UsesArmy(beside.Army, target),
+            (CustomMapChangeOwnerEffect owner, _) => UsesArmy(owner.Army, target),
+            (CustomMapChangeOrderEffect order, _) => UsesArmy(order.Army, target) || UsesOrder(order.Order, target),
+            (CustomMapBattleEffect battle, _) => UsesArmy(battle.Army, target),
+            _ => false
+        };
+    }
+
+    private static bool UsesArmy(CustomMapArmyRef army, CustomMapEventTarget target)
+    {
+        return (army, target) switch
+        {
+            (CustomMapArmyRef.Army placed, CustomMapEventTarget.Army other) => placed.Id == other.Id,
+            (CustomMapArmyRef.Template template, CustomMapEventTarget.Template other) => template.Id == other.Id,
+            _ => false
+        };
+    }
+
+    private static bool UsesOrder(CustomMapArmyOrder order, CustomMapEventTarget target)
+    {
+        return order.Kind switch
+        {
+            CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => target is CustomMapEventTarget.Location location && location.Id == order.LocationId,
+            CustomMapOrderKind.DefendCity => order.City is { } city && IsCity(city, target),
+            CustomMapOrderKind.AttackArmy => target is CustomMapEventTarget.Army army && army.Id == order.ArmyId,
             _ => false
         };
     }
@@ -250,6 +280,13 @@ public sealed partial class CustomMap
             CustomMapRevealZoneEffect reveal => GetLocation(reveal.LocationId) is not null,
             CustomMapGiveItemEffect give => !string.IsNullOrEmpty(give.Item.Value),
             CustomMapObjectiveEffect objective => !string.IsNullOrWhiteSpace(objective.Text.Default),
+            CustomMapCreateArmyEffect create => GetTemplate(create.TemplateId) is { } template && IsTemplateSaveable(template) && GetLocation(create.LocationId) is not null,
+            CustomMapRemoveArmyEffect remove => ArmyRefExists(remove.Army, triggererAllowed: false),
+            CustomMapMoveArmyEffect move => ArmyRefExists(move.Army, triggererAllowed: true) && GetLocation(move.LocationId) is not null,
+            CustomMapMoveBesideEffect beside => ArmyRefExists(beside.Army, triggererAllowed: false),
+            CustomMapChangeOwnerEffect owner => ArmyRefExists(owner.Army, triggererAllowed: false) && (owner.NewOwner is not { } race || race == WorldRace.Neutral || players.Any(player => player.Race == race)),
+            CustomMapChangeOrderEffect order => ArmyRefExists(order.Army, triggererAllowed: false) && OrderTargetExists(order.Order),
+            CustomMapBattleEffect battle => ArmyRefExists(battle.Army, triggererAllowed: false),
             _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, null)
         };
     }
@@ -387,6 +424,8 @@ public abstract record CustomMapEventTarget
     public sealed record Army(int Id) : CustomMapEventTarget;
 
     public sealed record Event(int Id) : CustomMapEventTarget;
+
+    public sealed record Template(int Id) : CustomMapEventTarget;
 }
 
 // A city a block points at: a village by its editor ID or a race's capital.
