@@ -123,7 +123,7 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
 | --- | --- |
 | ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
 | ~~Locations~~ | done: tool "Locations" (`docs/map-editor-locations.md`, see "Task: locations") |
-| Events | phases 1-2 done (list and block editor); map picking, recipes, army templates, more kinds and the chain screen to come (`docs/map-editor-events.md`) |
+| Events | phases 1-6 done (list, block editor, map picking, recipes, army templates, every kind, variables); the chain screen is left (`docs/map-editor-events.md`) |
 | ~~Army templates~~ | done: "Armies" in the events list (events phase 5) |
 
 ## Missing: settings on things you can place
@@ -354,6 +354,12 @@ Phase 5 — done (merged as `6fdf1a8c`): army templates (screen from the events 
 order) and the army blocks (create, attack, move, move next to, remove, change sides, five order blocks), plus the
 ambush recipe. Tests: `TemplateSaveAndLoadTest`, `AmbushPlayTest`, `AmbushBattleTest`, `EventArmiesTest`; suite
 5229. Real client: moving into the pass showed the ambush message and opened the battle.
+
+Phase 6 — done (merged as `1fe6e210`): every condition and effect kind of the game (items, spells, diplomacy,
+alliances, land share, sites, certain armies in zones and cities, items brought to zones, terrain, mountains,
+landmarks, variables) and the variables screen. Tests: `RemainingKindsSaveAndLoadTest`, `VariablePlayTest`,
+`EventKindsTest` (all 46 block kinds round-trip); suite 5232. Real client: a counter variable showed its message on
+turn 2. Left: the chain screen (phase 7).
 
 ## Task (later): victory settings
 

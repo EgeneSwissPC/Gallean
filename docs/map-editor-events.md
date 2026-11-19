@@ -167,7 +167,7 @@ Full screen like the army screen, three columns:
 4. ~~**Recipes** (~1 day).~~ done, see "Phase 4 — done".
 5. ~~**Army templates + army effects** (~2 days):~~ done, see "Phase 5 — done". create/move/remove/owner/order/battle, template editor on the army
    screen.
-6. **Remaining kinds + variables** (~2 days).
+6. ~~**Remaining kinds + variables** (~2 days).~~ done, see "Phase 6 — done".
 7. **Chain screen** (~1.5 days): events as boxes with switch-on/off arrows, unreachable events marked, click opens
    the script.
 
@@ -385,6 +385,44 @@ Known limits:
 - "Destroys an army" and "an army exists" conditions still point at placed armies only, not templates.
 - Deleting a zone or army a template's order points at doesn't warn (only events are checked); the template turns
   red.
+
+## Phase 6 — done
+
+Feature commits `a8a31bbe` (engine), `36674347` (editor), merged as `1fe6e210` (branch `upgrade/map-editor-event-kinds`).
+
+All 17 condition kinds and all 24 effect kinds of the game can now be built (the game's "on turn N" is the editor's
+own block on top). New in this phase:
+- Conditions: owns an item; an army carries an item; relations between two races (war / neutral / peace); two races
+  are allies; owns at least N % of the land; visits a site; a certain army is in a zone; a certain army is in a city;
+  an item is brought to a zone; a variable is in a range (optionally "and" / "or" a second range, hidden until
+  chosen). "Destroys an army" and "an army exists" now also take "every [template] army".
+- Effects: change a variable (+, -, ×, ÷, =); make two races allies (or allies for good); set relations; change the
+  land in a zone (a square of N tiles into a race's or neutral land); remove mountains in a zone; remove / change a
+  landmark; give / destroy an item (destroy: carried by the army that fired it, or everywhere); teach a spell; cast a
+  spell on the army that fired it or on a zone (cast by nobody or a race). The reveal block now has a race choice.
+- **Variables screen** ("Variables" in the events list, next to "Armies"): name and starting value edited in the row,
+  how many events use each, delete (asks first when used). Saved as `SVars` rows and in the editor copy.
+- "On map" picking also for sites and landmarks; "used by" and delete warnings know sites, landmarks, templates and
+  variables.
+
+Findings from the game's code (in the block help and here):
+- **"Set relations" only does something when it ends an alliance**: the engine's Diplomacy effect only acts on allies
+  set to neutral or war (it breaks the alliance); otherwise relations stay. Kept faithful (no engine change).
+- The game saves relations as numbers; the editor writes 0 / 49 / 100 like the original maps (war below 34, peace
+  above 66).
+
+Tests: `CustomMapEventTests.RemainingKindsSaveAndLoadTest` (12 conditions incl. template references and 12 effects
+through the game's loader, `SVars` rows, editor copy round trip), `VariablePlayTest` (a counter +1 each turn wins at
+3 on turn 3, in the game engine); `MapEditorScreenViewModelTests.EventKindsTest` (every block kind is in a palette
+exactly once, an event with all 46 block kinds survives blocks → save → blocks unchanged, variables screen, delete
+warning); `VisualTests.MapEditorEventsTest` steps 13-14. Suite 5232 (+3); all 15 map editor visual tests pass.
+
+Real client (AOT build, `mapgen` map with a "Turns counted" variable, +1 every Empire turn, and a message at 2):
+turn 2 showed "The counter has reached two."; no errors in the log.
+
+Known limits:
+- Reveal for several chosen races at once (the race choice picks one or "the event races").
+- Spell and item names come from the game's lists; there is no check that a spell suits "cast on a zone".
 
 ## Open questions
 
