@@ -45,6 +45,7 @@ internal sealed class ViewDataTemplate : IDataTemplate
             MapEditorRuinScreenViewModel => new MapEditorRuinScreenView(),
             MapEditorCapitalScreenViewModel => new MapEditorCapitalScreenView(),
             MapEditorBagScreenViewModel => new MapEditorBagScreenView(),
+            MapEditorEventScreenViewModel => new MapEditorEventScreenView(),
             MapEditorSiteScreenViewModel => new MapEditorSiteScreenView(),
             MapEditorListPickerViewModel => new MapEditorListPickerView(),
             MapEditorUnitPickerViewModel => new MapEditorUnitPickerView(),

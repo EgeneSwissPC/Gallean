@@ -534,6 +534,71 @@
       </DockPanel>
     </Border>
 
+    <!-- The events list (V), over the left of the map like the locations list. A row: name (red mark when the event
+         can't be saved yet), races and size, "on at start" box; double-click opens the block editor. -->
+    <Border Grid.Column="0"
+            Classes="editor-panel"
+            Width="360"
+            HorizontalAlignment="Left"
+            Margin="0,0,0,60"
+            IsVisible="{Binding IsEventsOpen}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Spacing="6">
+          <DockPanel>
+            <Button x:Name="NewEventButton" DockPanel.Dock="Right" Classes="pill" Height="28" Padding="10,0" Content="{local:Text 'New event'}" Command="{Binding NewEventCommand}" />
+            <local:OutlinedTextBlock x:Name="EventsTitle" Text="{Binding EventsTitle}" Classes="h4" Foreground="{StaticResource ScenarioSelectAccentBrush}" VerticalAlignment="Center" />
+          </DockPanel>
+          <TextBlock Text="{local:Text 'The map script: when something happens, do something. Double-click an event to edit its blocks.'}"
+                     Classes="caption"
+                     TextWrapping="Wrap"
+                     Foreground="{StaticResource SecondaryTextBrush}" />
+          <TextBox x:Name="EventSearchBox" Text="{Binding EventSearch}" Watermark="{local:Text 'Search'}" IsVisible="{Binding HasEvents}" />
+        </StackPanel>
+        <Panel Margin="0,6,0,0">
+          <TextBlock Text="{local:Text 'No events yet. Click New event to build one from blocks.'}"
+                     Classes="caption"
+                     TextWrapping="Wrap"
+                     IsVisible="{Binding HasNoEventRows}"
+                     Foreground="{StaticResource SecondaryTextBrush}" />
+          <ListBox x:Name="EventList"
+                   Classes="select-list"
+                   ItemsSource="{Binding EventRows}"
+                   ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:MapEditorEventRowViewModel">
+                <Border Classes="row" Background="Transparent" DoubleTapped="OnEventRowDoubleTapped">
+                  <DockPanel>
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                      <CheckBox IsChecked="{Binding IsEnabled}" ToolTip.Tip="{local:Text 'On at the start'}" />
+                      <Button Classes="pill" Width="28" Height="28" Padding="0" Content="×" ToolTip.Tip="{local:Text 'Delete'}" Command="{Binding DeleteCommand}" />
+                    </StackPanel>
+                    <StackPanel Spacing="2" Margin="0,0,8,0">
+                      <StackPanel Orientation="Horizontal" Spacing="6" IsVisible="{Binding !IsEditing}">
+                        <Ellipse Width="10" Height="10" Fill="#C0392B" VerticalAlignment="Center" IsVisible="{Binding HasProblem}" ToolTip.Tip="{local:Text 'Not saved with the map yet: open it to see why.'}" />
+                        <TextBlock Text="{Binding Name}" Classes="body row-title" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                      <TextBox Text="{Binding EditText}"
+                               MaxLength="60"
+                               IsVisible="{Binding IsEditing}"
+                               KeyDown="OnLocationNameKeyDown"
+                               LostFocus="OnLocationNameLostFocus"
+                               PropertyChanged="OnLocationNameBoxPropertyChanged" />
+                      <TextBlock Text="{Binding Details}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                      <StackPanel Orientation="Horizontal" Spacing="4">
+                        <Button Classes="pill" Height="24" Padding="8,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'Open'}" Command="{Binding OpenCommand}" />
+                        <Button Classes="pill" Height="24" Padding="8,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'Rename'}" Command="{Binding BeginEditCommand}" />
+                        <Button Classes="pill" Height="24" Padding="8,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'Duplicate'}" Command="{Binding DuplicateCommand}" />
+                      </StackPanel>
+                    </StackPanel>
+                  </DockPanel>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </Panel>
+      </DockPanel>
+    </Border>
+
     <Border Grid.Column="1" Classes="editor-panel">
       <DockPanel>
         <StackPanel DockPanel.Dock="Bottom" Spacing="10" Margin="0,12,0,0">
@@ -554,11 +619,12 @@
 
         <ScrollViewer HorizontalScrollBarVisibility="Disabled">
           <StackPanel>
-            <!-- The economy button shares the title row, so it costs the tool settings no height at 1366x768. -->
-            <DockPanel>
-              <Button x:Name="EconomyButton" DockPanel.Dock="Right" Classes="pill" local:PlateChrome.TextureSeed="5" Padding="12,0" Height="28" VerticalAlignment="Center" Content="{local:Text 'Economy (E)'}" Command="{Binding ToggleEconomyCommand}" />
-              <local:OutlinedTextBlock Text="{local:Text 'Map editor'}" Classes="h4" Foreground="{StaticResource ScenarioSelectAccentBrush}" VerticalAlignment="Center" />
-            </DockPanel>
+            <!-- Events and Economy share the top row (the panel title made room for them), so they cost the tool settings
+                 no height at 1366x768. -->
+            <UniformGrid Columns="2">
+              <Button x:Name="EventsButton" Classes="pill" local:PlateChrome.TextureSeed="7" Height="28" Margin="0,0,3,0" Content="{local:Text 'Events (V)'}" Command="{Binding ToggleEventsCommand}" />
+              <Button x:Name="EconomyButton" Classes="pill" local:PlateChrome.TextureSeed="5" Height="28" Margin="3,0,0,0" Content="{local:Text 'Economy (E)'}" Command="{Binding ToggleEconomyCommand}" />
+            </UniformGrid>
 
             <local:OutlinedTextBlock Text="{local:Text 'Name'}" Classes="caption field-label" />
             <TextBox x:Name="NameBox" Text="{Binding Name}" MaxLength="{Binding NameLength}" />

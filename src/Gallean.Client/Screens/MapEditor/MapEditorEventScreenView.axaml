@@ -1,0 +1,300 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorEventScreenView"
+             x:DataType="local:MapEditorEventScreenViewModel">
+
+  <UserControl.Styles>
+    <Style Selector="Border.block">
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="#40000000" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.block.problem">
+      <Setter Property="BorderBrush" Value="#E04A3A" />
+    </Style>
+    <Style Selector="Border.palette-block">
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="8,5" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.hat">
+      <Setter Property="CornerRadius" Value="14,14,6,6" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="Background" Value="#6B4E1E" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="#40000000" />
+    </Style>
+    <Style Selector="Border.hat.problem">
+      <Setter Property="BorderBrush" Value="#E04A3A" />
+    </Style>
+    <Style Selector="Border.slot">
+      <Setter Property="Margin" Value="18,2,0,2" />
+      <Setter Property="Padding" Value="6" />
+      <Setter Property="MinHeight" Value="36" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="#55FFFFFF" />
+      <Setter Property="Background" Value="#22000000" />
+    </Style>
+    <Style Selector="TextBlock.block-text">
+      <Setter Property="Foreground" Value="#F2EAD8" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="TextBox.multiline">
+      <Setter Property="MinHeight" Value="72" />
+    </Style>
+    <Style Selector="ComboBox.block-field">
+      <Setter Property="Margin" Value="0,2,6,2" />
+      <Setter Property="MinWidth" Value="120" />
+      <Setter Property="MaxWidth" Value="260" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="EventBlockTemplate" x:DataType="local:MapEditorEventBlockViewModel">
+      <Border Classes="block" Classes.problem="{Binding HasProblem}" Background="{Binding Brush}" PointerPressed="OnBlockPressed">
+        <DockPanel>
+          <Button DockPanel.Dock="Right" Classes="pill" Width="26" Height="26" Padding="0" Margin="6,0,0,0" VerticalAlignment="Top" Content="×" ToolTip.Tip="{local:Text 'Remove block'}" Click="OnRemoveBlockClick" />
+          <ItemsControl ItemsSource="{Binding Parts}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <UserControl.DataTemplates>
+    <DataTemplate x:DataType="local:MapEditorBlockText">
+      <TextBlock Text="{Binding Text}" Classes="body block-text" />
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockChoice">
+      <ComboBox Classes="block-field" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" PlaceholderText="{local:Text '(none)'}">
+        <ComboBox.ItemTemplate>
+          <DataTemplate x:DataType="local:MapEditorLabeled">
+            <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
+          </DataTemplate>
+        </ComboBox.ItemTemplate>
+      </ComboBox>
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockNumber">
+      <TextBox Text="{Binding Text}" Width="56" Margin="0,2,6,2" VerticalAlignment="Center" TextAlignment="Center" />
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockItem">
+      <Button Classes="pill" Height="28" Padding="10,0" Margin="0,2,6,2" Content="{Binding Name}" Command="{Binding ChooseCommand}" />
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockPortrait">
+      <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,2,6,2" VerticalAlignment="Center">
+        <TextBlock Text="{local:Text 'with'}" Classes="body block-text" />
+        <Button Classes="pill" Height="28" Padding="10,0" Content="{Binding Name}" Command="{Binding ChooseCommand}" />
+        <Button Classes="pill" Width="28" Height="28" Padding="0" Content="×" IsVisible="{Binding HasPortrait}" ToolTip.Tip="{local:Text 'No portrait'}" Command="{Binding ClearCommand}" />
+      </StackPanel>
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockPreview">
+      <Button Classes="pill" Height="28" Padding="10,0" Margin="0,2,6,2" Content="{local:Text 'Preview'}" Command="{Binding PreviewCommand}" />
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockTextField">
+      <StackPanel Spacing="4" Margin="0,2,6,2">
+        <TextBox Text="{Binding Default}"
+                 Width="440"
+                 Classes.multiline="{Binding Multiline}"
+                 AcceptsReturn="{Binding Multiline}"
+                 TextWrapping="Wrap"
+                 Watermark="{local:Text 'Text (English)'}" />
+        <ItemsControl ItemsSource="{Binding Translations}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:MapEditorTranslationViewModel">
+              <DockPanel Margin="0,2">
+                <TextBlock DockPanel.Dock="Left" Text="{Binding LanguageLabel}" Classes="body block-text" Width="28" />
+                <Button DockPanel.Dock="Right" Classes="pill" Width="28" Height="28" Padding="0" Margin="4,0,0,0" Content="×" ToolTip.Tip="{local:Text 'Remove translation'}" Command="{Binding RemoveCommand}" />
+                <Button DockPanel.Dock="Right" Classes="pill" Height="28" Padding="8,0" Margin="4,0,0,0" Content="{local:Text 'Preview'}" IsVisible="{Binding CanPreview}" Command="{Binding PreviewCommand}" />
+                <TextBox Text="{Binding Text}" AcceptsReturn="True" TextWrapping="Wrap" Width="300" HorizontalAlignment="Left" />
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <StackPanel Orientation="Horizontal" Spacing="4" IsVisible="{Binding CanAddTranslation}">
+          <ComboBox ItemsSource="{Binding FreeLanguages}" SelectedItem="{Binding LanguageToAdd}" MinWidth="70" />
+          <Button Classes="pill" Height="28" Padding="10,0" Content="{local:Text 'Add translation'}" Command="{Binding AddTranslationCommand}" />
+        </StackPanel>
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Grid Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
+    <ContentControl Classes="ornament-panel"
+                    Background="{StaticResource CapitalScenePanelBodyGradientBrush}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,*,Auto" Margin="20,12" Width="1240" Height="660">
+        <local:OutlinedTextBlock Grid.Row="0" Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" Margin="0,0,0,6" />
+
+        <Grid Grid.Row="1" ColumnDefinitions="230,*,230" ColumnSpacing="14">
+          <!-- Palette: a click adds the block, a drag drops it where you let go; drop a block here to remove it. -->
+          <Border Grid.Column="0" x:Name="Palette" Tag="palette" Classes="slot" Margin="0" Background="#33000000">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+              <StackPanel Spacing="2">
+                <local:OutlinedTextBlock Text="{local:Text 'When'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+                <ItemsControl ItemsSource="{Binding ConditionPalette}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:MapEditorPaletteGroup">
+                      <StackPanel Margin="0,2,0,4">
+                        <TextBlock Text="{Binding Title}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <ItemsControl ItemsSource="{Binding Blocks}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:MapEditorPaletteBlock">
+                              <Border Classes="palette-block" Background="{Binding Brush}" PointerPressed="OnPaletteBlockPressed">
+                                <TextBlock Text="{Binding Label}" Classes="body block-text" TextWrapping="Wrap" />
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Classes="pill" Height="26" Padding="10,0" HorizontalAlignment="Left" Content="{local:Text '+ or'}" ToolTip.Tip="{local:Text 'Another set of conditions: the event fires when all blocks of any one set hold.'}" Command="{Binding AddGroupCommand}" />
+                <local:OutlinedTextBlock Text="{local:Text 'Then'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,8,0,0" />
+                <ItemsControl ItemsSource="{Binding EffectPalette}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:MapEditorPaletteGroup">
+                      <StackPanel Margin="0,2,0,4">
+                        <TextBlock Text="{Binding Title}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                        <ItemsControl ItemsSource="{Binding Blocks}">
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:MapEditorPaletteBlock">
+                              <Border Classes="palette-block" Background="{Binding Brush}" PointerPressed="OnPaletteBlockPressed">
+                                <TextBlock Text="{Binding Label}" Classes="body block-text" TextWrapping="Wrap" />
+                              </Border>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </ScrollViewer>
+          </Border>
+
+          <!-- Script: the When hat with its condition groups ("or" between them), then the effects. -->
+          <ScrollViewer Grid.Column="1" x:Name="Script" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="4" Margin="0,0,10,0">
+              <Border Classes="hat" Classes.problem="{Binding HasRaceProblem}">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock Text="{local:Text 'When, for'}" Classes="h5 block-text" />
+                  <ItemsControl ItemsSource="{Binding RaceToggles}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="8" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                      <DataTemplate x:DataType="local:MapEditorRaceToggleViewModel">
+                        <CheckBox IsChecked="{Binding IsChecked}">
+                          <TextBlock Text="{Binding Label}" Classes="body block-text" />
+                        </CheckBox>
+                      </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                  </ItemsControl>
+                </StackPanel>
+              </Border>
+
+              <ItemsControl ItemsSource="{Binding Groups}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorEventGroupViewModel">
+                    <StackPanel>
+                      <DockPanel IsVisible="{Binding !IsFirst}" Margin="18,4,0,0">
+                        <Button DockPanel.Dock="Right" Classes="pill" Height="24" Padding="8,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'Remove this set'}" Command="{Binding RemoveCommand}" />
+                        <local:OutlinedTextBlock Text="{local:Text 'or'}" Classes="h5" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+                      </DockPanel>
+                      <Border Classes="slot" Tag="group">
+                        <Panel>
+                          <TextBlock Text="{local:Text 'Drop or click condition blocks here (all of them must hold)'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" IsHitTestVisible="False"
+                                     IsVisible="{Binding HasNoBlocks}" />
+                          <ItemsControl ItemsSource="{Binding Blocks}" ItemTemplate="{StaticResource EventBlockTemplate}" />
+                        </Panel>
+                      </Border>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+
+              <Border Classes="hat" Margin="0,8,0,0" Background="#4A4A52">
+                <TextBlock Text="{local:Text 'Then'}" Classes="h5 block-text" />
+              </Border>
+              <Border Classes="slot" Tag="effects">
+                <Panel>
+                  <TextBlock Text="{local:Text 'Drop or click effect blocks here (they run in this order)'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" IsHitTestVisible="False"
+                             IsVisible="{Binding HasNoEffects}" />
+                  <ItemsControl ItemsSource="{Binding Effects}" ItemTemplate="{StaticResource EventBlockTemplate}" />
+                </Panel>
+              </Border>
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- Settings in plain words. -->
+          <StackPanel Grid.Column="2" Spacing="8">
+            <local:OutlinedTextBlock Text="{local:Text 'Settings'}" Classes="h5" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+            <CheckBox x:Name="OnceBox" IsChecked="{Binding Once}">
+              <TextBlock Text="{local:Text 'Only once'}" Classes="body" TextWrapping="Wrap" />
+            </CheckBox>
+            <CheckBox x:Name="EnabledBox" IsChecked="{Binding Enabled}">
+              <TextBlock Text="{local:Text 'Switched on at the start'}" Classes="body" TextWrapping="Wrap" />
+            </CheckBox>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="{local:Text 'Chance'}" Classes="body" VerticalAlignment="Center" />
+              <TextBox x:Name="ChanceBox" Text="{Binding ChanceText}" Width="56" TextAlignment="Center" />
+              <TextBlock Text="%" Classes="body" VerticalAlignment="Center" />
+            </StackPanel>
+            <Button Classes="pill" Height="26" Padding="10,0" HorizontalAlignment="Left" Content="{local:Text 'Advanced'}" Command="{Binding ToggleAdvancedCommand}" />
+            <StackPanel Spacing="6" IsVisible="{Binding IsAdvancedOpen}">
+              <CheckBox IsChecked="{Binding UseConcerns}">
+                <TextBlock Text="{local:Text 'The conditions are about other races:'}" Classes="body" TextWrapping="Wrap" />
+              </CheckBox>
+              <ItemsControl ItemsSource="{Binding ConcernToggles}" IsEnabled="{Binding UseConcerns}" Margin="18,0,0,0">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorRaceToggleViewModel">
+                    <CheckBox IsChecked="{Binding IsChecked}">
+                      <TextBlock Text="{Binding Label}" Classes="body" />
+                    </CheckBox>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <TextBlock Text="{local:Text 'Order'}" Classes="body" VerticalAlignment="Center" />
+                <TextBox Text="{Binding OrderText}" Width="56" TextAlignment="Center" />
+              </StackPanel>
+              <TextBlock Text="{local:Text 'Events are checked by order, lowest first.'}" Classes="caption" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+            <TextBlock x:Name="ProblemText" Text="{Binding ProblemText}" Classes="body" TextWrapping="Wrap" Foreground="#F07060" IsVisible="{Binding HasProblems}" Margin="0,10,0,0" />
+          </StackPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Margin="0,10,0,0" Classes="focus-group" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+          <Button x:Name="DeleteButton" Classes="pill" local:PlateChrome.TextureSeed="4" MinWidth="140" Content="{local:Text 'Delete event'}" Command="{Binding DeleteCommand}" />
+          <Button x:Name="CancelButton" Classes="pill" local:PlateChrome.TextureSeed="5" MinWidth="140" Content="{local:Text 'Cancel'}" Command="{Binding CloseCommand}" />
+          <Button x:Name="ConfirmButton" Classes="pill primary" local:PlateChrome.TextureSeed="6" MinWidth="140" Content="{local:Text 'Save event'}" Command="{Binding ConfirmCommand}" />
+        </StackPanel>
+      </Grid>
+    </ContentControl>
+
+    <!-- The block being dragged follows the mouse here. -->
+    <Canvas x:Name="DragLayer" IsHitTestVisible="False">
+      <Border x:Name="DragGhost" Classes="palette-block" IsVisible="False" Opacity="0.85">
+        <TextBlock x:Name="DragGhostText" Classes="body block-text" />
+      </Border>
+    </Canvas>
+  </Grid>
+
+</UserControl>

@@ -52,16 +52,25 @@ internal sealed partial class MapEditorScreenView : UserControl
 
     private void OnLocationRowDoubleTapped(object? sender, TappedEventArgs e)
     {
-        if (sender is Control { DataContext: MapEditorLocationRowViewModel row })
+        if (sender is Control { DataContext: IMapEditorRenameRow row })
         {
             row.BeginEditCommand.Execute(null);
+        }
+    }
+
+    // Events list: a double-click opens the event's block editor (the name is renamed from the row's button).
+    private void OnEventRowDoubleTapped(object? sender, TappedEventArgs e)
+    {
+        if (sender is Control { DataContext: MapEditorEventRowViewModel row } && !row.IsEditing)
+        {
+            row.OpenCommand.Execute(null);
         }
     }
 
     // The name box: Enter keeps the typed name, Esc the old one.
     private void OnLocationNameKeyDown(object? sender, KeyEventArgs e)
     {
-        if (sender is Control { DataContext: MapEditorLocationRowViewModel row })
+        if (sender is Control { DataContext: IMapEditorRenameRow row })
         {
             if (e.Key == Key.Enter)
             {
@@ -93,7 +102,7 @@ internal sealed partial class MapEditorScreenView : UserControl
 
     private void OnLocationNameLostFocus(object? sender, RoutedEventArgs e)
     {
-        if (sender is Control { DataContext: MapEditorLocationRowViewModel row })
+        if (sender is Control { DataContext: IMapEditorRenameRow row })
         {
             row.CommitEditCommand.Execute(null);
         }
