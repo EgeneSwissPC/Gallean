@@ -933,4 +933,80 @@ public sealed partial class VisualTests
         army.ConfirmCommand.Execute(null);
         Assert.That(editor.Map.Stacks.Single(stack => stack.Position == field).Slots.Max(unit => unit?.Level ?? 0), Is.EqualTo(30));
     }
+
+    // Events: the list (V) with a saved and a broken event, the block editor with "or" groups, a message with a
+    // translation and settings, and the message preview in the game's own popup.
+    [AvaloniaTest]
+    public async Task MapEditorEventsTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ =>
+        {
+            CustomMap map = CreateSampleMap("S600SC0000", "Two kingdoms");
+            map.PlaceLocation(new WorldPosition(20, 14), 1, "Northern Pass");
+            map.PlaceLocation(new WorldPosition(30, 20), 2, "Silk Wood");
+            Assert.That(map.PlaceRuin(new WorldPosition(14, 22), 0, "Old tower").Error, Is.Null);
+            map.AddEvent(CustomMapEvent.Create("Welcome", WorldRace.Human) with
+            {
+                Groups = [[new CustomMapTurnCondition(1, Repeat: false)]],
+                Effects = [new CustomMapMessageEffect(CustomMapText.Of("Welcome, my lord."), CustomMapMessageAudience.Triggerer, null, true)]
+            });
+            map.AddEvent(CustomMapEvent.Create("Lost scout", WorldRace.Undead) with { Groups = [[new CustomMapEnterZoneCondition(99)]] });
+
+            return map;
+        });
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        await WaitForMapEditorAsync(window);
+
+        editor.IsEventsOpen = true;
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "1-list");
+        Assert.That(editor.EventRows.Select(row => (row.Name, row.HasProblem)), Is.EqualTo(new[] { ("Lost scout", true), ("Welcome", false) }));
+
+        editor.NewEventCommand.Execute(null);
+        MapEditorEventScreenViewModel screen = Assert.IsOfType<MapEditorEventScreenViewModel>(gameViewModel.TopScreen);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "2-new-event");
+
+        MapEditorPaletteBlock Palette(MapEditorBlockKind kind) => screen.ConditionPalette.Concat(screen.EffectPalette).SelectMany(group => group.Blocks).Single(block => block.Kind == kind);
+
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.EnterZone));
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.EveryTurns));
+        screen.AddGroupCommand.Execute(null);
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.LootRuin));
+        MapEditorEventBlockViewModel message = screen.InsertBlock(Palette(MapEditorBlockKind.Message), screen.Effects, 0)!;
+        MapEditorBlockTextField text = message.Parts.OfType<MapEditorBlockTextField>().Single();
+        text.Default = "Scout\n\"Riders in the pass! The Undead are coming.\"";
+        text.LanguageToAdd = "ru";
+        text.AddTranslationCommand.Execute(null);
+        text.Translations.Single().Text = "Разведчик\n\"Всадники на перевале! Идёт Нежить.\"";
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.RevealZone));
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.SwitchEvent));
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.Win));
+        screen.IsAdvancedOpen = true;
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "3-blocks");
+        Assert.That(screen.HasProblems, Is.False);
+
+        // An empty objective block is red and the settings say why the event isn't saved.
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.Objective));
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "4-red-block");
+        Assert.That(screen.Effects[^1].HasProblem, Is.True);
+        screen.RemoveBlockCommand.Execute(screen.Effects[^1]);
+
+        message.Parts.OfType<MapEditorBlockPreview>().Single().PreviewCommand.Execute(null);
+        await SkipFramesAsync(150);
+        await CaptureAsync(window, "5-preview");
+        Assert.IsOfType<ScenarioEventPopupViewModel>(gameViewModel.TopScreen).Close();
+
+        screen.ConfirmCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "6-list-after");
+        Assert.That(editor.EventRows.Select(row => row.Name), Is.EqualTo(new[] { "Event 3", "Lost scout", "Welcome" }));
+    }
 }

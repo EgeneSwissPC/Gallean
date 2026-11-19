@@ -299,6 +299,11 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.IsLocationsOpen = !ViewModel.IsLocationsOpen;
             e.Handled = true;
         }
+        else if (e.Key == Key.V && e.KeyModifiers == KeyModifiers.None)
+        {
+            ViewModel.IsEventsOpen = !ViewModel.IsEventsOpen;
+            e.Handled = true;
+        }
         else if (ViewModel.IsLocationTool && e.Key is Key.OemPlus or Key.Add or Key.OemMinus or Key.Subtract)
         {
             ViewModel.ChangeLocationRadius(e.Key is Key.OemPlus or Key.Add ? 1 : -1);

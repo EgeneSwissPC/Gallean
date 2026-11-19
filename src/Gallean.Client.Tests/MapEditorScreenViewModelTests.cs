@@ -1499,4 +1499,108 @@ public sealed class MapEditorScreenViewModelTests
         editor.SaveCommand.Execute(null);
         Assert.That(loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions()).Sites, Is.EqualTo(editor.Map.Sites));
     }
+
+    // Events list (V) and the block editor: palette clicks and drops, "or" groups, red blocks, translations, the
+    // game's popup as preview, then rename, on/off, duplicate, search, delete and undo in the list.
+    [Test]
+    public async Task EventScreenTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.Map.PlaceLocation(new WorldPosition(20, 20), 1, "North Gate");
+        editor.IsEconomyOpen = true;
+        editor.IsEventsOpen = true;
+        Assert.That((editor.IsEconomyOpen, editor.HasNoEventRows, editor.EventsTitle), Is.EqualTo((false, true, "Events (0)")), "The lists on the left take turns.");
+
+        editor.NewEventCommand.Execute(null);
+        MapEditorEventScreenViewModel screen = Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen);
+        Assert.That((editor.Map.Events.Single().Name, editor.CanUndo), Is.EqualTo(("Event 1", true)));
+        Assert.That(screen.ProblemText, Does.Contain("add a condition"));
+        Assert.That(screen.RaceToggles.Select(toggle => (toggle.Race, toggle.IsChecked)), Is.EqualTo(new[] { (WorldRace.Human, true), (WorldRace.Dwarf, false), (WorldRace.Neutral, false) }));
+
+        MapEditorPaletteBlock Palette(MapEditorBlockKind kind) => screen.ConditionPalette.Concat(screen.EffectPalette).SelectMany(group => group.Blocks).Single(block => block.Kind == kind);
+
+        // Click: conditions go to the last group. "or" opens a second group; a drop puts a block where it lands.
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.EnterZone));
+        screen.AddGroupCommand.Execute(null);
+        Assert.That(screen.InsertBlock(Palette(MapEditorBlockKind.OnTurn), screen.Groups[1].Blocks, 0), Is.Not.Null);
+        Assert.That(screen.InsertBlock(Palette(MapEditorBlockKind.OnTurn), screen.Effects, 0), Is.Null, "A condition can't go under Then.");
+        MapEditorEventBlockViewModel message = screen.InsertBlock(Palette(MapEditorBlockKind.Message), screen.Effects, 0)!;
+        screen.AddBlockCommand.Execute(Palette(MapEditorBlockKind.Win));
+        Assert.That(screen.Groups.Select(group => group.Blocks.Count), Is.EqualTo(new[] { 1, 1 }));
+        Assert.That(screen.Effects.Select(block => block.Kind), Is.EqualTo(new[] { MapEditorBlockKind.Message, MapEditorBlockKind.Win }));
+
+        // An empty message is red until it has text; a translation adds a box.
+        Assert.That((message.HasProblem, screen.HasProblems), Is.EqualTo((true, true)));
+        MapEditorBlockTextField text = message.Parts.OfType<MapEditorBlockTextField>().Single();
+        text.Default = "The gates!";
+        Assert.That((message.HasProblem, screen.HasProblems), Is.EqualTo((false, false)));
+        text.LanguageToAdd = "ru";
+        text.AddTranslationCommand.Execute(null);
+        text.Translations.Single().Text = "Ворота!";
+        Assert.That(text.FreeLanguages, Does.Not.Contain("ru"));
+
+        // Drag Win above the message; settings in plain words.
+        Assert.That(screen.MoveBlock(screen.Effects[1], screen.Effects, 0), Is.True);
+        Assert.That(screen.MoveBlock(screen.Effects[0], screen.Groups[0].Blocks, 0), Is.False, "An effect can't go under When.");
+        screen.Once = false;
+        screen.ChanceText = "50";
+
+        // Preview: the game's own story popup, in the chosen language.
+        message.Parts.OfType<MapEditorBlockPreview>().Single().PreviewCommand.Execute(null);
+        ScenarioEventPopupViewModel popup = Assert.IsOfType<ScenarioEventPopupViewModel>(game.TopScreen);
+        Assert.That(string.Concat(popup.Messages.Single().Message.Spans.Select(span => span.Text)), Is.EqualTo("The gates!"));
+        popup.Close();
+        text.Translations.Single().PreviewCommand.Execute(null);
+        popup = Assert.IsOfType<ScenarioEventPopupViewModel>(game.TopScreen);
+        Assert.That(string.Concat(popup.Messages.Single().Message.Spans.Select(span => span.Text)), Is.EqualTo("Ворота!"));
+        popup.Close();
+        Assert.That(game.TopScreen, Is.SameAs(screen));
+
+        screen.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Events.Single(), Is.EqualTo(new CustomMapEvent(
+            1,
+            "Event 1",
+            [WorldRace.Human],
+            null,
+            Once: false,
+            Enabled: true,
+            Chance: 50,
+            Order: 0,
+            [[new CustomMapEnterZoneCondition(1)], [new CustomMapTurnCondition(5, Repeat: false)]],
+            [new CustomMapWinEffect(WorldRace.Human), new CustomMapMessageEffect(CustomMapText.Of("The gates!").WithTranslation("ru", "Ворота!"), CustomMapMessageAudience.Triggerer, null, true)])));
+
+        // The list row: details, rename, on/off, duplicate, search, delete, undo.
+        MapEditorEventRowViewModel row = editor.EventRows.Single();
+        Assert.That((row.Name, row.Details, row.HasProblem, row.IsEnabled), Is.EqualTo(("Event 1", "Empire · 2 conditions · 2 effects", false, true)));
+        row.BeginEditCommand.Execute(null);
+        row.EditText = " Gates ";
+        row.CommitEditCommand.Execute(null);
+        Assert.That(editor.Map.Events.Single().Name, Is.EqualTo("Gates"));
+        editor.EventRows.Single().IsEnabled = false;
+        Assert.That(editor.Map.Events.Single().Enabled, Is.False);
+        editor.EventRows.Single().DuplicateCommand.Execute(null);
+        Assert.That(editor.EventRows.Select(r => r.Name), Is.EqualTo(new[] { "Gates", "Gates (copy)" }));
+        editor.EventSearch = "copy";
+        Assert.That(editor.EventRows.Select(r => r.Name), Is.EqualTo(new[] { "Gates (copy)" }));
+        editor.EventSearch = string.Empty;
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.EventRows.Select(r => r.Name), Is.EqualTo(new[] { "Gates" }), "Undo removes the copy.");
+        editor.EventRows.Single().DeleteCommand.Execute(null);
+        Assert.That((editor.Map.Events.Count, editor.HasNoEventRows), Is.EqualTo((0, true)));
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.EventRows.Single().Name, Is.EqualTo("Gates"));
+
+        // A removed zone turns the event red in the list; the map is saved without it but keeps it for later.
+        editor.Map.RemoveLocation(1);
+        editor.EventSearch = " ";
+        Assert.That(editor.EventRows.Single().HasProblem, Is.True);
+        editor.SaveCommand.Execute(null);
+        CustomMap reopened = loader.CreateMapStore()!.Open(editor.Map.Id, loader.CreateDefinitions());
+        Assert.That(reopened.Events.Single().Name, Is.EqualTo("Gates"));
+        Assert.That(reopened.GetSaveableEvents(), Is.Empty);
+    }
 }

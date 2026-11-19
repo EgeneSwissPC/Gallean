@@ -31,7 +31,7 @@ internal sealed partial class MapEditorScreenViewModel
     public bool HasUnclaimed => UnclaimedResources.Count > 0;
 
     // The palette shares the left of the map with the economy panel.
-    public bool ShowLandmarkPalette => IsLandmarkTool && !IsEconomyOpen && !IsLocationsOpen;
+    public bool ShowLandmarkPalette => IsLandmarkTool && !IsEconomyOpen && !IsLocationsOpen && !IsEventsOpen;
 
     public CustomMapEconomy? Economy { get; private set; }
 
@@ -136,6 +136,7 @@ internal sealed partial class MapEditorScreenViewModel
         else
         {
             IsLocationsOpen = false;
+            IsEventsOpen = false;
             SelectedBankRace ??= BankRaces[0];
             ShowBank();
         }

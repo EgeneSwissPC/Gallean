@@ -963,6 +963,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         map = undoSteps.Pop();
         roadStart = null;
         RebuildLocationRows();
+        RebuildEventRows();
 
         CanUndo = undoSteps.Count > 0;
         IsDirty = true;

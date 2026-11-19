@@ -75,6 +75,7 @@ internal sealed partial class MapEditorScreenViewModel
         if (value)
         {
             IsEconomyOpen = false;
+            IsEventsOpen = false;
             RebuildLocationRows();
         }
 
@@ -378,7 +379,7 @@ internal sealed partial class MapEditorScreenViewModel
 }
 
 // One row of the locations list: name (edited in place), size and position, and a delete button.
-internal sealed partial class MapEditorLocationRowViewModel(int id, string name, string details, MapEditorScreenViewModel editor) : ObservableObject
+internal sealed partial class MapEditorLocationRowViewModel(int id, string name, string details, MapEditorScreenViewModel editor) : ObservableObject, IMapEditorRenameRow
 {
     public int Id { get; } = id;
 
