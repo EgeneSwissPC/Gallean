@@ -42,6 +42,10 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
 - **Locations are editor-only, radius 0–3, no army orders yet**: not shown in the game (not even dev tools; maybe
   later); radius 0–3 like the engine, so maps stay upstream-compatible; the move-to/defend-location orders belong to
   the separate armies task. Names show like landmarks (hover line, right-click info) plus a label on the map.
+- **Events: a Scratch-style block editor** ("When" hat with condition blocks, "Then" with effect blocks, sentences
+  with pickers, drag-drop palette), for players who just want to design a level. Editor-only: the game's own event
+  tables and code. OR and "on turn N" are offered in the blocks and saved as the game's events. Recipes replace the
+  separate victory settings task. Spec: `docs/map-editor-events.md`.
 
 ## Already in the editor
 
@@ -114,7 +118,7 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
 | --- | --- |
 | ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
 | ~~Locations~~ | done: tool "Locations" (`docs/map-editor-locations.md`, see "Task: locations") |
-| Events | scenario scripting (see below); every custom map is saved with no events |
+| Events | planned: Scratch-style block editor, `docs/map-editor-events.md` (see "Task: events") |
 | Army templates | armies that events create |
 
 ## Missing: settings on things you can place
@@ -309,7 +313,16 @@ Known limits:
 - Capitals keep the writer's "<Race> Capital" name (there is no name field on `CustomMapPlayer` yet).
 - Only existing objects: hobbits are peasants, Ents are the elves' Ent Minor.
 
+## Task: events (Scratch-style blocks)
+
+Planned in `docs/map-editor-events.md` (how events work in the game, use counts in the original maps, block palette,
+script, settings, map picking, recipes, writer/reader, tests, 6 phases, open questions). Phases: engine model and
+save/load of a starter set (~1.5 days), block event screen and events list (~2.5 days), map picking and safe deletes
+(~1 day), recipes (~1 day), army templates and army effects (~2 days), remaining kinds and variables (~2 days).
+
 ## Task (later): victory settings
+
+Folded into the events task as recipes ("Capture a city to win", "Hold a zone to win", "Survive N turns").
 
 Ready-made events instead of a full event editor, for example:
 - destroy all enemy capitals
@@ -338,7 +351,7 @@ in many scenarios). Events use them ("when an army enters the Northern Pass"), a
 and effects. The engine already loads all of it:
 
 - **17 condition kinds:**
-  - a turn number or frequency
+  - every N turns (no exact-turn condition: "on turn N" = every N turns + occurs once)
   - entering a zone, entering a city, owning a city
   - destroying an army
   - owning an item, a leader owning an item
