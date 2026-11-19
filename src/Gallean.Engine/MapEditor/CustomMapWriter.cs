@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Gallean.Engine;
 
 // Writes a CustomMap as a regular scenario: <maps>/<id>/*.json tables plus a row in <maps>/Sinfo.json, so the
@@ -67,9 +69,13 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SMapEl.json", BuildMapElements(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SRod.json", BuildRods(map, scenarioId, prefix));
         WriteTable(stagingDirectory, "SLoc.json", BuildLocations(map, scenarioId, prefix, rows.Texts));
+        EventRows events = BuildEvents(map, scenarioId, prefix, rows.Texts);
+        WriteTable(stagingDirectory, "SEvent.json", events.Events);
+        WriteTable(stagingDirectory, "SEvCond.json", events.Conditions);
+        WriteTable(stagingDirectory, "SEvEffec.json", events.Effects);
+        WriteTable(stagingDirectory, "SEvUnfog.json", events.Unfogs);
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
-        // Original scenarios all ship an event table; custom maps get an empty one so they load the same way.
-        WriteTable(stagingDirectory, "SEvent.json", new List<Db.ScenarioEvent>());
+        CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events);
 
         if (Directory.Exists(scenarioDirectory))
         {
@@ -77,6 +83,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         }
 
         Directory.Move(stagingDirectory, scenarioDirectory);
+        WriteTranslations(mapsDirectory, map.Id, events.Translations);
 
         string indexPath = Path.Combine(mapsDirectory, IndexFileName);
         List<Db.ScenarioInfo> index = File.Exists(indexPath) ? DbTableFile.Read<Db.ScenarioInfo>(indexPath) : [];
@@ -152,6 +159,15 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         {
             Directory.Delete(scenarioDirectory, recursive: true);
         }
+
+        WriteTranslations(mapsDirectory, mapId, new Dictionary<string, List<Db.TextScenario>>());
+    }
+
+    // The folder whose <map id>/Tscen.json holds a language's translated texts (the game's text provider lays them
+    // over the scenario's own texts, like the bundled Languages/<code>/Scens folders).
+    public static string GetLanguageDirectory(string mapsDirectory, string languageCode)
+    {
+        return Path.Combine(mapsDirectory, "Languages", languageCode);
     }
 
     public static IReadOnlyList<Db.ScenarioInfo> ReadIndex(string mapsDirectory)
@@ -870,6 +886,275 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         return new Db.ScenarioUnitGroup(
             scenarioId, groupId, unitId, null, null, null, null, null,
             positions[0], positions[1], positions[2], positions[3], positions[4], positions[5]);
+    }
+
+    private sealed record EventRows(
+        List<Db.ScenarioEvent> Events,
+        List<Db.ScenarioEventCondition> Conditions,
+        List<Db.ScenarioEventEffect> Effects,
+        List<Db.ScenarioEventUnfog> Unfogs,
+        Dictionary<string, List<Db.TextScenario>> Translations);
+
+    // Events: each saveable editor event becomes one game event per condition group ("or"), all with the same
+    // effects; game IDs EV + running number. A copy whose group has a "turn N" block occurs once. When the editor
+    // event occurs once and has several copies, each copy first switches the others off, so it fires once in all.
+    // Win/lose effects go last (the game counts an event as a win event only when Win is its last effect).
+    private static EventRows BuildEvents(CustomMap map, Db.ScenarioId scenarioId, string prefix, List<Db.TextScenario> texts)
+    {
+        EventRows rows = new([], [], [], [], []);
+        IReadOnlyList<CustomMapEvent> events = map.GetSaveableEvents();
+        Dictionary<int, List<Db.Id>> gameIds = [];
+        int number = 1;
+
+        foreach (CustomMapEvent ev in events.OrderBy(ev => ev.Id))
+        {
+            List<Db.Id> ids = [];
+
+            foreach (ImmutableArray<CustomMapCondition> group in ev.Groups.Where(group => !group.IsEmpty))
+            {
+                ids.Add(MakeId(prefix, "EV", number++));
+            }
+
+            gameIds[ev.Id] = ids;
+        }
+
+        foreach (CustomMapEvent ev in events.OrderBy(ev => ev.Id))
+        {
+            List<Db.Id> ids = gameIds[ev.Id];
+            ImmutableArray<WorldRace> races = map.GetEventRaces(ev.Races);
+            ImmutableArray<WorldRace> concerns = map.GetEventRaces(ev.Concerns);
+            List<ImmutableArray<CustomMapCondition>> groups = [.. ev.Groups.Where(group => !group.IsEmpty)];
+            List<CustomMapEffect> effects =
+            [
+                .. ev.Effects.Where(effect => effect is not (CustomMapWinEffect or CustomMapLoseEffect)),
+                .. ev.Effects.Where(effect => effect is CustomMapWinEffect or CustomMapLoseEffect)
+            ];
+            ImmutableArray<WorldRace> revealRaces =
+            [
+                .. ev.Effects.OfType<CustomMapRevealZoneEffect>()
+                    .SelectMany(reveal => reveal.Races.IsEmpty ? races : map.GetEventRaces(reveal.Races))
+                    .Distinct()
+            ];
+
+            for (int g = 0; g < groups.Count; g++)
+            {
+                Db.Id eventId = ids[g];
+                List<Db.ScenarioEventEffect> eventEffects = [];
+                bool turnOnce = groups[g].Any(condition => condition is CustomMapTurnCondition { Repeat: false });
+
+                // Switch-offs first, so a Win effect stays last.
+                foreach (Db.Id sibling in ev.Once ? ids.Where(id => id != eventId) : [])
+                {
+                    eventEffects.Add(Effect(scenarioId, eventId, 0, Db.ScenarioEventEffectType.EnableEvent) with { IdEvent = sibling, Enable = false });
+                }
+
+                foreach (CustomMapEffect effect in effects)
+                {
+                    eventEffects.AddRange(BuildEffect(map, effect, scenarioId, prefix, eventId, gameIds, rows.Translations, texts, eventEffects.Count));
+                }
+
+                for (int i = 0; i < eventEffects.Count; i++)
+                {
+                    eventEffects[i] = eventEffects[i] with { Number = i };
+                }
+
+                foreach (Db.ScenarioEventCondition condition in groups[g].Select(condition => BuildCondition(map, condition, scenarioId, prefix, eventId)))
+                {
+                    rows.Conditions.Add(condition);
+                }
+
+                rows.Effects.AddRange(eventEffects);
+                texts.Add(Text(scenarioId, eventId, Db.TextScenario.NameTextId, ev.Name));
+
+                foreach (WorldRace race in revealRaces)
+                {
+                    rows.Unfogs.Add(new Db.ScenarioEventUnfog(scenarioId, eventId, MakeId(prefix, "PL", GetPlayerIndex(map, race))));
+                }
+
+                rows.Events.Add(new Db.ScenarioEvent(
+                    scenarioId,
+                    eventId.Value,
+                    Human: concerns.Contains(WorldRace.Human),
+                    Dwarf: concerns.Contains(WorldRace.Dwarf),
+                    Undead: concerns.Contains(WorldRace.Undead),
+                    Heretic: concerns.Contains(WorldRace.Heretic),
+                    Neutral: concerns.Contains(WorldRace.Neutral),
+                    Elf: concerns.Contains(WorldRace.Elf),
+                    Enabled: ev.Enabled,
+                    OccurOnce: ev.Once || turnOnce,
+                    Chance: Math.Clamp(ev.Chance, 0, CustomMap.MaxEventChance),
+                    CondQuantity: groups[g].Length,
+                    EffectQuantity: eventEffects.Count,
+                    VerifiedHuman: races.Contains(WorldRace.Human),
+                    VerifiedDwarf: races.Contains(WorldRace.Dwarf),
+                    VerifiedUndead: races.Contains(WorldRace.Undead),
+                    VerifiedHeretic: races.Contains(WorldRace.Heretic),
+                    VerifiedNeutral: races.Contains(WorldRace.Neutral),
+                    VerifiedElf: races.Contains(WorldRace.Elf),
+                    Order: ev.Order));
+            }
+        }
+
+        return rows;
+    }
+
+    private static Db.ScenarioEventCondition BuildCondition(CustomMap map, CustomMapCondition condition, Db.ScenarioId scenarioId, string prefix, Db.Id eventId)
+    {
+        Db.ScenarioEventCondition Make(Db.ScenarioEventConditionType category)
+        {
+            return new Db.ScenarioEventCondition(
+                scenarioId, eventId, null, category, null, null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null, null, null);
+        }
+
+        return condition switch
+        {
+            CustomMapTurnCondition turn => Make(Db.ScenarioEventConditionType.Frequency) with { Frequency = turn.Turn },
+            CustomMapEnterZoneCondition zone => Make(Db.ScenarioEventConditionType.EnteringZone) with { IdLocation = MakeId(prefix, "LO", zone.LocationId) },
+            CustomMapOwnCityCondition own => Make(Db.ScenarioEventConditionType.OwningCity) with { IdCity = GetCityId(map, prefix, own.City) },
+            CustomMapEnterCityCondition enter => Make(Db.ScenarioEventConditionType.EnteringCity) with { IdCity = GetCityId(map, prefix, enter.City) },
+            CustomMapLootRuinCondition loot => Make(Db.ScenarioEventConditionType.LootingRuin) with { IdRuin = MakeId(prefix, "RU", loot.RuinId) },
+            CustomMapDestroyArmyCondition destroy => Make(Db.ScenarioEventConditionType.DestroyingStack) with { IdStack = MakeId(prefix, "KC", FirstArmyNumber + destroy.ArmyId) },
+            // The game's MISC_INT: 0 = the army must exist, 1 = it must not.
+            CustomMapArmyExistsCondition exists => Make(Db.ScenarioEventConditionType.StackExistence) with
+            {
+                IdStack = MakeId(prefix, "KC", FirstArmyNumber + exists.ArmyId),
+                MiscInt = exists.Exists ? 0 : 1
+            },
+            _ => throw new ArgumentOutOfRangeException(nameof(condition), condition, null)
+        };
+    }
+
+    private static IEnumerable<Db.ScenarioEventEffect> BuildEffect(
+        CustomMap map,
+        CustomMapEffect effect,
+        Db.ScenarioId scenarioId,
+        string prefix,
+        Db.Id eventId,
+        Dictionary<int, List<Db.Id>> gameIds,
+        Dictionary<string, List<Db.TextScenario>> translations,
+        List<Db.TextScenario> texts,
+        int number)
+    {
+        switch (effect)
+        {
+            case CustomMapMessageEffect message:
+                AddText(scenarioId, eventId, Db.TextScenario.PopupTextId, number, message.Text, texts, translations);
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Popup) with
+                {
+                    Image = message.Portrait,
+                    LeftSide = message.PortraitLeft,
+                    BoolValue = false,
+                    PopupShow = message.Audience switch
+                    {
+                        CustomMapMessageAudience.AllPlayers => "ALL",
+                        CustomMapMessageAudience.ConcernedRaces => "AFF",
+                        _ => "TRI"
+                    }
+                };
+                break;
+            case CustomMapWinEffect win:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Win) with
+                {
+                    WinScenario = true,
+                    IdPlayer1 = MakeId(prefix, "PL", GetPlayerIndex(map, win.Winner))
+                };
+                break;
+            case CustomMapLoseEffect:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Win) with { WinScenario = false };
+                break;
+            case CustomMapSwitchEventEffect switchEvent:
+                // An "or" event is several game events: switch them all.
+                foreach (Db.Id target in gameIds[switchEvent.EventId])
+                {
+                    yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.EnableEvent) with { IdEvent = target, Enable = switchEvent.On };
+                }
+
+                break;
+            case CustomMapRevealZoneEffect reveal:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Unfog) with
+                {
+                    IdLocation = MakeId(prefix, "LO", reveal.LocationId),
+                    Enable = true
+                };
+                break;
+            case CustomMapGiveItemEffect give:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.GiveItem) with
+                {
+                    TypeItem = new Db.Id(give.Item.Value),
+                    GiveTo = give.ToCapital ? 1 : 0
+                };
+                break;
+            case CustomMapObjectiveEffect objective:
+                AddText(scenarioId, eventId, Db.TextScenario.ObjectiveTextId, 0, objective.Text, texts, translations);
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ChangeObjective);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(effect), effect, null);
+        }
+    }
+
+    private static Db.ScenarioEventEffect Effect(Db.ScenarioId scenarioId, Db.Id eventId, int number, Db.ScenarioEventEffectType category)
+    {
+        return new Db.ScenarioEventEffect(
+            scenarioId, eventId, number, category, null, null, null, null, null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+    }
+
+    // The default text goes into the scenario's Tscen; each translation into that language's Tscen.
+    private static void AddText(
+        Db.ScenarioId scenarioId,
+        Db.Id objectId,
+        string textId,
+        int sequence,
+        CustomMapText text,
+        List<Db.TextScenario> texts,
+        Dictionary<string, List<Db.TextScenario>> translations)
+    {
+        texts.Add(new Db.TextScenario(scenarioId, objectId, textId, text.Default, sequence));
+
+        foreach ((string language, string translated) in text.Translations)
+        {
+            if (!string.IsNullOrWhiteSpace(translated))
+            {
+                if (!translations.TryGetValue(language, out List<Db.TextScenario>? rows))
+                {
+                    translations[language] = rows = [];
+                }
+
+                rows.Add(new Db.TextScenario(scenarioId, objectId, textId, translated, sequence));
+            }
+        }
+    }
+
+    // Writes <maps>/Languages/<code>/<map id>/Tscen.json for every language with translations and removes the
+    // folders of languages that have none (any more).
+    private static void WriteTranslations(string mapsDirectory, string mapId, Dictionary<string, List<Db.TextScenario>> translations)
+    {
+        foreach (string language in CustomMapText.Languages)
+        {
+            string directory = Path.Combine(GetLanguageDirectory(mapsDirectory, language), mapId);
+
+            if (translations.TryGetValue(language, out List<Db.TextScenario>? rows) && rows.Count > 0)
+            {
+                Directory.CreateDirectory(directory);
+                WriteTable(directory, "Tscen.json", rows);
+            }
+            else if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    private static Db.Id GetCityId(CustomMap map, string prefix, CustomMapCity city)
+    {
+        return city switch
+        {
+            CustomMapCity.Village village => MakeId(prefix, "FT", FirstVillageNumber + village.Id),
+            CustomMapCity.Capital capital => MakeId(prefix, "FT", GetPlayerIndex(map, capital.Race)),
+            _ => throw new ArgumentOutOfRangeException(nameof(city), city, null)
+        };
     }
 
     private static Db.TextScenario Text(Db.ScenarioId scenarioId, Db.Id objectId, string textId, string text)

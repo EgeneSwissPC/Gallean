@@ -94,7 +94,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             .GroupBy(text => $"{text.IdObject.Value}/{text.IdString}", StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First().Text!, StringComparer.OrdinalIgnoreCase);
 
-        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, (objectId, textId) => texts.GetValueOrDefault($"{objectId}/{textId}"), scenario.Provider.Locations);
+        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, (objectId, textId) => texts.GetValueOrDefault($"{objectId}/{textId}"), scenario.Provider.Locations,
+            CustomMapEventsFile.Read(Path.Combine(mapsDirectory, info.ScenarioId.Value, CustomMapEventsFile.FileName)));
     }
 
     // Builds the world state the editor renders by saving the map to a scratch folder and loading it through the
@@ -176,7 +177,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
 
     // getText returns a scenario text of an object (scenario object ID, text ID such as NAME_TXT), when known.
     // locations are the scenario's SLoc zones (Scenario.Provider.Locations); they aren't part of the world state.
-    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions, Func<string, string, string?>? getText = null, IReadOnlyList<ScenarioLocationDefinition>? locations = null)
+    // events come from the editor's EditorEvents.json (the scenario's event tables are only the game's copy).
+    public static CustomMap FromState(string mapId, string name, string description, WorldState state, IGameDefinitionProvider definitions, Func<string, string, string?>? getText = null, IReadOnlyList<ScenarioLocationDefinition>? locations = null, IReadOnlyList<CustomMapEvent>? events = null)
     {
         if (state.Map.Width != state.Map.Height)
         {
@@ -362,7 +364,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             mapLocations.Add(new CustomMapLocation(id, locationName, location.Position, Math.Clamp(location.Radius, 0, CustomMap.MaxLocationRadius)));
         }
 
-        return new CustomMap(mapId, name, description, state.Map.Width, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, mapLocations);
+        return new CustomMap(mapId, name, description, state.Map.Width, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, mapLocations, events);
     }
 
     // The editor's object number from a saved ID such as S600KC0101 (first = 0x100 gives 1).

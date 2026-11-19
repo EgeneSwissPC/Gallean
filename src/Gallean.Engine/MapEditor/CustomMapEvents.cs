@@ -1,0 +1,341 @@
+using System.Collections.Immutable;
+using Gallean.Common;
+
+namespace Gallean.Engine;
+
+// Events: the scenario's script, built in the editor as blocks (docs/map-editor-events.md). An event holds condition
+// groups (the conditions inside a group must all hold, the groups are alternatives: "or") and effects that run in
+// order. Blocks point at editor objects by their editor IDs and at races by race, never at scenario IDs, so moving
+// objects or removing a race never makes an event point at the wrong thing; a block whose target is gone makes the
+// event broken, and the writer leaves broken events out of the saved scenario (CustomMap.GetSaveableEvents).
+public sealed partial class CustomMap
+{
+    public const int MaxEventChance = 100;
+
+    public CustomMapEvent? GetEvent(int id)
+    {
+        return events.FirstOrDefault(ev => ev.Id == id);
+    }
+
+    // Adds an event with a new ID (the given ID is ignored) and returns it.
+    public CustomMapEvent AddEvent(CustomMapEvent ev)
+    {
+        int id = events.Count == 0 ? 1 : events.Max(existing => existing.Id) + 1;
+        CustomMapEvent added = ev with { Id = id, Name = string.IsNullOrWhiteSpace(ev.Name) ? $"Event {id}" : ev.Name.Trim() };
+        events.Add(added);
+
+        return added;
+    }
+
+    // Replaces the event with the same ID. False when there is no such event.
+    public bool UpdateEvent(CustomMapEvent ev)
+    {
+        int index = events.FindIndex(existing => existing.Id == ev.Id);
+
+        if (index < 0)
+        {
+            return false;
+        }
+
+        events[index] = ev;
+
+        return true;
+    }
+
+    public bool RemoveEvent(int id)
+    {
+        return events.RemoveAll(ev => ev.Id == id) > 0;
+    }
+
+    // What keeps an event out of the saved scenario; empty = it is saved. Phase 3 shows these as red blocks.
+    public IReadOnlyList<CustomMapEventProblem> GetEventProblems(CustomMapEvent ev)
+    {
+        List<CustomMapEventProblem> problems = [];
+
+        if (GetEventRaces(ev.Races).IsEmpty)
+        {
+            problems.Add(new CustomMapEventProblem(CustomMapEventProblemKind.NoRace, null));
+        }
+
+        if (ev.Groups.All(group => group.IsEmpty))
+        {
+            problems.Add(new CustomMapEventProblem(CustomMapEventProblemKind.NoCondition, null));
+        }
+
+        foreach (CustomMapCondition condition in ev.Groups.SelectMany(group => group))
+        {
+            if (!ConditionTargetExists(condition))
+            {
+                problems.Add(new CustomMapEventProblem(CustomMapEventProblemKind.MissingTarget, condition));
+            }
+        }
+
+        int objectives = 0;
+
+        foreach (CustomMapEffect effect in ev.Effects)
+        {
+            if (effect is CustomMapObjectiveEffect && ++objectives > 1)
+            {
+                problems.Add(new CustomMapEventProblem(CustomMapEventProblemKind.SecondObjective, effect));
+            }
+            else if (!EffectTargetExists(effect))
+            {
+                problems.Add(new CustomMapEventProblem(CustomMapEventProblemKind.MissingTarget, effect));
+            }
+        }
+
+        return problems;
+    }
+
+    // The events the writer saves: no problems, and every event they switch on or off is saved too (repeated until
+    // nothing changes, so a chain that leads to a broken event drops out as a whole).
+    public IReadOnlyList<CustomMapEvent> GetSaveableEvents()
+    {
+        List<CustomMapEvent> saveable = [.. events.Where(ev => GetEventProblems(ev).Count == 0)];
+        bool changed = true;
+
+        while (changed)
+        {
+            HashSet<int> ids = [.. saveable.Select(ev => ev.Id)];
+            int before = saveable.Count;
+            saveable.RemoveAll(ev => ev.Effects.OfType<CustomMapSwitchEventEffect>().Any(effect => !ids.Contains(effect.EventId)));
+            changed = saveable.Count != before;
+        }
+
+        return saveable;
+    }
+
+    // The races of a race set that are on the map (Neutral always is); races removed from the map drop out.
+    public ImmutableArray<WorldRace> GetEventRaces(ImmutableArray<WorldRace> races)
+    {
+        return [.. races.Distinct().Where(IsEventRaceOnMap)];
+    }
+
+    private bool IsEventRaceOnMap(WorldRace race)
+    {
+        return race == WorldRace.Neutral || players.Any(player => player.Race == race);
+    }
+
+    private bool ConditionTargetExists(CustomMapCondition condition)
+    {
+        return condition switch
+        {
+            CustomMapTurnCondition turn => turn.Turn > 0,
+            CustomMapEnterZoneCondition zone => GetLocation(zone.LocationId) is not null,
+            CustomMapOwnCityCondition own => CityExists(own.City),
+            CustomMapEnterCityCondition enter => CityExists(enter.City),
+            CustomMapLootRuinCondition loot => ruins.Any(ruin => ruin.Id == loot.RuinId),
+            CustomMapDestroyArmyCondition destroy => stacks.Any(stack => stack.Id == destroy.ArmyId),
+            CustomMapArmyExistsCondition exists => stacks.Any(stack => stack.Id == exists.ArmyId),
+            _ => throw new ArgumentOutOfRangeException(nameof(condition), condition, null)
+        };
+    }
+
+    private bool EffectTargetExists(CustomMapEffect effect)
+    {
+        return effect switch
+        {
+            CustomMapMessageEffect message => !string.IsNullOrWhiteSpace(message.Text.Default),
+            CustomMapWinEffect win => players.Any(player => player.Race == win.Winner),
+            CustomMapLoseEffect => true,
+            CustomMapSwitchEventEffect switchEvent => GetEvent(switchEvent.EventId) is not null,
+            CustomMapRevealZoneEffect reveal => GetLocation(reveal.LocationId) is not null,
+            CustomMapGiveItemEffect give => !string.IsNullOrEmpty(give.Item.Value),
+            CustomMapObjectiveEffect objective => !string.IsNullOrWhiteSpace(objective.Text.Default),
+            _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, null)
+        };
+    }
+
+    private bool CityExists(CustomMapCity city)
+    {
+        return city switch
+        {
+            CustomMapCity.Village village => villages.Any(candidate => candidate.Id == village.Id),
+            CustomMapCity.Capital capital => players.Any(player => player.Race == capital.Race),
+            _ => false
+        };
+    }
+}
+
+// One event. Races = "triggered by" (whose turn or army checks it); ConcernsRaces = the races the conditions talk
+// about ("an army of X enters", "X owns the city"), null = the same as Races. Once: switched off after it fires.
+// Chance 1-100 is rolled at every check. Order: events are checked by Order, then by ID.
+public sealed record CustomMapEvent(
+    int Id,
+    string Name,
+    ImmutableArray<WorldRace> Races,
+    ImmutableArray<WorldRace>? ConcernsRaces,
+    bool Once,
+    bool Enabled,
+    int Chance,
+    int Order,
+    ImmutableArray<ImmutableArray<CustomMapCondition>> Groups,
+    ImmutableArray<CustomMapEffect> Effects)
+{
+    public static CustomMapEvent Create(string name, WorldRace race)
+    {
+        return new CustomMapEvent(0, name, [race], null, Once: true, Enabled: true, Chance: CustomMap.MaxEventChance, Order: 0, [[]], []);
+    }
+
+    public ImmutableArray<WorldRace> Concerns => ConcernsRaces ?? Races;
+
+    public bool Equals(CustomMapEvent? other)
+    {
+        return other is not null &&
+               Id == other.Id &&
+               Name == other.Name &&
+               Races.SequenceEqual(other.Races) &&
+               ConcernsRaces.HasValue == other.ConcernsRaces.HasValue &&
+               (!ConcernsRaces.HasValue || ConcernsRaces.Value.SequenceEqual(other.ConcernsRaces!.Value)) &&
+               Once == other.Once &&
+               Enabled == other.Enabled &&
+               Chance == other.Chance &&
+               Order == other.Order &&
+               Groups.Length == other.Groups.Length &&
+               Groups.Zip(other.Groups).All(pair => pair.First.SequenceEqual(pair.Second)) &&
+               Effects.SequenceEqual(other.Effects);
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = new();
+        hash.Add(Id);
+        hash.Add(Name);
+        hash.AddSequence(Races);
+        hash.Add(Once);
+        hash.Add(Enabled);
+        hash.Add(Chance);
+        hash.Add(Order);
+        hash.Add(Groups.Length);
+        hash.AddSequence(Effects);
+
+        return hash.ToHashCode();
+    }
+}
+
+public enum CustomMapEventProblemKind
+{
+    NoRace,
+    NoCondition,
+    MissingTarget,
+    SecondObjective
+}
+
+// Block = the condition or effect with the problem (null for the event itself).
+public sealed record CustomMapEventProblem(CustomMapEventProblemKind Kind, object? Block);
+
+// A text the player reads: the default (English) text plus optional translations keyed by the game's language code
+// (CustomMapText.Languages). A language without a translation shows the default.
+public sealed record CustomMapText(string Default, ImmutableSortedDictionary<string, string> Translations)
+{
+    public static readonly ImmutableArray<string> Languages = ["cs", "de", "es", "fr", "it", "pl", "ru"];
+
+    public static CustomMapText Of(string text)
+    {
+        return new CustomMapText(text, ImmutableSortedDictionary<string, string>.Empty);
+    }
+
+    public string Get(string language)
+    {
+        return Translations.TryGetValue(language, out string? text) && !string.IsNullOrWhiteSpace(text) ? text : Default;
+    }
+
+    public CustomMapText WithTranslation(string language, string? text)
+    {
+        if (!Languages.Contains(language))
+        {
+            throw new ArgumentOutOfRangeException(nameof(language), language, "Not one of the game's languages.");
+        }
+
+        return this with { Translations = text is null ? Translations.Remove(language) : Translations.SetItem(language, text) };
+    }
+
+    public bool Equals(CustomMapText? other)
+    {
+        return other is not null && Default == other.Default && Translations.SequenceEqual(other.Translations);
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = new();
+        hash.Add(Default);
+        hash.AddSequence(Translations);
+
+        return hash.ToHashCode();
+    }
+}
+
+// A city a block points at: a village by its editor ID or a race's capital.
+public abstract record CustomMapCity
+{
+    public sealed record Village(int Id) : CustomMapCity;
+
+    public sealed record Capital(WorldRace Race) : CustomMapCity;
+}
+
+public abstract record CustomMapCondition;
+
+// Turn N (Repeat = false: once, on turn N; saved as "every N turns" in a copy that occurs once) or every N turns.
+public sealed record CustomMapTurnCondition(int Turn, bool Repeat) : CustomMapCondition;
+
+// An army of a concerned race enters the zone (armies inside villages and uncaptured capitals don't count).
+public sealed record CustomMapEnterZoneCondition(int LocationId) : CustomMapCondition;
+
+// A concerned race owns the city (a capital counts once a concerned race has captured it).
+public sealed record CustomMapOwnCityCondition(CustomMapCity City) : CustomMapCondition;
+
+// The city belongs to a concerned race and an army stands in it.
+public sealed record CustomMapEnterCityCondition(CustomMapCity City) : CustomMapCondition;
+
+public sealed record CustomMapLootRuinCondition(int RuinId) : CustomMapCondition;
+
+// A concerned race destroyed the army.
+public sealed record CustomMapDestroyArmyCondition(int ArmyId) : CustomMapCondition;
+
+public sealed record CustomMapArmyExistsCondition(int ArmyId, bool Exists) : CustomMapCondition;
+
+public abstract record CustomMapEffect;
+
+public enum CustomMapMessageAudience
+{
+    // The player whose turn or army fired the event.
+    Triggerer,
+    AllPlayers,
+    ConcernedRaces
+}
+
+// The game's story popup. Portrait = a unit type ID (the original maps use unit portraits), null = none.
+public sealed record CustomMapMessageEffect(CustomMapText Text, CustomMapMessageAudience Audience, string? Portrait, bool PortraitLeft) : CustomMapEffect;
+
+// Saved as the event's last effect (the game only treats an event as a win event when Win is last).
+public sealed record CustomMapWinEffect(WorldRace Winner) : CustomMapEffect;
+
+// The scenario ends with no winner: the human players lose.
+public sealed record CustomMapLoseEffect : CustomMapEffect;
+
+public sealed record CustomMapSwitchEventEffect(int EventId, bool On) : CustomMapEffect;
+
+// Reveals the zone for the given races (empty = the event's races). The game keeps one audience per event, so all
+// reveal blocks of an event are saved with the union of their races.
+public sealed record CustomMapRevealZoneEffect(int LocationId, ImmutableArray<WorldRace> Races) : CustomMapEffect
+{
+    public bool Equals(CustomMapRevealZoneEffect? other)
+    {
+        return other is not null && LocationId == other.LocationId && Races.SequenceEqual(other.Races);
+    }
+
+    public override int GetHashCode()
+    {
+        HashCode hash = new();
+        hash.Add(LocationId);
+        hash.AddSequence(Races);
+
+        return hash.ToHashCode();
+    }
+}
+
+// Gives the item to the army that fired the event, or to its owner's capital.
+public sealed record CustomMapGiveItemEffect(ItemDefinitionId Item, bool ToCapital) : CustomMapEffect;
+
+// Replaces the scenario objective text (one per event: the game keys the text by event).
+public sealed record CustomMapObjectiveEffect(CustomMapText Text) : CustomMapEffect;
