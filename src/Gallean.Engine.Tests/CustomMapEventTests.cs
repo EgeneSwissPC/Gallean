@@ -378,4 +378,57 @@ public sealed class CustomMapEventTests
         Assert.That(session.World.State.TurnInfo.TurnNumber, Is.EqualTo(3));
         Assert.That(ended.OfType<WorldScenarioEndedEvent>().Single().WinnerId, Is.EqualTo(session.World.State.Players.Values.Single(player => player.Race == WorldRace.Human).Id));
     }
+
+    // A win event takes "last one standing wins" away from the races it concerns; the conquest event gives it back:
+    // the game ends for the Empire once it holds the elven capital, through the game's own event code.
+    [Test]
+    public void ConquestWinTest()
+    {
+        CustomMap map = CreateMap();
+        Assert.That(map.GetRacesNeedingConquestWin(), Is.Empty);
+        map.AddEvent(CustomMapEvent.Create("Capture Northgate", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapOwnCityCondition(new CustomMapCity.Village(1))]],
+            Effects = [new CustomMapWinEffect(WorldRace.Human)]
+        });
+        map.AddEvent(CustomMapEvent.Create("Elves lose the village", WorldRace.Elf) with
+        {
+            Groups = [[new CustomMapOwnCityCondition(new CustomMapCity.Village(1))]],
+            Effects = [new CustomMapLoseEffect()]
+        });
+        Assert.That(map.GetRacesNeedingConquestWin(), Is.EqualTo(new[] { WorldRace.Human, WorldRace.Elf }));
+
+        CustomMapEvent conquest = map.AddConquestWin(WorldRace.Human, "Empire conquers all");
+        Assert.That(map.IsConquestWin(conquest, WorldRace.Human), Is.True);
+        Assert.That(map.IsConquestWin(conquest, WorldRace.Elf), Is.False);
+        Assert.That(conquest.Groups.Single(), Is.EqualTo(new CustomMapCondition[] { new CustomMapOwnCityCondition(new CustomMapCity.Capital(WorldRace.Elf)) }));
+        Assert.That(map.GetRacesNeedingConquestWin(), Is.EqualTo(new[] { WorldRace.Elf }));
+
+        Assert.That(PlayWithElvenCapitalCaptured(map), Is.EqualTo(WorldRace.Human));
+        map.RemoveEvent(conquest.Id);
+        Assert.That(PlayWithElvenCapitalCaptured(map), Is.Null, "Without it the game goes on: the Empire has a win event.");
+    }
+
+    // Saves the map, gives the Empire the elven capital and plays three rounds: the race that won, or null.
+    private WorldRace? PlayWithElvenCapitalCaptured(CustomMap map)
+    {
+        CustomMapStore store = Store;
+        store.Save(map);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        WorldPlayerId empire = scenario.State.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldCapital elvenCapital = scenario.State.Fortifications.Values.OfType<WorldCapital>().Single(capital => scenario.State.Players[capital.OwnerId].Race == WorldRace.Elf);
+        WorldState captured = scenario.State with { Fortifications = scenario.State.Fortifications.SetItem(elvenCapital.Id, elvenCapital with { CapturedById = empire }) };
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, captured);
+
+        List<WorldEvent> events = [.. session.World.DispatchCommand(new WorldStartGameCommand()).Events];
+
+        while (!session.World.State.ScenarioState.IsEnded && session.World.State.TurnInfo.TurnNumber < 3)
+        {
+            events.AddRange(session.World.DispatchCommand(new WorldEndTurnCommand()).Events);
+        }
+
+        return events.OfType<WorldScenarioEndedEvent>().SingleOrDefault() is { WinnerId: { } winner } ? scenario.State.Players[winner].Race : null;
+    }
 }

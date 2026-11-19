@@ -175,6 +175,44 @@ public sealed partial class CustomMap
         };
     }
 
+    // In the game a race that an event ending in a win or lose concerns no longer wins by being the last one standing
+    // (PlayerDefeatedEndScenarioRule.HasWinEvent). These playable races are in that state and have no conquest event
+    // yet, so conquering everyone would no longer end the game for them.
+    public IReadOnlyList<WorldRace> GetRacesNeedingConquestWin()
+    {
+        if (players.Count < 2)
+        {
+            return [];
+        }
+
+        return
+        [
+            .. players.Select(player => player.Race).Where(race =>
+                events.Any(ev => ev.Effects.Any(effect => effect is CustomMapWinEffect or CustomMapLoseEffect) && GetEventRaces(ev.Concerns).Contains(race)) &&
+                !events.Any(ev => IsConquestWin(ev, race)))
+        ];
+    }
+
+    // "Race wins when it owns every other race's capital": one condition set of "owns <capital>" blocks, then Win.
+    public CustomMapEvent AddConquestWin(WorldRace race, string name)
+    {
+        ImmutableArray<CustomMapCondition> capitals = [.. players.Where(player => player.Race != race).Select(player => (CustomMapCondition)new CustomMapOwnCityCondition(new CustomMapCity.Capital(player.Race)))];
+
+        return AddEvent(CustomMapEvent.Create(name, race) with { Groups = [capitals], Effects = [new CustomMapWinEffect(race)] });
+    }
+
+    public bool IsConquestWin(CustomMapEvent ev, WorldRace race)
+    {
+        HashSet<WorldRace> others = [.. players.Select(player => player.Race).Where(other => other != race)];
+
+        return ev.Races.SequenceEqual([race]) &&
+               ev.ConcernsRaces is null &&
+               ev.Groups.Length == 1 &&
+               ev.Groups[0].Length == others.Count &&
+               ev.Groups[0].All(condition => condition is CustomMapOwnCityCondition { City: CustomMapCity.Capital capital } && others.Contains(capital.Race)) &&
+               ev.Effects.SequenceEqual([new CustomMapWinEffect(race)]);
+    }
+
     // The races of a race set that are on the map (Neutral always is); races removed from the map drop out.
     public ImmutableArray<WorldRace> GetEventRaces(ImmutableArray<WorldRace> races)
     {
