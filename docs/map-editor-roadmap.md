@@ -98,6 +98,11 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
     where it meets a road the pieces turn into junctions and crossroads
   - the next click lays it and the road carries on from that tile; the same tile again or Esc stops
   - Shift+click removes a road tile; a click where a road can't go, or can't reach, says why; Ctrl+Z undoes
+- Events (new): list (V) and a Scratch-style block editor (phases 1-2 of `docs/map-editor-events.md`)
+  - 7 conditions (turn N / every N turns, enters a zone, owns or is in a city, loots a ruin, destroys an army, army
+    exists or is gone), 7 effects (message with portrait, win, lose, switch an event, reveal a zone, give an item,
+    change the objective); "or" sets; texts in English with optional translations
+  - saved as the game's event tables; broken events stay in the editor and are left out of the game
 - Locations (new): tool "Locations" and list (L)
   - click places a named zone (1x1 to 7x7, + / -), its name typed in the list row; click selects, drag moves (snaps
     onto the map, Esc puts it back), Ctrl+click places a zone inside another, Shift+click removes; X/Y boxes
@@ -118,7 +123,7 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
 | --- | --- |
 | ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
 | ~~Locations~~ | done: tool "Locations" (`docs/map-editor-locations.md`, see "Task: locations") |
-| Events | planned: Scratch-style block editor, `docs/map-editor-events.md` (see "Task: events") |
+| Events | phases 1-2 done (list and block editor); map picking, recipes, army templates, more kinds and the chain screen to come (`docs/map-editor-events.md`) |
 | Army templates | armies that events create |
 
 ## Missing: settings on things you can place
@@ -326,7 +331,13 @@ translations, 7 starter conditions and 7 effects, saved as the game's event tabl
 copies switch each other off for "only once", win last, races to player IDs at save time), translations in
 `<maps>/Languages/<code>/`, the editor's own copy `EditorEvents.json` for reopening (broken events kept, left out of
 the game tables). Tests: `CustomMapEventTests` (4, through the game's loader and engine); suite 5219. Real client:
-the turn-1 message pops up with its portrait. No editor UI yet (phase 2).
+the turn-1 message pops up with its portrait.
+
+Phase 2 — done (commit `e315bcf3`, merged as `029b070d`): the events list (V) and the Scratch-style block editor.
+Colour-grouped palette, "When, for [races]" hat with "or" sets, "Then" stack, settings in plain words; click or drag
+blocks in, drag to reorder or onto the palette to remove; red blocks and a reason line (taken early from phase 3);
+message preview in the game's own popup, per translation. Tests: `EventScreenTest`, `VisualTests.MapEditorEventsTest`;
+suite 5220. Real client: a mouse drag from the palette into the script and the saved scenario rows checked.
 
 ## Task (later): victory settings
 

@@ -162,7 +162,7 @@ Full screen like the army screen, three columns:
 1. ~~**Engine model + save/load, starter set** (~1.5 days):~~ done, see "Phase 1 — done". every N turns, on turn N, enters zone, owns/enters city,
    loots ruin, destroys army, army exists; message, win, lose, switch event, reveal zone, give item, change objective;
    OR groups.
-2. **Block event screen + events list** (~2.5 days): palette, script with drag-drop, settings, message preview.
+2. ~~**Block event screen + events list** (~2.5 days):~~ done, see "Phase 2 — done". palette, script with drag-drop, settings, message preview.
 3. **Pick on the map, "used by", safe deletes, red broken blocks** (~1 day).
 4. **Recipes** (~1 day).
 5. **Army templates + army effects** (~2 days): create/move/remove/owner/order/battle, template editor on the army
@@ -208,6 +208,47 @@ Known limits:
 - The game keeps one reveal audience per event: several reveal blocks in one event reveal for the union of their
   races. One objective change per event (the text is keyed by event).
 - Portraits are unit type IDs (as in the original maps); the picker comes with the message block.
+
+## Phase 2 — done
+
+Feature commit `e315bcf3`, merged as `029b070d` (branch `upgrade/map-editor-event-screen`).
+
+What was built:
+- **Events list (V)**, over the left of the map like the locations list (they and the economy panel take turns):
+  sorted by name, search, count, "New event", per row the races and size ("Empire · 1 condition · 2 effects"), an
+  "on at the start" box, a red dot when the event can't be saved yet, Open / Rename (in the row) / Duplicate / ×.
+  Every change is one undo step. "Events (V)" and "Economy (E)" share the right panel's top row (the "Map editor"
+  title made room).
+- **Block editor** (`MapEditorEventScreenViewModel` + view, blocks in `MapEditorEventBlocks.cs`): palette grouped by
+  colour (Time blue, Zones green, Places gold, Armies red, Items purple, Messages grey, Game dark), the script with
+  the "When, for [races]" hat, condition sets joined by "or" ("+ or" adds a set, "Remove this set"), and "Then"; the
+  settings column (Only once, Switched on at the start, Chance %, Advanced: concerned races and order). Blocks read as
+  sentences with drop-downs (zones, cities, ruins, armies, events, races), number boxes, an item button (the game's
+  item list) and texts with "Add translation" per language.
+- **Drag and drop**: a click on a palette block adds it (conditions to the last set); a drag drops it before/after
+  the block under the mouse or at the end of a set / of Then; script blocks can be dragged within and between sets;
+  dropping a block on the palette removes it (× too). Conditions only go under When, effects only under Then.
+- **Red blocks** (taken from phase 3 because the screen needs the feedback): the engine's `GetEventProblems` marks
+  blocks with a missing or empty target red, the hat red without a race, and a line under the settings says why the
+  event isn't saved yet.
+- **Message preview**: the game's own story popup (`ScenarioEventPopupViewModel`) with the block's text and portrait;
+  each translation row has its own Preview. Portrait = a unit picked from the game's leader list.
+
+Tests: `MapEditorScreenViewModelTests.EventScreenTest` (list exclusivity, new event, palette click and drop, "or",
+wrong-list drops refused, red empty message, translation, move, settings, preview in both languages, the saved event
+compared field by field, rename/on-off/duplicate/search/delete/undo, a removed zone turns the row red and the saved
+map keeps the event in the editor copy but not in the game tables); `VisualTests.MapEditorEventsTest` (6 shots:
+list, new event, blocks, red block, preview, list after). Suite 5220 (+1); all 15 map editor visual tests pass.
+
+Real client (AOT build, `mapgen` map): V opens the list with the map's two events; Open shows the "Pass" event; a real
+mouse drag of "loots a ruin" from the palette onto the condition set shows the ghost under the cursor and drops the
+block; dragging a block onto the palette removes it; Save event + Save wrote `SEvCond` with the new `LootingRuin`
+row and `EditorEvents.json`; no errors in the log.
+
+Known limits:
+- No insertion marker while dragging (the drop lands before/after the block under the mouse).
+- The reveal block always reveals to the event's races (a race choice comes with the remaining kinds).
+- Picking targets on the map, "used by" in the hover line and the delete confirmations are still phase 3.
 
 ## Open questions
 
