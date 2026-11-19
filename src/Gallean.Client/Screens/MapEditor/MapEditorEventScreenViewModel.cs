@@ -324,6 +324,14 @@ internal sealed partial class MapEditorEventScreenViewModel : AbstractScreenView
             reasons.Add(Tr("only one objective change per event"));
         }
 
+        // An event that switches a left-out event is left out too (it would point at nothing in the game).
+        HashSet<int> saveable = [.. context.Map.GetSaveableEvents().Select(other => other.Id), ev.Id];
+
+        if (ev.Effects.OfType<CustomMapSwitchEventEffect>().Any(effect => !saveable.Contains(effect.EventId) && context.Map.GetEvent(effect.EventId) is not null))
+        {
+            reasons.Add(Tr("it switches an event that is left out"));
+        }
+
         ProblemText = reasons.Count == 0 ? string.Empty : Tr("Not saved with the map yet: {0}.", string.Join(", ", reasons));
         OnPropertyChanged(nameof(HasProblems));
         OnPropertyChanged(nameof(HasNoEffects));

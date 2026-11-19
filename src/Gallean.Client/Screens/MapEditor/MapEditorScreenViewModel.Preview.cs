@@ -56,9 +56,9 @@ internal sealed partial class MapEditorScreenViewModel
         UpdateRoadGhost();
         UpdateEconomy();
         MapEditorPlacementPreview preview = hoverTile is { } tile && IsPreviewEnabled && !previewSuspended && PositionInfo is null
-            ? IsSpreadPreview ? SpreadHoverPreview() : BuildPreview(tile)
+            ? IsPickingEventTarget ? EventPickPreview() : IsSpreadPreview ? SpreadHoverPreview() : BuildPreview(tile)
             : MapEditorPlacementPreview.None;
-        IReadOnlyList<WorldPosition> highlight = GetEconomyHighlight();
+        IReadOnlyList<WorldPosition> highlight = IsPickingEventTarget ? GetEventPickHighlight() : GetEconomyHighlight();
 
         if (highlight.Count > 0)
         {
@@ -75,7 +75,7 @@ internal sealed partial class MapEditorScreenViewModel
         PlacementPreview = preview;
         OnPropertyChanged(nameof(PlacementPreview));
         HoverText = hoverTile is { } current
-            ? string.Join("\n", new[] { preview.Text, FormatTile(current), LocationHoverText(current) }.Where(line => line.Length > 0))
+            ? string.Join("\n", new[] { preview.Text, FormatTile(current), LocationHoverText(current), EventUsageHoverText(current) }.Where(line => line.Length > 0))
             : string.Empty;
         SetRenderRequest(CreateRenderRequest());
     }

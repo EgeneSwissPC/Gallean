@@ -150,7 +150,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.BeginStroke(WorldTransform.FromWorldPoint(worldPoint), e.KeyModifiers.HasFlag(KeyModifiers.Shift));
             e.Handled = true;
         }
-        else if (point.Properties.IsRightButtonPressed && ViewModel.CancelLocationDrag())
+        else if (point.Properties.IsRightButtonPressed && (ViewModel.CancelEventPick() || ViewModel.CancelLocationDrag()))
         {
             e.Handled = true;
         }
@@ -309,7 +309,7 @@ internal sealed class MapEditorVisual : AbstractAnimatedVisual
             ViewModel.ChangeLocationRadius(e.Key is Key.OemPlus or Key.Add ? 1 : -1);
             e.Handled = true;
         }
-        else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && (ViewModel.CancelLocationDrag() || ViewModel.CancelRoad()))
+        else if (e.Key == Key.Escape && e.KeyModifiers == KeyModifiers.None && (ViewModel.CancelEventPick() || ViewModel.CancelLocationDrag() || ViewModel.CancelRoad()))
         {
             e.Handled = true;
         }

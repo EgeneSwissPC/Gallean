@@ -53,7 +53,12 @@ internal sealed record MapEditorPaletteBlock(MapEditorBlockKind Kind, string Lab
 internal sealed record MapEditorPaletteGroup(string Title, IReadOnlyList<MapEditorPaletteBlock> Blocks);
 
 // What the blocks' drop-downs offer: the map's objects by their editor IDs, plus the game's names.
-internal sealed class MapEditorEventContext(CustomMap map, GameModel editorGame, Action<Action<ItemDefinitionId>> pickItem, Action<Action<UnitDefinitionId?>> pickPortrait)
+internal sealed class MapEditorEventContext(
+    CustomMap map,
+    GameModel editorGame,
+    Action<Action<ItemDefinitionId>> pickItem,
+    Action<Action<UnitDefinitionId?>> pickPortrait,
+    Action<MapEditorPickKind, Action<object>>? pickOnMap = null)
 {
     public CustomMap Map { get; } = map;
 
@@ -86,6 +91,10 @@ internal sealed class MapEditorEventContext(CustomMap map, GameModel editorGame,
 
     public void PickItem(Action<ItemDefinitionId> picked) => pickItem(picked);
 
+    public bool CanPickOnMap => pickOnMap is not null;
+
+    public void PickOnMap(MapEditorPickKind kind, Action<object> picked) => pickOnMap?.Invoke(kind, picked);
+
     public void PickPortrait(Action<UnitDefinitionId?> picked) => pickPortrait(picked);
 
     public string ItemName(ItemDefinitionId id) => MapEditorLibrary.GetItemName(EditorGame, id);
@@ -111,11 +120,29 @@ internal sealed class MapEditorBlockText(string text) : MapEditorBlockPart
 // A drop-down. An empty list or a missing target shows "(none)" and the block turns red.
 internal sealed partial class MapEditorBlockChoice : MapEditorBlockPart
 {
-    public MapEditorBlockChoice(IReadOnlyList<MapEditorOption<object?>> options, object? value, Action changed)
+    private readonly MapEditorEventContext? context;
+
+    public MapEditorBlockChoice(IReadOnlyList<MapEditorOption<object?>> options, object? value, Action changed, MapEditorEventContext? context = null, MapEditorPickKind? pick = null)
     {
         Changed = changed;
         Options = options;
         Selected = options.FirstOrDefault(option => Equals(option.Value, value)) ?? (value is null ? options.FirstOrDefault() : null);
+        this.context = context;
+        Pick = pick;
+    }
+
+    // The map object kind a "Pick" button picks on the map (null: no button).
+    public MapEditorPickKind? Pick { get; }
+
+    public bool CanPick => Pick is not null && context is { CanPickOnMap: true };
+
+    [RelayCommand]
+    private void PickOnMap()
+    {
+        if (Pick is { } kind && context is not null)
+        {
+            context.PickOnMap(kind, value => Selected = Options.FirstOrDefault(option => Equals(option.Value, value)) ?? Selected);
+        }
     }
 
     public IReadOnlyList<MapEditorOption<object?>> Options { get; }
@@ -420,20 +447,20 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             case CustomMapTurnCondition turn:
                 return Make(turn.Repeat ? MapEditorBlockKind.EveryTurns : MapEditorBlockKind.OnTurn, turn.Repeat ? Tr("every") : Tr("on turn"), new MapEditorBlockNumber(turn.Turn, 1, 999, changed), turn.Repeat ? new MapEditorBlockText(Tr("turns")) : null);
             case CustomMapEnterZoneCondition zone:
-                return Make(MapEditorBlockKind.EnterZone, Tr("an army enters"), new MapEditorBlockChoice(context.Locations, zone.LocationId, changed));
+                return Make(MapEditorBlockKind.EnterZone, Tr("an army enters"), new MapEditorBlockChoice(context.Locations, zone.LocationId, changed, context, MapEditorPickKind.Zone));
             case CustomMapOwnCityCondition own:
-                return Make(MapEditorBlockKind.OwnCity, Tr("owns"), new MapEditorBlockChoice(context.Cities, own.City, changed));
+                return Make(MapEditorBlockKind.OwnCity, Tr("owns"), new MapEditorBlockChoice(context.Cities, own.City, changed, context, MapEditorPickKind.City));
             case CustomMapEnterCityCondition enter:
-                return Make(MapEditorBlockKind.EnterCity, Tr("an army is in"), new MapEditorBlockChoice(context.Cities, enter.City, changed), new MapEditorBlockText(Tr("(their own city)")));
+                return Make(MapEditorBlockKind.EnterCity, Tr("an army is in"), new MapEditorBlockChoice(context.Cities, enter.City, changed, context, MapEditorPickKind.City), new MapEditorBlockText(Tr("(their own city)")));
             case CustomMapLootRuinCondition loot:
-                return Make(MapEditorBlockKind.LootRuin, Tr("loots"), new MapEditorBlockChoice(context.Ruins, loot.RuinId, changed));
+                return Make(MapEditorBlockKind.LootRuin, Tr("loots"), new MapEditorBlockChoice(context.Ruins, loot.RuinId, changed, context, MapEditorPickKind.Ruin));
             case CustomMapDestroyArmyCondition destroy:
-                return Make(MapEditorBlockKind.DestroyArmy, Tr("destroys"), new MapEditorBlockChoice(context.Armies, destroy.ArmyId, changed));
+                return Make(MapEditorBlockKind.DestroyArmy, Tr("destroys"), new MapEditorBlockChoice(context.Armies, destroy.ArmyId, changed, context, MapEditorPickKind.Army));
             case CustomMapArmyExistsCondition exists:
                 return Make(
                     MapEditorBlockKind.ArmyExists,
                     null,
-                    new MapEditorBlockChoice(context.Armies, exists.ArmyId, changed),
+                    new MapEditorBlockChoice(context.Armies, exists.ArmyId, changed, context, MapEditorPickKind.Army),
                     new MapEditorBlockChoice([new MapEditorOption<object?>(true, Tr("still exists")), new MapEditorOption<object?>(false, Tr("is gone"))], exists.Exists, changed));
             default:
                 throw new ArgumentOutOfRangeException(nameof(condition), condition, null);
@@ -479,7 +506,7 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             case CustomMapRevealZoneEffect reveal:
             {
                 // The block reveals for the event's races; a race list set elsewhere is kept as it was.
-                MapEditorEventBlockViewModel block = Make(MapEditorBlockKind.RevealZone, Tr("reveal"), new MapEditorBlockChoice(context.Locations, reveal.LocationId, changed), new MapEditorBlockText(Tr("to the event races")));
+                MapEditorEventBlockViewModel block = Make(MapEditorBlockKind.RevealZone, Tr("reveal"), new MapEditorBlockChoice(context.Locations, reveal.LocationId, changed, context, MapEditorPickKind.Zone), new MapEditorBlockText(Tr("to the event races")));
                 block.revealRaces = reveal.Races;
 
                 return block;

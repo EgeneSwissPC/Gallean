@@ -169,6 +169,32 @@ public sealed class CustomMapEventTests
         Assert.That(map.GetEvent(9), Is.Null);
     }
 
+    // "Used by": which events point at an object, and what blocks can point at on a tile.
+    [Test]
+    public void EventsUsingTest()
+    {
+        CustomMap map = CreateMap();
+        AddEvents(map);
+        string Names(CustomMapEventTarget target) => string.Join(", ", map.GetEventsUsing(target).Select(ev => ev.Name));
+
+        Assert.That(Names(new CustomMapEventTarget.Location(1)), Is.EqualTo("Gates"));
+        Assert.That(Names(new CustomMapEventTarget.Location(2)), Is.EqualTo("Gates, Every second turn"), "Condition and reveal effect.");
+        Assert.That(Names(new CustomMapEventTarget.Village(1)), Is.EqualTo("Northgate"));
+        Assert.That(Names(new CustomMapEventTarget.Capital(WorldRace.Elf)), Is.EqualTo("Northgate"));
+        Assert.That(Names(new CustomMapEventTarget.Capital(WorldRace.Human)), Is.Empty);
+        Assert.That(Names(new CustomMapEventTarget.Ruin(1)), Is.EqualTo("Ruin"));
+        Assert.That(Names(new CustomMapEventTarget.Army(1)), Is.EqualTo("Ruin"));
+        Assert.That(Names(new CustomMapEventTarget.Army(2)), Is.EqualTo("Ruin"));
+        Assert.That(Names(new CustomMapEventTarget.Event(5)), Is.EqualTo("Northgate"));
+        Assert.That(Names(new CustomMapEventTarget.Event(6)), Is.EqualTo("Leads to broken"));
+
+        Assert.That(map.GetEventTargetsAt(new WorldPosition(12, 10)), Is.EqualTo(new CustomMapEventTarget[] { new CustomMapEventTarget.Army(1) }));
+        Assert.That(map.GetEventTargetsAt(new WorldPosition(13, 10)), Is.EqualTo(new CustomMapEventTarget[] { new CustomMapEventTarget.Location(1) }));
+        Assert.That(map.GetEventTargetsAt(new WorldPosition(21, 13)), Is.EqualTo(new CustomMapEventTarget[] { new CustomMapEventTarget.Village(1) }));
+        Assert.That(map.GetEventTargetsAt(new WorldPosition(39, 5)), Is.EqualTo(new CustomMapEventTarget[] { new CustomMapEventTarget.Capital(WorldRace.Elf) }));
+        Assert.That(map.GetEventTargetsAt(new WorldPosition(40, 40)), Is.Empty);
+    }
+
     [Test]
     public void EventSaveAndLoadTest()
     {

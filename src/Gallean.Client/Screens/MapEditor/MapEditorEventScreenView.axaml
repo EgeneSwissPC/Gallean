@@ -79,13 +79,17 @@
       <TextBlock Text="{Binding Text}" Classes="body block-text" />
     </DataTemplate>
     <DataTemplate x:DataType="local:MapEditorBlockChoice">
-      <ComboBox Classes="block-field" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" PlaceholderText="{local:Text '(none)'}">
-        <ComboBox.ItemTemplate>
-          <DataTemplate x:DataType="local:MapEditorLabeled">
-            <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
-          </DataTemplate>
-        </ComboBox.ItemTemplate>
-      </ComboBox>
+      <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+        <ComboBox Classes="block-field" ItemsSource="{Binding Options}" SelectedItem="{Binding Selected}" PlaceholderText="{local:Text '(none)'}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="local:MapEditorLabeled">
+              <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+        <Button Classes="pill" Height="26" Padding="8,0" Margin="0,2,6,2" FontSize="{StaticResource FontSizeSm}" IsVisible="{Binding CanPick}"
+                Content="{local:Text 'On map'}" ToolTip.Tip="{local:Text 'Pick it on the map (Esc cancels)'}" Command="{Binding PickOnMapCommand}" />
+      </StackPanel>
     </DataTemplate>
     <DataTemplate x:DataType="local:MapEditorBlockNumber">
       <TextBox Text="{Binding Text}" Width="56" Margin="0,2,6,2" VerticalAlignment="Center" TextAlignment="Center" />

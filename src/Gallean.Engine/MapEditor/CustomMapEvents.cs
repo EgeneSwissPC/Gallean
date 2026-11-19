@@ -105,6 +105,76 @@ public sealed partial class CustomMap
         return saveable;
     }
 
+    // The events with a block pointing at target ("used by" in the hover line, warnings before deleting).
+    public IReadOnlyList<CustomMapEvent> GetEventsUsing(CustomMapEventTarget target)
+    {
+        return [.. events.Where(ev => ev.Groups.SelectMany(group => group).Any(condition => Uses(condition, target)) || ev.Effects.Any(effect => Uses(effect, target)))];
+    }
+
+    // What blocks can point at on a tile: the capital, village, ruin and army there and every location covering it.
+    public IReadOnlyList<CustomMapEventTarget> GetEventTargetsAt(WorldPosition position)
+    {
+        List<CustomMapEventTarget> targets = [];
+
+        if (GetCapitalAt(position) is { } capital)
+        {
+            targets.Add(new CustomMapEventTarget.Capital(capital.Race));
+        }
+
+        if (GetVillageAt(position) is { } village)
+        {
+            targets.Add(new CustomMapEventTarget.Village(village.Id));
+        }
+
+        if (GetRuinAt(position) is { } ruin)
+        {
+            targets.Add(new CustomMapEventTarget.Ruin(ruin.Id));
+        }
+
+        if (GetStackAt(position) is { } stack)
+        {
+            targets.Add(new CustomMapEventTarget.Army(stack.Id));
+        }
+
+        targets.AddRange(GetLocationsAt(position).Select(location => new CustomMapEventTarget.Location(location.Id)));
+
+        return targets;
+    }
+
+    private static bool Uses(CustomMapCondition condition, CustomMapEventTarget target)
+    {
+        return (condition, target) switch
+        {
+            (CustomMapEnterZoneCondition zone, CustomMapEventTarget.Location location) => zone.LocationId == location.Id,
+            (CustomMapOwnCityCondition own, _) => IsCity(own.City, target),
+            (CustomMapEnterCityCondition enter, _) => IsCity(enter.City, target),
+            (CustomMapLootRuinCondition loot, CustomMapEventTarget.Ruin ruin) => loot.RuinId == ruin.Id,
+            (CustomMapDestroyArmyCondition destroy, CustomMapEventTarget.Army army) => destroy.ArmyId == army.Id,
+            (CustomMapArmyExistsCondition exists, CustomMapEventTarget.Army army) => exists.ArmyId == army.Id,
+            _ => false
+        };
+    }
+
+    private static bool Uses(CustomMapEffect effect, CustomMapEventTarget target)
+    {
+        return (effect, target) switch
+        {
+            (CustomMapRevealZoneEffect reveal, CustomMapEventTarget.Location location) => reveal.LocationId == location.Id,
+            (CustomMapSwitchEventEffect switchEvent, CustomMapEventTarget.Event ev) => switchEvent.EventId == ev.Id,
+            _ => false
+        };
+    }
+
+    private static bool IsCity(CustomMapCity city, CustomMapEventTarget target)
+    {
+        return (city, target) switch
+        {
+            (CustomMapCity.Village village, CustomMapEventTarget.Village other) => village.Id == other.Id,
+            (CustomMapCity.Capital capital, CustomMapEventTarget.Capital other) => capital.Race == other.Race,
+            _ => false
+        };
+    }
+
     // The races of a race set that are on the map (Neutral always is); races removed from the map drop out.
     public ImmutableArray<WorldRace> GetEventRaces(ImmutableArray<WorldRace> races)
     {
@@ -263,6 +333,22 @@ public sealed record CustomMapText(string Default, ImmutableSortedDictionary<str
 
         return hash.ToHashCode();
     }
+}
+
+// Something an event block can point at.
+public abstract record CustomMapEventTarget
+{
+    public sealed record Location(int Id) : CustomMapEventTarget;
+
+    public sealed record Village(int Id) : CustomMapEventTarget;
+
+    public sealed record Capital(WorldRace Race) : CustomMapEventTarget;
+
+    public sealed record Ruin(int Id) : CustomMapEventTarget;
+
+    public sealed record Army(int Id) : CustomMapEventTarget;
+
+    public sealed record Event(int Id) : CustomMapEventTarget;
 }
 
 // A city a block points at: a village by its editor ID or a race's capital.

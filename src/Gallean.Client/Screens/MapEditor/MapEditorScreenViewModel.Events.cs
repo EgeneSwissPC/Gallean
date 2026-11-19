@@ -76,7 +76,7 @@ internal sealed partial class MapEditorScreenViewModel
             return;
         }
 
-        MapEditorEventContext context = new(map, editorGame, PickEventItem, PickEventPortrait);
+        MapEditorEventContext context = new(map, editorGame, PickEventItem, PickEventPortrait, PickEventTargetOnMap);
         Game.OpenScreen(new MapEditorEventScreenViewModel(
             Game,
             context,
@@ -105,9 +105,10 @@ internal sealed partial class MapEditorScreenViewModel
         }
     }
 
+    // Asks first when other events switch this one on or off.
     public void DeleteEvent(int id)
     {
-        CommitEvents(current => current.RemoveEvent(id));
+        ConfirmRemoval(new CustomMapEventTarget.Event(id), map.GetEvent(id)?.Name ?? string.Empty, () => CommitEvents(current => current.RemoveEvent(id)));
     }
 
     public void RenameEvent(int id, string name)
@@ -147,6 +148,7 @@ internal sealed partial class MapEditorScreenViewModel
         string search = EventSearch.Trim();
         CompareInfo compare = CultureInfo.CurrentCulture.CompareInfo;
         updatingEvents = true;
+        HashSet<int> saveable = [.. map.GetSaveableEvents().Select(ev => ev.Id)];
 
         try
         {
@@ -162,7 +164,7 @@ internal sealed partial class MapEditorScreenViewModel
                 string conditionText = conditions == 1 ? Tr("1 condition") : Tr("{0} conditions", conditions);
                 string effectText = ev.Effects.Length == 1 ? Tr("1 effect") : Tr("{0} effects", ev.Effects.Length);
                 string details = Tr("{0} · {1} · {2}", races.Length == 0 ? Tr("no race") : races, conditionText, effectText);
-                EventRows.Add(new MapEditorEventRowViewModel(ev.Id, ev.Name, details, ev.Enabled, map.GetEventProblems(ev).Count > 0, this));
+                EventRows.Add(new MapEditorEventRowViewModel(ev.Id, ev.Name, details, ev.Enabled, !saveable.Contains(ev.Id), this));
             }
         }
         finally
