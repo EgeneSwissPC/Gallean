@@ -339,6 +339,11 @@ blocks in, drag to reorder or onto the palette to remove; red blocks and a reaso
 message preview in the game's own popup, per translation. Tests: `EventScreenTest`, `VisualTests.MapEditorEventsTest`;
 suite 5220. Real client: a mouse drag from the palette into the script and the saved scenario rows checked.
 
+Phase 3 — done (commits `a77f8cff`, `e9f93748`, merged as `cd9498b4`): "On map" picking for zones, cities, ruins and
+armies (targets glow gold, Esc cancels), "Used by events: ..." in the hover line, a single warning before deleting a
+zone, village, ruin, army or switched event that events use, and the save names the events left out (also those that
+switch a left-out event). Tests: `EventsUsingTest`, `EventSafetyTest`, visual steps 7-8; suite 5222.
+
 ## Task (later): victory settings
 
 Folded into the events task as recipes ("Capture a city to win", "Hold a zone to win", "Survive N turns").

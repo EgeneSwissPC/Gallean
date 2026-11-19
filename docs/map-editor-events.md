@@ -163,7 +163,7 @@ Full screen like the army screen, three columns:
    loots ruin, destroys army, army exists; message, win, lose, switch event, reveal zone, give item, change objective;
    OR groups.
 2. ~~**Block event screen + events list** (~2.5 days):~~ done, see "Phase 2 — done". palette, script with drag-drop, settings, message preview.
-3. **Pick on the map, "used by", safe deletes, red broken blocks** (~1 day).
+3. ~~**Pick on the map, "used by", safe deletes, red broken blocks** (~1 day).~~ done, see "Phase 3 — done".
 4. **Recipes** (~1 day).
 5. **Army templates + army effects** (~2 days): create/move/remove/owner/order/battle, template editor on the army
    screen.
@@ -249,6 +249,47 @@ Known limits:
 - No insertion marker while dragging (the drop lands before/after the block under the mouse).
 - The reveal block always reveals to the event's races (a race choice comes with the remaining kinds).
 - Picking targets on the map, "used by" in the hover line and the delete confirmations are still phase 3.
+
+## Phase 3 — done
+
+Feature commits `a77f8cff`, `e9f93748`, merged as `cd9498b4` (branch `upgrade/map-editor-event-safety`).
+
+What was built:
+- Engine: `CustomMapEventTarget` (location, village, capital, ruin, army, event), `CustomMap.GetEventsUsing(target)`
+  and `GetEventTargetsAt(tile)`.
+- **Pick on the map**: every zone, city, ruin and army drop-down has an "On map" button. The event screen steps
+  aside, the events list too, every valid target glows gold (`MapEditorPlacementPreview.Highlight`), the hover line
+  says "Pick a zone: click one of the gold squares · Esc cancels"; a click on a target brings the screen back with
+  it chosen, a click elsewhere beeps and keeps picking (nothing is placed), Esc or the right button cancels.
+- **Used by**: the hover line ends with "Used by events: Gate, Northgate" for the capital, village, ruin, army and
+  zones under the cursor, with any tool.
+- **Delete warnings** (decision "warn once, then allow"): deleting a zone (Shift+click, drag-press, list ×), a
+  village or ruin (their screens), an army (its screen) or an event that other events switch asks once, naming the
+  events: "Delete anyway" / Cancel. Unused objects go at once, as before.
+- **Left-out events**: the list's red dot now also marks events that switch a left-out event (they would point at
+  nothing in the game), and the event screen says "it switches an event that is left out". Saving names the
+  left-out events in the status line and in an alert (the status line can be out of view at 1366x768).
+- Removing a race: the editor has no way to remove a race from a map yet, so there is nothing to warn about; the
+  engine side (races stored by race, renumbered at save) is covered by `EventPlayerNumbersTest`.
+
+Tests: `CustomMapEventTests.EventsUsingTest` (engine, every target kind); `MapEditorScreenViewModelTests.EventSafetyTest`
+(hover lines, pick: highlight = all zone tiles, miss keeps picking, hit returns the zone, Esc cancels; unused zone
+deleted at once; used zone asks and Cancel keeps it; village deleted from its screen after the prompt turns its
+event and the event switching it red; deleting a switched event asks; save status and alert; undo restores);
+`VisualTests.MapEditorEventsTest` steps 7 (pick mode) and 8 (delete warning). Suite 5222 (+2); all 15 map editor
+visual tests pass.
+
+Real client (AOT build, `mapgen` map): "On map" on the Pass event's zone block showed the gold zones; a real click on
+"Location 1" brought the screen back with it chosen; Save event; Shift+click on that zone with the Locations tool
+showed the warning naming "Pass"; Delete anyway; the Pass row got its red dot; Save wrote only the Welcome event to
+`SEvent.json` while `EditorEvents.json` kept Pass. The two follow-ups in `e9f93748` (list hidden while picking, save
+alert) were checked by the tests only.
+
+Known limits:
+- Removing a village's stationed army from the village screen (clearing the party) doesn't warn; the event turns red
+  as usual.
+- The reveal block's race choice and a "pick" for events (switch block) are not there: events are picked from the
+  drop-down.
 
 ## Open questions
 
