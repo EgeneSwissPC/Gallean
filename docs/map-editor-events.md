@@ -26,6 +26,10 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
   no). Yes deletes it; the blocks stay, drawn red with an empty slot, and the event gets a red mark in the list.
   Saving works and leaves broken events out of the file, with a note "2 events skipped because of missing targets".
   Fixing the block brings the event back into the next save. Undo restores the object and its references together.
+- **Removing a race works exactly like deleting an object** (one rule for every reference, no special logic). Events
+  store races by name; the writer turns them into player IDs (PL + slot) at save time, so renumbering is automatic.
+  Removing a race that events name asks once; blocks naming it turn red and are skipped on save; a race set that
+  also has other races just drops it. Putting the race back (placing its capital) turns those blocks normal again.
 
 ## How events work in the game (engine facts)
 
@@ -153,7 +157,7 @@ Full screen like the army screen, three columns:
 1. ~~Recipes in phase 4 — or before the full screen as a quick win?~~ Decided: phase 4, after the full screen.
 2. ~~Popup texts in one language, or per language?~~ Decided: default language (English) plus optional translations, fallback to the default.
 3. ~~Deleting an object used by events: block saving, or drop the block with a warning?~~ Decided: confirm once, blocks turn red, saving skips broken events with a note.
-4. Removing a race: re-map events automatically (proposed) or warn?
+4. ~~Removing a race: re-map events automatically or warn?~~ Decided: same as deleting an object (confirm once, red blocks, skipped on save, restored when the race returns).
 5. A tree view of event chains (which event switches which) — later?
 6. Should "Survive N turns" also make the AI target something, or just win on turn N?
 7. OR + "only once": use a hidden variable, or have each sibling switch the others off (no variables needed)?
