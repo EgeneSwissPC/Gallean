@@ -1173,6 +1173,7 @@
     "this army": "эту армию",
     "The event {0} was left out of the game until it is fixed.": "Событие {0} не попадёт в игру, пока его не исправят.",
     "{0} events were left out of the game until they are fixed: {1}.": "Событий не попадёт в игру, пока их не исправят: {0} ({1}).",
-    "it switches an event that is left out": "оно переключает событие, которое не сохраняется"
+    "it switches an event that is left out": "оно переключает событие, которое не сохраняется",
+    "Saved": "Сохранено"
   }
 }

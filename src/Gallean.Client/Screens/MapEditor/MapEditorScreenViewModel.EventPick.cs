@@ -19,6 +19,7 @@ internal sealed partial class MapEditorScreenViewModel
     {
         eventPick = new EventPick(kind, picked, cancelled);
         OnPropertyChanged(nameof(IsPickingEventTarget));
+        OnPropertyChanged(nameof(ShowEventsList));
         OnPropertyChanged(nameof(ShowLocations));
         RefreshPreview();
     }
@@ -70,6 +71,7 @@ internal sealed partial class MapEditorScreenViewModel
     {
         eventPick = null;
         OnPropertyChanged(nameof(IsPickingEventTarget));
+        OnPropertyChanged(nameof(ShowEventsList));
         OnPropertyChanged(nameof(ShowLocations));
         RefreshPreview();
     }

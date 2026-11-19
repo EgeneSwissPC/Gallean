@@ -1644,7 +1644,7 @@ public sealed class MapEditorScreenViewModelTests
         MapEditorBlockChoice zone = screen.Groups[0].Blocks[0].Parts.OfType<MapEditorBlockChoice>().Single();
         Assert.That((zone.CanPick, zone.Value), Is.EqualTo((true, (object)1)));
         zone.PickOnMapCommand.Execute(null);
-        Assert.That((game.TopScreen, editor.IsPickingEventTarget, editor.ShowLocations), Is.EqualTo(((object)editor, true, true)));
+        Assert.That((game.TopScreen, editor.IsPickingEventTarget, editor.ShowLocations, editor.ShowEventsList), Is.EqualTo(((object)editor, true, true, false)));
         editor.UpdateHover(new WorldPosition(5, 40));
         Assert.That(editor.PlacementPreview.Highlight, Is.EquivalentTo(editor.Map.Locations.SelectMany(location => location.Footprint.EnumerateTiles())));
         Assert.That(editor.HoverText, Does.StartWith("Pick a zone: click one of the gold squares"));
@@ -1691,6 +1691,7 @@ public sealed class MapEditorScreenViewModelTests
         // Saving says which events were left out; Undo brings the village back and the event is fine again.
         editor.SaveCommand.Execute(null);
         Assert.That(editor.Status, Is.EqualTo("Saved. Play it from New quest. 2 events were left out of the game until they are fixed: Take the village, Gate."));
+        Assert.That(game.Alert.Current!.Details, Is.EqualTo("2 events were left out of the game until they are fixed: Take the village, Gate."));
         editor.UndoCommand.Execute(null);
         Assert.That((editor.Map.Villages.Count, editor.EventRows.Single(row => row.Name == "Take the village").HasProblem), Is.EqualTo((1, false)));
     }

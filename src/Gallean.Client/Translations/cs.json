@@ -1173,6 +1173,7 @@
     "this army": "this army",
     "The event {0} was left out of the game until it is fixed.": "The event {0} was left out of the game until it is fixed.",
     "{0} events were left out of the game until they are fixed: {1}.": "{0} events were left out of the game until they are fixed: {1}.",
-    "it switches an event that is left out": "it switches an event that is left out"
+    "it switches an event that is left out": "it switches an event that is left out",
+    "Saved": "Saved"
   }
 }

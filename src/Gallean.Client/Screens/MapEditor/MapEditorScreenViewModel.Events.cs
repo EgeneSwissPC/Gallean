@@ -15,10 +15,13 @@ internal sealed partial class MapEditorScreenViewModel
     private bool updatingEvents;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ShowLandmarkPalette))]
+    [NotifyPropertyChangedFor(nameof(ShowLandmarkPalette), nameof(ShowEventsList))]
     public partial bool IsEventsOpen { get; set; }
 
     public ObservableCollection<MapEditorEventRowViewModel> EventRows { get; } = [];
+
+    // The list steps aside while a block's target is picked on the map, so the whole map is free to click.
+    public bool ShowEventsList => IsEventsOpen && !IsPickingEventTarget;
 
     [ObservableProperty]
     public partial string EventSearch { get; set; } = string.Empty;

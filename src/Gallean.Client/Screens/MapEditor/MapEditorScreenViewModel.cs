@@ -1044,6 +1044,12 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         IsDirty = false;
         string skipped = SkippedEventsText();
         Status = skipped.Length == 0 ? Tr("Saved. Play it from New quest.") : Tr("Saved. Play it from New quest. {0}", skipped);
+
+        if (skipped.Length > 0)
+        {
+            // The status line can be out of view at 1366x768; the alert can't.
+            Game.ShowInfo(IconMoniker.Warning, Tr("Saved"), skipped);
+        }
         HasProblems = false;
 
         return true;
