@@ -409,6 +409,38 @@ public sealed class CustomMapEventTests
         Assert.That(PlayWithElvenCapitalCaptured(map), Is.Null, "Without it the game goes on: the Empire has a win event.");
     }
 
+    // "Hold out against attackers" as the recipe builds it: the attackers' win event makes the defender's capital
+    // the computer's goal (the game's AI reads win events), a zone condition gives no goal.
+    [Test]
+    public void HoldOutGivesTheAiAGoalTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddEvent(CustomMapEvent.Create("Empire holds out", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapTurnCondition(30, Repeat: false)]],
+            Effects = [new CustomMapWinEffect(WorldRace.Human)]
+        });
+        map.AddEvent(CustomMapEvent.Create("Elves take the Empire capital", WorldRace.Elf) with
+        {
+            Groups = [[new CustomMapOwnCityCondition(new CustomMapCity.Capital(WorldRace.Human))]],
+            Effects = [new CustomMapWinEffect(WorldRace.Elf)]
+        });
+        map.AddEvent(CustomMapEvent.Create("Elves reach the gate", WorldRace.Elf) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapWinEffect(WorldRace.Elf)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldPlayerId elves = scenario.State.Players.Values.Single(player => player.Race == WorldRace.Elf).Id;
+        WorldCapital empireCapital = scenario.State.Fortifications.Values.OfType<WorldCapital>().Single(capital => scenario.State.Players[capital.OwnerId].Race == WorldRace.Human);
+
+        Assert.That(new WorldAiScenario(context).GetObjectiveTargets(scenario.State, elves), Is.EquivalentTo(new WorldAiTarget[] { new WorldAiTarget.Fortification(empireCapital.Id) }));
+    }
+
     // Saves the map, gives the Empire the elven capital and plays three rounds: the race that won, or null.
     private WorldRace? PlayWithElvenCapitalCaptured(CustomMap map)
     {
