@@ -17,7 +17,7 @@
         <Panel Grid.Row="2">
           <TextBlock Text="{local:Text 'No templates yet. Click New template.'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding HasNoRows}" />
           <ScrollViewer HorizontalScrollBarVisibility="Disabled">
-            <ItemsControl x:Name="TemplateList" ItemsSource="{Binding Rows}">
+            <ItemsControl x:Name="TemplateList" ItemsSource="{Binding Rows}" Focusable="True">
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="local:MapEditorTemplateRowViewModel">
                   <Border Classes="row" Padding="8,6" Margin="0,2" Background="#22000000" CornerRadius="4">

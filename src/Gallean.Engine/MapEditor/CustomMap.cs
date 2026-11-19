@@ -144,6 +144,7 @@ public sealed partial class CustomMap
     private readonly List<CustomMapLocation> locations;
     private readonly List<CustomMapEvent> events;
     private readonly List<CustomMapArmyTemplate> templates;
+    private readonly List<CustomMapVariable> variables;
 
     public CustomMap(
         string id,
@@ -163,7 +164,8 @@ public sealed partial class CustomMap
         IEnumerable<CustomMapRod>? rods = null,
         IEnumerable<CustomMapLocation>? locations = null,
         IEnumerable<CustomMapEvent>? events = null,
-        IEnumerable<CustomMapArmyTemplate>? templates = null)
+        IEnumerable<CustomMapArmyTemplate>? templates = null,
+        IEnumerable<CustomMapVariable>? variables = null)
     {
         if (size is < MinSize or > MaxSize)
         {
@@ -188,6 +190,7 @@ public sealed partial class CustomMap
         this.locations = [.. locations ?? []];
         this.events = [.. events ?? []];
         this.templates = [.. templates ?? []];
+        this.variables = [.. variables ?? []];
 
         if (this.cells.Length != size * size)
         {
@@ -213,6 +216,7 @@ public sealed partial class CustomMap
     public IReadOnlyList<CustomMapLocation> Locations => locations;
     public IReadOnlyList<CustomMapEvent> Events => events;
     public IReadOnlyList<CustomMapArmyTemplate> Templates => templates;
+    public IReadOnlyList<CustomMapVariable> Variables => variables;
 
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
@@ -245,7 +249,7 @@ public sealed partial class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, locations, events, templates);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, locations, events, templates, variables);
     }
 
     public WorldMapCell GetCell(WorldPosition position)

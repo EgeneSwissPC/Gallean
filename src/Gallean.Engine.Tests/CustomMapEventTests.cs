@@ -124,7 +124,7 @@ public sealed class CustomMapEventTests
         map.AddEvent(Event("Ruin", WorldRace.Human) with
         {
             Enabled = false,
-            Groups = [[new CustomMapLootRuinCondition(1), new CustomMapDestroyArmyCondition(2), new CustomMapArmyExistsCondition(1, Exists: true)]],
+            Groups = [[new CustomMapLootRuinCondition(1), new CustomMapDestroyArmyCondition(2), new CustomMapArmyExistsCondition(1, true)]],
             // Lose comes first here; the writer saves it last.
             Effects = [new CustomMapLoseEffect(), new CustomMapMessageEffect(CustomMapText.Of("Too late."), CustomMapMessageAudience.AllPlayers, "G000UU5008", false)]
         });
@@ -615,5 +615,146 @@ public sealed class CustomMapEventTests
 
         Assert.That(result.Events.OfType<WorldStackBattleStartedEvent>().Single().DefenderStackId, Is.EqualTo(army));
         Assert.That(session.World.State.Stacks.Values.Single(stack => stack.SourceTemplateId is not null).Position.GetDistance(session.World.State.Stacks[army].Position), Is.LessThanOrEqualTo(1), "The raiders moved next to the army.");
+    }
+
+    // Phase 6: every remaining kind through the game's loader, and variables as SVars rows.
+    [Test]
+    public void RemainingKindsSaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = Store;
+        Assert.That(map.PlaceSite(new WorldPosition(30, 20), CustomMapSiteType.Merchant, 0, "Market", "").Error, Is.Null);
+        WorldLandmarkDefinition[] landmarks = [.. store.ListLandmarks(definitions).Where(landmark => landmark.Width == 1 && !landmark.Mountain).OrderBy(landmark => landmark.Id.Value, StringComparer.Ordinal)];
+        Assert.That(map.PlaceLandmark(new WorldPosition(40, 30), landmarks[0]).Error, Is.Null);
+        CustomMapVariable counter = map.AddVariable("Counter", 2);
+        CustomMapVariable met = map.AddVariable("Met the elder");
+        ItemDefinitionId item = FirstItem;
+        WorldSpellDefinitionId spell = store.ListSpells(definitions).OrderBy(candidate => candidate.Id.Value, StringComparer.Ordinal).First().Id;
+        map.AddTemplate(Raiders());
+        CustomMapArmyRef raiders = new CustomMapArmyRef.Template(1);
+
+        map.AddEvent(CustomMapEvent.Create("Kinds", WorldRace.Human) with
+        {
+            Groups =
+            [
+                [
+                    new CustomMapOwnItemCondition(item),
+                    new CustomMapLeaderItemCondition(new CustomMapArmyRef.Army(1), item),
+                    new CustomMapRelationCondition(WorldRace.Human, WorldRace.Elf, CustomMapRelation.War),
+                    new CustomMapAllianceCondition(WorldRace.Human, WorldRace.Elf),
+                    new CustomMapLandCondition(40),
+                    new CustomMapVisitSiteCondition(1),
+                    new CustomMapArmyToZoneCondition(raiders, 1),
+                    new CustomMapArmyToCityCondition(new CustomMapArmyRef.Army(1), new CustomMapCity.Village(1)),
+                    new CustomMapItemToZoneCondition(item, 2),
+                    new CustomMapVariableCondition(counter.Id, 1, 5, CustomMapVariableJoin.Or, met.Id, 1, 1),
+                    new CustomMapDestroyArmyCondition(raiders),
+                    new CustomMapArmyExistsCondition(raiders, false)
+                ]
+            ],
+            Effects =
+            [
+                new CustomMapCastSpellEffect(spell, null),
+                new CustomMapCastSpellZoneEffect(spell, 2, WorldRace.Elf),
+                new CustomMapGiveSpellEffect(spell),
+                new CustomMapAllyEffect(WorldRace.Human, WorldRace.Elf, true),
+                new CustomMapRelationEffect(WorldRace.Human, WorldRace.Elf, CustomMapRelation.Neutral),
+                new CustomMapRemoveMountainsEffect(1),
+                new CustomMapChangeLandmarkEffect(1, landmarks[1].Id),
+                new CustomMapRemoveLandmarkEffect(1),
+                new CustomMapChangeTerrainEffect(2, WorldMapTerrain.Undead, 5),
+                new CustomMapVariableEffect(counter.Id, ScenarioVariableOperation.Multiply, 3),
+                new CustomMapDestroyItemEffect(item, true),
+                new CustomMapRevealZoneEffect(1, [WorldRace.Elf])
+            ]
+        });
+        Assert.That(map.GetEventProblems(map.Events.Single()), Is.Empty);
+        Assert.That(map.GetEventsUsing(new CustomMapEventTarget.Variable(met.Id)), Has.Count.EqualTo(1));
+        Assert.That(map.GetEventsUsing(new CustomMapEventTarget.Site(1)), Has.Count.EqualTo(1));
+        Assert.That(map.GetEventsUsing(new CustomMapEventTarget.Landmark(1)), Has.Count.EqualTo(1));
+        Assert.That(map.GetEventTargetsAt(new WorldPosition(40, 30)), Does.Contain(new CustomMapEventTarget.Landmark(1)));
+
+        store.Save(map);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        ScenarioEventDefinition loaded = scenario.Provider.Events.Single();
+        WorldPlayerId empire = scenario.State.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldPlayerId elves = scenario.State.Players.Values.Single(player => player.Race == WorldRace.Elf).Id;
+        ScenarioStackReference templateReference = new ScenarioStackReference.Template(new ScenarioStackTemplateId(Id("TM", 1)));
+        ScenarioStackReference armyReference = new ScenarioStackReference.Stack(new WorldStackId(Id("KC", 0x101)));
+        ScenarioLocationId north = new(Id("LO", 1));
+        ScenarioLocationId south = new(Id("LO", 2));
+
+        Assert.That(scenario.Provider.Variables.Select(variable => (variable.Id.Value, variable.Name, variable.InitialValue)), Is.EqualTo(new[] { (1, "Counter", 2), (2, "Met the elder", 0) }));
+        Assert.That(loaded.Conditions, Is.EqualTo(new ScenarioEventCondition[]
+        {
+            new ScenarioEventOwningItemCondition(item),
+            new ScenarioEventLeaderOwningItemCondition(armyReference, item),
+            new ScenarioEventDiplomacyRelationsCondition(empire, elves, WorldRelationLevel.War),
+            new ScenarioEventAllianceCondition(empire, elves),
+            new ScenarioEventTransformingLandCondition(40),
+            new ScenarioEventVisitingSiteCondition(new WorldSiteId(Id("SI", 1))),
+            new ScenarioEventStackToLocationCondition(templateReference, north),
+            new ScenarioEventStackToCityCondition(armyReference, new WorldFortificationId(Id("FT", 0x101))),
+            new ScenarioEventItemToLocationCondition(item, south),
+            new ScenarioEventVariableInRangeCondition(
+                new ScenarioVariableRange(new ScenarioVariableId(1), 1, 5),
+                new ScenarioVariableClause(ScenarioVariableOperator.Or, new ScenarioVariableRange(new ScenarioVariableId(2), 1, 1))),
+            new ScenarioEventDestroyingStackCondition(templateReference),
+            new ScenarioEventStackExistenceCondition(templateReference, MustExist: false)
+        }));
+        Assert.That(loaded.Effects, Is.EqualTo(new ScenarioEventEffect[]
+        {
+            new ScenarioEventCastSpellEffect(spell, null),
+            new ScenarioEventCastSpellMapEffect(spell, south, elves),
+            new ScenarioEventGiveSpellEffect(spell),
+            new ScenarioEventAllyEffect(empire, elves, true),
+            new ScenarioEventDiplomacyEffect(empire, elves, 49, null),
+            new ScenarioEventRemoveMountainEffect(north),
+            new ScenarioEventChangeLandmarkEffect(new WorldLandmarkId(Id("MM", 1)), landmarks[1].Id),
+            new ScenarioEventRemoveLandmarkEffect(new WorldLandmarkId(Id("MM", 1))),
+            new ScenarioEventChangeTerrainEffect(south, WorldMapTerrain.Undead, 5),
+            new ScenarioEventModifyVariableEffect(new ScenarioVariableId(1), ScenarioVariableOperation.Multiply, 3),
+            new ScenarioEventDestroyItemEffect(item, true),
+            new ScenarioEventUnfogEffect(north, true, null, [elves])
+        }));
+
+        CustomMap reopened = store.Open(MapId, definitions);
+        Assert.That(reopened.Events.Single(), Is.EqualTo(map.Events.Single()));
+        Assert.That(reopened.Variables, Is.EqualTo(map.Variables));
+    }
+
+    // Variables play: every turn adds 1 to a counter starting at 0; when it reaches 3 the Empire wins (turn 3).
+    [Test]
+    public void VariablePlayTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapVariable counter = map.AddVariable("Counter");
+        map.AddEvent(CustomMapEvent.Create("Count", WorldRace.Human) with
+        {
+            Once = false,
+            Groups = [[new CustomMapTurnCondition(1, Repeat: true)]],
+            Effects = [new CustomMapVariableEffect(counter.Id, ScenarioVariableOperation.Add, 1)]
+        });
+        map.AddEvent(CustomMapEvent.Create("Three", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapVariableCondition(counter.Id, 3, 99)]],
+            Effects = [new CustomMapWinEffect(WorldRace.Human)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        List<WorldEvent> events = [.. session.World.DispatchCommand(new WorldStartGameCommand()).Events];
+
+        while (!session.World.State.ScenarioState.IsEnded && session.World.State.TurnInfo.TurnNumber < 6)
+        {
+            events.AddRange(session.World.DispatchCommand(new WorldEndTurnCommand()).Events);
+        }
+
+        Assert.That(session.World.State.TurnInfo.TurnNumber, Is.EqualTo(3));
+        Assert.That(scenario.State.Players[events.OfType<WorldScenarioEndedEvent>().Single().WinnerId!.Value].Race, Is.EqualTo(WorldRace.Human));
     }
 }

@@ -1060,5 +1060,32 @@ public sealed partial class VisualTests
         await SkipFramesAsync(10);
         await CaptureAsync(window, "12-templates");
         Assert.That(Assert.IsOfType<MapEditorTemplatesScreenViewModel>(gameViewModel.TopScreen).Rows.Single().Name, Is.EqualTo("Ambushers"));
+        ((MapEditorTemplatesScreenViewModel)gameViewModel.TopScreen).Close();
+
+        // Phase 6: a variable, and an event with the new kinds (variable test, alliance, land share; change a variable,
+        // land change, spells, a landmark change).
+        editor.OpenVariablesCommand.Execute(null);
+        MapEditorVariablesScreenViewModel variables = Assert.IsOfType<MapEditorVariablesScreenViewModel>(gameViewModel.TopScreen);
+        variables.NewVariableCommand.Execute(null);
+        variables.Rows.Single().Name = "Villages taken";
+        variables.NewVariableCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "13-variables");
+        variables.Close();
+        editor.NewEventCommand.Execute(null);
+        MapEditorEventScreenViewModel kinds = Assert.IsOfType<MapEditorEventScreenViewModel>(gameViewModel.TopScreen);
+        MapEditorPaletteBlock Kind(MapEditorBlockKind kind) => kinds.ConditionPalette.Concat(kinds.EffectPalette).SelectMany(group => group.Blocks).Single(block => block.Kind == kind);
+        foreach (MapEditorBlockKind kind in new[] { MapEditorBlockKind.Variable, MapEditorBlockKind.Alliance, MapEditorBlockKind.Land })
+        {
+            kinds.AddBlockCommand.Execute(Kind(kind));
+        }
+
+        foreach (MapEditorBlockKind kind in new[] { MapEditorBlockKind.SetVariable, MapEditorBlockKind.ChangeTerrain, MapEditorBlockKind.CastSpellZone, MapEditorBlockKind.SetRelation, MapEditorBlockKind.RevealZone })
+        {
+            kinds.AddBlockCommand.Execute(Kind(kind));
+        }
+
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "14-more-kinds");
     }
 }

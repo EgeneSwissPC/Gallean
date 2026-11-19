@@ -1848,4 +1848,58 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(scenario.Provider.StackTemplates, Has.Count.EqualTo(2));
         Assert.That(scenario.Provider.Events.SelectMany(ev => ev.Effects).OfType<ScenarioEventCreateStackEffect>().Count(), Is.EqualTo(2));
     }
+
+    // Phase 6: every block kind is in a palette exactly once and survives block -> engine -> block -> engine; the
+    // variables screen; a variable used by an event asks before it goes.
+    [Test]
+    public async Task EventKindsTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.Map.PlaceLocation(new WorldPosition(20, 14), 1, "North Gate");
+        editor.IsEventsOpen = true;
+
+        // Variables screen: new, rename, starting value (junk puts the old value back).
+        editor.OpenVariablesCommand.Execute(null);
+        MapEditorVariablesScreenViewModel variables = Assert.IsOfType<MapEditorVariablesScreenViewModel>(game.TopScreen);
+        Assert.That(variables.HasNoRows, Is.True);
+        variables.NewVariableCommand.Execute(null);
+        variables.Rows.Single().Name = "Villages taken";
+        variables.Rows.Single().InitialText = "3";
+        variables.Rows.Single().InitialText = "lots";
+        Assert.That(editor.Map.Variables.Single(), Is.EqualTo(new CustomMapVariable(1, "Villages taken", 3)));
+        Assert.That((variables.Rows.Single().InitialText, variables.Rows.Single().UsedBy), Is.EqualTo(("3", "not used yet")));
+        variables.Close();
+
+        editor.NewEventCommand.Execute(null);
+        MapEditorEventScreenViewModel screen = Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen);
+        MapEditorPaletteBlock[] palette = [.. screen.ConditionPalette.Concat(screen.EffectPalette).SelectMany(group => group.Blocks)];
+        Assert.That(palette.Select(block => block.Kind), Is.EquivalentTo(Enum.GetValues<MapEditorBlockKind>()), "Every kind once.");
+
+        foreach (MapEditorPaletteBlock block in palette)
+        {
+            MapEditorEventBlockViewModel made = screen.InsertBlock(block, block.IsCondition ? screen.Groups[0].Blocks : screen.Effects, 0)!;
+            Assert.That(made.Kind, Is.EqualTo(block.Kind), $"{block.Kind} round trips to the same block kind");
+        }
+
+        CustomMapEvent built = screen.BuildEvent();
+        screen.ConfirmCommand.Execute(null);
+        editor.OpenEvent(built.Id);
+        MapEditorEventScreenViewModel reopened = Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen);
+        Assert.That(reopened.BuildEvent(), Is.EqualTo(built), "Blocks rebuilt from the saved event give the same event.");
+        Assert.That(reopened.Groups[0].Blocks.Select(block => block.Kind).Concat(reopened.Effects.Select(block => block.Kind)), Is.EquivalentTo(Enum.GetValues<MapEditorBlockKind>()));
+        reopened.Close();
+
+        Assert.That(editor.Map.GetEventsUsing(new CustomMapEventTarget.Variable(1)), Has.Count.EqualTo(1));
+        editor.DeleteVariable(1);
+        Assert.That(Assert.IsOfType<ConfirmPromptViewModel>(game.TopScreen).Message.Text, Does.Contain("Villages taken"));
+        ((ConfirmPromptViewModel)game.TopScreen).Close();
+        Assert.That(editor.Map.Variables, Has.Count.EqualTo(1));
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, loader.CreateDefinitions()).Events.Single(), Is.EqualTo(built));
+    }
 }

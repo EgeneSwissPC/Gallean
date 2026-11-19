@@ -75,7 +75,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SEvEffec.json", events.Effects);
         WriteTable(stagingDirectory, "SEvUnfog.json", events.Unfogs);
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
-        CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events, map.Templates);
+        CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events, map.Templates, map.Variables);
+        WriteTable(stagingDirectory, "SVars.json", BuildVariables(map, scenarioId));
         WriteTable(stagingDirectory, "SStkTemp.json", BuildTemplates(map, scenarioId, prefix));
 
         if (Directory.Exists(scenarioDirectory))
@@ -1015,12 +1016,36 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             CustomMapOwnCityCondition own => Make(Db.ScenarioEventConditionType.OwningCity) with { IdCity = GetCityId(map, prefix, own.City) },
             CustomMapEnterCityCondition enter => Make(Db.ScenarioEventConditionType.EnteringCity) with { IdCity = GetCityId(map, prefix, enter.City) },
             CustomMapLootRuinCondition loot => Make(Db.ScenarioEventConditionType.LootingRuin) with { IdRuin = MakeId(prefix, "RU", loot.RuinId) },
-            CustomMapDestroyArmyCondition destroy => Make(Db.ScenarioEventConditionType.DestroyingStack) with { IdStack = MakeId(prefix, "KC", FirstArmyNumber + destroy.ArmyId) },
+            CustomMapDestroyArmyCondition destroy => Make(Db.ScenarioEventConditionType.DestroyingStack) with { IdStack = ArmyRefId(prefix, destroy.Army) },
             // The game's MISC_INT: 0 = the army must exist, 1 = it must not.
             CustomMapArmyExistsCondition exists => Make(Db.ScenarioEventConditionType.StackExistence) with
             {
-                IdStack = MakeId(prefix, "KC", FirstArmyNumber + exists.ArmyId),
+                IdStack = ArmyRefId(prefix, exists.Army),
                 MiscInt = exists.Exists ? 0 : 1
+            },
+            CustomMapOwnItemCondition own => Make(Db.ScenarioEventConditionType.OwningItem) with { TypeItem = new Db.Id(own.Item.Value) },
+            CustomMapLeaderItemCondition leader => Make(Db.ScenarioEventConditionType.LeaderOwningItem) with { IdStack = ArmyRefId(prefix, leader.Army), TypeItem = new Db.Id(leader.Item.Value) },
+            CustomMapRelationCondition relation => Make(Db.ScenarioEventConditionType.DiplomacyRelations) with
+            {
+                IdPlayer1 = PlayerId(map, prefix, relation.Race1),
+                IdPlayer2 = PlayerId(map, prefix, relation.Race2),
+                Diplomacy = RelationValue(relation.Level)
+            },
+            CustomMapAllianceCondition alliance => Make(Db.ScenarioEventConditionType.Alliance) with { IdPlayer1 = PlayerId(map, prefix, alliance.Race1), IdPlayer2 = PlayerId(map, prefix, alliance.Race2) },
+            CustomMapLandCondition land => Make(Db.ScenarioEventConditionType.TransformingLand) with { PercentLand = land.Percent },
+            CustomMapVisitSiteCondition visit => Make(Db.ScenarioEventConditionType.VisitingSite) with { IdSite = MakeId(prefix, "SI", visit.SiteId) },
+            CustomMapArmyToZoneCondition toZone => Make(Db.ScenarioEventConditionType.StackToLocation) with { IdStack = ArmyRefId(prefix, toZone.Army), IdLocation = MakeId(prefix, "LO", toZone.LocationId) },
+            CustomMapArmyToCityCondition toCity => Make(Db.ScenarioEventConditionType.StackToCity) with { IdStack = ArmyRefId(prefix, toCity.Army), IdCity = GetCityId(map, prefix, toCity.City) },
+            CustomMapItemToZoneCondition item => Make(Db.ScenarioEventConditionType.ItemToLocation) with { TypeItem = new Db.Id(item.Item.Value), IdLocation = MakeId(prefix, "LO", item.LocationId) },
+            CustomMapVariableCondition variable => Make(Db.ScenarioEventConditionType.VariableInRange) with
+            {
+                MiscInt = variable.VariableId,
+                MiscInt2 = variable.Minimum,
+                MiscInt3 = variable.Maximum,
+                MiscInt7 = (int)variable.Join,
+                MiscInt4 = variable.Join == CustomMapVariableJoin.None ? null : variable.SecondVariableId,
+                MiscInt5 = variable.Join == CustomMapVariableJoin.None ? null : variable.SecondMinimum,
+                MiscInt6 = variable.Join == CustomMapVariableJoin.None ? null : variable.SecondMaximum
             },
             _ => throw new ArgumentOutOfRangeException(nameof(condition), condition, null)
         };
@@ -1126,6 +1151,83 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             case CustomMapBattleEffect battle:
                 yield return WithArmy(Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Battle), battle.Army, prefix);
                 break;
+            case CustomMapCastSpellEffect cast:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.CastSpell) with
+                {
+                    TypeSpell = new Db.Id(cast.Spell.Value),
+                    IdPlayer1 = cast.Caster is { } caster ? PlayerId(map, prefix, caster) : null
+                };
+                break;
+            case CustomMapCastSpellZoneEffect cast:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.CastSpellMap) with
+                {
+                    TypeSpell = new Db.Id(cast.Spell.Value),
+                    IdLocation = MakeId(prefix, "LO", cast.LocationId),
+                    IdPlayer1 = cast.Caster is { } zoneCaster ? PlayerId(map, prefix, zoneCaster) : null
+                };
+                break;
+            case CustomMapGiveSpellEffect give:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.GiveSpell) with { TypeSpell = new Db.Id(give.Spell.Value) };
+                break;
+            case CustomMapAllyEffect ally:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Ally) with
+                {
+                    IdPlayer1 = PlayerId(map, prefix, ally.Race1),
+                    IdPlayer2 = PlayerId(map, prefix, ally.Race2),
+                    PermanentAlliance = ally.Permanent
+                };
+                break;
+            case CustomMapRelationEffect relation:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Diplomacy) with
+                {
+                    IdPlayer1 = PlayerId(map, prefix, relation.Race1),
+                    IdPlayer2 = PlayerId(map, prefix, relation.Race2),
+                    Diplomacy = RelationValue(relation.Level)
+                };
+                break;
+            case CustomMapRemoveMountainsEffect mountains:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.RemoveMountain) with { IdLocation = MakeId(prefix, "LO", mountains.LocationId) };
+                break;
+            case CustomMapRemoveLandmarkEffect remove:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.RemoveLandmark) with { IdLandmark = MakeId(prefix, "MM", remove.LandmarkId) };
+                break;
+            case CustomMapChangeLandmarkEffect change:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ChangeLandmark) with
+                {
+                    IdLandmark = MakeId(prefix, "MM", change.LandmarkId),
+                    TypeLandmark = new Db.Id(change.Type.Value)
+                };
+                break;
+            case CustomMapChangeTerrainEffect terrain:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ChangeTerrain) with
+                {
+                    IdLocation = MakeId(prefix, "LO", terrain.LocationId),
+                    Lookup = TerrainLookup(terrain.Terrain),
+                    NumValue = terrain.Size
+                };
+                break;
+            case CustomMapVariableEffect variable:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ModifyVariable) with
+                {
+                    NumValue2 = variable.VariableId,
+                    Lookup = variable.Operation switch
+                    {
+                        ScenarioVariableOperation.Add => 0,
+                        ScenarioVariableOperation.Subtract => 1,
+                        ScenarioVariableOperation.Multiply => 2,
+                        ScenarioVariableOperation.Divide => 3,
+                        _ => 4
+                    },
+                    NumValue = variable.Value
+                };
+                break;
+            case CustomMapDestroyItemEffect destroy:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.DestroyItem) with
+                {
+                    TypeItem = new Db.Id(destroy.Item.Value),
+                    TriggerOnly = destroy.TriggererOnly
+                };
+                break;
             case CustomMapObjectiveEffect objective:
                 AddText(scenarioId, eventId, Db.TextScenario.ObjectiveTextId, 0, objective.Text, texts, translations);
                 yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ChangeObjective);
@@ -1133,6 +1235,51 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             default:
                 throw new ArgumentOutOfRangeException(nameof(effect), effect, null);
         }
+    }
+
+    private static Db.Id ArmyRefId(string prefix, CustomMapArmyRef army)
+    {
+        return army switch
+        {
+            CustomMapArmyRef.Template template => MakeId(prefix, "TM", template.Id),
+            CustomMapArmyRef.Army placed => MakeId(prefix, "KC", FirstArmyNumber + placed.Id),
+            _ => throw new ArgumentOutOfRangeException(nameof(army), army, null)
+        };
+    }
+
+    private static Db.Id PlayerId(CustomMap map, string prefix, WorldRace race)
+    {
+        return MakeId(prefix, "PL", GetPlayerIndex(map, race));
+    }
+
+    // War, neutral and peace as the original maps write them (0, 49, 100).
+    private static int RelationValue(CustomMapRelation level)
+    {
+        return level switch
+        {
+            CustomMapRelation.War => 0,
+            CustomMapRelation.Neutral => 49,
+            _ => 100
+        };
+    }
+
+    // Inverse of ScenarioLoader.MapTerrain.
+    private static int TerrainLookup(WorldMapTerrain terrain)
+    {
+        return terrain switch
+        {
+            WorldMapTerrain.Human => 1,
+            WorldMapTerrain.Dwarf => 2,
+            WorldMapTerrain.Heretic => 3,
+            WorldMapTerrain.Undead => 4,
+            WorldMapTerrain.Elf => 6,
+            _ => 5
+        };
+    }
+
+    private static List<Db.ScenarioVariable> BuildVariables(CustomMap map, Db.ScenarioId scenarioId)
+    {
+        return [.. map.Variables.OrderBy(variable => variable.Id).Select(variable => new Db.ScenarioVariable(scenarioId, variable.Id, variable.Name, variable.Initial))];
     }
 
     private static Db.ScenarioEventEffect WithArmy(Db.ScenarioEventEffect effect, CustomMapArmyRef army, string prefix)

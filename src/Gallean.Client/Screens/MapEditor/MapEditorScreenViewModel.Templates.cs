@@ -9,7 +9,7 @@ internal sealed partial class MapEditorScreenViewModel
 {
     public MapEditorEventContext EventContext()
     {
-        return new MapEditorEventContext(map, editorGame, PickEventItem, PickEventPortrait, PickEventTargetOnMap);
+        return new MapEditorEventContext(map, editorGame, PickEventItem, PickEventPortrait, PickEventTargetOnMap, PickEventSpell, allLandmarks);
     }
 
     [RelayCommand]
@@ -101,11 +101,52 @@ internal sealed partial class MapEditorScreenViewModel
     {
         CommitEvents(change);
         RefreshTemplatesScreen();
+        RefreshVariablesScreen();
     }
 
     private void RefreshTemplatesScreen()
     {
         foreach (MapEditorTemplatesScreenViewModel screen in Game.Screens.OfType<MapEditorTemplatesScreenViewModel>())
+        {
+            screen.Refresh();
+        }
+    }
+
+    [RelayCommand]
+    private void OpenVariables()
+    {
+        Game.OpenScreen(new MapEditorVariablesScreenViewModel(Game, this));
+    }
+
+    public void NewVariable()
+    {
+        CommitTemplates(current =>
+        {
+            current.AddVariable(Tr("Variable {0}", current.Variables.Count == 0 ? 1 : current.Variables.Max(variable => variable.Id) + 1));
+            return true;
+        });
+    }
+
+    public void UpdateVariable(CustomMapVariable variable)
+    {
+        if (variable != map.GetVariable(variable.Id))
+        {
+            CommitTemplates(current => current.UpdateVariable(variable));
+        }
+        else
+        {
+            RefreshVariablesScreen();
+        }
+    }
+
+    public void DeleteVariable(int id)
+    {
+        ConfirmRemoval(new CustomMapEventTarget.Variable(id), map.GetVariable(id)?.Name ?? string.Empty, () => CommitTemplates(current => current.RemoveVariable(id)));
+    }
+
+    private void RefreshVariablesScreen()
+    {
+        foreach (MapEditorVariablesScreenViewModel screen in Game.Screens.OfType<MapEditorVariablesScreenViewModel>())
         {
             screen.Refresh();
         }
