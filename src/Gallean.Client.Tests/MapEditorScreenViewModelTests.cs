@@ -1754,4 +1754,98 @@ public sealed class MapEditorScreenViewModelTests
         Scenario scenario = loader.CreateMapStore()!.BuildPreview(editor.Map, loader.CreateDefinitions());
         Assert.That(scenario.Provider.Events.Count, Is.EqualTo(editor.Map.Events.Count));
     }
+
+    // Phase 5: army templates (screen, rows, units, order, delete warning), the army blocks, and the ambush recipe.
+    [Test]
+    public async Task EventArmiesTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.Map.PlaceLocation(new WorldPosition(20, 14), 1, "North Gate");
+        editor.Map.PlaceLocation(new WorldPosition(30, 14), 1, "South Gate");
+        editor.IsEventsOpen = true;
+
+        // Ambush recipe on a map without templates: it makes "Ambushers" and the event; both can be saved.
+        editor.SelectedRecipe = editor.Recipes.Single(option => option.Value == MapEditorRecipe.Ambush);
+        editor.AddRecipeCommand.Execute(null);
+        Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen).Close();
+        CustomMapArmyTemplate ambushers = editor.Map.Templates.Single();
+        Assert.That((ambushers.Name, ambushers.Owner, editor.Map.IsTemplateSaveable(ambushers)), Is.EqualTo(("Ambushers", WorldRace.Neutral, true)));
+        Assert.That(editor.Map.Events.Single().Effects, Is.EqualTo(new CustomMapEffect[]
+        {
+            editor.Map.Events.Single().Effects[0],
+            new CustomMapCreateArmyEffect(ambushers.Id, 1),
+            new CustomMapBattleEffect(new CustomMapArmyRef.Template(ambushers.Id))
+        }));
+        Assert.That(editor.Map.GetSaveableEvents(), Has.Count.EqualTo(1));
+
+        // Templates screen: a new template opens its army screen; without a leader it is red.
+        editor.OpenTemplatesCommand.Execute(null);
+        MapEditorTemplatesScreenViewModel templates = Assert.IsOfType<MapEditorTemplatesScreenViewModel>(game.TopScreen);
+        Assert.That(templates.Rows.Select(row => (row.Name, row.Details)), Is.EqualTo(new[] { ("Ambushers", templates.Rows[0].Details) }));
+        Assert.That(templates.Rows[0].Details, Does.EndWith("3 units"));
+        templates.NewTemplateCommand.Execute(null);
+        Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen).Close();
+        MapEditorTemplateRowViewModel row = templates.Rows.Single(r => r.Name == "Army template 2");
+        Assert.That((row.HasProblem, row.SelectedOwner.Value), Is.EqualTo((true, WorldRace.Neutral)));
+
+        // Units (as the army screen would save them), then name, owner and order in the row.
+        editor.UpdateTemplate(editor.Map.GetTemplate(2)! with { Slots = ambushers.Slots });
+        row = templates.Rows.Single(r => r.Id == 2);
+        Assert.That(row.HasProblem, Is.False);
+        row.Name = "Riders";
+        row = templates.Rows.Single(r => r.Id == 2);
+        row.SelectedOrder = row.OrderOptions.Single(option => option.Value == CustomMapOrderKind.DefendZone);
+        row = templates.Rows.Single(r => r.Id == 2);
+        Assert.That((row.HasTarget, row.SelectedTarget?.Label), Is.EqualTo((true, "North Gate")));
+        row.SelectedTarget = row.TargetOptions.Single(option => option.Label == "South Gate");
+        Assert.That(editor.Map.GetTemplate(2), Is.EqualTo(new CustomMapArmyTemplate(2, "Riders", WorldRace.Neutral, ambushers.Slots, new CustomMapArmyOrder(CustomMapOrderKind.DefendZone, LocationId: 2))));
+        templates.Close();
+
+        // Army blocks: create Riders at South Gate, order every Riders army to go to North Gate, move the army that
+        // fired it, remove the Ambushers.
+        editor.NewEventCommand.Execute(null);
+        MapEditorEventScreenViewModel screen = Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen);
+        MapEditorPaletteBlock Palette(MapEditorBlockKind kind) => screen.EffectPalette.SelectMany(group => group.Blocks).Single(block => block.Kind == kind);
+        screen.AddBlockCommand.Execute(screen.ConditionPalette.SelectMany(group => group.Blocks).Single(block => block.Kind == MapEditorBlockKind.EnterZone));
+        MapEditorEventBlockViewModel create = screen.InsertBlock(Palette(MapEditorBlockKind.CreateArmy), screen.Effects, 0)!;
+        create.Parts.OfType<MapEditorBlockChoice>().First().Selected = create.Parts.OfType<MapEditorBlockChoice>().First().Options.Single(option => option.Label == "Riders");
+        create.Parts.OfType<MapEditorBlockChoice>().Last().Selected = create.Parts.OfType<MapEditorBlockChoice>().Last().Options.Single(option => option.Label == "South Gate");
+        MapEditorEventBlockViewModel order = screen.InsertBlock(Palette(MapEditorBlockKind.OrderGoTo), screen.Effects, 1)!;
+        MapEditorBlockChoice orderArmy = order.Parts.OfType<MapEditorBlockChoice>().First();
+        Assert.That(orderArmy.Options.Select(option => option.Label), Does.Contain("every Riders army").And.Not.Contain("the army that fired it"));
+        orderArmy.Selected = orderArmy.Options.Single(option => option.Label == "every Riders army");
+        MapEditorEventBlockViewModel move = screen.InsertBlock(Palette(MapEditorBlockKind.MoveArmy), screen.Effects, 2)!;
+        Assert.That(move.Parts.OfType<MapEditorBlockChoice>().First().Selected!.Label, Is.EqualTo("the army that fired it"));
+        MapEditorEventBlockViewModel remove = screen.InsertBlock(Palette(MapEditorBlockKind.RemoveArmy), screen.Effects, 3)!;
+        remove.Parts.OfType<MapEditorBlockChoice>().First().Selected = remove.Parts.OfType<MapEditorBlockChoice>().First().Options.Single(option => option.Label == "every Ambushers army");
+        Assert.That(screen.HasProblems, Is.False);
+        screen.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Events[^1].Effects, Is.EqualTo(new CustomMapEffect[]
+        {
+            new CustomMapCreateArmyEffect(2, 2),
+            new CustomMapChangeOrderEffect(new CustomMapArmyRef.Template(2), new CustomMapArmyOrder(CustomMapOrderKind.MoveToZone, LocationId: 1)),
+            new CustomMapMoveArmyEffect(new CustomMapArmyRef.Triggerer(), 1),
+            new CustomMapRemoveArmyEffect(new CustomMapArmyRef.Template(1))
+        }));
+
+        // Deleting a template used by events asks first; Delete anyway turns those events red.
+        editor.DeleteTemplate(1);
+        ConfirmPromptViewModel prompt = Assert.IsOfType<ConfirmPromptViewModel>(game.TopScreen);
+        Assert.That(prompt.Message.Text, Does.Contain("is used by 2 events"));
+        await prompt.ConfirmCommand.ExecuteAsync(null);
+        Assert.That(editor.Map.Templates.Select(template => template.Name), Is.EqualTo(new[] { "Riders" }));
+        Assert.That(editor.EventRows.Count(r => r.HasProblem), Is.EqualTo(2));
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.Templates.Count, editor.EventRows.Count(r => r.HasProblem)), Is.EqualTo((2, 0)));
+
+        // The game loads the templates and the army effects.
+        editor.SaveCommand.Execute(null);
+        Scenario scenario = loader.CreateMapStore()!.BuildPreview(loader.CreateMapStore()!.Open(editor.Map.Id, loader.CreateDefinitions()), loader.CreateDefinitions());
+        Assert.That(scenario.Provider.StackTemplates, Has.Count.EqualTo(2));
+        Assert.That(scenario.Provider.Events.SelectMany(ev => ev.Effects).OfType<ScenarioEventCreateStackEffect>().Count(), Is.EqualTo(2));
+    }
 }

@@ -1,0 +1,71 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.MapEditorTemplatesScreenView"
+             x:DataType="local:MapEditorTemplatesScreenViewModel">
+
+  <Grid Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
+    <ContentControl Classes="ornament-panel"
+                    Background="{StaticResource CapitalScenePanelBodyGradientBrush}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="24,14" Width="980" Height="600">
+        <local:OutlinedTextBlock Grid.Row="0" Text="{local:Text 'Army templates'}" Classes="object-name title" HorizontalAlignment="Center" />
+        <TextBlock Grid.Row="1" Margin="0,4,0,8" Classes="caption" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}"
+                   Text="{local:Text 'Armies that are not on the map until an event creates them (the block create an army). Events can also move, order or remove every army made from a template.'}" />
+
+        <Panel Grid.Row="2">
+          <TextBlock Text="{local:Text 'No templates yet. Click New template.'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding HasNoRows}" />
+          <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+            <ItemsControl x:Name="TemplateList" ItemsSource="{Binding Rows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorTemplateRowViewModel">
+                  <Border Classes="row" Padding="8,6" Margin="0,2" Background="#22000000" CornerRadius="4">
+                    <Grid ColumnDefinitions="220,130,170,180,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+                      <TextBox Grid.Column="0" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" MaxLength="60" KeyDown="OnNameKeyDown" />
+                      <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding OwnerOptions}" SelectedItem="{Binding SelectedOwner}" ToolTip.Tip="{local:Text 'Owner'}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="local:MapEditorLabeled">
+                            <TextBlock Text="{Binding Label}" Classes="body" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <ComboBox Grid.Column="2" HorizontalAlignment="Stretch" ItemsSource="{Binding OrderOptions}" SelectedItem="{Binding SelectedOrder}" ToolTip.Tip="{local:Text 'Order when created'}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="local:MapEditorLabeled">
+                            <TextBlock Text="{Binding Label}" Classes="body" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <ComboBox Grid.Column="3" HorizontalAlignment="Stretch" ItemsSource="{Binding TargetOptions}" SelectedItem="{Binding SelectedTarget}" IsVisible="{Binding HasTarget}" PlaceholderText="{local:Text '(none)'}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate x:DataType="local:MapEditorLabeled">
+                            <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+                      <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+                        <Button Classes="pill" Height="28" Padding="10,0" Content="{local:Text 'Units'}" Command="{Binding EditUnitsCommand}" />
+                        <Button Classes="pill" Width="28" Height="28" Padding="0" Content="×" ToolTip.Tip="{local:Text 'Delete'}" Command="{Binding DeleteCommand}" />
+                      </StackPanel>
+                      <StackPanel Grid.Row="1" Grid.ColumnSpan="5" Orientation="Horizontal" Spacing="6" Margin="0,4,0,0">
+                        <Ellipse Width="10" Height="10" Fill="#C0392B" VerticalAlignment="Center" IsVisible="{Binding HasProblem}" />
+                        <TextBlock Text="{Binding Details}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </ScrollViewer>
+        </Panel>
+
+        <StackPanel Grid.Row="3" Margin="0,10,0,0" Classes="focus-group" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+          <Button x:Name="NewTemplateButton" Classes="pill primary" local:PlateChrome.TextureSeed="6" MinWidth="140" Content="{local:Text 'New template'}" Command="{Binding NewTemplateCommand}" />
+          <Button x:Name="CloseButton" Classes="pill" local:PlateChrome.TextureSeed="5" MinWidth="140" Content="{local:Text 'Close'}" Command="{Binding CloseCommand}" />
+        </StackPanel>
+      </Grid>
+    </ContentControl>
+  </Grid>
+
+</UserControl>

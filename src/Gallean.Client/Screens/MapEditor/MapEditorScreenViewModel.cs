@@ -991,6 +991,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         roadStart = null;
         RebuildLocationRows();
         RebuildEventRows();
+        RefreshTemplatesScreen();
 
         CanUndo = undoSteps.Count > 0;
         IsDirty = true;

@@ -590,4 +590,30 @@ public sealed class CustomMapEventTests
         Assert.That(raiders.Order, Is.EqualTo(new WorldStackOrder.DefendLocation(new ScenarioLocationId(Id("LO", 2)), new WorldPosition(13, 14), 1)));
         Assert.That(session.World.State.Players[raiders.OwnerId].Race, Is.EqualTo(WorldRace.Neutral));
     }
+
+    // The ambush recipe's chain: the created raiders attack the army that fired the event at once.
+    [Test]
+    public void AmbushBattleTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddTemplate(Raiders());
+        map.AddEvent(CustomMapEvent.Create("Ambush", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapCreateArmyEffect(1, 2), new CustomMapBattleEffect(new CustomMapArmyRef.Template(1))]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        WorldStackId army = new(CustomMapWriter.GetArmyStackId(MapId, 1));
+
+        var result = session.World.DispatchCommand(new WorldStepStackCommand(army, new WorldPosition(13, 10)));
+
+        Assert.That(result.Events.OfType<WorldStackBattleStartedEvent>().Single().DefenderStackId, Is.EqualTo(army));
+        Assert.That(session.World.State.Stacks.Values.Single(stack => stack.SourceTemplateId is not null).Position.GetDistance(session.World.State.Stacks[army].Position), Is.LessThanOrEqualTo(1), "The raiders moved next to the army.");
+    }
 }

@@ -1045,5 +1045,20 @@ public sealed partial class VisualTests
         await SkipFramesAsync(10);
         await CaptureAsync(window, "10-recipe-list");
         Assert.That(editor.EventRows.Select(row => row.Name), Is.SupersetOf(new[] { "Empire holds out", "Undead takes the Empire capital", "Empire conquers all capitals", "Undead conquers all capitals" }));
+
+        // Phase 5: the ambush recipe makes a template; the templates screen lists it; the event shows the army blocks.
+        editor.SelectedRecipe = editor.Recipes.Single(option => option.Value == MapEditorRecipe.Ambush);
+        editor.AddRecipeCommand.Execute(null);
+        MapEditorEventScreenViewModel ambush = Assert.IsOfType<MapEditorEventScreenViewModel>(gameViewModel.TopScreen);
+        MapEditorPaletteBlock order = ambush.EffectPalette.SelectMany(group => group.Blocks).Single(block => block.Kind == MapEditorBlockKind.OrderDefendZone);
+        ambush.InsertBlock(order, ambush.Effects, 2);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "11-ambush-event");
+        Assert.That(ambush.HasProblems, Is.False);
+        ambush.ConfirmCommand.Execute(null);
+        editor.OpenTemplatesCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "12-templates");
+        Assert.That(Assert.IsOfType<MapEditorTemplatesScreenViewModel>(gameViewModel.TopScreen).Rows.Single().Name, Is.EqualTo("Ambushers"));
     }
 }
