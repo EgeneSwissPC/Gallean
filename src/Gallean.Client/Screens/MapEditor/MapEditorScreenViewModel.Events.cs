@@ -79,7 +79,7 @@ internal sealed partial class MapEditorScreenViewModel
             return;
         }
 
-        MapEditorEventContext context = new(map, editorGame, PickEventItem, PickEventPortrait, PickEventTargetOnMap);
+        MapEditorEventContext context = EventContext();
         Game.OpenScreen(new MapEditorEventScreenViewModel(
             Game,
             context,

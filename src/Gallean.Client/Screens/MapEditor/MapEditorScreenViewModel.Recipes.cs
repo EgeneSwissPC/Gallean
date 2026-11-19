@@ -18,6 +18,7 @@ internal enum MapEditorRecipe
     HoldOut,
     LoseCity,
     ZoneWarning,
+    Ambush,
     RuinTreasure
 }
 
@@ -33,6 +34,7 @@ internal sealed partial class MapEditorScreenViewModel
         new(MapEditorRecipe.HoldOut, Tr("Hold out against attackers")),
         new(MapEditorRecipe.LoseCity, Tr("Lose if a city falls")),
         new(MapEditorRecipe.ZoneWarning, Tr("Warning when entering a zone")),
+        new(MapEditorRecipe.Ambush, Tr("Ambush when entering a zone")),
         new(MapEditorRecipe.RuinTreasure, Tr("Message when looting a ruin"))
     ];
 
@@ -51,6 +53,7 @@ internal sealed partial class MapEditorScreenViewModel
         MapEditorRecipe.HoldOut => Tr("The first race wins on turn {0}; every other race wins if it takes the first race's capital before that. The computer races march on that capital.", DefaultRecipeTurns),
         MapEditorRecipe.LoseCity => Tr("The players lose when another race takes the city (for maps where the player defends with the first race)."),
         MapEditorRecipe.ZoneWarning => Tr("A message and the zone revealed when an army of the first race enters it."),
+        MapEditorRecipe.Ambush => Tr("When an army of the first race enters the zone, an army from the first template (made if there is none) appears there and attacks it."),
         MapEditorRecipe.RuinTreasure => Tr("A message for whoever loots the ruin."),
         _ => Tr("Pick a recipe: it adds ready-made events you can then change.")
     };
@@ -66,7 +69,7 @@ internal sealed partial class MapEditorScreenViewModel
         int? first = null;
         CommitEvents(current =>
         {
-            first = AddRecipeEvents(current, recipe.Value);
+            first = AddRecipeEvents(current, recipe.Value, units);
             AddConquestWins(current);
             return true;
         });
@@ -78,7 +81,7 @@ internal sealed partial class MapEditorScreenViewModel
     }
 
     // Adds the recipe's events to the map; returns the main one's ID.
-    private static int AddRecipeEvents(CustomMap current, MapEditorRecipe recipe)
+    private static int AddRecipeEvents(CustomMap current, MapEditorRecipe recipe, IReadOnlyList<UnitDefinition> units)
     {
         WorldRace race = current.Players[0].Race;
         string raceName = MapEditorLabels.RaceShort(race);
@@ -162,6 +165,19 @@ internal sealed partial class MapEditorScreenViewModel
                     [new CustomMapEnterZoneCondition(zone)],
                     Message(Tr("Scout\n\"Beware, my lord: danger lies ahead in {0}.\"", zoneName), CustomMapMessageAudience.Triggerer),
                     new CustomMapRevealZoneEffect(zone, []))).Id;
+            case MapEditorRecipe.Ambush:
+            {
+                int template = current.Templates.FirstOrDefault()?.Id ?? current.AddTemplate(Ambushers(units)).Id;
+
+                return current.AddEvent(Event(
+                    Tr("Ambush at {0}", zoneName),
+                    race,
+                    [new CustomMapEnterZoneCondition(zone)],
+                    Message(Tr("Scout\n\"An ambush! They were waiting for us in {0}!\"", zoneName), CustomMapMessageAudience.Triggerer),
+                    new CustomMapCreateArmyEffect(template, zone),
+                    new CustomMapBattleEffect(new CustomMapArmyRef.Template(template)))).Id;
+            }
+
             case MapEditorRecipe.RuinTreasure:
             {
                 string ruinName = current.Ruins.FirstOrDefault()?.Name ?? Tr("the ruin");
@@ -177,6 +193,25 @@ internal sealed partial class MapEditorScreenViewModel
             default:
                 throw new ArgumentOutOfRangeException(nameof(recipe), recipe, null);
         }
+    }
+
+    // A neutral leader with two soldiers, for the ambush recipe when the map has no template yet.
+    private static CustomMapArmyTemplate Ambushers(IReadOnlyList<UnitDefinition> units)
+    {
+        UnitDefinition leader = units
+            .Where(unit => unit is { Category: UnitCategory.Leader, Race: WorldRace.Neutral, IsLarge: false, Leadership: >= 3 })
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First();
+        UnitDefinition soldier = units
+            .Where(unit => unit is { Category: UnitCategory.Soldier, Race: WorldRace.Neutral, IsLarge: false })
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First();
+        CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
+        slots[GridPosition.FrontCenter.ToIndex()] = CustomMapUnit.From(leader);
+        slots[GridPosition.FrontTop.ToIndex()] = CustomMapUnit.From(soldier);
+        slots[GridPosition.FrontBottom.ToIndex()] = CustomMapUnit.From(soldier);
+
+        return new CustomMapArmyTemplate(0, Tr("Ambushers"), WorldRace.Neutral, [.. slots], CustomMapArmyOrder.Normal);
     }
 
     private static void AddConquestWins(CustomMap current)

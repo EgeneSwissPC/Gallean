@@ -20,16 +20,19 @@ internal sealed partial class MapEditorArmyScreenViewModel : MapEditorUnitsScree
         WorldPosition position,
         IReadOnlyList<CustomMapUnit?>? existing,
         Func<WorldRace, CustomMapUnit?[], string?> onConfirm,
-        Action? onDelete)
+        Action? onDelete,
+        string? title = null,
+        string? confirmLabel = null)
         : base(game, editorGame, units)
     {
+        this.confirmLabel = confirmLabel;
         this.onConfirm = onConfirm;
         this.onDelete = onDelete;
         Owner = owner;
         IsNew = existing is null;
-        Title = IsNew
+        Title = title ?? (IsNew
             ? Tr("New army of {0} at {1}, {2}", MapEditorLabels.Owner(owner), position.X, position.Y)
-            : Tr("Army of {0} at {1}, {2}", MapEditorLabels.Owner(owner), position.X, position.Y);
+            : Tr("Army of {0} at {1}, {2}", MapEditorLabels.Owner(owner), position.X, position.Y));
         Army = AddGroup(MapEditorUnitGroupKind.Army, existing, () => 0, () => Owner);
 
         Refresh();
@@ -39,7 +42,10 @@ internal sealed partial class MapEditorArmyScreenViewModel : MapEditorUnitsScree
     public bool IsNew { get; }
     public bool CanDelete => !IsNew;
     public string Title { get; }
-    public string ConfirmLabel => IsNew ? Tr("Place army") : Tr("Save army");
+    // Army templates reuse this screen with their own title and button.
+    private readonly string? confirmLabel;
+
+    public string ConfirmLabel => confirmLabel ?? (IsNew ? Tr("Place army") : Tr("Save army"));
     public MapEditorUnitGroup Army { get; }
     public UnitGridViewModel UnitGrid => Army.UnitGrid;
     public IReadOnlyList<CustomMapUnit?> Slots => Army.Slots;

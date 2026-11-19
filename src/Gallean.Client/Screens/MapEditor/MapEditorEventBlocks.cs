@@ -28,7 +28,18 @@ internal enum MapEditorBlockKind
     Lose,
     SwitchEvent,
     RevealZone,
-    GiveItem
+    GiveItem,
+    CreateArmy,
+    RemoveArmy,
+    MoveArmy,
+    MoveBeside,
+    ChangeOwner,
+    OrderSimple,
+    OrderGoTo,
+    OrderDefendZone,
+    OrderDefendCity,
+    OrderAttack,
+    Battle
 }
 
 internal enum MapEditorBlockCategory
@@ -79,6 +90,22 @@ internal sealed class MapEditorEventContext(
 
     public IReadOnlyList<MapEditorOption<object?>> Armies =>
         [.. Map.Stacks.OrderBy(stack => stack.Id).Select(stack => new MapEditorOption<object?>(stack.Id, ArmyLabel(stack)))];
+
+    public IReadOnlyList<MapEditorOption<object?>> Templates =>
+        [.. Map.Templates.OrderBy(template => template.Name, StringComparer.CurrentCultureIgnoreCase).Select(template => new MapEditorOption<object?>(template.Id, template.Name))];
+
+    // What an army effect can act on: the army that fired the event (when allowed), placed armies, every army made
+    // from a template.
+    public IReadOnlyList<MapEditorOption<object?>> ArmyRefs(bool triggerer)
+    {
+        return
+        [
+            .. triggerer ? [new MapEditorOption<object?>(new CustomMapArmyRef.Triggerer(), Tr("the army that fired it"))] : Array.Empty<MapEditorOption<object?>>(),
+            .. Map.Stacks.OrderBy(stack => stack.Id).Select(stack => new MapEditorOption<object?>(new CustomMapArmyRef.Army(stack.Id), ArmyLabel(stack))),
+            .. Map.Templates.OrderBy(template => template.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(template => new MapEditorOption<object?>(new CustomMapArmyRef.Template(template.Id), Tr("every {0} army", template.Name)))
+        ];
+    }
 
     public IReadOnlyList<MapEditorOption<object?>> Events =>
         [.. Map.Events.OrderBy(ev => ev.Name, StringComparer.CurrentCultureIgnoreCase).Select(ev => new MapEditorOption<object?>(ev.Id, ev.Name))];
@@ -365,6 +392,7 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.OwnCity or MapEditorBlockKind.EnterCity or MapEditorBlockKind.LootRuin => MapEditorBlockCategory.Places,
             MapEditorBlockKind.DestroyArmy or MapEditorBlockKind.ArmyExists => MapEditorBlockCategory.Armies,
             MapEditorBlockKind.GiveItem => MapEditorBlockCategory.Items,
+            >= MapEditorBlockKind.CreateArmy => MapEditorBlockCategory.Armies,
             MapEditorBlockKind.Message or MapEditorBlockKind.Objective => MapEditorBlockCategory.Messages,
             _ => MapEditorBlockCategory.Flow
         };
@@ -411,6 +439,20 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
                     Block(MapEditorBlockKind.Lose, Tr("the players lose")),
                     Block(MapEditorBlockKind.SwitchEvent, Tr("switch an event on or off"))
                 ]),
+                new MapEditorPaletteGroup(Tr("Armies"),
+                [
+                    Block(MapEditorBlockKind.CreateArmy, Tr("create an army")),
+                    Block(MapEditorBlockKind.Battle, Tr("an army attacks")),
+                    Block(MapEditorBlockKind.MoveArmy, Tr("move an army to a zone")),
+                    Block(MapEditorBlockKind.MoveBeside, Tr("move an army next to it")),
+                    Block(MapEditorBlockKind.RemoveArmy, Tr("remove an army")),
+                    Block(MapEditorBlockKind.ChangeOwner, Tr("an army changes sides")),
+                    Block(MapEditorBlockKind.OrderSimple, Tr("give an order")),
+                    Block(MapEditorBlockKind.OrderGoTo, Tr("order: go to a zone")),
+                    Block(MapEditorBlockKind.OrderDefendZone, Tr("order: defend a zone")),
+                    Block(MapEditorBlockKind.OrderDefendCity, Tr("order: defend a city")),
+                    Block(MapEditorBlockKind.OrderAttack, Tr("order: attack an army"))
+                ]),
                 new MapEditorPaletteGroup(Tr("Zones"), [Block(MapEditorBlockKind.RevealZone, Tr("reveal a zone"))]),
                 new MapEditorPaletteGroup(Tr("Items"), [Block(MapEditorBlockKind.GiveItem, Tr("give an item"))])
             ];
@@ -436,6 +478,17 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.SwitchEvent => FromEffect(new CustomMapSwitchEventEffect(First<int>(context.Events), On: true), context, changed, preview),
             MapEditorBlockKind.RevealZone => FromEffect(new CustomMapRevealZoneEffect(First<int>(context.Locations), []), context, changed, preview),
             MapEditorBlockKind.GiveItem => FromEffect(new CustomMapGiveItemEffect(new ItemDefinitionId(string.Empty), ToCapital: false), context, changed, preview),
+            MapEditorBlockKind.CreateArmy => FromEffect(new CustomMapCreateArmyEffect(First<int>(context.Templates), First<int>(context.Locations)), context, changed, preview),
+            MapEditorBlockKind.RemoveArmy => FromEffect(new CustomMapRemoveArmyEffect(FirstArmy(context, false)), context, changed, preview),
+            MapEditorBlockKind.MoveArmy => FromEffect(new CustomMapMoveArmyEffect(new CustomMapArmyRef.Triggerer(), First<int>(context.Locations)), context, changed, preview),
+            MapEditorBlockKind.MoveBeside => FromEffect(new CustomMapMoveBesideEffect(FirstArmy(context, false)), context, changed, preview),
+            MapEditorBlockKind.ChangeOwner => FromEffect(new CustomMapChangeOwnerEffect(FirstArmy(context, false), null), context, changed, preview),
+            MapEditorBlockKind.OrderSimple => FromEffect(new CustomMapChangeOrderEffect(FirstArmy(context, false), new CustomMapArmyOrder(CustomMapOrderKind.Stand)), context, changed, preview),
+            MapEditorBlockKind.OrderGoTo => FromEffect(new CustomMapChangeOrderEffect(FirstArmy(context, false), MapEditorOrders.Make(CustomMapOrderKind.MoveToZone, context.Locations.FirstOrDefault()?.Value)), context, changed, preview),
+            MapEditorBlockKind.OrderDefendZone => FromEffect(new CustomMapChangeOrderEffect(FirstArmy(context, false), MapEditorOrders.Make(CustomMapOrderKind.DefendZone, context.Locations.FirstOrDefault()?.Value)), context, changed, preview),
+            MapEditorBlockKind.OrderDefendCity => FromEffect(new CustomMapChangeOrderEffect(FirstArmy(context, false), MapEditorOrders.Make(CustomMapOrderKind.DefendCity, FirstCity(context))), context, changed, preview),
+            MapEditorBlockKind.OrderAttack => FromEffect(new CustomMapChangeOrderEffect(FirstArmy(context, false), MapEditorOrders.Make(CustomMapOrderKind.AttackArmy, context.Armies.FirstOrDefault()?.Value)), context, changed, preview),
+            MapEditorBlockKind.Battle => FromEffect(new CustomMapBattleEffect(FirstArmy(context, false)), context, changed, preview),
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
     }
@@ -517,9 +570,65 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
                     Tr("give"),
                     new MapEditorBlockItem(context, give.Item, changed),
                     new MapEditorBlockChoice([new MapEditorOption<object?>(false, Tr("to the army")), new MapEditorOption<object?>(true, Tr("to its capital"))], give.ToCapital, changed));
+            case CustomMapCreateArmyEffect create:
+                return Make(MapEditorBlockKind.CreateArmy, Tr("create"), new MapEditorBlockChoice(context.Templates, create.TemplateId, changed), new MapEditorBlockText(Tr("at")), ZoneChoice(context, create.LocationId, changed));
+            case CustomMapRemoveArmyEffect remove:
+                return Make(MapEditorBlockKind.RemoveArmy, Tr("remove"), ArmyChoice(context, remove.Army, false, changed));
+            case CustomMapMoveArmyEffect move:
+                return Make(MapEditorBlockKind.MoveArmy, Tr("move"), ArmyChoice(context, move.Army, true, changed), new MapEditorBlockText(Tr("to")), ZoneChoice(context, move.LocationId, changed));
+            case CustomMapMoveBesideEffect beside:
+                return Make(MapEditorBlockKind.MoveBeside, Tr("move"), ArmyChoice(context, beside.Army, false, changed), new MapEditorBlockText(Tr("next to the army that fired it")));
+            case CustomMapChangeOwnerEffect owner:
+                return Make(
+                    MapEditorBlockKind.ChangeOwner,
+                    null,
+                    ArmyChoice(context, owner.Army, false, changed),
+                    new MapEditorBlockText(Tr("goes over to")),
+                    new MapEditorBlockChoice(
+                        [new MapEditorOption<object?>(null, Tr("the player who fired it")), .. context.PlayableRaces, new MapEditorOption<object?>(WorldRace.Neutral, MapEditorLabels.RaceShort(WorldRace.Neutral))],
+                        owner.NewOwner,
+                        changed));
+            case CustomMapChangeOrderEffect order:
+                return OrderBlock(order, context, changed);
+            case CustomMapBattleEffect battle:
+                return Make(MapEditorBlockKind.Battle, null, ArmyChoice(context, battle.Army, false, changed), new MapEditorBlockText(Tr("attacks the army that fired it")));
             default:
                 throw new ArgumentOutOfRangeException(nameof(effect), effect, null);
         }
+    }
+
+    private static MapEditorEventBlockViewModel OrderBlock(CustomMapChangeOrderEffect order, MapEditorEventContext context, Action changed)
+    {
+        MapEditorBlockChoice army = ArmyChoice(context, order.Army, false, changed);
+
+        return order.Order.Kind switch
+        {
+            CustomMapOrderKind.MoveToZone => Make(MapEditorBlockKind.OrderGoTo, Tr("order"), army, new MapEditorBlockText(Tr("to go to")), ZoneChoice(context, order.Order.LocationId, changed)),
+            CustomMapOrderKind.DefendZone => Make(MapEditorBlockKind.OrderDefendZone, Tr("order"), army, new MapEditorBlockText(Tr("to defend")), ZoneChoice(context, order.Order.LocationId, changed)),
+            CustomMapOrderKind.DefendCity => Make(MapEditorBlockKind.OrderDefendCity, Tr("order"), army, new MapEditorBlockText(Tr("to defend")), new MapEditorBlockChoice(context.Cities, order.Order.City, changed, context, MapEditorPickKind.City)),
+            CustomMapOrderKind.AttackArmy => Make(MapEditorBlockKind.OrderAttack, Tr("order"), army, new MapEditorBlockText(Tr("to attack")), new MapEditorBlockChoice(context.Armies, order.Order.ArmyId, changed, context, MapEditorPickKind.Army)),
+            _ => Make(
+                MapEditorBlockKind.OrderSimple,
+                Tr("order"),
+                army,
+                new MapEditorBlockText(Tr("to")),
+                new MapEditorBlockChoice([.. MapEditorOrders.Kinds.Where(kind => !MapEditorOrders.NeedsTarget(kind.Value)).Select(kind => new MapEditorOption<object?>(kind.Value, kind.Label))], order.Order.Kind, changed))
+        };
+    }
+
+    private static MapEditorBlockChoice ZoneChoice(MapEditorEventContext context, int locationId, Action changed)
+    {
+        return new MapEditorBlockChoice(context.Locations, locationId, changed, context, MapEditorPickKind.Zone);
+    }
+
+    private static MapEditorBlockChoice ArmyChoice(MapEditorEventContext context, CustomMapArmyRef army, bool triggerer, Action changed)
+    {
+        return new MapEditorBlockChoice(context.ArmyRefs(triggerer), army, changed, context, MapEditorPickKind.ArmyRef);
+    }
+
+    private static CustomMapArmyRef FirstArmy(MapEditorEventContext context, bool triggerer)
+    {
+        return context.ArmyRefs(triggerer).FirstOrDefault()?.Value as CustomMapArmyRef ?? new CustomMapArmyRef.Army(0);
     }
 
     public CustomMapCondition ToCondition()
@@ -554,6 +663,17 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
             MapEditorBlockKind.SwitchEvent => new CustomMapSwitchEventEffect(ChoiceInt(0), Choice(1) is not false),
             MapEditorBlockKind.RevealZone => new CustomMapRevealZoneEffect(ChoiceInt(0), revealRaces),
             MapEditorBlockKind.GiveItem => new CustomMapGiveItemEffect(Field<MapEditorBlockItem>().Item, Choice(0) is true),
+            MapEditorBlockKind.CreateArmy => new CustomMapCreateArmyEffect(ChoiceInt(0), ChoiceInt(1)),
+            MapEditorBlockKind.RemoveArmy => new CustomMapRemoveArmyEffect(ChoiceArmy(0)),
+            MapEditorBlockKind.MoveArmy => new CustomMapMoveArmyEffect(ChoiceArmy(0), ChoiceInt(1)),
+            MapEditorBlockKind.MoveBeside => new CustomMapMoveBesideEffect(ChoiceArmy(0)),
+            MapEditorBlockKind.ChangeOwner => new CustomMapChangeOwnerEffect(ChoiceArmy(0), Choice(1) as WorldRace?),
+            MapEditorBlockKind.OrderSimple => new CustomMapChangeOrderEffect(ChoiceArmy(0), new CustomMapArmyOrder(Choice(1) is CustomMapOrderKind kind ? kind : CustomMapOrderKind.Normal)),
+            MapEditorBlockKind.OrderGoTo => new CustomMapChangeOrderEffect(ChoiceArmy(0), MapEditorOrders.Make(CustomMapOrderKind.MoveToZone, Choice(1))),
+            MapEditorBlockKind.OrderDefendZone => new CustomMapChangeOrderEffect(ChoiceArmy(0), MapEditorOrders.Make(CustomMapOrderKind.DefendZone, Choice(1))),
+            MapEditorBlockKind.OrderDefendCity => new CustomMapChangeOrderEffect(ChoiceArmy(0), MapEditorOrders.Make(CustomMapOrderKind.DefendCity, Choice(1))),
+            MapEditorBlockKind.OrderAttack => new CustomMapChangeOrderEffect(ChoiceArmy(0), MapEditorOrders.Make(CustomMapOrderKind.AttackArmy, Choice(1))),
+            MapEditorBlockKind.Battle => new CustomMapBattleEffect(ChoiceArmy(0)),
             _ => throw new InvalidOperationException($"{Kind} is a condition.")
         };
     }
@@ -606,6 +726,12 @@ internal sealed partial class MapEditorEventBlockViewModel : ObservableObject
     private int ChoiceInt(int index)
     {
         return Choice(index) is int value ? value : 0;
+    }
+
+    // A missing army (deleted, or a removed template) saves as army 0, which the engine reports: the block stays red.
+    private CustomMapArmyRef ChoiceArmy(int index)
+    {
+        return Choice(index) as CustomMapArmyRef ?? new CustomMapArmyRef.Army(0);
     }
 
     private CustomMapCity ChoiceCity(int index)

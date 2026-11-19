@@ -14,7 +14,7 @@ public static class CustomMapEventsFile
 
     private const int FormatVersion = 1;
 
-    public static void Write(string path, IReadOnlyList<CustomMapEvent> events)
+    public static void Write(string path, IReadOnlyList<CustomMapEvent> events, IReadOnlyList<CustomMapArmyTemplate>? templates = null)
     {
         JsonArray array = [];
 
@@ -41,8 +41,65 @@ public static class CustomMapEventsFile
             array.Add((JsonNode)node);
         }
 
-        JsonObject root = new() { ["formatVersion"] = FormatVersion, ["events"] = array };
+        JsonArray templateArray = [];
+
+        foreach (CustomMapArmyTemplate template in (templates ?? []).OrderBy(template => template.Id))
+        {
+            templateArray.Add((JsonNode)new JsonObject
+            {
+                ["id"] = template.Id,
+                ["name"] = template.Name,
+                ["owner"] = template.Owner.ToString(),
+                ["slots"] = new JsonArray([.. template.Slots.Select(unit => unit is null ? null : (JsonNode)new JsonObject
+                {
+                    ["type"] = unit.TypeId.Value,
+                    ["level"] = unit.Level,
+                    ["hitpoints"] = unit.Hitpoints,
+                    ["large"] = unit.IsLarge,
+                    ["leadership"] = unit.Leadership,
+                    ["movement"] = unit.MovementPoints,
+                    ["guardian"] = unit.IsGuardian
+                })]),
+                ["order"] = WriteOrder(template.Order)
+            });
+        }
+
+        JsonObject root = new() { ["formatVersion"] = FormatVersion, ["events"] = array, ["templates"] = templateArray };
         File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    public static IReadOnlyList<CustomMapArmyTemplate> ReadTemplates(string path)
+    {
+        if (!File.Exists(path) || JsonNode.Parse(File.ReadAllText(path)) is not { } root)
+        {
+            return [];
+        }
+
+        List<CustomMapArmyTemplate> result = [];
+
+        foreach (JsonNode? node in root["templates"]?.AsArray() ?? [])
+        {
+            if (node is null)
+            {
+                continue;
+            }
+
+            result.Add(new CustomMapArmyTemplate(
+                Int(node, "id"),
+                Str(node, "name"),
+                Enum.Parse<WorldRace>(Str(node, "owner")),
+                [.. Array(node, "slots").Select(unit => unit is null ? null : new CustomMapUnit(
+                    new UnitDefinitionId(Str(unit, "type")),
+                    Int(unit, "level"),
+                    Int(unit, "hitpoints"),
+                    Bool(unit, "large"),
+                    Int(unit, "leadership"),
+                    Int(unit, "movement"),
+                    Bool(unit, "guardian")))],
+                ReadOrder(node["order"])));
+        }
+
+        return result;
     }
 
     public static IReadOnlyList<CustomMapEvent> Read(string path)
@@ -128,6 +185,13 @@ public static class CustomMapEventsFile
             CustomMapRevealZoneEffect reveal => new JsonObject { ["kind"] = "revealZone", ["location"] = reveal.LocationId, ["races"] = Races(reveal.Races) },
             CustomMapGiveItemEffect give => new JsonObject { ["kind"] = "giveItem", ["item"] = give.Item.Value, ["toCapital"] = give.ToCapital },
             CustomMapObjectiveEffect objective => new JsonObject { ["kind"] = "objective", ["text"] = WriteText(objective.Text) },
+            CustomMapCreateArmyEffect create => new JsonObject { ["kind"] = "createArmy", ["template"] = create.TemplateId, ["location"] = create.LocationId },
+            CustomMapRemoveArmyEffect remove => new JsonObject { ["kind"] = "removeArmy", ["army"] = WriteArmy(remove.Army) },
+            CustomMapMoveArmyEffect move => new JsonObject { ["kind"] = "moveArmy", ["army"] = WriteArmy(move.Army), ["location"] = move.LocationId },
+            CustomMapMoveBesideEffect beside => new JsonObject { ["kind"] = "moveBeside", ["army"] = WriteArmy(beside.Army) },
+            CustomMapChangeOwnerEffect owner => new JsonObject { ["kind"] = "changeOwner", ["army"] = WriteArmy(owner.Army), ["owner"] = owner.NewOwner?.ToString() },
+            CustomMapChangeOrderEffect order => new JsonObject { ["kind"] = "changeOrder", ["army"] = WriteArmy(order.Army), ["order"] = WriteOrder(order.Order) },
+            CustomMapBattleEffect battle => new JsonObject { ["kind"] = "battle", ["army"] = WriteArmy(battle.Army) },
             _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, null)
         };
     }
@@ -149,8 +213,57 @@ public static class CustomMapEventsFile
             "revealZone" => new CustomMapRevealZoneEffect(Int(node, "location"), ReadRaces(node["races"])),
             "giveItem" => new CustomMapGiveItemEffect(new ItemDefinitionId(Str(node, "item")), Bool(node, "toCapital")),
             "objective" => new CustomMapObjectiveEffect(ReadText(node["text"])),
+            "createArmy" => new CustomMapCreateArmyEffect(Int(node, "template"), Int(node, "location")),
+            "removeArmy" => new CustomMapRemoveArmyEffect(ReadArmy(node["army"])),
+            "moveArmy" => new CustomMapMoveArmyEffect(ReadArmy(node["army"]), Int(node, "location")),
+            "moveBeside" => new CustomMapMoveBesideEffect(ReadArmy(node["army"])),
+            "changeOwner" => new CustomMapChangeOwnerEffect(ReadArmy(node["army"]), node["owner"] is { } owner ? Enum.Parse<WorldRace>(owner.GetValue<string>()) : null),
+            "changeOrder" => new CustomMapChangeOrderEffect(ReadArmy(node["army"]), ReadOrder(node["order"])),
+            "battle" => new CustomMapBattleEffect(ReadArmy(node["army"])),
             string kind => throw new InvalidDataException($"Unknown event effect '{kind}'.")
         };
+    }
+
+    private static JsonNode WriteArmy(CustomMapArmyRef army)
+    {
+        return army switch
+        {
+            CustomMapArmyRef.Army placed => new JsonObject { ["army"] = placed.Id },
+            CustomMapArmyRef.Template template => new JsonObject { ["template"] = template.Id },
+            _ => new JsonObject { ["triggerer"] = true }
+        };
+    }
+
+    private static CustomMapArmyRef ReadArmy(JsonNode? node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        return node["army"] is { } army ? new CustomMapArmyRef.Army(army.GetValue<int>())
+            : node["template"] is { } template ? new CustomMapArmyRef.Template(template.GetValue<int>())
+            : new CustomMapArmyRef.Triggerer();
+    }
+
+    private static JsonNode WriteOrder(CustomMapArmyOrder order)
+    {
+        JsonObject node = new() { ["kind"] = order.Kind.ToString(), ["location"] = order.LocationId, ["army"] = order.ArmyId };
+
+        if (order.City is { } city)
+        {
+            node["city"] = WriteCity(city);
+        }
+
+        return node;
+    }
+
+    private static CustomMapArmyOrder ReadOrder(JsonNode? node)
+    {
+        ArgumentNullException.ThrowIfNull(node);
+
+        return new CustomMapArmyOrder(
+            Enum.Parse<CustomMapOrderKind>(Str(node, "kind")),
+            Int(node, "location"),
+            node["city"] is { } city ? ReadCity(city) : null,
+            Int(node, "army"));
     }
 
     private static JsonNode WriteCity(CustomMapCity city)

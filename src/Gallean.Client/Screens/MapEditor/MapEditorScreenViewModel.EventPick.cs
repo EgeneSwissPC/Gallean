@@ -54,6 +54,7 @@ internal sealed partial class MapEditorScreenViewModel
                 : map.GetVillageAt(tile) is { } village ? new CustomMapCity.Village(village.Id) : null,
             MapEditorPickKind.Ruin => map.GetRuinAt(tile)?.Id,
             MapEditorPickKind.Army => map.GetStackAt(tile)?.Id,
+            MapEditorPickKind.ArmyRef => map.GetStackAt(tile) is { } stack ? new CustomMapArmyRef.Army(stack.Id) : null,
             _ => null
         };
 
@@ -89,7 +90,7 @@ internal sealed partial class MapEditorScreenViewModel
             MapEditorPickKind.Zone => map.Locations.Select(location => location.Footprint),
             MapEditorPickKind.City => [.. map.Players.Select(player => player.Footprint).OfType<WorldFootprint>(), .. map.Villages.Select(village => village.Footprint)],
             MapEditorPickKind.Ruin => map.Ruins.Select(ruin => ruin.Footprint),
-            MapEditorPickKind.Army => map.Stacks.Select(stack => new WorldFootprint(stack.Position, 1, 1)),
+            MapEditorPickKind.Army or MapEditorPickKind.ArmyRef => map.Stacks.Select(stack => new WorldFootprint(stack.Position, 1, 1)),
             _ => []
         };
 
@@ -193,5 +194,7 @@ internal enum MapEditorPickKind
     Zone,
     City,
     Ruin,
-    Army
+    Army,
+    // An army effect's subject: the picked army as a CustomMapArmyRef.
+    ArmyRef
 }

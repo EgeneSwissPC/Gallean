@@ -75,7 +75,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SEvEffec.json", events.Effects);
         WriteTable(stagingDirectory, "SEvUnfog.json", events.Unfogs);
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
-        CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events);
+        CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events, map.Templates);
+        WriteTable(stagingDirectory, "SStkTemp.json", BuildTemplates(map, scenarioId, prefix));
 
         if (Directory.Exists(scenarioDirectory))
         {
@@ -1085,6 +1086,46 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                     GiveTo = give.ToCapital ? 1 : 0
                 };
                 break;
+            case CustomMapCreateArmyEffect create:
+                yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.CreateStack) with
+                {
+                    IdStackTemplate = MakeId(prefix, "TM", create.TemplateId),
+                    IdLocation = MakeId(prefix, "LO", create.LocationId)
+                };
+                break;
+            case CustomMapRemoveArmyEffect remove:
+                yield return WithArmy(Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.RemoveStack), remove.Army, prefix) with { FirstOnly = false };
+                break;
+            case CustomMapMoveArmyEffect move:
+                yield return WithArmy(Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.MoveStack), move.Army, prefix) with
+                {
+                    IdLocation = MakeId(prefix, "LO", move.LocationId),
+                    BoolValue = move.Army is CustomMapArmyRef.Triggerer
+                };
+                break;
+            case CustomMapMoveBesideEffect beside:
+                yield return WithArmy(Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.MoveBeside), beside.Army, prefix);
+                break;
+            case CustomMapChangeOwnerEffect owner:
+                // The game's new owner is a subrace (SR + player slot); none = the player who fired the event.
+                yield return WithArmy(Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ChangeOwner), owner.Army, prefix) with
+                {
+                    IdPlayer1 = owner.NewOwner is { } race ? MakeId(prefix, "SR", GetPlayerIndex(map, race)) : null,
+                    FirstOnly = false,
+                    PlayAnim = true
+                };
+                break;
+            case CustomMapChangeOrderEffect order:
+                yield return WithArmy(Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ChangeOrder), order.Army, prefix) with
+                {
+                    Order = ToOrderType(order.Order.Kind),
+                    OrderTarget = GetOrderTarget(map, prefix, order.Order),
+                    FirstOnly = false
+                };
+                break;
+            case CustomMapBattleEffect battle:
+                yield return WithArmy(Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.Battle), battle.Army, prefix);
+                break;
             case CustomMapObjectiveEffect objective:
                 AddText(scenarioId, eventId, Db.TextScenario.ObjectiveTextId, 0, objective.Text, texts, translations);
                 yield return Effect(scenarioId, eventId, number, Db.ScenarioEventEffectType.ChangeObjective);
@@ -1092,6 +1133,97 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             default:
                 throw new ArgumentOutOfRangeException(nameof(effect), effect, null);
         }
+    }
+
+    private static Db.ScenarioEventEffect WithArmy(Db.ScenarioEventEffect effect, CustomMapArmyRef army, string prefix)
+    {
+        return army switch
+        {
+            CustomMapArmyRef.Army placed => effect with { IdStack = MakeId(prefix, "KC", FirstArmyNumber + placed.Id) },
+            CustomMapArmyRef.Template template => effect with { IdStackTemplate = MakeId(prefix, "TM", template.Id) },
+            _ => effect
+        };
+    }
+
+    // Templates: SStkTemp rows TM + id, slots laid out like an army's unit group (POS p = line p % 2, flank p / 2).
+    private static List<Db.ScenarioStackTemplate> BuildTemplates(CustomMap map, Db.ScenarioId scenarioId, string prefix)
+    {
+        List<Db.ScenarioStackTemplate> rows = [];
+
+        foreach (CustomMapArmyTemplate template in map.Templates.Where(map.IsTemplateSaveable).OrderBy(template => template.Id))
+        {
+            List<CustomMapUnit> units = [.. template.Slots.OfType<CustomMapUnit>()];
+            int[] positions = new int[GridPosition.Count];
+
+            for (int p = 0; p < GridPosition.Count; p++)
+            {
+                GridPosition position = new(p % GridPosition.LineCount, p / GridPosition.LineCount);
+                CustomMapUnit? unit = template.Slots[position.ToIndex()];
+
+                if (unit is null && position.IsBackLine && template.Slots[GridPosition.AtFrontLine(position.Flank).ToIndex()] is { IsLarge: true } large)
+                {
+                    unit = large;
+                }
+
+                positions[p] = unit is not null ? units.FindIndex(candidate => ReferenceEquals(candidate, unit)) : -1;
+            }
+
+            CustomMapUnit leader = units.First(unit => unit.Leadership > 0 && !unit.IsGuardian);
+            Db.Id? Unit(int index) => index < units.Count ? new Db.Id(units[index].TypeId.Value) : null;
+            int Level(int index) => index < units.Count ? units[index].Level : 0;
+            int playerIndex = GetPlayerIndex(map, template.Owner);
+
+            rows.Add(new Db.ScenarioStackTemplate(
+                scenarioId,
+                MakeId(prefix, "TM", template.Id),
+                new Db.Id(leader.TypeId.Value),
+                leader.Level,
+                MakeId(prefix, "PL", playerIndex),
+                MakeId(prefix, "SR", playerIndex),
+                Unit(0)!.Value, Level(0),
+                Unit(1), Level(1),
+                Unit(2), Level(2),
+                Unit(3), Level(3),
+                Unit(4), Level(4),
+                Unit(5), Level(5),
+                positions[0], positions[1], positions[2], positions[3], positions[4], positions[5],
+                ToOrderType(template.Order.Kind),
+                GetOrderTarget(map, prefix, template.Order),
+                UseFacing: false,
+                Facing: 0,
+                AiPriority: 3));
+        }
+
+        return rows;
+    }
+
+    private static Db.OrderType ToOrderType(CustomMapOrderKind kind)
+    {
+        return kind switch
+        {
+            CustomMapOrderKind.Normal => Db.OrderType.Normal,
+            CustomMapOrderKind.Stand => Db.OrderType.Stand,
+            CustomMapOrderKind.Guard => Db.OrderType.Guard,
+            CustomMapOrderKind.Roam => Db.OrderType.Roam,
+            CustomMapOrderKind.Berserk => Db.OrderType.Berserk,
+            CustomMapOrderKind.Explore => Db.OrderType.Explore,
+            CustomMapOrderKind.MoveToZone => Db.OrderType.MoveToLocation,
+            CustomMapOrderKind.DefendZone => Db.OrderType.DefendLocation,
+            CustomMapOrderKind.DefendCity => Db.OrderType.DefendCity,
+            CustomMapOrderKind.AttackArmy => Db.OrderType.AttackStack,
+            _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
+        };
+    }
+
+    private static Db.Id? GetOrderTarget(CustomMap map, string prefix, CustomMapArmyOrder order)
+    {
+        return order.Kind switch
+        {
+            CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => MakeId(prefix, "LO", order.LocationId),
+            CustomMapOrderKind.DefendCity => GetCityId(map, prefix, order.City!),
+            CustomMapOrderKind.AttackArmy => MakeId(prefix, "KC", FirstArmyNumber + order.ArmyId),
+            _ => null
+        };
     }
 
     private static Db.ScenarioEventEffect Effect(Db.ScenarioId scenarioId, Db.Id eventId, int number, Db.ScenarioEventEffectType category)

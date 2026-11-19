@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using Gallean.Common;
 using Gallean.Entities.GameData;
 
 namespace Gallean.Engine.Tests;
@@ -462,5 +463,157 @@ public sealed class CustomMapEventTests
         }
 
         return events.OfType<WorldScenarioEndedEvent>().SingleOrDefault() is { WinnerId: { } winner } ? scenario.State.Players[winner].Race : null;
+    }
+
+    // Raiders: neutral leader + soldier, defending South Gate when created.
+    private CustomMapArmyTemplate Raiders()
+    {
+        CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
+        slots[GridPosition.FrontCenter.ToIndex()] = NeutralSoldier;
+        slots[GridPosition.BackCenter.ToIndex()] = CustomMapUnit.From(Store.ListUnits(definitions)
+            .Where(unit => unit is { Category: UnitCategory.Soldier, Race: WorldRace.Neutral, IsLarge: false })
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First(), 3, definitions);
+
+        return new CustomMapArmyTemplate(0, "Raiders", WorldRace.Neutral, [.. slots], new CustomMapArmyOrder(CustomMapOrderKind.DefendZone, LocationId: 2));
+    }
+
+    // Army templates and the army effects (phase 5) through the game's loader: SStkTemp rows and every effect kind.
+    [Test]
+    public void TemplateSaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapArmyTemplate raiders = map.AddTemplate(Raiders());
+        Assert.That((raiders.Id, map.GetTemplateError(raiders), map.IsTemplateSaveable(raiders)), Is.EqualTo((1, (CustomMapStackError?)null, true)));
+        map.AddTemplate(Raiders() with { Name = "No leader", Slots = [.. new CustomMapUnit?[GridPosition.Count]] });
+        Assert.That(map.GetTemplateError(map.GetTemplate(2)!), Is.EqualTo(CustomMapStackError.NoLeader));
+
+        CustomMapArmyRef template = new CustomMapArmyRef.Template(1);
+        CustomMapArmyRef neutralArmy = new CustomMapArmyRef.Army(2);
+        map.AddEvent(CustomMapEvent.Create("Ambush", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects =
+            [
+                new CustomMapCreateArmyEffect(1, 2),
+                new CustomMapChangeOrderEffect(template, new CustomMapArmyOrder(CustomMapOrderKind.MoveToZone, LocationId: 1)),
+                new CustomMapChangeOrderEffect(neutralArmy, new CustomMapArmyOrder(CustomMapOrderKind.AttackArmy, ArmyId: 1)),
+                new CustomMapChangeOrderEffect(neutralArmy, new CustomMapArmyOrder(CustomMapOrderKind.DefendCity, City: new CustomMapCity.Village(1))),
+                new CustomMapChangeOwnerEffect(neutralArmy, WorldRace.Elf),
+                new CustomMapChangeOwnerEffect(template, null),
+                new CustomMapMoveArmyEffect(new CustomMapArmyRef.Triggerer(), 2),
+                new CustomMapMoveArmyEffect(neutralArmy, 1),
+                new CustomMapMoveBesideEffect(template),
+                new CustomMapRemoveArmyEffect(neutralArmy),
+                new CustomMapBattleEffect(template)
+            ]
+        });
+        map.AddEvent(CustomMapEvent.Create("Broken template", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapTurnCondition(2, true)]],
+            Effects = [new CustomMapCreateArmyEffect(2, 1)]
+        });
+        Assert.That(map.GetSaveableEvents().Select(ev => ev.Name), Is.EqualTo(new[] { "Ambush" }));
+        Assert.That(map.GetEventsUsing(new CustomMapEventTarget.Template(1)).Select(ev => ev.Name), Is.EqualTo(new[] { "Ambush" }));
+        Assert.That(map.GetEventsUsing(new CustomMapEventTarget.Army(1)).Select(ev => ev.Name), Is.EqualTo(new[] { "Ambush" }), "The attack order's target.");
+
+        CustomMapStore store = Store;
+        store.Save(map);
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, new GlobalVariables());
+
+        // The template: one row (the broken one is left out), units and order as built.
+        ScenarioStackTemplateDefinition loaded = scenario.Provider.StackTemplates.Single();
+        Assert.That(loaded.Id, Is.EqualTo(new ScenarioStackTemplateId(Id("TM", 1))));
+        Assert.That(scenario.State.Players[loaded.OwnerId].Race, Is.EqualTo(WorldRace.Neutral));
+        Assert.That(loaded.Order, Is.EqualTo(new WorldStackOrder.DefendLocation(new ScenarioLocationId(Id("LO", 2)), new WorldPosition(13, 14), 1)));
+
+        for (int p = 0; p < GridPosition.Count; p++)
+        {
+            GridPosition position = new(p % GridPosition.LineCount, p / GridPosition.LineCount);
+            CustomMapUnit? unit = raiders.Slots[position.ToIndex()];
+            Assert.That(loaded.Units[position] is { } placed ? (placed.DefinitionId, placed.Level) : default, Is.EqualTo(unit is null ? default : (unit.TypeId, unit.Level)), $"Slot {position}");
+        }
+
+        ScenarioStackReference templateReference = new ScenarioStackReference.Template(new ScenarioStackTemplateId(Id("TM", 1)));
+        ScenarioStackReference armyReference = new ScenarioStackReference.Stack(new WorldStackId(Id("KC", 0x102)));
+        WorldSubraceId elvenSubrace = new(new Db.Id(Id("SR", 2)));
+        Assert.That(scenario.Provider.Events.Single().Effects, Is.EqualTo(new ScenarioEventEffect[]
+        {
+            new ScenarioEventCreateStackEffect(new ScenarioStackTemplateId(Id("TM", 1)), new ScenarioLocationId(Id("LO", 2))),
+            new ScenarioEventChangeOrderEffect(templateReference, new WorldStackOrder.MoveToLocation(new ScenarioLocationId(Id("LO", 1)), new WorldPosition(14, 10), 1), false),
+            new ScenarioEventChangeOrderEffect(armyReference, new WorldStackOrder.AttackStack(new WorldStackId(Id("KC", 0x101))), false),
+            new ScenarioEventChangeOrderEffect(armyReference, new WorldStackOrder.DefendCity(new WorldFortificationId(Id("FT", 0x101))), false),
+            new ScenarioEventChangeOwnerEffect(armyReference, new ScenarioEventStackOwner.Subrace(elvenSubrace), false, true),
+            new ScenarioEventChangeOwnerEffect(templateReference, ScenarioEventStackOwner.Triggerer.Instance, false, true),
+            new ScenarioEventMoveStackEffect(null, new ScenarioLocationId(Id("LO", 2))),
+            new ScenarioEventMoveStackEffect(armyReference, new ScenarioLocationId(Id("LO", 1))),
+            new ScenarioEventMoveBesideEffect(templateReference),
+            new ScenarioEventRemoveStackEffect(armyReference, false),
+            new ScenarioEventBattleEffect(templateReference)
+        }));
+
+        CustomMap reopened = store.Open(MapId, definitions);
+        Assert.That((reopened.Templates, reopened.Events), Is.EqualTo((map.Templates, map.Events)).Using<(IReadOnlyList<CustomMapArmyTemplate>, IReadOnlyList<CustomMapEvent>)>((a, b) => a.Item1.SequenceEqual(b.Item1) && a.Item2.SequenceEqual(b.Item2)));
+    }
+
+    // The ambush plays: entering North Gate creates the raiders at South Gate with the template's order.
+    [Test]
+    public void AmbushPlayTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddTemplate(Raiders());
+        map.AddEvent(CustomMapEvent.Create("Ambush", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapCreateArmyEffect(1, 2)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+        ScenarioConfiguration configuration = new(
+            [
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null),
+                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)
+            ],
+            WorldDifficulty.Average,
+            Leader: null);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals, configuration);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        Assert.That(session.World.State.Stacks.Values.Where(stack => stack.SourceTemplateId is not null), Is.Empty);
+
+        Assert.That(session.World.DispatchCommand(new WorldStepStackCommand(new WorldStackId(CustomMapWriter.GetArmyStackId(MapId, 1)), new WorldPosition(13, 10))).Error, Is.Null);
+
+        WorldStack raiders = session.World.State.Stacks.Values.Single(stack => stack.SourceTemplateId == new ScenarioStackTemplateId(Id("TM", 1)));
+        Assert.That(raiders.Position.GetDistance(new WorldPosition(13, 14)), Is.LessThanOrEqualTo(1), "Inside South Gate.");
+        Assert.That(raiders.Order, Is.EqualTo(new WorldStackOrder.DefendLocation(new ScenarioLocationId(Id("LO", 2)), new WorldPosition(13, 14), 1)));
+        Assert.That(session.World.State.Players[raiders.OwnerId].Race, Is.EqualTo(WorldRace.Neutral));
+    }
+
+    // The ambush recipe's chain: the created raiders attack the army that fired the event at once.
+    [Test]
+    public void AmbushBattleTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddTemplate(Raiders());
+        map.AddEvent(CustomMapEvent.Create("Ambush", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapCreateArmyEffect(1, 2), new CustomMapBattleEffect(new CustomMapArmyRef.Template(1))]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        WorldStackId army = new(CustomMapWriter.GetArmyStackId(MapId, 1));
+
+        var result = session.World.DispatchCommand(new WorldStepStackCommand(army, new WorldPosition(13, 10)));
+
+        Assert.That(result.Events.OfType<WorldStackBattleStartedEvent>().Single().DefenderStackId, Is.EqualTo(army));
+        Assert.That(session.World.State.Stacks.Values.Single(stack => stack.SourceTemplateId is not null).Position.GetDistance(session.World.State.Stacks[army].Position), Is.LessThanOrEqualTo(1), "The raiders moved next to the army.");
     }
 }
