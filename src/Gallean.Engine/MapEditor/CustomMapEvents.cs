@@ -136,6 +136,16 @@ public sealed partial class CustomMap
             targets.Add(new CustomMapEventTarget.Army(stack.Id));
         }
 
+        if (sites.FirstOrDefault(site => site.Footprint.Contains(position)) is { } site)
+        {
+            targets.Add(new CustomMapEventTarget.Site(site.Id));
+        }
+
+        if (GetLandmarkAt(position) is { } landmark)
+        {
+            targets.Add(new CustomMapEventTarget.Landmark(landmark.Id));
+        }
+
         targets.AddRange(GetLocationsAt(position).Select(location => new CustomMapEventTarget.Location(location.Id)));
 
         return targets;
@@ -149,9 +159,9 @@ public sealed partial class CustomMap
             (CustomMapOwnCityCondition own, _) => IsCity(own.City, target),
             (CustomMapEnterCityCondition enter, _) => IsCity(enter.City, target),
             (CustomMapLootRuinCondition loot, CustomMapEventTarget.Ruin ruin) => loot.RuinId == ruin.Id,
-            (CustomMapDestroyArmyCondition destroy, CustomMapEventTarget.Army army) => destroy.ArmyId == army.Id,
-            (CustomMapArmyExistsCondition exists, CustomMapEventTarget.Army army) => exists.ArmyId == army.Id,
-            _ => false
+            (CustomMapDestroyArmyCondition destroy, _) => UsesArmy(destroy.Army, target),
+            (CustomMapArmyExistsCondition exists, _) => UsesArmy(exists.Army, target),
+            _ => KindUses(condition, target)
         };
     }
 
@@ -170,7 +180,7 @@ public sealed partial class CustomMap
             (CustomMapChangeOwnerEffect owner, _) => UsesArmy(owner.Army, target),
             (CustomMapChangeOrderEffect order, _) => UsesArmy(order.Army, target) || UsesOrder(order.Order, target),
             (CustomMapBattleEffect battle, _) => UsesArmy(battle.Army, target),
-            _ => false
+            _ => KindUses(effect, target)
         };
     }
 
@@ -263,9 +273,9 @@ public sealed partial class CustomMap
             CustomMapOwnCityCondition own => CityExists(own.City),
             CustomMapEnterCityCondition enter => CityExists(enter.City),
             CustomMapLootRuinCondition loot => ruins.Any(ruin => ruin.Id == loot.RuinId),
-            CustomMapDestroyArmyCondition destroy => stacks.Any(stack => stack.Id == destroy.ArmyId),
-            CustomMapArmyExistsCondition exists => stacks.Any(stack => stack.Id == exists.ArmyId),
-            _ => throw new ArgumentOutOfRangeException(nameof(condition), condition, null)
+            CustomMapDestroyArmyCondition destroy => ArmyRefExists(destroy.Army, triggererAllowed: false),
+            CustomMapArmyExistsCondition exists => ArmyRefExists(exists.Army, triggererAllowed: false),
+            _ => KindConditionTargetExists(condition)
         };
     }
 
@@ -287,7 +297,7 @@ public sealed partial class CustomMap
             CustomMapChangeOwnerEffect owner => ArmyRefExists(owner.Army, triggererAllowed: false) && (owner.NewOwner is not { } race || race == WorldRace.Neutral || players.Any(player => player.Race == race)),
             CustomMapChangeOrderEffect order => ArmyRefExists(order.Army, triggererAllowed: false) && OrderTargetExists(order.Order),
             CustomMapBattleEffect battle => ArmyRefExists(battle.Army, triggererAllowed: false),
-            _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, null)
+            _ => KindEffectTargetExists(effect)
         };
     }
 
@@ -426,6 +436,12 @@ public abstract record CustomMapEventTarget
     public sealed record Event(int Id) : CustomMapEventTarget;
 
     public sealed record Template(int Id) : CustomMapEventTarget;
+
+    public sealed record Site(int Id) : CustomMapEventTarget;
+
+    public sealed record Landmark(int Id) : CustomMapEventTarget;
+
+    public sealed record Variable(int Id) : CustomMapEventTarget;
 }
 
 // A city a block points at: a village by its editor ID or a race's capital.
@@ -452,10 +468,23 @@ public sealed record CustomMapEnterCityCondition(CustomMapCity City) : CustomMap
 
 public sealed record CustomMapLootRuinCondition(int RuinId) : CustomMapCondition;
 
-// A concerned race destroyed the army.
-public sealed record CustomMapDestroyArmyCondition(int ArmyId) : CustomMapCondition;
+// A concerned race destroyed the army (or any army made from the template).
+public sealed record CustomMapDestroyArmyCondition(CustomMapArmyRef Army) : CustomMapCondition
+{
+    public CustomMapDestroyArmyCondition(int armyId)
+        : this(new CustomMapArmyRef.Army(armyId))
+    {
+    }
+}
 
-public sealed record CustomMapArmyExistsCondition(int ArmyId, bool Exists) : CustomMapCondition;
+// The army (or one made from the template) exists, or none does.
+public sealed record CustomMapArmyExistsCondition(CustomMapArmyRef Army, bool Exists) : CustomMapCondition
+{
+    public CustomMapArmyExistsCondition(int armyId, bool exists)
+        : this(new CustomMapArmyRef.Army(armyId), exists)
+    {
+    }
+}
 
 public abstract record CustomMapEffect;
 

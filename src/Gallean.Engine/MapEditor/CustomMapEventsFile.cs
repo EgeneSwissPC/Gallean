@@ -14,7 +14,7 @@ public static class CustomMapEventsFile
 
     private const int FormatVersion = 1;
 
-    public static void Write(string path, IReadOnlyList<CustomMapEvent> events, IReadOnlyList<CustomMapArmyTemplate>? templates = null)
+    public static void Write(string path, IReadOnlyList<CustomMapEvent> events, IReadOnlyList<CustomMapArmyTemplate>? templates = null, IReadOnlyList<CustomMapVariable>? variables = null)
     {
         JsonArray array = [];
 
@@ -64,7 +64,8 @@ public static class CustomMapEventsFile
             });
         }
 
-        JsonObject root = new() { ["formatVersion"] = FormatVersion, ["events"] = array, ["templates"] = templateArray };
+        JsonArray variableArray = [.. (variables ?? []).OrderBy(variable => variable.Id).Select(variable => (JsonNode)new JsonObject { ["id"] = variable.Id, ["name"] = variable.Name, ["initial"] = variable.Initial })];
+        JsonObject root = new() { ["formatVersion"] = FormatVersion, ["events"] = array, ["templates"] = templateArray, ["variables"] = variableArray };
         File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
     }
 
@@ -144,8 +145,28 @@ public static class CustomMapEventsFile
             CustomMapOwnCityCondition own => new JsonObject { ["kind"] = "ownCity", ["city"] = WriteCity(own.City) },
             CustomMapEnterCityCondition enter => new JsonObject { ["kind"] = "enterCity", ["city"] = WriteCity(enter.City) },
             CustomMapLootRuinCondition loot => new JsonObject { ["kind"] = "lootRuin", ["ruin"] = loot.RuinId },
-            CustomMapDestroyArmyCondition destroy => new JsonObject { ["kind"] = "destroyArmy", ["army"] = destroy.ArmyId },
-            CustomMapArmyExistsCondition exists => new JsonObject { ["kind"] = "armyExists", ["army"] = exists.ArmyId, ["exists"] = exists.Exists },
+            CustomMapDestroyArmyCondition destroy => WithArmy(new JsonObject { ["kind"] = "destroyArmy" }, destroy.Army),
+            CustomMapArmyExistsCondition exists => WithArmy(new JsonObject { ["kind"] = "armyExists", ["exists"] = exists.Exists }, exists.Army),
+            CustomMapOwnItemCondition own => new JsonObject { ["kind"] = "ownItem", ["item"] = own.Item.Value },
+            CustomMapLeaderItemCondition leader => new JsonObject { ["kind"] = "leaderItem", ["army"] = WriteArmy(leader.Army), ["item"] = leader.Item.Value },
+            CustomMapRelationCondition relation => new JsonObject { ["kind"] = "relation", ["race1"] = relation.Race1.ToString(), ["race2"] = relation.Race2.ToString(), ["level"] = relation.Level.ToString() },
+            CustomMapAllianceCondition alliance => new JsonObject { ["kind"] = "alliance", ["race1"] = alliance.Race1.ToString(), ["race2"] = alliance.Race2.ToString() },
+            CustomMapLandCondition land => new JsonObject { ["kind"] = "land", ["percent"] = land.Percent },
+            CustomMapVisitSiteCondition visit => new JsonObject { ["kind"] = "visitSite", ["site"] = visit.SiteId },
+            CustomMapArmyToZoneCondition toZone => new JsonObject { ["kind"] = "armyToZone", ["army"] = WriteArmy(toZone.Army), ["location"] = toZone.LocationId },
+            CustomMapArmyToCityCondition toCity => new JsonObject { ["kind"] = "armyToCity", ["army"] = WriteArmy(toCity.Army), ["city"] = WriteCity(toCity.City) },
+            CustomMapItemToZoneCondition item => new JsonObject { ["kind"] = "itemToZone", ["item"] = item.Item.Value, ["location"] = item.LocationId },
+            CustomMapVariableCondition variable => new JsonObject
+            {
+                ["kind"] = "variable",
+                ["variable"] = variable.VariableId,
+                ["min"] = variable.Minimum,
+                ["max"] = variable.Maximum,
+                ["join"] = variable.Join.ToString(),
+                ["variable2"] = variable.SecondVariableId,
+                ["min2"] = variable.SecondMinimum,
+                ["max2"] = variable.SecondMaximum
+            },
             _ => throw new ArgumentOutOfRangeException(nameof(condition), condition, null)
         };
     }
@@ -161,8 +182,25 @@ public static class CustomMapEventsFile
             "ownCity" => new CustomMapOwnCityCondition(ReadCity(node["city"])),
             "enterCity" => new CustomMapEnterCityCondition(ReadCity(node["city"])),
             "lootRuin" => new CustomMapLootRuinCondition(Int(node, "ruin")),
-            "destroyArmy" => new CustomMapDestroyArmyCondition(Int(node, "army")),
-            "armyExists" => new CustomMapArmyExistsCondition(Int(node, "army"), Bool(node, "exists")),
+            "destroyArmy" => new CustomMapDestroyArmyCondition(ReadArmy(node)),
+            "armyExists" => new CustomMapArmyExistsCondition(ReadArmy(node), Bool(node, "exists")),
+            "ownItem" => new CustomMapOwnItemCondition(new ItemDefinitionId(Str(node, "item"))),
+            "leaderItem" => new CustomMapLeaderItemCondition(ReadArmy(node["army"]), new ItemDefinitionId(Str(node, "item"))),
+            "relation" => new CustomMapRelationCondition(Race(node, "race1"), Race(node, "race2"), Enum.Parse<CustomMapRelation>(Str(node, "level"))),
+            "alliance" => new CustomMapAllianceCondition(Race(node, "race1"), Race(node, "race2")),
+            "land" => new CustomMapLandCondition(Int(node, "percent")),
+            "visitSite" => new CustomMapVisitSiteCondition(Int(node, "site")),
+            "armyToZone" => new CustomMapArmyToZoneCondition(ReadArmy(node["army"]), Int(node, "location")),
+            "armyToCity" => new CustomMapArmyToCityCondition(ReadArmy(node["army"]), ReadCity(node["city"])),
+            "itemToZone" => new CustomMapItemToZoneCondition(new ItemDefinitionId(Str(node, "item")), Int(node, "location")),
+            "variable" => new CustomMapVariableCondition(
+                Int(node, "variable"),
+                Int(node, "min"),
+                Int(node, "max"),
+                Enum.Parse<CustomMapVariableJoin>(Str(node, "join")),
+                Int(node, "variable2"),
+                Int(node, "min2"),
+                Int(node, "max2")),
             string kind => throw new InvalidDataException($"Unknown event condition '{kind}'.")
         };
     }
@@ -192,6 +230,17 @@ public static class CustomMapEventsFile
             CustomMapChangeOwnerEffect owner => new JsonObject { ["kind"] = "changeOwner", ["army"] = WriteArmy(owner.Army), ["owner"] = owner.NewOwner?.ToString() },
             CustomMapChangeOrderEffect order => new JsonObject { ["kind"] = "changeOrder", ["army"] = WriteArmy(order.Army), ["order"] = WriteOrder(order.Order) },
             CustomMapBattleEffect battle => new JsonObject { ["kind"] = "battle", ["army"] = WriteArmy(battle.Army) },
+            CustomMapCastSpellEffect cast => new JsonObject { ["kind"] = "castSpell", ["spell"] = cast.Spell.Value, ["caster"] = cast.Caster?.ToString() },
+            CustomMapCastSpellZoneEffect cast => new JsonObject { ["kind"] = "castSpellZone", ["spell"] = cast.Spell.Value, ["location"] = cast.LocationId, ["caster"] = cast.Caster?.ToString() },
+            CustomMapGiveSpellEffect give => new JsonObject { ["kind"] = "giveSpell", ["spell"] = give.Spell.Value },
+            CustomMapAllyEffect ally => new JsonObject { ["kind"] = "ally", ["race1"] = ally.Race1.ToString(), ["race2"] = ally.Race2.ToString(), ["permanent"] = ally.Permanent },
+            CustomMapRelationEffect relation => new JsonObject { ["kind"] = "setRelation", ["race1"] = relation.Race1.ToString(), ["race2"] = relation.Race2.ToString(), ["level"] = relation.Level.ToString() },
+            CustomMapRemoveMountainsEffect mountains => new JsonObject { ["kind"] = "removeMountains", ["location"] = mountains.LocationId },
+            CustomMapRemoveLandmarkEffect remove => new JsonObject { ["kind"] = "removeLandmark", ["landmark"] = remove.LandmarkId },
+            CustomMapChangeLandmarkEffect change => new JsonObject { ["kind"] = "changeLandmark", ["landmark"] = change.LandmarkId, ["type"] = change.Type.Value },
+            CustomMapChangeTerrainEffect terrain => new JsonObject { ["kind"] = "changeTerrain", ["location"] = terrain.LocationId, ["terrain"] = terrain.Terrain.ToString(), ["size"] = terrain.Size },
+            CustomMapVariableEffect variable => new JsonObject { ["kind"] = "setVariable", ["variable"] = variable.VariableId, ["operation"] = variable.Operation.ToString(), ["value"] = variable.Value },
+            CustomMapDestroyItemEffect destroy => new JsonObject { ["kind"] = "destroyItem", ["item"] = destroy.Item.Value, ["triggererOnly"] = destroy.TriggererOnly },
             _ => throw new ArgumentOutOfRangeException(nameof(effect), effect, null)
         };
     }
@@ -220,8 +269,49 @@ public static class CustomMapEventsFile
             "changeOwner" => new CustomMapChangeOwnerEffect(ReadArmy(node["army"]), node["owner"] is { } owner ? Enum.Parse<WorldRace>(owner.GetValue<string>()) : null),
             "changeOrder" => new CustomMapChangeOrderEffect(ReadArmy(node["army"]), ReadOrder(node["order"])),
             "battle" => new CustomMapBattleEffect(ReadArmy(node["army"])),
+            "castSpell" => new CustomMapCastSpellEffect(new WorldSpellDefinitionId(Str(node, "spell")), OptionalRace(node, "caster")),
+            "castSpellZone" => new CustomMapCastSpellZoneEffect(new WorldSpellDefinitionId(Str(node, "spell")), Int(node, "location"), OptionalRace(node, "caster")),
+            "giveSpell" => new CustomMapGiveSpellEffect(new WorldSpellDefinitionId(Str(node, "spell"))),
+            "ally" => new CustomMapAllyEffect(Race(node, "race1"), Race(node, "race2"), Bool(node, "permanent")),
+            "setRelation" => new CustomMapRelationEffect(Race(node, "race1"), Race(node, "race2"), Enum.Parse<CustomMapRelation>(Str(node, "level"))),
+            "removeMountains" => new CustomMapRemoveMountainsEffect(Int(node, "location")),
+            "removeLandmark" => new CustomMapRemoveLandmarkEffect(Int(node, "landmark")),
+            "changeLandmark" => new CustomMapChangeLandmarkEffect(Int(node, "landmark"), new WorldLandmarkDefinitionId(Str(node, "type"))),
+            "changeTerrain" => new CustomMapChangeTerrainEffect(Int(node, "location"), Enum.Parse<WorldMapTerrain>(Str(node, "terrain")), Int(node, "size")),
+            "setVariable" => new CustomMapVariableEffect(Int(node, "variable"), Enum.Parse<ScenarioVariableOperation>(Str(node, "operation")), Int(node, "value")),
+            "destroyItem" => new CustomMapDestroyItemEffect(new ItemDefinitionId(Str(node, "item")), Bool(node, "triggererOnly")),
             string kind => throw new InvalidDataException($"Unknown event effect '{kind}'.")
         };
+    }
+
+    // Condition nodes keep the army inline ("army": id or "template": id), as phase 1 wrote it.
+    private static JsonObject WithArmy(JsonObject node, CustomMapArmyRef army)
+    {
+        switch (army)
+        {
+            case CustomMapArmyRef.Army placed:
+                node["army"] = placed.Id;
+                break;
+            case CustomMapArmyRef.Template template:
+                node["template"] = template.Id;
+                break;
+        }
+
+        return node;
+    }
+
+    private static WorldRace Race(JsonNode node, string name) => Enum.Parse<WorldRace>(Str(node, name));
+
+    private static WorldRace? OptionalRace(JsonNode node, string name) => node[name] is { } race ? Enum.Parse<WorldRace>(race.GetValue<string>()) : null;
+
+    public static IReadOnlyList<CustomMapVariable> ReadVariables(string path)
+    {
+        if (!File.Exists(path) || JsonNode.Parse(File.ReadAllText(path)) is not { } root)
+        {
+            return [];
+        }
+
+        return [.. (root["variables"]?.AsArray() ?? []).OfType<JsonNode>().Select(node => new CustomMapVariable(Int(node, "id"), Str(node, "name"), Int(node, "initial")))];
     }
 
     private static JsonNode WriteArmy(CustomMapArmyRef army)
