@@ -33,6 +33,11 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
 - **Event chains get a separate chain screen, later (phase 7).** Each event is a box, arrows for "switches on" /
   "switches off", events that are never switched on (and start off) in a warning colour, click a box to open its
   script. The block screen gets no chain strip.
+- **Two survival recipes:** "Survive N turns" (plain: the chosen race wins on turn N; no AI goal) and "Hold out
+  against attackers" (the attacking races win if they capture the defender's capital before turn N, the defender
+  wins on turn N; the capital becomes the AI's goal from its objective turn). Every win recipe also adds a win event
+  for capturing every enemy capital, so conquering everyone still ends the game early (a race with a win event no
+  longer wins by elimination).
 
 ## How events work in the game (engine facts)
 
@@ -87,7 +92,7 @@ delete, "New event". Double-click (or Enter) opens the event screen. Hotkey V (f
 Full screen like the army screen, three columns:
 
 - **Left – block palette**, grouped by colour; groups fold, only the most used blocks show at first (~10):
-  - Recipes (top): Capture a city to win · Hold a zone to win · Survive N turns · Lose if a city falls · Ambush when
+  - Recipes (top): Capture a city to win · Hold a zone to win · Survive N turns · Hold out against attackers · Lose if a city falls · Ambush when
     entering a zone · Treasure message when looting a ruin.
   - Blue – time: on turn N, every N turns.
   - Green – zones: an army enters [zone], [army] reaches [zone], an army carries [item] into [zone].
@@ -164,5 +169,5 @@ Full screen like the army screen, three columns:
 3. ~~Deleting an object used by events: block saving, or drop the block with a warning?~~ Decided: confirm once, blocks turn red, saving skips broken events with a note.
 4. ~~Removing a race: re-map events automatically or warn?~~ Decided: same as deleting an object (confirm once, red blocks, skipped on save, restored when the race returns).
 5. ~~A tree view of event chains — later?~~ Decided: a separate chain screen, phase 7.
-6. Should "Survive N turns" also make the AI target something, or just win on turn N?
+6. ~~Should "Survive N turns" also make the AI target something?~~ Decided: two recipes, plain and "Hold out against attackers".
 7. OR + "only once": use a hidden variable, or have each sibling switch the others off (no variables needed)?
