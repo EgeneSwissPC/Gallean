@@ -17,7 +17,7 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
   the palette.
 - **Order: the full block editor first, recipes after it (phase 4)**, built from real blocks so every recipe can be
   opened and changed. No temporary victory panel.
-- **Texts: a default language plus optional translations.** Every text field (message, objective, event name) has one
+- **Texts: a default language plus optional translations.** Every text the player reads (message, objective) has one
   box in the default language (English). An "Add translation" button adds a box for another of the game's 7
   translations (ru, de, fr, it, pl, cs, es); each can be removed again. A language without a translation falls back
   to the default text. The writer fills the base Tscen and each `Languages/<lang>/Scens` copy.
@@ -41,7 +41,12 @@ Spec written 2026-11-19 on `gallean-upgrade` at `3c64f1c3`. Nothing is built yet
 - **OR + "only once": the copies switch each other off.** An OR event is saved as one game event per condition group
   with the same effects; with "only once" each copy gets a hidden effect (before any Win effect) "switch off the other
   copies" (the game's normal EnableEvent effect, no variables). "Switch [X] on/off" blocks elsewhere switch all
-  copies of X. The reader folds the copies back into one event and hides the extra effects.
+  copies of X.
+- **The editor keeps its own copy of the events** (`EditorEvents.json` in the map folder; taken in phase 1). The
+  game only reads the event tables; the editor reopens events from its copy, so "or" groups, "turn N" blocks,
+  translations and broken events come back exactly as built. Folding the game's rows back (the earlier plan) could
+  not bring back broken events, which the tables leave out. Event names are editor-only, so they have no
+  translations.
 
 ## How events work in the game (engine facts)
 
@@ -135,8 +140,8 @@ Full screen like the army screen, three columns:
   `OBJECT_TXT`; player IDs from the current race slots, so removing a race re-maps events instead of breaking them.
 - **Texts:** `CustomMapText(Default, ImmutableDictionary<string, string> Translations)` for every event text; the
   writer puts the default into the base Tscen and translation-or-default into each language's Tscen.
-- **Reader:** `CustomMapStore.Open` reads events back (like locations, through an optional `FromState` parameter);
-  sibling events written for an OR group carry a marker in the name text so they fold back into one event.
+- **Reader:** `CustomMapStore.Open` reads `EditorEvents.json` (`CustomMapEventsFile`) and passes the events to
+  `FromState`.
 - **Client:** `MapEditorEventsListViewModel` (overlay), `MapEditorEventScreenViewModel` + view (palette, script,
   settings), block view models per kind with a shared field set (zone/object picker, number, drop-down, text);
   drag-drop through the game's `DragDropBehavior`; map picking through a pick mode in `MapEditorScreenViewModel`.
@@ -154,7 +159,7 @@ Full screen like the army screen, three columns:
 
 ## Phases
 
-1. **Engine model + save/load, starter set** (~1.5 days): every N turns, on turn N, enters zone, owns/enters city,
+1. ~~**Engine model + save/load, starter set** (~1.5 days):~~ done, see "Phase 1 — done". every N turns, on turn N, enters zone, owns/enters city,
    loots ruin, destroys army, army exists; message, win, lose, switch event, reveal zone, give item, change objective;
    OR groups.
 2. **Block event screen + events list** (~2.5 days): palette, script with drag-drop, settings, message preview.
@@ -165,6 +170,44 @@ Full screen like the army screen, three columns:
 6. **Remaining kinds + variables** (~2 days).
 7. **Chain screen** (~1.5 days): events as boxes with switch-on/off arrows, unreachable events marked, click opens
    the script.
+
+## Phase 1 — done
+
+Feature commit `e844625a`, merged as `defbc255` (branch `upgrade/map-editor-events`).
+
+What was built:
+- `CustomMapEvents.cs`: `CustomMapEvent` (name, triggering races, optional concerned races, once, enabled, chance,
+  order, condition groups = "or", effects), `CustomMapText` (default + translations for cs/de/es/fr/it/pl/ru,
+  fallback to the default), `CustomMapCity` (village or a race's capital). Conditions: turn N / every N turns, army
+  enters a zone, owns a city, enters a city, loots a ruin, destroys an army, army exists / is gone. Effects: message
+  (audience, unit portrait, side), win, lose, switch an event on/off, reveal a zone, give an item (army or capital),
+  change the objective. `CustomMap.AddEvent/UpdateEvent/RemoveEvent/GetEvent`, `GetEventProblems` (no race on the
+  map, no condition, missing target, a second objective change) and `GetSaveableEvents` (also drops events that
+  switch a dropped event, repeated until stable).
+- Writer: `SEvent`/`SEvCond`/`SEvEffec`/`SEvUnfog` + Tscen `NAME_TXT`/`POPUP_TXT`/`OBJECT_TXT`. One game event per
+  "or" group (`EV` + running number); with "only once" each copy first switches the others off; a "turn N" group's
+  copy occurs once; win/lose saved last; races become player IDs at save time. Translations go to
+  `<maps>/Languages/<code>/<map id>/Tscen.json` (removed when a language has none); `GameLoader` reads them for
+  custom maps (small client change; the game laid language texts over scenario texts already).
+- `CustomMapEventsFile` (editor copy, JsonNode by hand, AOT-safe); `Open` reads it.
+
+Tests (`CustomMapEventTests`, 4): `EventRulesTest`; `EventSaveAndLoadTest` (every kind through the game's
+`ScenarioLoader`, compared with the expected `ScenarioEventDefinition`s; English and Russian texts through
+`GameTextProvider`; reopen equals the built events, broken ones included; translation file removed when dropped);
+`EventPlayerNumbersTest` (removing the race before another renumbers players, the win follows the race);
+`EventPlayTest` (game engine: entering either gate shows the message once in all, turn 3 wins for the Empire).
+Mutation check: without the copies switching each other off, `EventPlayTest` fails ("South Gate: only once in
+all", 2 popups). Suite 5219 (5215 + 4); the 14 map editor visual tests pass.
+
+Real client (AOT build, `mapgen` map with a "Welcome" turn-1 message and a Northern Pass event): starting the
+custom quest shows the game's story popup "Welcome to the custom map events test." with the portrait on turn 1;
+no errors in the client log. Entering the pass was not driven in the client (covered by `EventPlayTest`).
+
+Known limits:
+- No editor UI yet (phase 2); events exist only through the engine API and saved files.
+- The game keeps one reveal audience per event: several reveal blocks in one event reveal for the union of their
+  races. One objective change per event (the text is keyed by event).
+- Portraits are unit type IDs (as in the original maps); the picker comes with the message block.
 
 ## Open questions
 

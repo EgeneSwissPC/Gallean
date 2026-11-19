@@ -316,9 +316,17 @@ Known limits:
 ## Task: events (Scratch-style blocks)
 
 Planned in `docs/map-editor-events.md` (how events work in the game, use counts in the original maps, block palette,
-script, settings, map picking, recipes, writer/reader, tests, 6 phases, open questions). Phases: engine model and
+script, settings, map picking, recipes, writer/reader, tests, 7 phases, decisions on all open questions). Phases: engine model and
 save/load of a starter set (~1.5 days), block event screen and events list (~2.5 days), map picking and safe deletes
-(~1 day), recipes (~1 day), army templates and army effects (~2 days), remaining kinds and variables (~2 days).
+(~1 day), recipes (~1 day), army templates and army effects (~2 days), remaining kinds and variables (~2 days),
+chain screen (~1.5 days).
+
+Phase 1 — done (commit `e844625a`, merged as `defbc255`): events in the engine. Block model with "or" groups and
+translations, 7 starter conditions and 7 effects, saved as the game's event tables (one game event per "or" group,
+copies switch each other off for "only once", win last, races to player IDs at save time), translations in
+`<maps>/Languages/<code>/`, the editor's own copy `EditorEvents.json` for reopening (broken events kept, left out of
+the game tables). Tests: `CustomMapEventTests` (4, through the game's loader and engine); suite 5219. Real client:
+the turn-1 message pops up with its portrait. No editor UI yet (phase 2).
 
 ## Task (later): victory settings
 
