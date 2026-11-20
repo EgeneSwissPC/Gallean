@@ -757,4 +757,29 @@ public sealed class CustomMapEventTests
         Assert.That(session.World.State.TurnInfo.TurnNumber, Is.EqualTo(3));
         Assert.That(scenario.State.Players[events.OfType<WorldScenarioEndedEvent>().Single().WinnerId!.Value].Race, Is.EqualTo(WorldRace.Human));
     }
+
+    // Chains: a quest (1 on -> 2 -> 3), an off switch, a back link, and an event that can never fire.
+    [Test]
+    public void EventChainsTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapEvent Quest(string name, bool enabled, params CustomMapEffect[] effects) =>
+            CustomMapEvent.Create(name, WorldRace.Human) with { Enabled = enabled, Groups = [[new CustomMapTurnCondition(1, true)]], Effects = [.. effects] };
+        map.AddEvent(Quest("Elder asks", true, new CustomMapSwitchEventEffect(2, true)));
+        map.AddEvent(Quest("Ruin looted", false, new CustomMapSwitchEventEffect(3, true), new CustomMapSwitchEventEffect(1, false)));
+        map.AddEvent(Quest("Reward", false, new CustomMapSwitchEventEffect(1, true)));
+        map.AddEvent(Quest("Forgotten", false, new CustomMapSwitchEventEffect(5, true)));
+        map.AddEvent(Quest("Never reached", false));
+
+        CustomMapEventChains chains = map.GetEventChains();
+
+        Assert.That(chains.Links, Is.EquivalentTo(new[]
+        {
+            new CustomMapEventLink(1, 2, true), new CustomMapEventLink(2, 3, true), new CustomMapEventLink(2, 1, false),
+            new CustomMapEventLink(3, 1, true), new CustomMapEventLink(4, 5, true)
+        }));
+        Assert.That(new[] { 1, 2, 3 }.Select(id => chains.Layers[id]), Is.EqualTo(new[] { 0, 1, 2 }));
+        Assert.That(chains.NeverFires, Is.EqualTo(new[] { 4, 5 }));
+        Assert.That((chains.Layers[4], chains.Layers[5]), Is.EqualTo((0, 1)), "Unreachable chains keep their own order.");
+    }
 }

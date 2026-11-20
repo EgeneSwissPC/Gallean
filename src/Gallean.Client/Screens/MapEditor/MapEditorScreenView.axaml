@@ -548,9 +548,10 @@
             <Button x:Name="NewEventButton" DockPanel.Dock="Right" Classes="pill" Height="28" Padding="10,0" Content="{local:Text 'New event'}" Command="{Binding NewEventCommand}" />
             <local:OutlinedTextBlock x:Name="EventsTitle" Text="{Binding EventsTitle}" Classes="h4" Foreground="{StaticResource ScenarioSelectAccentBrush}" VerticalAlignment="Center" />
           </DockPanel>
-          <UniformGrid Columns="2">
+          <UniformGrid Columns="3">
             <Button x:Name="TemplatesButton" Classes="pill" Height="28" Margin="0,0,3,0" Content="{local:Text 'Armies'}" ToolTip.Tip="{local:Text 'Army templates: armies that events create'}" Command="{Binding OpenTemplatesCommand}" />
             <Button x:Name="VariablesButton" Classes="pill" Height="28" Margin="3,0,0,0" Content="{local:Text 'Variables'}" ToolTip.Tip="{local:Text 'Numbers events can count with and test'}" Command="{Binding OpenVariablesCommand}" />
+            <Button x:Name="ChainsButton" Classes="pill" Height="28" Margin="6,0,0,0" Content="{local:Text 'Chains'}" ToolTip.Tip="{local:Text 'Which event switches which on or off'}" Command="{Binding OpenChainsCommand}" />
           </UniformGrid>
           <TextBlock Text="{local:Text 'The map script: when something happens, do something. Double-click an event to edit its blocks.'}"
                      Classes="caption"

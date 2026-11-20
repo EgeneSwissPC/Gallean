@@ -144,6 +144,7 @@ internal sealed partial class MapEditorScreenViewModel
         }
 
         RebuildEventRows();
+        RefreshChainScreen();
     }
 
     private void RebuildEventRows()

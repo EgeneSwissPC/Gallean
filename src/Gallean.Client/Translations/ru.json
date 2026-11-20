@@ -1328,6 +1328,20 @@
     "used by {0} events": "используется в событиях: {0}",
     "visits": "посещает",
     "visits a site": "посещает строение",
-    "{0} land": "землю: {0}"
+    "{0} land": "землю: {0}",
+    "Event chains": "Цепочки событий",
+    "No events yet.": "Событий пока нет.",
+    "Click to open the event": "Щёлкните, чтобы открыть событие",
+    "never fires": "никогда не сработает",
+    "on at the start": "включено в начале",
+    "switched on later": "включается позже",
+    "Chains": "Цепочки",
+    "Which event switches which on or off": "Какое событие включает или выключает какое",
+    "{0} events, 1 link.": "Событий: {0}, связей: 1.",
+    "{0} events, {1} links.": "Событий: {0}, связей: {1}.",
+    "{0} Every event can fire.": "{0} Каждое событие может сработать.",
+    "{0} {1} can never fire: they start switched off and nothing that can fire switches them on.": "{0} Никогда не сработают: {1} — они выключены в начале, и ничто срабатывающее их не включает.",
+    "{0} · switches itself on": "{0} · включает само себя",
+    "{0} · switches itself off": "{0} · выключает само себя"
   }
 }
