@@ -1342,6 +1342,9 @@
     "{0} Every event can fire.": "{0} Every event can fire.",
     "{0} {1} can never fire: they start switched off and nothing that can fire switches them on.": "{0} {1} can never fire: they start switched off and nothing that can fire switches them on.",
     "{0} · switches itself on": "{0} · switches itself on",
-    "{0} · switches itself off": "{0} · switches itself off"
+    "{0} · switches itself off": "{0} · switches itself off",
+    "Capture a city": "Capture a city",
+    "order: capture a city": "order: capture a city",
+    "to capture": "to capture"
   }
 }

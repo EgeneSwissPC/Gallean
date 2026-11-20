@@ -1342,6 +1342,9 @@
     "{0} Every event can fire.": "{0} Каждое событие может сработать.",
     "{0} {1} can never fire: they start switched off and nothing that can fire switches them on.": "{0} Никогда не сработают: {1} — они выключены в начале, и ничто срабатывающее их не включает.",
     "{0} · switches itself on": "{0} · включает само себя",
-    "{0} · switches itself off": "{0} · выключает само себя"
+    "{0} · switches itself off": "{0} · выключает само себя",
+    "Capture a city": "Захватить город",
+    "order: capture a city": "приказ: захватить город",
+    "to capture": "захватить"
   }
 }

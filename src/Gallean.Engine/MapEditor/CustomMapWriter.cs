@@ -1358,6 +1358,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             CustomMapOrderKind.DefendZone => Db.OrderType.DefendLocation,
             CustomMapOrderKind.DefendCity => Db.OrderType.DefendCity,
             CustomMapOrderKind.AttackArmy => Db.OrderType.AttackStack,
+            CustomMapOrderKind.SecureCity => Db.OrderType.SecureCity,
             _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, null)
         };
     }
@@ -1367,7 +1368,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         return order.Kind switch
         {
             CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => MakeId(prefix, "LO", order.LocationId),
-            CustomMapOrderKind.DefendCity => GetCityId(map, prefix, order.City!),
+            CustomMapOrderKind.DefendCity or CustomMapOrderKind.SecureCity => GetCityId(map, prefix, order.City!),
             CustomMapOrderKind.AttackArmy => MakeId(prefix, "KC", FirstArmyNumber + order.ArmyId),
             _ => null
         };

@@ -199,7 +199,7 @@ public sealed partial class CustomMap
         return order.Kind switch
         {
             CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => target is CustomMapEventTarget.Location location && location.Id == order.LocationId,
-            CustomMapOrderKind.DefendCity => order.City is { } city && IsCity(city, target),
+            CustomMapOrderKind.DefendCity or CustomMapOrderKind.SecureCity => order.City is { } city && IsCity(city, target),
             CustomMapOrderKind.AttackArmy => target is CustomMapEventTarget.Army army && army.Id == order.ArmyId,
             _ => false
         };

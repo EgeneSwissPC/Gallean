@@ -170,12 +170,13 @@ internal static class MapEditorOrders
         new(CustomMapOrderKind.MoveToZone, Tr("Go to a zone")),
         new(CustomMapOrderKind.DefendZone, Tr("Defend a zone")),
         new(CustomMapOrderKind.DefendCity, Tr("Defend a city")),
+        new(CustomMapOrderKind.SecureCity, Tr("Capture a city")),
         new(CustomMapOrderKind.AttackArmy, Tr("Attack an army"))
     ];
 
     public static bool NeedsTarget(CustomMapOrderKind kind)
     {
-        return kind is CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone or CustomMapOrderKind.DefendCity or CustomMapOrderKind.AttackArmy;
+        return kind is CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone or CustomMapOrderKind.DefendCity or CustomMapOrderKind.SecureCity or CustomMapOrderKind.AttackArmy;
     }
 
     public static IReadOnlyList<MapEditorOption<object?>> Targets(MapEditorEventContext context, CustomMapOrderKind kind)
@@ -183,7 +184,7 @@ internal static class MapEditorOrders
         return kind switch
         {
             CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => context.Locations,
-            CustomMapOrderKind.DefendCity => context.Cities,
+            CustomMapOrderKind.DefendCity or CustomMapOrderKind.SecureCity => context.Cities,
             CustomMapOrderKind.AttackArmy => context.Armies,
             _ => []
         };
@@ -194,7 +195,7 @@ internal static class MapEditorOrders
         return order.Kind switch
         {
             CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => order.LocationId,
-            CustomMapOrderKind.DefendCity => order.City,
+            CustomMapOrderKind.DefendCity or CustomMapOrderKind.SecureCity => order.City,
             CustomMapOrderKind.AttackArmy => order.ArmyId,
             _ => null
         };
@@ -206,7 +207,7 @@ internal static class MapEditorOrders
         return kind switch
         {
             CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => new CustomMapArmyOrder(kind, LocationId: target is int zone ? zone : 0),
-            CustomMapOrderKind.DefendCity => new CustomMapArmyOrder(kind, City: target as CustomMapCity),
+            CustomMapOrderKind.DefendCity or CustomMapOrderKind.SecureCity => new CustomMapArmyOrder(kind, City: target as CustomMapCity),
             CustomMapOrderKind.AttackArmy => new CustomMapArmyOrder(kind, ArmyId: target is int army ? army : 0),
             _ => new CustomMapArmyOrder(kind)
         };
