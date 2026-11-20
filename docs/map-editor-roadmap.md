@@ -6,7 +6,8 @@ plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road to
 planning rods and the economy panel, after rods in the engine (commit `ca0330f`), after the rod tool (commit
 `97fe196`), after the economy panel (commit `687944d`), after the starting bank (commit `8ac6ac2`) and after the land
 spread preview (commit `caab9b3`), and after the three locations phases (commits `8a6ffe2d`, `8b9ccde8`,
-`b31aa076`). Each section is meant as a separate task.
+`b31aa076`), and after the seven events phases (2026-11-19/20, last merge `2f85594c`). Each section is meant as a
+separate task.
 
 ## Decisions so far
 
@@ -98,11 +99,16 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
     where it meets a road the pieces turn into junctions and crossroads
   - the next click lays it and the road carries on from that tile; the same tile again or Esc stops
   - Shift+click removes a road tile; a click where a road can't go, or can't reach, says why; Ctrl+Z undoes
-- Events (new): list (V) and a Scratch-style block editor (phases 1-2 of `docs/map-editor-events.md`)
-  - 7 conditions (turn N / every N turns, enters a zone, owns or is in a city, loots a ruin, destroys an army, army
-    exists or is gone), 7 effects (message with portrait, win, lose, switch an event, reveal a zone, give an item,
-    change the objective); "or" sets; texts in English with optional translations
-  - saved as the game's event tables; broken events stay in the editor and are left out of the game
+- Events (new): list (V) and a Scratch-style block editor (`docs/map-editor-events.md`, all 7 phases done)
+  - every condition and effect kind of the game as 47 colour-coded blocks (18 conditions, 29 effects), dragged or
+    clicked into a "When" hat ("or" sets) and a "Then" stack; settings in plain words; texts in English with optional
+    translations; message preview in the game's own popup
+  - "On map" picks zones, cities, ruins, armies, sites and landmarks; the hover line says which events use an object;
+    deleting a used object asks once; broken events turn red and are left out of the saved game (kept in the editor)
+  - recipes in the list (capture a city, reach a zone, survive N turns, hold out, lose a city, warning, ambush, ruin
+    message), with automatic "conquers all capitals" wins
+  - army templates (armies events create, with order), variables, and the chain screen (which event switches which,
+    events that can never fire in orange)
 - Locations (new): tool "Locations" and list (L)
   - click places a named zone (1x1 to 7x7, + / -), its name typed in the list row; click selects, drag moves (snaps
     onto the map, Esc puts it back), Ctrl+click places a zone inside another, Shift+click removes; X/Y boxes
@@ -387,44 +393,10 @@ zone, Shift+click removes, + / - size), overlay with names, list on the left (L)
 3 done (`b31aa076`): drag a zone anywhere inside it (snaps onto the map, Esc puts it back) and X/Y boxes. The
 locations task is complete; the zones are ready for army orders (armies task) and events.
 
-## Task (later): full events and locations
+## Task (later): full events and locations — done
 
-**Locations** are named zones on the map: a center point and a radius. The original maps use them a lot (60–75 rows
-in many scenarios). Events use them ("when an army enters the Northern Pass"), and so do army orders ("move to" or
-"defend this location").
-
-**Events** are the scenario's script. Each event has conditions, which races it applies to, whether it happens once,
-and effects. The engine already loads all of it:
-
-- **17 condition kinds:**
-  - every N turns (no exact-turn condition: "on turn N" = every N turns + occurs once)
-  - entering a zone, entering a city, owning a city
-  - destroying an army
-  - owning an item, a leader owning an item
-  - diplomacy relations, an alliance
-  - looting a ruin, transforming land, visiting a site
-  - an army reaching a location, an army reaching a city, an item reaching a location
-  - an army existing
-  - a variable in a range
-- **24 effect kinds:**
-  - win or lose
-  - popup message
-  - give an item, give a spell, destroy an item
-  - create an army, remove an army, move an army, move beside, change an army's order
-  - battle
-  - change diplomacy, make an alliance, change owner
-  - change terrain, change a landmark, remove a landmark, remove a mountain
-  - reveal the map (unfog)
-  - cast a spell, cast a spell on the map
-  - change a variable
-  - switch other events on/off
-  - change objective
-
-"Victory settings" are a few ready-made events. "Full events" means a real editor for building any condition and
-effect, which would make story maps like the campaigns possible. Same data, very different amount of work.
-
-Note: placed landmarks have stable IDs (`S6xxMM0001`...), so "change a landmark" and "remove a landmark" effects can
-point at them once events exist.
+Superseded by "Task: events" above (locations: "Task: locations"). The overview of the game's 17 condition and 24
+effect kinds now lives in `docs/map-editor-events.md` ("How events work in the game").
 
 ---
 
@@ -448,3 +420,7 @@ point at them once events exist.
    gate? Today structures block roads, as before.
 10. ~~Starting bank: only gold and own mana, or all five manas?~~ All five, other manas 0 by default.
 11. ~~"After N turns" spread estimate and a hotkey?~~ Yes to both (turn bar, E).
+12. Events and player settings overlap: the "Set relations" block barely acts in the game (only ends alliances), so
+    starting diplomacy belongs to player settings. Take player settings next?
+13. Events follow-ups: reveal to several chosen races, zoom/search on the chain screen, warnings when a template's
+    order target is deleted. Worth a small follow-up task, or later?
