@@ -280,6 +280,81 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(editor.Map.Stacks, Has.Count.EqualTo(1));
     }
 
+    // Armies on water: any army may stand on water (it sails in a boat); the leader list offers the sea creatures
+    // (Mermaid, Sea Serpent, Kraken) only where they can live, on open water; land brushes keep their water.
+    [Test]
+    public async Task WaterArmyTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.SelectTool(MapEditorTool.Water);
+        editor.BrushRadius = 4;
+        editor.BeginStroke(new WorldPosition(24, 24));
+        editor.EndStroke();
+
+        // The hover line tells open water from the shore.
+        editor.SelectTool(MapEditorTool.Army);
+        editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Neutral);
+        editor.UpdateHover(new WorldPosition(24, 24));
+        Assert.That(editor.HoverText, Does.StartWith("Army: fits · open water: armies sail in boats, sea creatures can live here\n"));
+        editor.UpdateHover(new WorldPosition(28, 24));
+        Assert.That(editor.HoverText, Does.StartWith("Army: fits · near the shore: armies sail in boats, sea creatures need open water\n"));
+
+        // Open water: all three sea creatures can lead.
+        editor.BeginStroke(new WorldPosition(24, 24));
+        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen);
+        army.ChooseLeaderCommand.Execute(null);
+        MapEditorUnitPickerItemViewModel[] sea = [.. Picker(game).Options.Where(option => option.Definition.IsWaterOnly)];
+        Assert.That(sea, Has.Length.EqualTo(3));
+        Assert.That(sea.All(option => !option.IsUnavailable && option.Info.Contains("open water only")), Is.True);
+        MapEditorUnitPickerItemViewModel mermaid = sea.Single(option => !option.Definition.IsLarge);
+        mermaid.PickCommand.Execute(null);
+        army.ConfirmCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(editor));
+        Assert.That(editor.Map.Stacks.Single().IsSeaArmy, Is.True);
+
+        // The shore: sea creatures are greyed out with the reason; a land leader sails there in a boat.
+        editor.BeginStroke(new WorldPosition(28, 24));
+        army = Assert.IsOfType<MapEditorArmyScreenViewModel>(game.TopScreen);
+        army.ChooseLeaderCommand.Execute(null);
+        Assert.That(Picker(game).Options.Where(option => option.Definition.IsWaterOnly).Select(option => option.UnavailableReason).Distinct(),
+            Is.EqualTo(new[] { "Needs open water: water on all 8 sides" }));
+        Picker(game).Options.First(option => !option.Definition.IsWaterOnly && !option.IsUnavailable && !option.Definition.IsLarge).PickCommand.Execute(null);
+        army.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Stacks, Has.Count.EqualTo(2));
+        Assert.That(editor.Map.GetStackAt(new WorldPosition(28, 24))!.IsSeaArmy, Is.False);
+
+        // Land next to the sea creature is left alone.
+        editor.SelectTool(MapEditorTool.Land);
+        editor.BrushRadius = 0;
+        editor.UpdateHover(new WorldPosition(25, 24));
+        Assert.That(editor.HoverText, Does.StartWith("Land brush, size 0: paints 0 tiles · leaves 1 tile alone\n"));
+        editor.BeginStroke(new WorldPosition(25, 24));
+        editor.EndStroke();
+        Assert.That(editor.Map.GetCell(new WorldPosition(25, 24)).Terrain, Is.EqualTo(WorldMapTerrain.Water));
+
+        // A village's army can't be led by a sea creature.
+        editor.SelectTool(MapEditorTool.Village);
+        editor.BeginStroke(new WorldPosition(36, 14));
+        editor.SelectTool(MapEditorTool.Army);
+        editor.BeginStroke(new WorldPosition(36, 14));
+        MapEditorVillageScreenViewModel village = Assert.IsOfType<MapEditorVillageScreenViewModel>(game.TopScreen);
+        village.ChooseArmyLeaderCommand.Execute(null);
+        Assert.That(Picker(game).Options.Where(option => option.Definition.IsWaterOnly).Select(option => option.UnavailableReason).Distinct(),
+            Is.EqualTo(new[] { "Sea creatures cannot stand in a city" }));
+        Picker(game).CloseCommand.Execute(null);
+        village.CloseCommand.Execute(null);
+
+        // Saved and reopened, the sea creature is still on open water.
+        editor.SaveCommand.Execute(null);
+        CustomMap reopened = loader.CreateMapStore()!.Open("S600SC0000", loader.CreateDefinitions());
+        Assert.That(reopened.GetStackAt(new WorldPosition(24, 24))!.IsSeaArmy, Is.True);
+        Assert.That(reopened.GetStackAt(new WorldPosition(28, 24))!.IsSeaArmy, Is.False);
+    }
+
     [Test]
     public async Task ResourceTest()
     {

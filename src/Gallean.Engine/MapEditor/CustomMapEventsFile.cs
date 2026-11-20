@@ -58,7 +58,8 @@ public static class CustomMapEventsFile
                     ["large"] = unit.IsLarge,
                     ["leadership"] = unit.Leadership,
                     ["movement"] = unit.MovementPoints,
-                    ["guardian"] = unit.IsGuardian
+                    ["guardian"] = unit.IsGuardian,
+                    ["waterOnly"] = unit.IsWaterOnly
                 })]),
                 ["order"] = WriteOrder(template.Order)
             });
@@ -96,7 +97,8 @@ public static class CustomMapEventsFile
                     Bool(unit, "large"),
                     Int(unit, "leadership"),
                     Int(unit, "movement"),
-                    Bool(unit, "guardian")))],
+                    Bool(unit, "guardian"),
+                    unit["waterOnly"]?.GetValue<bool>() ?? false))],
                 ReadOrder(node["order"])));
         }
 

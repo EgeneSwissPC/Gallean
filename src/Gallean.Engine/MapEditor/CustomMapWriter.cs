@@ -676,7 +676,9 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     private static Db.ScenarioUnitGroup BuildGroup(Rows rows, IReadOnlyList<CustomMapUnit?> slots, Db.ScenarioId scenarioId, string prefix, Db.Id groupId, int firstUnitNumber)
     {
         List<Db.Id> unitIds = [];
-        Dictionary<CustomMapUnit, int> unitIndexes = new(ReferenceEqualityComparer.Instance);
+
+        // The unit index of each slot's unit, kept per slot so one unit object placed in two slots stays two units.
+        int[] unitIndexes = [.. Enumerable.Repeat(-1, GridPosition.Count)];
 
         for (int slot = 0; slot < GridPosition.Count; slot++)
         {
@@ -686,7 +688,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             }
 
             Db.Id unitId = MakeId(prefix, "UN", firstUnitNumber + slot);
-            unitIndexes[unit] = unitIds.Count;
+            unitIndexes[slot] = unitIds.Count;
             unitIds.Add(unitId);
             rows.Units.Add(new Db.ScenarioUnit(scenarioId, unitId, unit.Hitpoints, Xp: 0, Creation: 0, new Db.Id(unit.TypeId.Value), unit.Level, Transf: false, DynLevel: false));
         }
@@ -696,14 +698,14 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         for (int p = 0; p < GridPosition.Count; p++)
         {
             GridPosition position = new(p % GridPosition.LineCount, p / GridPosition.LineCount);
-            CustomMapUnit? unit = slots[position.ToIndex()];
+            int slot = position.ToIndex();
 
-            if (unit is null && position.IsBackLine && slots[GridPosition.AtFrontLine(position.Flank).ToIndex()] is { IsLarge: true } large)
+            if (slots[slot] is null && position.IsBackLine && slots[GridPosition.AtFrontLine(position.Flank).ToIndex()] is { IsLarge: true })
             {
-                unit = large;
+                slot = GridPosition.AtFrontLine(position.Flank).ToIndex();
             }
 
-            positions[p] = unit is not null ? unitIndexes[unit] : -1;
+            positions[p] = unitIndexes[slot];
         }
 
         Db.Id? Unit(int index) => index < unitIds.Count ? unitIds[index] : null;

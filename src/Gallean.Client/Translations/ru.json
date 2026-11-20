@@ -890,7 +890,6 @@
     "Add spell": "Добавить заклинание",
     "Add unit": "Добавить воина",
     "An army or treasure is there.": "Здесь стоит армия или лежит сокровище.",
-    "Armies cannot stand on water, mountains, buildings, resources or treasure. In a village, use its entrance.": "Армии не могут стоять на воде, горах, постройках, ресурсах или сокровищах. В деревне используйте её вход.",
     "Choose": "Выбрать",
     "Choose item": "Выбор предмета",
     "Choose spell": "Выбор заклинания",
@@ -1351,6 +1350,16 @@
     "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.": "Союзники в дипломатии отдают заклинание по обычной цене, так что у союзников оно дешевле.",
     "Neutrals": "Нейтралы",
     "Each kind of neutral is its own side": "Каждый вид нейтралов сам за себя",
-    "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.": "Зеленокожие, морские существа, варвары, волки, драконы и другие виды помогают только своим и враждебны остальным. Деревня принадлежит виду своего гарнизона. Обычные нейтралы остаются на одной стороне."
+    "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.": "Зеленокожие, морские существа, варвары, волки, драконы и другие виды помогают только своим и враждебны остальным. Деревня принадлежит виду своего гарнизона. Обычные нейтралы остаются на одной стороне.",
+    "Armies cannot stand on mountains, buildings, landmarks, resources, rods or treasure. In a village, use its entrance.": "Армии не могут стоять на горах, постройках, ориентирах, ресурсах, жезлах власти или сокровищах. В деревне используйте её вход.",
+    "Sea creatures live in open water: this tile and the 8 around it must be water.": "Морские существа живут в открытой воде: эта клетка и 8 клеток вокруг неё должны быть водой.",
+    "Sea creatures cannot stand in a city": "Морские существа не могут стоять в городе",
+    "open water: armies sail in boats, sea creatures can live here": "открытая вода: армии плывут на лодках, морские существа могут жить здесь",
+    "near the shore: armies sail in boats, sea creatures need open water": "у берега: армии плывут на лодках, морским существам нужна открытая вода",
+    "land": "суша",
+    "the open water of a sea creature": "открытая вода морского существа",
+    "open water only": "только открытая вода",
+    "Sea creatures cannot be hired": "Морских существ нельзя нанять",
+    "Needs open water: water on all 8 sides": "Нужна открытая вода: вода со всех 8 сторон"
   }
 }

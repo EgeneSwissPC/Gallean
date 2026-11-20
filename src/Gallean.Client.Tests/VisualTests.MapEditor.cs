@@ -1104,4 +1104,78 @@ public sealed partial class VisualTests
         await CaptureAsync(window, "15-chains");
         Assert.That(Assert.IsOfType<MapEditorChainScreenViewModel>(gameViewModel.TopScreen).Nodes.Single(node => node.Name == "Forgotten clue").NeverFires, Is.True);
     }
+
+    [AvaloniaTest]
+    public async Task MapEditorWaterArmiesTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        (GameViewModel gameViewModel, GameView window, GameLoader loader) = InitializeMapEditor(sb);
+        CustomMapStore store = Assert.NotNull(loader.CreateMapStore());
+
+        await gameViewModel.OpenMapEditorAsync(store, _ => CreateSampleMap("S600SC0000", "Two kingdoms"));
+        MapEditorScreenViewModel editor = Assert.IsOfType<MapEditorScreenViewModel>(gameViewModel.RootScreen);
+        MapEditorScreenView view = await WaitForMapEditorAsync(window);
+        view.Camera.SetZoom(1);
+        view.Camera.LookAt(WorldTransform.ToWorldPoint(new WorldPosition(24, 24)));
+
+        async Task ShowAsync(WorldPosition hover, string step)
+        {
+            editor.UpdateHover(null);
+            editor.UpdateHover(hover);
+            await SkipFramesAsync(10);
+            await CaptureAsync(window, step);
+        }
+
+        MapEditorUnitPickerViewModel Picker() => Assert.IsOfType<MapEditorUnitPickerViewModel>(gameViewModel.TopScreen);
+
+        // Scrolls the leader list so the first sea creature is the top row.
+        async Task ShowSeaCreaturesAsync()
+        {
+            await SkipFramesAsync(10);
+            Avalonia.Controls.ItemsControl list = window.GetVisualDescendants().OfType<Avalonia.Controls.ItemsControl>().Last(control => control.Name == "OptionList");
+            Avalonia.Controls.Control row = Assert.NotNull(list.ContainerFromItem(Picker().Options.First(option => option.Definition.IsWaterOnly)));
+            Avalonia.Controls.ScrollViewer scroller = Assert.NotNull(list.FindAncestorOfType<Avalonia.Controls.ScrollViewer>());
+            scroller.Offset = new Vector(0, Assert.NotNull(row.TranslatePoint(new Point(0, 0), list)).Y);
+            await SkipFramesAsync(10);
+        }
+
+        // The lake (radius 5 around 24, 24): the hover line says sea creatures can live in its open water.
+        editor.SelectTool(MapEditorTool.Army);
+        editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Neutral);
+        await ShowAsync(new WorldPosition(24, 24), "1-open-water");
+        Assert.That(editor.HoverText, Does.Contain("sea creatures can live here"));
+
+        // The leader list offers the sea creatures there; a Kraken with two Mermen.
+        editor.BeginStroke(new WorldPosition(24, 24));
+        MapEditorArmyScreenViewModel army = Assert.IsOfType<MapEditorArmyScreenViewModel>(gameViewModel.TopScreen);
+        army.ChooseLeaderCommand.Execute(null);
+        await ShowSeaCreaturesAsync();
+        await CaptureAsync(window, "2-sea-leaders");
+        MapEditorUnitPickerItemViewModel kraken = Picker().Options.Single(option => option.Definition is { IsWaterOnly: true, IsLarge: true } && option.Name == "Kraken");
+        kraken.PickCommand.Execute(null);
+        army.AddUnit(GridPosition.BackTop);
+        Picker().Options.First(option => option.Name == "Merman" && !option.IsUnavailable).PickCommand.Execute(null);
+        army.AddUnit(GridPosition.BackBottom);
+        Picker().Options.First(option => option.Name == "Merman" && !option.IsUnavailable).PickCommand.Execute(null);
+        army.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.GetStackAt(new WorldPosition(24, 24))!.IsSeaArmy, Is.True);
+
+        // On the shore the sea creatures are greyed out; an Empire army sails there in a boat.
+        editor.SelectedArmyOwner = editor.ArmyOwners.Single(owner => owner.Value == WorldRace.Human);
+        editor.BeginStroke(new WorldPosition(28, 26));
+        army = Assert.IsOfType<MapEditorArmyScreenViewModel>(gameViewModel.TopScreen);
+        army.ChooseLeaderCommand.Execute(null);
+        Picker().SelectedFilter = Picker().Filters.Single(filter => filter.Race == WorldRace.Neutral);
+        await ShowSeaCreaturesAsync();
+        await CaptureAsync(window, "3-shore-leaders");
+        Assert.That(Picker().Options.Where(option => option.Definition.IsWaterOnly).All(option => option.IsUnavailable), Is.True);
+        Picker().SelectedFilter = Picker().Filters.Single(filter => filter.Race == WorldRace.Human);
+        Picker().Options.First(option => option.Definition is { IsLarge: false, Leadership: >= 4 } && !option.IsUnavailable).PickCommand.Execute(null);
+        army.ConfirmCommand.Execute(null);
+        Assert.That(editor.Map.Stacks, Has.Count.EqualTo(2));
+
+        // Both on the map: the Kraken in the lake, the Empire army in its boat.
+        await ShowAsync(new WorldPosition(28, 26), "4-placed");
+    }
 }

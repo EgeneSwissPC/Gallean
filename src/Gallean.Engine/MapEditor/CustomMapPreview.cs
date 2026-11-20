@@ -38,7 +38,13 @@ public enum CustomMapTileReason
     WrongOwner,
 
     // A rod stands here (an object in the way), or a rod is too close for another one.
-    Rod
+    Rod,
+
+    // Land where a sea creature would stand or next to it: sea creatures need open water.
+    Land,
+
+    // Open water around a sea creature's army, which must stay water.
+    SeaArmy
 }
 
 public readonly record struct CustomMapPreviewTile(WorldPosition Position, CustomMapTileStatus Status, CustomMapTileReason Reason);

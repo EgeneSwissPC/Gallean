@@ -128,6 +128,11 @@ internal sealed partial class MapEditorUnitPickerViewModel : AbstractScreenViewM
                 info.Add(Tr("large"));
             }
 
+            if (definition.IsWaterOnly)
+            {
+                info.Add(Tr("open water only"));
+            }
+
             if (race is null)
             {
                 info.Add(MapEditorLabels.RaceShort(definition.Race));

@@ -152,7 +152,7 @@ internal sealed partial class MapEditorSiteScreenViewModel : AbstractScreenViewM
                     library.Units,
                     pickLeader: false,
                     WorldRace.Neutral,
-                    _ => null,
+                    definition => definition.IsWaterOnly ? Tr("Sea creatures cannot be hired") : null,
                     definition =>
                     {
                         AddUnitRow(definition.Id, definition.Level);

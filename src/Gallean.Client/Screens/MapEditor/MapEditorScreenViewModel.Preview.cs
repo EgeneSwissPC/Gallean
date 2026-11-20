@@ -122,7 +122,7 @@ internal sealed partial class MapEditorScreenViewModel
                     return Opens(Tr("Army of {0}", MapEditorLabels.Owner(stack.Owner)), null, tile);
                 }
 
-                return FromEngine(Tr("Army"), map.PreviewStack(tile, SelectedArmyOwner.Value), []);
+                return FromEngine(Tr("Army"), map.PreviewStack(tile, SelectedArmyOwner.Value), ArmyWaterNotes(tile));
 
             case MapEditorTool.Village:
                 if (map.GetVillageAt(tile) is { } village)
@@ -363,6 +363,19 @@ internal sealed partial class MapEditorScreenViewModel
         return allLandmarks.FirstOrDefault(option => option.Definition.Id == type)?.Name ?? type.Value;
     }
 
+    // On water an army sails in a boat; sea creatures need open water (the tile and the 8 around it).
+    private string[] ArmyWaterNotes(WorldPosition tile)
+    {
+        if (!map.IsValidPosition(tile) || map.GetCell(tile).Terrain != WorldMapTerrain.Water)
+        {
+            return [];
+        }
+
+        return map.IsOpenWater(tile)
+            ? [Tr("open water: armies sail in boats, sea creatures can live here")]
+            : [Tr("near the shore: armies sail in boats, sea creatures need open water")];
+    }
+
     // Who earns from a resource on this tile: the player whose land it is (WorldPlan.GetLandOwner).
     private string LandOwnerName(WorldPosition tile)
     {
@@ -386,6 +399,8 @@ internal sealed partial class MapEditorScreenViewModel
             CustomMapTileReason.Resource => Tr("a resource"),
             CustomMapTileReason.Bag => Tr("treasure"),
             CustomMapTileReason.Rod => Tr("a rod"),
+            CustomMapTileReason.Land => Tr("land"),
+            CustomMapTileReason.SeaArmy => Tr("the open water of a sea creature"),
             _ => Tr("the map edge")
         };
     }

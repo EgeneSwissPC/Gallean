@@ -429,7 +429,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         return [.. globalDb.Spells.Keys.Select(id => definitions.GetSpell(new WorldSpellDefinitionId(id.Value)))];
     }
 
-    // Units the editor offers for armies: regular and neutral soldiers and leaders that can walk on land.
+    // Units the editor offers for armies: regular and neutral soldiers and leaders, with the sea creatures that live
+    // in open water (water-only leaders).
     public IReadOnlyList<UnitDefinition> ListUnits(IGameDefinitionProvider definitions)
     {
         List<UnitDefinition> result = [];
@@ -438,7 +439,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         {
             UnitDefinition? definition = definitions.TryGetUnit(new UnitDefinitionId(id.Value));
 
-            if (definition is { IsWaterOnly: false, Category: UnitCategory.Soldier or UnitCategory.Leader or UnitCategory.NeutralSoldier or UnitCategory.NeutralLeader })
+            if (definition is { Category: UnitCategory.Soldier or UnitCategory.Leader or UnitCategory.NeutralSoldier or UnitCategory.NeutralLeader })
             {
                 result.Add(definition);
             }

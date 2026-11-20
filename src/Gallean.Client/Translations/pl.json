@@ -890,7 +890,6 @@
     "Add spell": "Add spell",
     "Add unit": "Add unit",
     "An army or treasure is there.": "An army or treasure is there.",
-    "Armies cannot stand on water, mountains, buildings, resources or treasure. In a village, use its entrance.": "Armies cannot stand on water, mountains, buildings, resources or treasure. In a village, use its entrance.",
     "Choose": "Choose",
     "Choose item": "Choose item",
     "Choose spell": "Choose spell",
@@ -1351,6 +1350,16 @@
     "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.": "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.",
     "Neutrals": "Neutrals",
     "Each kind of neutral is its own side": "Each kind of neutral is its own side",
-    "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.": "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side."
+    "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.": "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.",
+    "Armies cannot stand on mountains, buildings, landmarks, resources, rods or treasure. In a village, use its entrance.": "Armies cannot stand on mountains, buildings, landmarks, resources, rods or treasure. In a village, use its entrance.",
+    "Sea creatures live in open water: this tile and the 8 around it must be water.": "Sea creatures live in open water: this tile and the 8 around it must be water.",
+    "Sea creatures cannot stand in a city": "Sea creatures cannot stand in a city",
+    "open water: armies sail in boats, sea creatures can live here": "open water: armies sail in boats, sea creatures can live here",
+    "near the shore: armies sail in boats, sea creatures need open water": "near the shore: armies sail in boats, sea creatures need open water",
+    "land": "land",
+    "the open water of a sea creature": "the open water of a sea creature",
+    "open water only": "open water only",
+    "Sea creatures cannot be hired": "Sea creatures cannot be hired",
+    "Needs open water: water on all 8 sides": "Needs open water: water on all 8 sides"
   }
 }

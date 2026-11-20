@@ -393,8 +393,9 @@ public sealed partial class CustomMap
         return true;
     }
 
-    // Why a brush leaves a tile alone: structures for every brush, armies, resources and rods for Water, resources,
-    // bags and landmarks for Forest. (Mountains have their own rule, GetMountainBlock.)
+    // Why a brush leaves a tile alone: structures for every brush, resources and rods for Water, the open water
+    // around a sea creature's army for Land, resources, bags and landmarks for Forest. (Mountains have their own
+    // rule, GetMountainBlock.)
     private CustomMapTileReason GetBrushBlock(WorldPosition position, CustomMapBrush brush)
     {
         if (IsUnderStructure(position))
@@ -402,13 +403,13 @@ public sealed partial class CustomMap
             return CustomMapTileReason.Structure;
         }
 
+        if (brush == CustomMapBrush.Land && IsNearSeaArmy(position))
+        {
+            return CustomMapTileReason.SeaArmy;
+        }
+
         if (brush == CustomMapBrush.Water)
         {
-            if (GetStackAt(position) is not null)
-            {
-                return CustomMapTileReason.Army;
-            }
-
             if (GetResourceAt(position) is not null)
             {
                 return CustomMapTileReason.Resource;
@@ -633,6 +634,10 @@ public sealed partial class CustomMap
             {
                 block = CustomMapTileReason.Army;
             }
+            else if (kind != SiteKind.Landmark && GetCell(position).Terrain == WorldMapTerrain.Water && IsNearSeaArmy(position))
+            {
+                block = CustomMapTileReason.SeaArmy;
+            }
             else if (GetResourceAt(position) is not null)
             {
                 block = CustomMapTileReason.Resource;
@@ -682,7 +687,7 @@ public sealed partial class CustomMap
         {
             error = CustomMapPlacementError.Blocked;
         }
-        else if (result.Any(tile => tile.Reason is CustomMapTileReason.Army or CustomMapTileReason.Resource or CustomMapTileReason.Bag or CustomMapTileReason.Rod))
+        else if (result.Any(tile => tile.Reason is CustomMapTileReason.Army or CustomMapTileReason.SeaArmy or CustomMapTileReason.Resource or CustomMapTileReason.Bag or CustomMapTileReason.Rod))
         {
             error = CustomMapPlacementError.Occupied;
         }
@@ -876,20 +881,62 @@ public sealed partial class CustomMap
 
     private CustomMapStackError? CheckStack(WorldPosition position, WorldRace owner, IReadOnlyList<CustomMapUnit?> slots, int? ignoreId)
     {
-        return CheckStackSite(position, owner, ignoreId).Error ?? CustomMapStack.ValidateSlots(slots);
+        return CheckStackSite(position, owner, ignoreId, CustomMapStack.IsLedBySeaCreature(slots)).Error ?? CustomMapStack.ValidateSlots(slots);
     }
 
     // What placing an army of owner on position would do (its units aside): the tile and the reason it can't stand
-    // there, the same error PlaceStack returns before it looks at the units.
-    public CustomMapPlacementPreview PreviewStack(WorldPosition position, WorldRace owner)
+    // there, the same error PlaceStack returns before it looks at the units. sea: the army is led by a sea creature;
+    // then the land tiles around a water tile that stop it are listed (blocked) before the tile itself.
+    public CustomMapPlacementPreview PreviewStack(WorldPosition position, WorldRace owner, bool sea = false)
     {
-        (CustomMapTileReason reason, CustomMapStackError? error) = CheckStackSite(position, owner, ignoreId: null);
+        (CustomMapTileReason reason, CustomMapStackError? error) = CheckStackSite(position, owner, ignoreId: null, sea);
         CustomMapTileStatus status = error is null or CustomMapStackError.UnknownOwner ? CustomMapTileStatus.Ok : CustomMapTileStatus.Blocked;
+        List<CustomMapPreviewTile> tiles = [];
 
-        return new CustomMapPlacementPreview(new WorldFootprint(position, 1, 1), [new CustomMapPreviewTile(position, status, reason)], null, error);
+        if (error == CustomMapStackError.OpenWater && GetCell(position).Terrain == WorldMapTerrain.Water)
+        {
+            tiles.AddRange(GetNeighbours(position)
+                .Where(tile => GetCell(tile).Terrain != WorldMapTerrain.Water)
+                .Select(tile => new CustomMapPreviewTile(tile, CustomMapTileStatus.Blocked, CustomMapTileReason.Land)));
+        }
+
+        tiles.Add(new CustomMapPreviewTile(position, status, reason));
+
+        return new CustomMapPlacementPreview(new WorldFootprint(position, 1, 1), [.. tiles], null, error);
     }
 
-    private (CustomMapTileReason Reason, CustomMapStackError? Error) CheckStackSite(WorldPosition position, WorldRace owner, int? ignoreId)
+    // Open water: the tile and the eight around it are water (tiles outside the map count as water). Sea creatures
+    // move only there, like WorldMovementCalculator's deep water.
+    public bool IsOpenWater(WorldPosition position)
+    {
+        return IsValidPosition(position) && GetCell(position).Terrain == WorldMapTerrain.Water &&
+               GetNeighbours(position).All(tile => GetCell(tile).Terrain == WorldMapTerrain.Water);
+    }
+
+    // The tiles around position inside the map.
+    private IEnumerable<WorldPosition> GetNeighbours(WorldPosition position)
+    {
+        for (int dy = -1; dy <= 1; dy++)
+        {
+            for (int dx = -1; dx <= 1; dx++)
+            {
+                WorldPosition tile = new(position.X + dx, position.Y + dy);
+
+                if ((dx != 0 || dy != 0) && IsValidPosition(tile))
+                {
+                    yield return tile;
+                }
+            }
+        }
+    }
+
+    // Whether position is the tile of a sea creature's army or one of the eight around it: that water must stay water.
+    private bool IsNearSeaArmy(WorldPosition position)
+    {
+        return stacks.Any(stack => stack.IsSeaArmy && Math.Abs(stack.Position.X - position.X) <= 1 && Math.Abs(stack.Position.Y - position.Y) <= 1);
+    }
+
+    private (CustomMapTileReason Reason, CustomMapStackError? Error) CheckStackSite(WorldPosition position, WorldRace owner, int? ignoreId, bool sea = false)
     {
         if (!IsValidPosition(position))
         {
@@ -904,8 +951,8 @@ public sealed partial class CustomMap
         bool stationed = (village is not null && village.Entrance == position) || (capital is not null && capital.Entrance == position);
         WorldRace? stationOwner = village?.Owner ?? capital?.Race;
 
-        CustomMapTileReason block = cell.Terrain == WorldMapTerrain.Water ? CustomMapTileReason.Water
-            : cell.Feature == WorldMapFeature.Mountain ? CustomMapTileReason.Mountain
+        // Armies stand on land or water (they sail in boats there); a sea creature's army only on open water.
+        CustomMapTileReason block = cell.Feature == WorldMapFeature.Mountain ? CustomMapTileReason.Mountain
             : IsUnderStructure(position) && !stationed ? CustomMapTileReason.Structure
             : GetResourceAt(position) is not null ? CustomMapTileReason.Resource
             : GetBagAt(position) is not null ? CustomMapTileReason.Bag
@@ -916,6 +963,11 @@ public sealed partial class CustomMap
         if (block != CustomMapTileReason.None)
         {
             return (block, CustomMapStackError.Blocked);
+        }
+
+        if (sea && !IsOpenWater(position))
+        {
+            return (CustomMapTileReason.Land, CustomMapStackError.OpenWater);
         }
 
         if (stacks.Any(stack => stack.Position == position && stack.Id != ignoreId))

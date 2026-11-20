@@ -548,7 +548,10 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             tile,
             existing?.Slots,
             (armyOwner, slots) => SaveArmy(tile, existing?.Id, armyOwner, slots),
-            existing is null ? null : () => DeleteArmy(existing.Id)));
+            existing is null ? null : () => DeleteArmy(existing.Id))
+        {
+            LeaderSiteProblem = leader => leader.IsWaterOnly && !map.IsOpenWater(tile) ? MapEditorLabels.NeedsOpenWater : null
+        });
     }
 
     // Ruin tool: clicking free land places a ruin centred on the tile, clicking a ruin opens it.
