@@ -44,7 +44,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
 
         Directory.CreateDirectory(stagingDirectory);
 
-        Rows rows = BuildRows(map, scenarioId, prefix);
+        NeutralSides sides = BuildNeutralSides(map);
+        Rows rows = BuildRows(map, scenarioId, prefix, sides);
 
         WriteTable(stagingDirectory, "Splayer.json", rows.Players);
         WriteTable(stagingDirectory, "SSubRace.json", rows.Subraces);
@@ -77,7 +78,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
         CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events, map.Templates, map.Variables);
         WriteTable(stagingDirectory, "SVars.json", BuildVariables(map, scenarioId));
-        WriteTable(stagingDirectory, "SStkTemp.json", BuildTemplates(map, scenarioId, prefix));
+        WriteTable(stagingDirectory, "SStkTemp.json", BuildTemplates(map, scenarioId, prefix, sides));
+        WriteTable(stagingDirectory, "SRules.json", new List<Db.ScenarioRules> { new(scenarioId, MakeId(prefix, "RL", 1), map.ForeignSpellMarkup, map.NeutralKinds) });
 
         if (Directory.Exists(scenarioDirectory))
         {
@@ -198,22 +200,25 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         List<Db.ScenarioMage> Mages,
         List<Db.ScenarioMercenary> Mercenaries);
 
-    private Rows BuildRows(CustomMap map, Db.ScenarioId scenarioId, string prefix)
+    private Rows BuildRows(CustomMap map, Db.ScenarioId scenarioId, string prefix, NeutralSides sides)
     {
         Rows rows = new([], [], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []);
 
         // Player 0 is the (primary) neutral player; it owns nothing on a new map but the engine requires one.
-        List<(Db.RaceType Race, CustomMapPlayer? Player)> players = [(Db.RaceType.Neutral, null)];
-        players.AddRange(map.Players.Select(player => (ToRaceType(player.Race), (CustomMapPlayer?)player)));
+        List<(Db.RaceType Race, CustomMapPlayer? Player, Db.SubraceType? Kind)> players = [(Db.RaceType.Neutral, null, null)];
+        players.AddRange(map.Players.Select(player => (ToRaceType(player.Race), (CustomMapPlayer?)player, (Db.SubraceType?)null)));
 
         if (players.Count > MaxPlayerSlots)
         {
             throw new InvalidOperationException($"A map can have at most {MaxPlayerSlots - 1} players.");
         }
 
+        // Neutral kinds (map rule) come after the races: they take no quest-list slot, so existing IDs stay put.
+        players.AddRange(sides.Kinds.Select(kind => (Db.RaceType.Neutral, (CustomMapPlayer?)null, (Db.SubraceType?)kind)));
+
         for (int i = 0; i < players.Count; i++)
         {
-            (Db.RaceType raceType, CustomMapPlayer? mapPlayer) = players[i];
+            (Db.RaceType raceType, CustomMapPlayer? mapPlayer, Db.SubraceType? kind) = players[i];
             Db.Race race = globalDb.Races.Values.Single(candidate => candidate.RaceType == raceType);
             Db.Lord lord = globalDb.Lords.Values
                 .Where(candidate => candidate.RaceId == race.RaceId)
@@ -222,7 +227,11 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             Db.Id playerId = MakeId(prefix, "PL", i);
             Db.Id subraceId = MakeId(prefix, "SR", i);
 
-            rows.PlayerRaces.Add(raceType);
+            if (kind is null)
+            {
+                rows.PlayerRaces.Add(raceType);
+            }
+
             rows.Players.Add(new Db.ScenarioPlayer(
                 scenarioId,
                 playerId,
@@ -250,8 +259,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                 ExMapTurn1: 0,
                 ExMapTurn2: 0,
                 ExMapTurn3: 0));
-            rows.Subraces.Add(new Db.ScenarioSubrace(scenarioId, subraceId, playerId, GetSubrace(raceType), GetBanner(raceType)));
-            rows.Texts.Add(Text(scenarioId, playerId, Db.TextScenario.NameTextId, GetPlayerName(raceType)));
+            rows.Subraces.Add(new Db.ScenarioSubrace(scenarioId, subraceId, playerId, kind is { } subrace ? (int)subrace : GetSubrace(raceType), GetBanner(raceType)));
+            rows.Texts.Add(Text(scenarioId, playerId, Db.TextScenario.NameTextId, kind is { } named ? GetKindName(named) : GetPlayerName(raceType)));
 
             if (mapPlayer?.Capital is not { } capital)
             {
@@ -344,12 +353,12 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
 
         foreach (CustomMapStack stack in map.Stacks)
         {
-            AddArmy(rows, map, stack, scenarioId, prefix);
+            AddArmy(rows, map, stack, scenarioId, prefix, sides.GetIndex(map, stack.Owner, 'S', stack.Id));
         }
 
         foreach (CustomMapVillage village in map.Villages)
         {
-            AddVillage(rows, map, village, scenarioId, prefix);
+            AddVillage(rows, map, village, scenarioId, prefix, sides.GetIndex(map, village.Owner, 'V', village.Id));
         }
 
         foreach (CustomMapRuin ruin in map.Ruins)
@@ -378,9 +387,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         return rows;
     }
 
-    private static void AddArmy(Rows rows, CustomMap map, CustomMapStack stack, Db.ScenarioId scenarioId, string prefix)
+    private static void AddArmy(Rows rows, CustomMap map, CustomMapStack stack, Db.ScenarioId scenarioId, string prefix, int playerIndex)
     {
-        int playerIndex = GetPlayerIndex(map, stack.Owner);
 
         if (playerIndex < 0)
         {
@@ -433,6 +441,110 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             AiOrderTargetId: null));
     }
 
+    // Map rule "neutral kinds": each neutral subrace type in use (greenskins, water creatures, barbarians, ...) gets its
+    // own neutral player, like tools/NeutralSplitter, so only neutrals of one kind share a side; different kinds are
+    // hostile. An army's kind is its leader's subrace; a village's is its garrison's most common subrace (else its
+    // stationed army's leader), and an army stationed in a neutral village joins the village's side. Plain neutral
+    // units (spiders, thugs, ...) and anything else stay with player 0, as do all neutrals when the rule is off.
+    private sealed class NeutralSides
+    {
+        public List<Db.SubraceType> Kinds { get; } = [];
+
+        public Dictionary<(char Kind, int Id), Db.SubraceType> Objects { get; } = [];
+
+        public int GetIndex(CustomMap map, WorldRace owner, char kind, int id)
+        {
+            return owner == WorldRace.Neutral && Objects.TryGetValue((kind, id), out Db.SubraceType subrace)
+                ? 1 + map.Players.Count + Kinds.IndexOf(subrace)
+                : GetPlayerIndex(map, owner);
+        }
+    }
+
+    private NeutralSides BuildNeutralSides(CustomMap map)
+    {
+        NeutralSides sides = new();
+
+        if (!map.NeutralKinds)
+        {
+            return sides;
+        }
+
+        static bool IsKind(Db.SubraceType subrace) => subrace is >= Db.SubraceType.NeutralHuman and <= Db.SubraceType.NeutralWolf;
+
+        // The leader's kind; without a leader (garrisons) the most common kind among the units, ignoring units of no
+        // neutral kind (an ent of the elven race among wild elves doesn't make the village plain neutral).
+        Db.SubraceType? KindOf(IEnumerable<CustomMapUnit?> slots)
+        {
+            CustomMapUnit[] units = [.. slots.OfType<CustomMapUnit>()];
+            Db.SubraceType Subrace(CustomMapUnit unit) => globalDb.Units[new Db.Id(unit.TypeId.Value)].SubraceType;
+
+            if (units.FirstOrDefault(unit => unit.IsLeader) is { } leader)
+            {
+                return IsKind(Subrace(leader)) ? Subrace(leader) : null;
+            }
+
+            return units.Select(Subrace).Where(IsKind).GroupBy(subrace => subrace)
+                .OrderByDescending(group => group.Count()).ThenBy(group => group.Key)
+                .Select(group => (Db.SubraceType?)group.Key).FirstOrDefault();
+        }
+
+        foreach (CustomMapVillage village in map.Villages.Where(village => village.Owner == WorldRace.Neutral))
+        {
+            CustomMapStack? stationed = map.GetStationedStack(village);
+
+            if ((KindOf(village.Garrison) ?? (stationed is null ? null : KindOf(stationed.Slots))) is { } kind)
+            {
+                sides.Objects[('V', village.Id)] = kind;
+
+                if (stationed is not null)
+                {
+                    sides.Objects[('S', stationed.Id)] = kind;
+                }
+            }
+        }
+
+        foreach (CustomMapStack stack in map.Stacks.Where(stack => stack.Owner == WorldRace.Neutral && !sides.Objects.ContainsKey(('S', stack.Id))))
+        {
+            if (map.Villages.Any(village => village.Owner == WorldRace.Neutral && village.Entrance == stack.Position))
+            {
+                continue;
+            }
+
+            if (KindOf(stack.Slots) is { } kind)
+            {
+                sides.Objects[('S', stack.Id)] = kind;
+            }
+        }
+
+        foreach (CustomMapArmyTemplate template in map.Templates.Where(template => template.Owner == WorldRace.Neutral))
+        {
+            if (KindOf(template.Slots) is { } kind)
+            {
+                sides.Objects[('T', template.Id)] = kind;
+            }
+        }
+
+        sides.Kinds.AddRange(sides.Objects.Values.Distinct().Order());
+
+        return sides;
+    }
+
+    private static string GetKindName(Db.SubraceType kind)
+    {
+        return kind switch
+        {
+            Db.SubraceType.NeutralHuman => "Free Men",
+            Db.SubraceType.NeutralElf => "Wild Elves",
+            Db.SubraceType.NeutralGreenSkin => "Greenskins",
+            Db.SubraceType.NeutralDragon => "Dragons",
+            Db.SubraceType.NeutralMarsh => "Marsh Folk",
+            Db.SubraceType.NeutralWater => "Sea Creatures",
+            Db.SubraceType.NeutralBarbarian => "Barbarians",
+            Db.SubraceType.NeutralWolf => "Wolves",
+            _ => "Neutrals"
+        };
+    }
+
     private static int GetPlayerIndex(CustomMap map, WorldRace owner)
     {
         return owner == WorldRace.Neutral
@@ -440,9 +552,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             : 1 + map.Players.Select(player => player.Race).ToList().IndexOf(owner);
     }
 
-    private static void AddVillage(Rows rows, CustomMap map, CustomMapVillage village, Db.ScenarioId scenarioId, string prefix)
+    private static void AddVillage(Rows rows, CustomMap map, CustomMapVillage village, Db.ScenarioId scenarioId, string prefix, int playerIndex)
     {
-        int playerIndex = GetPlayerIndex(map, village.Owner);
 
         if (playerIndex < 0)
         {
@@ -1293,7 +1404,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     }
 
     // Templates: SStkTemp rows TM + id, slots laid out like an army's unit group (POS p = line p % 2, flank p / 2).
-    private static List<Db.ScenarioStackTemplate> BuildTemplates(CustomMap map, Db.ScenarioId scenarioId, string prefix)
+    private static List<Db.ScenarioStackTemplate> BuildTemplates(CustomMap map, Db.ScenarioId scenarioId, string prefix, NeutralSides sides)
     {
         List<Db.ScenarioStackTemplate> rows = [];
 
@@ -1318,7 +1429,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             CustomMapUnit leader = units.First(unit => unit.Leadership > 0 && !unit.IsGuardian);
             Db.Id? Unit(int index) => index < units.Count ? new Db.Id(units[index].TypeId.Value) : null;
             int Level(int index) => index < units.Count ? units[index].Level : 0;
-            int playerIndex = GetPlayerIndex(map, template.Owner);
+            int playerIndex = sides.GetIndex(map, template.Owner, 'T', template.Id);
 
             rows.Add(new Db.ScenarioStackTemplate(
                 scenarioId,

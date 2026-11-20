@@ -1931,4 +1931,103 @@ public sealed class CustomMapTests
         Assert.That(peaks.NewMountains, Is.EqualTo(new[] { new WorldFootprint(new WorldPosition(36, 22), 5, 5) }));
         Assert.That(TilesWith(peaks, CustomMapTileStatus.Ok), Has.Count.EqualTo(25));
     }
+
+    // Map rule: mage towers charge the markup for another race's spells only; diplomacy keeps the list price, and the
+    // rule survives save and reopen (SRules.json). Original scenarios (no SRules.json) keep normal prices.
+    [Test]
+    public void ForeignSpellMarkupTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        WorldSpellDefinition[] spells = [.. store.ListSpells(definitions).Where(spell => spell.PurchaseCost.Gold > 0).OrderBy(spell => spell.Id.Value, StringComparer.Ordinal)];
+        WorldSpellDefinition own = spells.First(spell => spell.Race == WorldRace.Human);
+        WorldSpellDefinition foreign = spells.First(spell => spell.Race == WorldRace.Elf);
+        CustomMapSite tower = map.PlaceSite(new WorldPosition(16, 16), CustomMapSiteType.MageTower, 0, "Tower", "").Site!;
+        Assert.That(map.UpdateSite(tower.Id, 0, "Tower", "", [], [own.Id, foreign.Id], []), Is.Null);
+        Assert.That(map.PlaceStack(new WorldPosition(20, 12), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))).Error, Is.Null);
+        Assert.That((map.SetForeignSpellMarkup(50), map.SetForeignSpellMarkup(50), map.SetForeignSpellMarkup(900), map.ForeignSpellMarkup), Is.EqualTo((true, false, true, CustomMap.MaxSpellMarkup)));
+        Assert.That(map.SetForeignSpellMarkup(50), Is.True);
+        Assert.That(map.Clone().ForeignSpellMarkup, Is.EqualTo(50));
+        store.Save(map);
+        Assert.That(store.Open(map.Id, definitions).ForeignSpellMarkup, Is.EqualTo(50));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        Assert.That(scenario.Provider.Definition.ForeignSpellMarkup, Is.EqualTo(50));
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State;
+        WorldPlayer human = state.Players.Values.Single(player => player.Race == WorldRace.Human);
+        WorldMageSite site = state.Sites.Values.OfType<WorldMageSite>().Single();
+        WorldStack army = state.Stacks.Values.Single(stack => stack.OwnerId == human.Id && stack.Position == new WorldPosition(20, 12));
+        human = human with { Resources = new WorldResourceSet(99999, 99999, 99999, 99999, 99999, 99999) };
+
+        WorldResourceSet Price(WorldSpellDefinition spell) => MageSiteCalculator.GetPurchaseInfo(site, army, human, spell.Id, context).Cost;
+        WorldResourceSet Marked(WorldResourceSet price) => new(
+            price.Gold + (int)Math.Round(price.Gold / 2.0, MidpointRounding.AwayFromZero),
+            price.DeathMana + (int)Math.Round(price.DeathMana / 2.0, MidpointRounding.AwayFromZero),
+            price.RuneMana + (int)Math.Round(price.RuneMana / 2.0, MidpointRounding.AwayFromZero),
+            price.LifeMana + (int)Math.Round(price.LifeMana / 2.0, MidpointRounding.AwayFromZero),
+            price.InfernalMana + (int)Math.Round(price.InfernalMana / 2.0, MidpointRounding.AwayFromZero),
+            price.GroveMana + (int)Math.Round(price.GroveMana / 2.0, MidpointRounding.AwayFromZero));
+
+        Assert.That(Price(own), Is.EqualTo(own.PurchaseCost), "Own race: list price.");
+        Assert.That(Price(foreign), Is.EqualTo(Marked(foreign.PurchaseCost)), "Another race: +50 %.");
+        Assert.That(Price(foreign).Gold, Is.GreaterThan(foreign.PurchaseCost.Gold));
+        Assert.That(DiplomacyProposalCalculator.GetTradeValue(foreign.Id, context), Is.EqualTo(foreign.PurchaseCost.Gold), "Diplomacy keeps the list price.");
+
+        // Without the rule (0, and original scenarios with no SRules.json) prices stay as they were.
+        map.SetForeignSpellMarkup(0);
+        store.Save(map);
+        Scenario plain = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext plainContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, plain.Provider.Definition), plain.Provider, globals);
+        Assert.That(MageSiteCalculator.GetPurchaseInfo(site, army, human, foreign.Id, plainContext).Cost, Is.EqualTo(foreign.PurchaseCost));
+        Assert.That(ScenarioLoader.Load(globalDb, ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, new Db.ScenarioId("S135SC0000")), campaignDb, new ScenarioId("S135SC0000"), definitions, globals).Provider.Definition.ForeignSpellMarkup, Is.Zero);
+    }
+
+    // Map rule "neutral kinds": each neutral subrace type gets its own neutral player (only one kind per side, kinds
+    // hostile to each other); plain neutrals stay with player 0; off = one neutral player. Survives save and reopen.
+    [Test]
+    public void NeutralKindsTest()
+    {
+        CustomMapUnit Named(string name, bool leader) => CustomMapUnit.From(Units
+            .Where(unit => unit.Race == WorldRace.Neutral && unit.IsLarge == false && (leader ? unit.Category == UnitCategory.Leader : unit.Category != UnitCategory.Leader))
+            .Where(unit => globalDb.Units[new Db.Id(unit.Id.Value)].SubraceType == (name switch { "greenskin" => Db.SubraceType.NeutralGreenSkin, "wolf" => Db.SubraceType.NeutralWolf, _ => Db.SubraceType.Neutral }))
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First());
+
+        CustomMap map = CreateMap();
+        CustomMapStack goblins = map.PlaceStack(new WorldPosition(14, 14), WorldRace.Neutral, Slots((GridPosition.FrontCenter, Named("greenskin", true)))).Stack!;
+        CustomMapStack wolves = map.PlaceStack(new WorldPosition(14, 18), WorldRace.Neutral, Slots((GridPosition.FrontCenter, Named("wolf", true)))).Stack!;
+        CustomMapStack plain = map.PlaceStack(new WorldPosition(18, 14), WorldRace.Neutral, Slots((GridPosition.FrontCenter, Named("plain", true)))).Stack!;
+        CustomMapVillage village = map.PlaceVillage(new WorldPosition(4, 16), 2, WorldRace.Neutral, "Orc town").Village!;
+        Assert.That(map.UpdateVillage(village.Id, 2, WorldRace.Neutral, "Orc town", Slots((GridPosition.FrontCenter, Named("greenskin", false)))), Is.Null);
+        CustomMapArmyTemplate raiders = map.AddTemplate(new CustomMapArmyTemplate(0, "Raiders", WorldRace.Neutral, [.. Slots((GridPosition.FrontCenter, Named("wolf", true)))], CustomMapArmyOrder.Normal));
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+
+        WorldPlayerId OwnerOfStack(WorldState state, int id) => state.Stacks[new WorldStackId(CustomMapWriter.GetArmyStackId(map.Id, id))].OwnerId;
+        Scenario Load() => ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables());
+
+        // Off: one neutral player owns everything neutral.
+        store.Save(map);
+        Assert.That(Load().State.Players.Values.Count(player => player.Race == WorldRace.Neutral), Is.EqualTo(1));
+
+        map.NeutralKinds = true;
+        store.Save(map);
+        Scenario scenario = Load();
+        WorldState state = scenario.State;
+        Assert.That(state.Players.Values.Count(player => player.Race == WorldRace.Neutral), Is.EqualTo(3), "Player 0, greenskins, wolves.");
+        WorldPlayerId greenskins = OwnerOfStack(state, goblins.Id);
+        WorldPlayerId wolfSide = OwnerOfStack(state, wolves.Id);
+        WorldPlayerId primary = OwnerOfStack(state, plain.Id);
+        Assert.That(new[] { greenskins, wolfSide, primary }.Distinct().Count(), Is.EqualTo(3));
+        Assert.That(primary, Is.EqualTo(WorldCommandHelpers.GetNeutralPlayerId(state)), "Plain neutrals stay with the primary neutral player.");
+        Assert.That(((WorldCity)state.Fortifications[new WorldFortificationId(CustomMapWriter.GetVillageId(map.Id, village.Id))]).OwnerId, Is.EqualTo(greenskins), "An orc garrison makes it a greenskin village.");
+        Assert.That(state.Players[scenario.Provider.StackTemplates.Single().OwnerId].Id, Is.EqualTo(wolfSide), "A wolf-led template joins the wolves.");
+        Assert.That((DiplomacyCalculator.IsHostile(state, greenskins, wolfSide), DiplomacyCalculator.IsHostile(state, greenskins, primary)), Is.EqualTo((true, true)));
+        Assert.That(state.Players.Values.Where(player => player.Race != WorldRace.Neutral).Select(player => player.Race), Is.EquivalentTo(new[] { WorldRace.Human, WorldRace.Elf }));
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That((reopened.NeutralKinds, reopened.Stacks.Count(stack => stack.Owner == WorldRace.Neutral), reopened.Villages.Single().Owner), Is.EqualTo((true, 3, WorldRace.Neutral)));
+        Assert.That(raiders.Id, Is.EqualTo(1));
+    }
 }

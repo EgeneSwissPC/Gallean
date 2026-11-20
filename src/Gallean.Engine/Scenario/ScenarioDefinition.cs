@@ -22,4 +22,8 @@ public sealed record ScenarioDefinition(
         MaxLeaderLevel: int.MaxValue,
         MaxCityLevel: 0,
         NextScenarioId: null);
+
+    // Gallean Upgrade map rule (SRules.json): mage towers charge this many percent more for spells of another race
+    // than the buyer's. Spells traded in diplomacy keep their list price, so allies are the cheaper source.
+    public int ForeignSpellMarkup { get; init; }
 }

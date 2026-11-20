@@ -465,6 +465,26 @@
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}" />
             </StackPanel>
+            <StackPanel Spacing="6" Margin="16,6,14,0">
+              <local:OutlinedTextBlock Text="{local:Text 'Mage towers'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+              <Grid ColumnDefinitions="*,54,Auto">
+                <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'Spells of other races cost more by'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="SpellMarkupBox" Grid.Column="1" Text="{Binding SpellMarkupText}" MaxLength="3" HorizontalContentAlignment="Right" />
+                <TextBlock Grid.Column="2" Classes="caption" Text="%" VerticalAlignment="Center" Margin="4,0,0,0" />
+              </Grid>
+              <TextBlock Text="{local:Text 'Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+            <StackPanel Spacing="6" Margin="16,6,14,0">
+              <local:OutlinedTextBlock Text="{local:Text 'Neutrals'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+              <CheckBox x:Name="NeutralKindsBox" IsChecked="{Binding NeutralKinds}" Content="{local:Text 'Each kind of neutral is its own side'}" />
+              <TextBlock Text="{local:Text 'Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
           </StackPanel>
         </ScrollViewer>
       </DockPanel>

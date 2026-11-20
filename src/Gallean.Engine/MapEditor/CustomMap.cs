@@ -218,6 +218,14 @@ public sealed partial class CustomMap
     public IReadOnlyList<CustomMapArmyTemplate> Templates => templates;
     public IReadOnlyList<CustomMapVariable> Variables => variables;
 
+    // Map rule (Gallean Upgrade, saved in SRules.json): how many percent more mage towers charge for another race's
+    // spells. 0 = the game's normal prices.
+    public int ForeignSpellMarkup { get; private set; }
+
+    // Map rule (SRules.json): every neutral kind (greenskins, sea creatures, barbarians, ...) is its own neutral side,
+    // so only neutrals of one kind help each other and different kinds are hostile. Off = one neutral side.
+    public bool NeutralKinds { get; set; }
+
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
         List<CustomMapPlayer> players = [];
@@ -249,7 +257,28 @@ public sealed partial class CustomMap
 
     public CustomMap Clone()
     {
-        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, locations, events, templates, variables);
+        return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, locations, events, templates, variables)
+        {
+            ForeignSpellMarkup = ForeignSpellMarkup,
+            NeutralKinds = NeutralKinds
+        };
+    }
+
+    public const int MaxSpellMarkup = 500;
+
+    // Sets the mage tower markup for other races' spells (0-500 %). Returns false when nothing changed.
+    public bool SetForeignSpellMarkup(int percent)
+    {
+        int clamped = Math.Clamp(percent, 0, MaxSpellMarkup);
+
+        if (clamped == ForeignSpellMarkup)
+        {
+            return false;
+        }
+
+        ForeignSpellMarkup = clamped;
+
+        return true;
     }
 
     public WorldMapCell GetCell(WorldPosition position)

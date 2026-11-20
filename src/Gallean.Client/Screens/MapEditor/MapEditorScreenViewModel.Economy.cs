@@ -49,6 +49,80 @@ internal sealed partial class MapEditorScreenViewModel
 
     partial void OnSelectedBankRaceChanged(MapEditorOption<WorldRace>? value) => ShowBank();
 
+    // Mage towers: how many percent more another race's spells cost there (a map rule; diplomacy keeps list prices).
+    [ObservableProperty]
+    public partial string SpellMarkupText { get; set; } = "0";
+
+    private bool showingSpellMarkup;
+    private int spellMarkupUndoCount = -1;
+
+    // Neutrals: one side per kind (map rule).
+    [ObservableProperty]
+    public partial bool NeutralKinds { get; set; }
+
+    partial void OnNeutralKindsChanged(bool value)
+    {
+        if (showingSpellMarkup || map.NeutralKinds == value)
+        {
+            return;
+        }
+
+        undoSteps.Push(map.Clone());
+        TrimUndo();
+        map.NeutralKinds = value;
+        CanUndo = true;
+        IsDirty = true;
+    }
+
+    private void ShowSpellMarkup()
+    {
+        showingSpellMarkup = true;
+
+        try
+        {
+            SpellMarkupText = map.ForeignSpellMarkup.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            NeutralKinds = map.NeutralKinds;
+        }
+        finally
+        {
+            showingSpellMarkup = false;
+        }
+    }
+
+    // An empty box counts as 0; anything that isn't a number is ignored until it is one. Typing keeps one undo step.
+    partial void OnSpellMarkupTextChanged(string value)
+    {
+        if (showingSpellMarkup)
+        {
+            return;
+        }
+
+        string trimmed = value.Trim();
+        int percent = 0;
+
+        if (trimmed.Length > 0 && !int.TryParse(trimmed, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out percent))
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+
+        if (!map.SetForeignSpellMarkup(percent))
+        {
+            return;
+        }
+
+        if (spellMarkupUndoCount != undoSteps.Count)
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+        }
+
+        spellMarkupUndoCount = undoSteps.Count;
+        CanUndo = true;
+        IsDirty = true;
+    }
+
     // Fills the bank fields from the map (after a race change, undo or open).
     private void ShowBank()
     {
@@ -63,6 +137,7 @@ internal sealed partial class MapEditorScreenViewModel
         ];
 
         BankFields = [.. order.Select(type => new MapEditorBankFieldViewModel(type, CustomMapPlayer.Get(bank, type), type == own, amount => SetBankAmount(race, type, amount)))];
+        ShowSpellMarkup();
     }
 
     // One field changed: typing into the same field keeps one undo step.

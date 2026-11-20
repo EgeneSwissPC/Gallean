@@ -118,7 +118,10 @@ public sealed class DatabaseTests
         Assert.That(FindEmptyTables(db), Is.EqualTo([
             "ScenarioRods",
             "ScenarioRodsByScenario",
-            "ScenarioRodsByScenarioAndRodId"
+            "ScenarioRodsByScenarioAndRodId",
+            "ScenarioRules",
+            "ScenarioRulesByScenario",
+            "ScenarioRulesByScenarioAndRulesId"
         ]));
     }
 

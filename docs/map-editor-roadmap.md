@@ -6,8 +6,9 @@ plus the MapFromPlan generator (commits `418e463`, `9d96d14`), after the road to
 planning rods and the economy panel, after rods in the engine (commit `ca0330f`), after the rod tool (commit
 `97fe196`), after the economy panel (commit `687944d`), after the starting bank (commit `8ac6ac2`) and after the land
 spread preview (commit `caab9b3`), and after the three locations phases (commits `8a6ffe2d`, `8b9ccde8`,
-`b31aa076`), and after the seven events phases (2026-11-19/20, last merge `2f85594c`). Each section is meant as a
-separate task.
+`b31aa076`), and after the seven events phases (2026-11-19/20, last merge `2f85594c`), and after the "capture a
+city" order, the map rules and MapFromPlan's event support (2026-11-20, see "Task: map rules"). Each section is meant
+as a separate task.
 
 ## Decisions so far
 
@@ -47,6 +48,12 @@ separate task.
   with pickers, drag-drop palette), for players who just want to design a level. Editor-only: the game's own event
   tables and code. OR and "on turn N" are offered in the blocks and saved as the game's events. Recipes replace the
   separate victory settings task. Spec: `docs/map-editor-events.md`.
+- **Map rules are opt-in and saved in a new `SRules.json`** (Gallean Upgrade only; the original scenarios have none, so
+  nothing changes there): mage towers charge more for other races' spells (diplomacy keeps the list price), and each
+  kind of neutral can be its own side. New maps start with both off.
+- **Neutral kinds = the game's neutral subraces** (free men, wild elves, greenskins, dragons, marsh folk, sea creatures,
+  barbarians, wolves; plain neutrals stay with player 0), decided by an army's leader and a village's garrison, like
+  `tools/NeutralSplitter`. Different kinds are hostile (the engine has no "neutral but not allied").
 
 ## Already in the editor
 
@@ -109,6 +116,9 @@ separate task.
     message), with automatic "conquers all capitals" wins
   - army templates (armies events create, with order), variables, and the chain screen (which event switches which,
     events that can never fire in orange)
+- Map rules (new), in the economy panel: "Mage towers: spells of other races cost more by N %" and "Each kind of
+  neutral is its own side"; saved in `SRules.json`
+- Army orders: "capture a city" (the game's SecureCity) for templates and the order block, next to defend a city
 - Locations (new): tool "Locations" and list (L)
   - click places a named zone (1x1 to 7x7, + / -), its name typed in the list row; click selects, drag moves (snaps
     onto the map, Esc puts it back), Ctrl+click places a zone inside another, Shift+click removes; X/Y boxes
@@ -323,6 +333,20 @@ Known limits:
 - One player per race, so allies of one race share a player (Gondor and Rohan are both the Empire).
 - Capitals keep the writer's "<Race> Capital" name (there is no name field on `CustomMapPlayer` yet).
 - Only existing objects: hobbits are peasants, Ents are the elves' Ent Minor.
+
+## Task: map rules — done
+
+What was built (2026-11-20): "capture a city" orders (`3ed1fc98`, the game's SecureCity, for templates and the order
+block; a play test has the neutral AI retake an Empire village), and two map rules in a new `SRules.json`
+(`Db.ScenarioRules`; original scenarios have none): mage towers charge N % more for other races' spells while
+diplomacy keeps the list price (`2d3af29d`, in `MageSiteCalculator`, so tower screen, purchase and AI agree), and
+each kind of neutral is its own side (`280a48a7`, `c6ae6691`: the writer gives each neutral subrace in use its own
+neutral player, like `tools/NeutralSplitter`). Both sit under the starting bank in the economy panel. MapFromPlan
+learned the editor's later features and builds "The War of the Ring" (1024x1024) with them (`9f01afda`).
+
+Measured on the 1024 map (Release engine, all AI, Ryzen 9): one round of all 13 sides takes 7 s on turn 1 and 18 s by
+turn 34 (two big neutral kinds about 3 s each). Known limits: different neutral kinds are hostile, never just
+neutral; plain neutrals (spiders, thugs, bears, ...) are one kind; the editor has no water-only units.
 
 ## Task: events (Scratch-style blocks)
 

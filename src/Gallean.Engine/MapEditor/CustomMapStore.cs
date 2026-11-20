@@ -94,10 +94,14 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             .GroupBy(text => $"{text.IdObject.Value}/{text.IdString}", StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.First().Text!, StringComparer.OrdinalIgnoreCase);
 
-        return FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, (objectId, textId) => texts.GetValueOrDefault($"{objectId}/{textId}"), scenario.Provider.Locations,
+        CustomMap map = FromState(info.ScenarioId.Value, info.Name, info.Description ?? string.Empty, scenario.State, definitions, (objectId, textId) => texts.GetValueOrDefault($"{objectId}/{textId}"), scenario.Provider.Locations,
             CustomMapEventsFile.Read(Path.Combine(mapsDirectory, info.ScenarioId.Value, CustomMapEventsFile.FileName)),
             CustomMapEventsFile.ReadTemplates(Path.Combine(mapsDirectory, info.ScenarioId.Value, CustomMapEventsFile.FileName)),
             CustomMapEventsFile.ReadVariables(Path.Combine(mapsDirectory, info.ScenarioId.Value, CustomMapEventsFile.FileName)));
+        map.SetForeignSpellMarkup(scenario.Provider.Definition.ForeignSpellMarkup);
+        map.NeutralKinds = database.ScenarioRulesByScenario[info.ScenarioId].FirstOrDefault()?.NeutralKinds ?? false;
+
+        return map;
     }
 
     // Builds the world state the editor renders by saving the map to a scratch folder and loading it through the

@@ -1,0 +1,7862 @@
+{
+ "_about": "The West of Middle-earth at the end of the Third Age on a 1024x1024 map: Lindon to Rhun, Forochel to Harad. Coordinates are miles east and north of Hobbiton, 2.3 miles per tile, north at the top. Built for MapFromPlan with every map editor feature: rules, banks, garrisons, rods, zones, templates, variables, neutral life and story events.",
+ "name": "The War of the Ring",
+ "description": "The West of Middle-earth at the end of the Third Age. The Shadow grows every turn the Dark Lord stands: neutral bands grow bolder, lost villages are fought over, and the Eye seeks the Ring hidden under the Misty Mountains. Carry it to Mount Doom, or conquer every capital.",
+ "size": 1024,
+ "milesPerTile": 2.3,
+ "center": [
+  480,
+  -290
+ ],
+ "seed": 3019,
+ "warpMiles": 22,
+ "baseTerrain": "Neutral",
+ "races": [
+  "Human",
+  "Elf",
+  "Dwarf",
+  "Heretic",
+  "Undead"
+ ],
+ "leaderMovement": 20,
+ "rules": {
+  "spellMarkup": 50,
+  "neutralKinds": true
+ },
+ "startingBanks": {
+  "Human": {
+   "Gold": 1500,
+   "LifeMana": 1000
+  },
+  "Elf": {
+   "Gold": 1000,
+   "GroveMana": 1500
+  },
+  "Dwarf": {
+   "Gold": 2000,
+   "RuneMana": 1000
+  },
+  "Heretic": {
+   "Gold": 1200,
+   "InfernalMana": 2000
+  },
+  "Undead": {
+   "Gold": 800,
+   "DeathMana": 1800
+  }
+ },
+ "conquestWins": true,
+ "land": [
+  {
+   "name": "Lindon",
+   "terrain": "Elf",
+   "polygon": [
+    [
+     -330,
+     260
+    ],
+    [
+     -160,
+     260
+    ],
+    [
+     -150,
+     -230
+    ],
+    [
+     -330,
+     -230
+    ]
+   ]
+  },
+  {
+   "name": "Harlindon",
+   "terrain": "Elf",
+   "around": [
+    -200,
+    -130
+   ],
+   "radius": 45
+  },
+  {
+   "name": "Thorin's Halls",
+   "terrain": "Dwarf",
+   "around": [
+    -200,
+    115
+   ],
+   "radius": 40
+  },
+  {
+   "name": "Rivendell",
+   "terrain": "Elf",
+   "around": [
+    418,
+    -10
+   ],
+   "radius": 52
+  },
+  {
+   "name": "Eregion",
+   "terrain": "Elf",
+   "around": [
+    420,
+    -165
+   ],
+   "radius": 40
+  },
+  {
+   "name": "Lorien",
+   "terrain": "Elf",
+   "around": [
+    570,
+    -275
+   ],
+   "radius": 46
+  },
+  {
+   "name": "Woodland Realm",
+   "terrain": "Elf",
+   "around": [
+    755,
+    250
+   ],
+   "radius": 72
+  },
+  {
+   "name": "Erebor",
+   "terrain": "Dwarf",
+   "around": [
+    885,
+    262
+   ],
+   "radius": 72
+  },
+  {
+   "name": "Iron Hills",
+   "terrain": "Dwarf",
+   "around": [
+    1005,
+    295
+   ],
+   "radius": 55
+  },
+  {
+   "name": "Rohan",
+   "terrain": "Human",
+   "polygon": [
+    [
+     440,
+     -470
+    ],
+    [
+     560,
+     -440
+    ],
+    [
+     690,
+     -450
+    ],
+    [
+     730,
+     -520
+    ],
+    [
+     725,
+     -600
+    ],
+    [
+     560,
+     -600
+    ],
+    [
+     440,
+     -590
+    ]
+   ]
+  },
+  {
+   "name": "Gondor",
+   "terrain": "Human",
+   "polygon": [
+    [
+     300,
+     -650
+    ],
+    [
+     560,
+     -615
+    ],
+    [
+     700,
+     -600
+    ],
+    [
+     745,
+     -560
+    ],
+    [
+     812,
+     -560
+    ],
+    [
+     812,
+     -720
+    ],
+    [
+     770,
+     -800
+    ],
+    [
+     650,
+     -830
+    ],
+    [
+     500,
+     -830
+    ],
+    [
+     380,
+     -760
+    ]
+   ]
+  },
+  {
+   "name": "Angmar",
+   "terrain": "Undead",
+   "around": [
+    440,
+    262
+   ],
+   "radius": 70
+  },
+  {
+   "name": "Dol Guldur",
+   "terrain": "Undead",
+   "around": [
+    670,
+    -178
+   ],
+   "radius": 62
+  },
+  {
+   "name": "Morgul Vale",
+   "terrain": "Undead",
+   "around": [
+    808,
+    -660
+   ],
+   "radius": 30
+  },
+  {
+   "name": "Mordor",
+   "terrain": "Heretic",
+   "polygon": [
+    [
+     812,
+     -492
+    ],
+    [
+     1450,
+     -492
+    ],
+    [
+     1450,
+     -810
+    ],
+    [
+     812,
+     -810
+    ]
+   ]
+  },
+  {
+   "name": "Carn Dum",
+   "terrain": "Undead",
+   "around": [
+    425,
+    255
+   ],
+   "radius": 45
+  }
+ ],
+ "water": [
+  {
+   "name": "Western Sea",
+   "polygon": [
+    [
+     -160,
+     1500
+    ],
+    [
+     -160,
+     520
+    ],
+    [
+     -250,
+     400
+    ],
+    [
+     -290,
+     250
+    ],
+    [
+     -300,
+     100
+    ],
+    [
+     -305,
+     -100
+    ],
+    [
+     -290,
+     -180
+    ],
+    [
+     -200,
+     -300
+    ],
+    [
+     -100,
+     -390
+    ],
+    [
+     0,
+     -460
+    ],
+    [
+     100,
+     -530
+    ],
+    [
+     200,
+     -610
+    ],
+    [
+     250,
+     -700
+    ],
+    [
+     330,
+     -750
+    ],
+    [
+     430,
+     -765
+    ],
+    [
+     495,
+     -775
+    ],
+    [
+     515,
+     -810
+    ],
+    [
+     560,
+     -800
+    ],
+    [
+     640,
+     -790
+    ],
+    [
+     690,
+     -810
+    ],
+    [
+     740,
+     -840
+    ],
+    [
+     780,
+     -900
+    ],
+    [
+     800,
+     -1000
+    ],
+    [
+     820,
+     -1500
+    ],
+    [
+     -1500,
+     -1500
+    ],
+    [
+     -1500,
+     1500
+    ]
+   ]
+  },
+  {
+   "name": "Gulf of Lune",
+   "polygon": [
+    [
+     -330,
+     40
+    ],
+    [
+     -230,
+     30
+    ],
+    [
+     -185,
+     12
+    ],
+    [
+     -180,
+     -8
+    ],
+    [
+     -230,
+     -25
+    ],
+    [
+     -330,
+     -35
+    ]
+   ]
+  },
+  {
+   "name": "Ice Bay of Forochel",
+   "polygon": [
+    [
+     -60,
+     560
+    ],
+    [
+     160,
+     560
+    ],
+    [
+     140,
+     470
+    ],
+    [
+     60,
+     440
+    ],
+    [
+     -40,
+     470
+    ]
+   ]
+  },
+  {
+   "name": "Lake Evendim",
+   "polygon": [
+    [
+     40,
+     200
+    ],
+    [
+     95,
+     205
+    ],
+    [
+     95,
+     160
+    ],
+    [
+     45,
+     155
+    ]
+   ]
+  },
+  {
+   "name": "Long Lake",
+   "polygon": [
+    [
+     868,
+     222
+    ],
+    [
+     898,
+     222
+    ],
+    [
+     900,
+     165
+    ],
+    [
+     870,
+     165
+    ]
+   ]
+  },
+  {
+   "name": "Sea of Rhun",
+   "polygon": [
+    [
+     1040,
+     -60
+    ],
+    [
+     1180,
+     -20
+    ],
+    [
+     1260,
+     -120
+    ],
+    [
+     1200,
+     -230
+    ],
+    [
+     1080,
+     -200
+    ]
+   ]
+  },
+  {
+   "name": "Sea of Nurnen",
+   "polygon": [
+    [
+     1010,
+     -695
+    ],
+    [
+     1110,
+     -685
+    ],
+    [
+     1115,
+     -745
+    ],
+    [
+     1015,
+     -752
+    ]
+   ]
+  },
+  {
+   "name": "Mirrormere",
+   "around": [
+    512,
+    -236
+   ],
+   "radius": 4
+  },
+  {
+   "name": "Sirannon pool",
+   "around": [
+    436,
+    -250
+   ],
+   "radius": 5
+  }
+ ],
+ "rivers": [
+  {
+   "name": "Anduin",
+   "label": true,
+   "width": 5,
+   "fordRadius": 3.6,
+   "path": [
+    [
+     625,
+     390
+    ],
+    [
+     605,
+     260
+    ],
+    [
+     600,
+     150
+    ],
+    [
+     598,
+     60
+    ],
+    [
+     592,
+     -60
+    ],
+    [
+     592,
+     -150
+    ],
+    [
+     605,
+     -260
+    ],
+    [
+     625,
+     -330
+    ],
+    [
+     655,
+     -390
+    ],
+    [
+     700,
+     -450
+    ],
+    [
+     720,
+     -495
+    ],
+    [
+     755,
+     -560
+    ],
+    [
+     775,
+     -600
+    ],
+    [
+     782,
+     -640
+    ],
+    [
+     772,
+     -700
+    ],
+    [
+     745,
+     -760
+    ],
+    [
+     710,
+     -805
+    ]
+   ],
+   "fords": [
+    [
+     599,
+     85
+    ],
+    [
+     764,
+     -578
+    ],
+    [
+     782,
+     -640
+    ]
+   ]
+  },
+  {
+   "name": "Brandywine",
+   "width": 3.2,
+   "path": [
+    [
+     65,
+     160
+    ],
+    [
+     58,
+     60
+    ],
+    [
+     55,
+     -40
+    ],
+    [
+     45,
+     -150
+    ],
+    [
+     10,
+     -260
+    ],
+    [
+     -30,
+     -340
+    ],
+    [
+     -60,
+     -390
+    ]
+   ],
+   "fords": [
+    [
+     56,
+     2
+    ],
+    [
+     55,
+     -45
+    ],
+    [
+     32,
+     -210
+    ]
+   ],
+   "fordRadius": 3.6
+  },
+  {
+   "name": "Greyflood",
+   "width": 3.6,
+   "path": [
+    [
+     400,
+     -40
+    ],
+    [
+     340,
+     -150
+    ],
+    [
+     280,
+     -220
+    ],
+    [
+     230,
+     -265
+    ],
+    [
+     160,
+     -340
+    ],
+    [
+     100,
+     -450
+    ],
+    [
+     80,
+     -500
+    ]
+   ],
+   "fords": [
+    [
+     228,
+     -266
+    ],
+    [
+     395,
+     -40
+    ]
+   ],
+   "fordRadius": 3.6
+  },
+  {
+   "name": "Isen",
+   "width": 3,
+   "path": [
+    [
+     445,
+     -480
+    ],
+    [
+     440,
+     -545
+    ],
+    [
+     380,
+     -590
+    ],
+    [
+     300,
+     -620
+    ],
+    [
+     230,
+     -640
+    ]
+   ],
+   "fords": [
+    [
+     441,
+     -540
+    ]
+   ],
+   "fordRadius": 3.6
+  },
+  {
+   "name": "Celduin",
+   "width": 3.2,
+   "path": [
+    [
+     885,
+     168
+    ],
+    [
+     920,
+     90
+    ],
+    [
+     980,
+     0
+    ],
+    [
+     1060,
+     -80
+    ]
+   ],
+   "fords": [
+    [
+     922,
+     85
+    ]
+   ],
+   "fordRadius": 3.6
+  },
+  {
+   "name": "Bruinen",
+   "width": 2.6,
+   "fordRadius": 3.4,
+   "path": [
+    [
+     440,
+     40
+    ],
+    [
+     425,
+     10
+    ],
+    [
+     395,
+     -20
+    ],
+    [
+     380,
+     -60
+    ],
+    [
+     365,
+     -110
+    ],
+    [
+     345,
+     -150
+    ]
+   ],
+   "fords": [
+    [
+     392,
+     -25
+    ]
+   ]
+  },
+  {
+   "name": "Enchanted River",
+   "width": 2.4,
+   "fordRadius": 3,
+   "path": [
+    [
+     700,
+     240
+    ],
+    [
+     720,
+     180
+    ],
+    [
+     745,
+     120
+    ],
+    [
+     760,
+     60
+    ]
+   ],
+   "fords": [
+    [
+     720,
+     180
+    ]
+   ]
+  }
+ ],
+ "marshes": [
+  {
+   "name": "Dead Marshes",
+   "density": 0.42,
+   "polygon": [
+    [
+     748,
+     -425
+    ],
+    [
+     815,
+     -430
+    ],
+    [
+     820,
+     -480
+    ],
+    [
+     760,
+     -485
+    ]
+   ]
+  },
+  {
+   "name": "Nindalf",
+   "density": 0.35,
+   "polygon": [
+    [
+     705,
+     -505
+    ],
+    [
+     745,
+     -505
+    ],
+    [
+     748,
+     -545
+    ],
+    [
+     708,
+     -545
+    ]
+   ]
+  },
+  {
+   "name": "Gladden Fields",
+   "density": 0.3,
+   "polygon": [
+    [
+     595,
+     -95
+    ],
+    [
+     630,
+     -95
+    ],
+    [
+     630,
+     -135
+    ],
+    [
+     595,
+     -135
+    ]
+   ]
+  }
+ ],
+ "ranges": [
+  {
+   "name": "Misty Mountains",
+   "width": 29,
+   "path": [
+    [
+     515,
+     385
+    ],
+    [
+     490,
+     270
+    ],
+    [
+     478,
+     150
+    ],
+    [
+     474,
+     60
+    ],
+    [
+     476,
+     -40
+    ],
+    [
+     486,
+     -130
+    ],
+    [
+     492,
+     -210
+    ],
+    [
+     480,
+     -300
+    ],
+    [
+     462,
+     -380
+    ],
+    [
+     450,
+     -430
+    ]
+   ],
+   "gaps": [
+    {
+     "at": [
+      475,
+      35
+     ],
+     "radius": 14
+    },
+    {
+     "at": [
+      490,
+      -185
+     ],
+     "radius": 13
+    }
+   ]
+  },
+  {
+   "name": "Grey Mountains",
+   "width": 24,
+   "path": [
+    [
+     520,
+     400
+    ],
+    [
+     640,
+     390
+    ],
+    [
+     760,
+     385
+    ],
+    [
+     880,
+     380
+    ],
+    [
+     960,
+     375
+    ]
+   ]
+  },
+  {
+   "name": "Mountains of Angmar",
+   "label": false,
+   "width": 19,
+   "path": [
+    [
+     400,
+     340
+    ],
+    [
+     450,
+     300
+    ],
+    [
+     480,
+     260
+    ]
+   ]
+  },
+  {
+   "name": "Blue Mountains",
+   "width": 24,
+   "path": [
+    [
+     -205,
+     330
+    ],
+    [
+     -225,
+     200
+    ],
+    [
+     -238,
+     70
+    ],
+    [
+     -238,
+     40
+    ]
+   ]
+  },
+  {
+   "name": "Blue Mountains South",
+   "label": false,
+   "width": 22,
+   "path": [
+    [
+     -238,
+     -45
+    ],
+    [
+     -245,
+     -120
+    ],
+    [
+     -235,
+     -220
+    ]
+   ]
+  },
+  {
+   "name": "White Mountains",
+   "width": 29,
+   "path": [
+    [
+     250,
+     -705
+    ],
+    [
+     320,
+     -660
+    ],
+    [
+     420,
+     -605
+    ],
+    [
+     520,
+     -615
+    ],
+    [
+     620,
+     -625
+    ],
+    [
+     700,
+     -635
+    ],
+    [
+     738,
+     -655
+    ]
+   ]
+  },
+  {
+   "name": "Ash Mountains",
+   "width": 26,
+   "path": [
+    [
+     826,
+     -497
+    ],
+    [
+     950,
+     -492
+    ],
+    [
+     1080,
+     -500
+    ],
+    [
+     1240,
+     -515
+    ],
+    [
+     1450,
+     -525
+    ]
+   ],
+   "gaps": [
+    {
+     "at": [
+      836,
+      -503
+     ],
+     "radius": 22
+    }
+   ]
+  },
+  {
+   "name": "Mountains of Shadow",
+   "width": 24,
+   "path": [
+    [
+     823,
+     -502
+    ],
+    [
+     818,
+     -570
+    ],
+    [
+     815,
+     -640
+    ],
+    [
+     820,
+     -720
+    ],
+    [
+     845,
+     -795
+    ],
+    [
+     960,
+     -810
+    ],
+    [
+     1080,
+     -800
+    ],
+    [
+     1240,
+     -785
+    ],
+    [
+     1450,
+     -780
+    ]
+   ],
+   "gaps": [
+    {
+     "at": [
+      836,
+      -503
+     ],
+     "radius": 22
+    },
+    {
+     "at": [
+      816,
+      -607
+     ],
+     "radius": 5
+    },
+    {
+     "at": [
+      816,
+      -655
+     ],
+     "radius": 14
+    }
+   ]
+  },
+  {
+   "name": "Weather Hills",
+   "label": false,
+   "width": 10,
+   "path": [
+    [
+     232,
+     90
+    ],
+    [
+     236,
+     20
+    ]
+   ]
+  }
+ ],
+ "hills": [
+  {
+   "name": "Emyn Muil",
+   "density": 0.3,
+   "polygon": [
+    [
+     680,
+     -415
+    ],
+    [
+     745,
+     -418
+    ],
+    [
+     742,
+     -480
+    ],
+    [
+     682,
+     -478
+    ]
+   ]
+  },
+  {
+   "name": "Barrow-downs",
+   "density": 0.12,
+   "polygon": [
+    [
+     92,
+     -20
+    ],
+    [
+     140,
+     -20
+    ],
+    [
+     140,
+     -60
+    ],
+    [
+     92,
+     -60
+    ]
+   ]
+  },
+  {
+   "name": "North Downs",
+   "density": 0.12,
+   "polygon": [
+    [
+     100,
+     160
+    ],
+    [
+     200,
+     160
+    ],
+    [
+     200,
+     100
+    ],
+    [
+     100,
+     100
+    ]
+   ]
+  },
+  {
+   "name": "Iron Hills",
+   "density": 0.3,
+   "polygon": [
+    [
+     960,
+     340
+    ],
+    [
+     1060,
+     340
+    ],
+    [
+     1060,
+     270
+    ],
+    [
+     960,
+     270
+    ]
+   ]
+  },
+  {
+   "name": "Lonely Mountain",
+   "density": 0.35,
+   "around": [
+    870,
+    300
+   ],
+   "radius": 45
+  },
+  {
+   "name": "Ered Gorgoroth",
+   "density": 0.08,
+   "polygon": [
+    [
+     860,
+     -540
+    ],
+    [
+     1100,
+     -540
+    ],
+    [
+     1100,
+     -660
+    ],
+    [
+     860,
+     -660
+    ]
+   ]
+  },
+  {
+   "name": "Dunland",
+   "density": 0.1,
+   "polygon": [
+    [
+     300,
+     -380
+    ],
+    [
+     420,
+     -380
+    ],
+    [
+     420,
+     -500
+    ],
+    [
+     300,
+     -500
+    ]
+   ]
+  },
+  {
+   "name": "Ettenmoors",
+   "density": 0.18,
+   "polygon": [
+    [
+     300,
+     180
+    ],
+    [
+     400,
+     180
+    ],
+    [
+     400,
+     110
+    ],
+    [
+     300,
+     110
+    ]
+   ]
+  },
+  {
+   "name": "Emyn Beraid",
+   "density": 0.15,
+   "around": [
+    -90,
+    0
+   ],
+   "radius": 18
+  }
+ ],
+ "forests": [
+  {
+   "name": "Mirkwood",
+   "density": 0.9,
+   "polygon": [
+    [
+     650,
+     330
+    ],
+    [
+     830,
+     330
+    ],
+    [
+     845,
+     120
+    ],
+    [
+     810,
+     -80
+    ],
+    [
+     730,
+     -240
+    ],
+    [
+     640,
+     -240
+    ],
+    [
+     628,
+     0
+    ],
+    [
+     640,
+     220
+    ]
+   ]
+  },
+  {
+   "name": "Old Forest",
+   "density": 0.95,
+   "polygon": [
+    [
+     66,
+     -5
+    ],
+    [
+     115,
+     -2
+    ],
+    [
+     122,
+     -45
+    ],
+    [
+     70,
+     -50
+    ]
+   ]
+  },
+  {
+   "name": "Fangorn",
+   "density": 0.95,
+   "polygon": [
+    [
+     480,
+     -395
+    ],
+    [
+     565,
+     -395
+    ],
+    [
+     575,
+     -470
+    ],
+    [
+     490,
+     -480
+    ]
+   ]
+  },
+  {
+   "name": "Lorien",
+   "density": 0.55,
+   "polygon": [
+    [
+     545,
+     -245
+    ],
+    [
+     598,
+     -245
+    ],
+    [
+     598,
+     -305
+    ],
+    [
+     545,
+     -305
+    ]
+   ],
+   "label": false
+  },
+  {
+   "name": "Druadan",
+   "density": 0.7,
+   "polygon": [
+    [
+     680,
+     -598
+    ],
+    [
+     730,
+     -598
+    ],
+    [
+     730,
+     -630
+    ],
+    [
+     680,
+     -630
+    ]
+   ],
+   "label": false
+  },
+  {
+   "name": "Chetwood",
+   "density": 0.7,
+   "polygon": [
+    [
+     135,
+     18
+    ],
+    [
+     175,
+     18
+    ],
+    [
+     175,
+     -12
+    ],
+    [
+     135,
+     -12
+    ]
+   ],
+   "label": false
+  },
+  {
+   "name": "Trollshaws",
+   "label": false,
+   "density": 0.6,
+   "polygon": [
+    [
+     320,
+     20
+    ],
+    [
+     395,
+     20
+    ],
+    [
+     395,
+     -40
+    ],
+    [
+     320,
+     -40
+    ]
+   ]
+  },
+  {
+   "name": "Ithilien",
+   "density": 0.35,
+   "polygon": [
+    [
+     788,
+     -540
+    ],
+    [
+     812,
+     -540
+    ],
+    [
+     812,
+     -730
+    ],
+    [
+     788,
+     -730
+    ]
+   ],
+   "label": false
+  },
+  {
+   "name": "Eryn Vorn",
+   "density": 0.75,
+   "polygon": [
+    [
+     -60,
+     -300
+    ],
+    [
+     0,
+     -300
+    ],
+    [
+     0,
+     -350
+    ],
+    [
+     -60,
+     -350
+    ]
+   ],
+   "label": false
+  },
+  {
+   "name": "Firien Wood",
+   "density": 0.7,
+   "polygon": [
+    [
+     650,
+     -585
+    ],
+    [
+     680,
+     -585
+    ],
+    [
+     680,
+     -605
+    ],
+    [
+     650,
+     -605
+    ]
+   ],
+   "label": false
+  }
+ ],
+ "wildForest": {
+  "threshold": 0.64,
+  "scaleMiles": 55,
+  "exceptTerrain": [
+   "Heretic"
+  ]
+ },
+ "capitals": [
+  {
+   "race": "Human",
+   "name": "Minas Tirith",
+   "at": [
+    745,
+    -642
+   ],
+   "garrison": {
+    "template": "gondor-guard",
+    "tier": 3
+   },
+   "army": {
+    "template": "gondor-host",
+    "tier": 2,
+    "name": "Host of Gondor"
+   }
+  },
+  {
+   "race": "Elf",
+   "name": "Rivendell",
+   "at": [
+    420,
+    -8
+   ],
+   "garrison": {
+    "template": "imladris-guard",
+    "tier": 3
+   },
+   "army": {
+    "template": "elf-host",
+    "tier": 2,
+    "name": "Riders of Imladris"
+   }
+  },
+  {
+   "race": "Dwarf",
+   "name": "Erebor",
+   "at": [
+    872,
+    262
+   ],
+   "garrison": {
+    "template": "erebor-guard",
+    "tier": 3
+   },
+   "army": {
+    "template": "dwarf-host",
+    "tier": 2,
+    "name": "Host of Erebor"
+   }
+  },
+  {
+   "race": "Heretic",
+   "name": "Barad-dur",
+   "at": [
+    990,
+    -565
+   ],
+   "garrison": {
+    "template": "mordor-guard",
+    "tier": 3
+   },
+   "army": {
+    "template": "mordor-host",
+    "tier": 2,
+    "name": "Mouth of Sauron"
+   }
+  },
+  {
+   "race": "Undead",
+   "name": "Dol Guldur",
+   "at": [
+    670,
+    -180
+   ],
+   "garrison": {
+    "template": "guldur-guard",
+    "tier": 3
+   },
+   "army": {
+    "template": "nazgul-host",
+    "tier": 2,
+    "name": "Witch-king"
+   }
+  }
+ ],
+ "armyTemplates": {
+  "gondor-guard": {
+   "race": "Human",
+   "leaders": [
+    "Pegasus Knight"
+   ],
+   "units": [
+    "Squire",
+    "Archer",
+    "Acolyte"
+   ],
+   "large": []
+  },
+  "gondor-host": {
+   "race": "Human",
+   "leaders": [
+    "Pegasus Knight"
+   ],
+   "units": [
+    "Squire",
+    "Archer",
+    "Squire",
+    "Acolyte"
+   ],
+   "large": []
+  },
+  "rohirrim": {
+   "race": "Human",
+   "leaders": [
+    "Pegasus Knight"
+   ],
+   "units": [
+    "Knight",
+    "Squire",
+    "Archer",
+    "Knight"
+   ],
+   "large": []
+  },
+  "imladris-guard": {
+   "race": "Elf",
+   "leaders": [
+    "Warden"
+   ],
+   "units": [
+    "Centaur Lancer",
+    "Scout",
+    "Adept"
+   ],
+   "large": []
+  },
+  "elf-host": {
+   "race": "Elf",
+   "leaders": [
+    "Centaur Charger"
+   ],
+   "units": [
+    "Centaur Lancer",
+    "Scout",
+    "Adept",
+    "Scout"
+   ],
+   "large": []
+  },
+  "erebor-guard": {
+   "race": "Dwarf",
+   "leaders": [
+    "King's Guard"
+   ],
+   "units": [
+    "Dwarf",
+    "Axe Thrower",
+    "Novice"
+   ],
+   "large": []
+  },
+  "dwarf-host": {
+   "race": "Dwarf",
+   "leaders": [
+    "King's Guard"
+   ],
+   "units": [
+    "Dwarf",
+    "Axe Thrower",
+    "Dwarf",
+    "Novice"
+   ],
+   "large": []
+  },
+  "mordor-guard": {
+   "race": "Heretic",
+   "leaders": [
+    "Duke"
+   ],
+   "units": [
+    "Possessed",
+    "Gargoyle",
+    "Cultist"
+   ],
+   "large": []
+  },
+  "mordor-host": {
+   "race": "Heretic",
+   "leaders": [
+    "Duke"
+   ],
+   "units": [
+    "Possessed",
+    "Cultist",
+    "Possessed",
+    "Gargoyle"
+   ],
+   "large": []
+  },
+  "easterling-host": {
+   "race": "Heretic",
+   "leaders": [
+    "Duke"
+   ],
+   "units": [
+    "Possessed",
+    "Cultist",
+    "Berzerker"
+   ],
+   "large": [
+    "Gargoyle"
+   ]
+  },
+  "guldur-guard": {
+   "race": "Undead",
+   "leaders": [
+    "Death Knight"
+   ],
+   "units": [
+    "Fighter",
+    "Ghost",
+    "Initiate"
+   ],
+   "large": []
+  },
+  "nazgul-host": {
+   "race": "Undead",
+   "leaders": [
+    "Death Knight"
+   ],
+   "units": [
+    "Fighter",
+    "Ghost",
+    "Initiate",
+    "Fighter"
+   ],
+   "large": []
+  },
+  "orcs": {
+   "leaders": [
+    "Orc Champion"
+   ],
+   "units": [
+    "Orc",
+    "Goblin",
+    "Goblin Archer",
+    "Orc"
+   ],
+   "large": [
+    "Troll",
+    "Ogre"
+   ]
+  },
+  "goblins": {
+   "leaders": [
+    "Goblin"
+   ],
+   "units": [
+    "Goblin",
+    "Goblin Archer",
+    "Goblin Elder"
+   ],
+   "large": [
+    "Ogre"
+   ]
+  },
+  "uruks": {
+   "leaders": [
+    "Orc Champion"
+   ],
+   "units": [
+    "Orc King",
+    "Orc",
+    "Orc Champion"
+   ],
+   "large": [
+    "Troll"
+   ]
+  },
+  "wargs": {
+   "leaders": [
+    "Wolf"
+   ],
+   "units": [
+    "Wolf",
+    "Wolf",
+    "Spirit Wolf"
+   ],
+   "large": []
+  },
+  "trolls": {
+   "leaders": [
+    "Troll"
+   ],
+   "units": [
+    "Goblin",
+    "Orc"
+   ],
+   "large": [
+    "Troll",
+    "Ogre"
+   ]
+  },
+  "spiders": {
+   "leaders": [
+    "Giant Spider"
+   ],
+   "units": [],
+   "large": [
+    "Giant Black Spider",
+    "Giant Spider"
+   ]
+  },
+  "shelob": {
+   "leaders": [
+    "Giant Black Spider"
+   ],
+   "units": [],
+   "large": [
+    "Giant Spider",
+    "Giant Spider"
+   ]
+  },
+  "wights": {
+   "leaders": [
+    "Specter"
+   ],
+   "units": [
+    "Ghoul",
+    "Bone Lord",
+    "Ghoul"
+   ],
+   "large": [
+    "Grave Golem"
+   ]
+  },
+  "wraiths": {
+   "leaders": [
+    "Specter"
+   ],
+   "units": [
+    "Ghoul",
+    "Bone Lord"
+   ],
+   "large": []
+  },
+  "easterlings": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Barbarian Warrior",
+    "Trapper",
+    "Shamaness"
+   ],
+   "large": []
+  },
+  "haradrim": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Barbarian Warrior",
+    "Trapper",
+    "Lizard Man"
+   ],
+   "large": [
+    "Primitive Giant"
+   ]
+  },
+  "dunlendings": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Barbarian Warrior",
+    "Trapper"
+   ],
+   "large": []
+  },
+  "bandits": {
+   "leaders": [
+    "Master Thug"
+   ],
+   "units": [
+    "Thug",
+    "Master Thug"
+   ],
+   "large": []
+  },
+  "beasts": {
+   "leaders": [
+    "Wolf"
+   ],
+   "units": [
+    "Wolf"
+   ],
+   "large": [
+    "Brown Bear"
+   ]
+  },
+  "ents": {
+   "leaders": [
+    "Elf Lord"
+   ],
+   "units": [
+    "Ent Minor",
+    "Ent Minor",
+    "Forest Elf"
+   ],
+   "large": []
+  },
+  "dragons": {
+   "leaders": [
+    "Black Dragon"
+   ],
+   "units": [],
+   "large": [
+    "Red Dragon",
+    "Green Dragon",
+    "Black Dragon"
+   ]
+  },
+  "balrog": {
+   "leaders": [
+    "Orc Champion"
+   ],
+   "units": [
+    "Orc King",
+    "Goblin Archer",
+    "Orc"
+   ],
+   "large": [
+    "Asteroth",
+    "Troll"
+   ]
+  },
+  "ice": {
+   "leaders": [
+    "Polar Bear"
+   ],
+   "units": [
+    "Wolf"
+   ],
+   "large": [
+    "Polar Bear"
+   ]
+  },
+  "shirriffs": {
+   "leaders": [
+    "Peasant"
+   ],
+   "units": [
+    "Peasant"
+   ],
+   "large": []
+  },
+  "bree": {
+   "leaders": [
+    "Spearman"
+   ],
+   "units": [
+    "Peasant",
+    "Spearman"
+   ],
+   "large": []
+  },
+  "beorn": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Barbarian Warrior",
+    "Trapper"
+   ],
+   "large": [
+    "Brown Bear"
+   ]
+  },
+  "corsairs": {
+   "leaders": [
+    "Squire"
+   ],
+   "units": [
+    "Man at Arms",
+    "Spearman",
+    "Wizard"
+   ],
+   "large": []
+  },
+  "rangers": {
+   "leaders": [
+    "Spearman"
+   ],
+   "units": [
+    "Man at Arms",
+    "Spearman"
+   ],
+   "large": []
+  },
+  "dorwinion": {
+   "leaders": [
+    "Spearman"
+   ],
+   "units": [
+    "Peasant",
+    "Spearman",
+    "Man at Arms"
+   ],
+   "large": []
+  },
+  "lossoth": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Trapper",
+    "Barbarian Warrior",
+    "Shamaness"
+   ],
+   "large": [
+    "Polar Bear"
+   ]
+  },
+  "woses": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Trapper",
+    "Shamaness"
+   ],
+   "large": []
+  },
+  "variags": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Barbarian Warrior",
+    "Shamaness",
+    "Trapper"
+   ],
+   "large": [
+    "Primitive Giant"
+   ]
+  },
+  "marsh": {
+   "leaders": [
+    "Lizard Man"
+   ],
+   "units": [
+    "Lizard Man",
+    "Medusa"
+   ],
+   "large": []
+  },
+  "mumakil": {
+   "leaders": [
+    "Barbarian Chieftain"
+   ],
+   "units": [
+    "Barbarian Warrior",
+    "Trapper"
+   ],
+   "large": [
+    "Primitive Giant",
+    "Cyclops"
+   ]
+  },
+  "ruffians": {
+   "leaders": [
+    "Master Thug"
+   ],
+   "units": [
+    "Thug",
+    "Master Thug"
+   ],
+   "large": []
+  },
+  "eagles": {
+   "leaders": [
+    "Elf Lord"
+   ],
+   "units": [
+    "Griffin",
+    "Skylord"
+   ],
+   "large": []
+  },
+  "wildbeasts": {
+   "leaders": [
+    "Wolf"
+   ],
+   "units": [
+    "Wolf"
+   ],
+   "large": []
+  },
+  "goblin-scouts": {
+   "leaders": [
+    "Goblin"
+   ],
+   "units": [
+    "Goblin",
+    "Goblin Archer"
+   ],
+   "large": []
+  },
+  "oathbreakers": {
+   "leaders": [
+    "Specter"
+   ],
+   "units": [
+    "Ghoul",
+    "Bone Lord"
+   ],
+   "large": [
+    "Grave Golem"
+   ]
+  }
+ },
+ "villages": [
+  {
+   "name": "Hobbiton",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    0,
+    0
+   ],
+   "garrison": "shirriffs",
+   "tier": 1
+  },
+  {
+   "name": "Bywater",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    18,
+    6
+   ],
+   "garrison": "shirriffs",
+   "tier": 1,
+   "life": false
+  },
+  {
+   "name": "Michel Delving",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    -45,
+    -20
+   ],
+   "garrison": "shirriffs",
+   "tier": 1
+  },
+  {
+   "name": "Tuckborough",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    -18,
+    -28
+   ],
+   "garrison": "shirriffs",
+   "tier": 1,
+   "life": false
+  },
+  {
+   "name": "Longbottom",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    -22,
+    -58
+   ],
+   "garrison": "shirriffs",
+   "tier": 1
+  },
+  {
+   "name": "Frogmorton",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    32,
+    10
+   ],
+   "garrison": "shirriffs",
+   "tier": 1,
+   "life": false
+  },
+  {
+   "name": "Brandy Hall",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    72,
+    18
+   ],
+   "garrison": "shirriffs",
+   "tier": 1
+  },
+  {
+   "name": "Bree",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    122,
+    -2
+   ],
+   "garrison": "bree",
+   "tier": 1
+  },
+  {
+   "name": "Archet",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    146,
+    16
+   ],
+   "garrison": "bree",
+   "tier": 1
+  },
+  {
+   "name": "Tharbad",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    215,
+    -265
+   ],
+   "garrison": "bree",
+   "tier": 2
+  },
+  {
+   "name": "Stoor-holt",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    612,
+    -112
+   ],
+   "garrison": "bree",
+   "tier": 1
+  },
+  {
+   "name": "Dorwinion",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    1062,
+    10
+   ],
+   "garrison": "dorwinion",
+   "tier": 2
+  },
+  {
+   "name": "Umbar",
+   "owner": "Neutral",
+   "level": 3,
+   "at": [
+    790,
+    -935
+   ],
+   "garrison": "corsairs",
+   "tier": 3
+  },
+  {
+   "name": "Dunland Hill-fort",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    345,
+    -470
+   ],
+   "garrison": "dunlendings",
+   "tier": 2
+  },
+  {
+   "name": "Dunlending Camp",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    295,
+    -500
+   ],
+   "garrison": "dunlendings",
+   "tier": 1
+  },
+  {
+   "name": "Beorn's Hall",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    640,
+    120
+   ],
+   "garrison": "beorn",
+   "tier": 2
+  },
+  {
+   "name": "Woodmen-town",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    650,
+    40
+   ],
+   "garrison": "beorn",
+   "tier": 1
+  },
+  {
+   "name": "Lossoth Camp",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    100,
+    415
+   ],
+   "garrison": "lossoth",
+   "tier": 1
+  },
+  {
+   "name": "Woses' Hold",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    705,
+    -603
+   ],
+   "garrison": "woses",
+   "tier": 1
+  },
+  {
+   "name": "Easterling Camp",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    985,
+    -95
+   ],
+   "garrison": "easterlings",
+   "tier": 2
+  },
+  {
+   "name": "Rhun",
+   "owner": "Neutral",
+   "level": 3,
+   "at": [
+    1120,
+    -240
+   ],
+   "garrison": "easterlings",
+   "tier": 3
+  },
+  {
+   "name": "Near Harad",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    905,
+    -900
+   ],
+   "garrison": "haradrim",
+   "tier": 3
+  },
+  {
+   "name": "Harad Oasis",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    830,
+    -1000
+   ],
+   "garrison": "haradrim",
+   "tier": 2
+  },
+  {
+   "name": "Khand",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    1000,
+    -860
+   ],
+   "garrison": "variags",
+   "tier": 3
+  },
+  {
+   "name": "Goblin-town",
+   "owner": "Neutral",
+   "level": 3,
+   "at": [
+    482,
+    62
+   ],
+   "garrison": "goblins",
+   "tier": 3
+  },
+  {
+   "name": "Gundabad",
+   "owner": "Neutral",
+   "level": 4,
+   "at": [
+    520,
+    350
+   ],
+   "garrison": "orcs",
+   "tier": 4
+  },
+  {
+   "name": "Mount Gram",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    330,
+    250
+   ],
+   "garrison": "goblins",
+   "tier": 2
+  },
+  {
+   "name": "Isengard",
+   "owner": "Neutral",
+   "level": 5,
+   "at": [
+    445,
+    -455
+   ],
+   "garrison": "uruks",
+   "tier": 4
+  },
+  {
+   "name": "Cirith Ungol",
+   "owner": "Neutral",
+   "level": 3,
+   "at": [
+    852,
+    -598
+   ],
+   "garrison": "orcs",
+   "tier": 4
+  },
+  {
+   "name": "Troll Hold",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    372,
+    62
+   ],
+   "garrison": "trolls",
+   "tier": 2
+  },
+  {
+   "name": "Ettenmoors",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    340,
+    150
+   ],
+   "garrison": "trolls",
+   "tier": 3
+  },
+  {
+   "name": "Warg Den",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    560,
+    -10
+   ],
+   "garrison": "wargs",
+   "tier": 2
+  },
+  {
+   "name": "Brown Lands Den",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    700,
+    -335
+   ],
+   "garrison": "wargs",
+   "tier": 3
+  },
+  {
+   "name": "Marsh-hold",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    765,
+    -418
+   ],
+   "garrison": "marsh",
+   "tier": 2
+  },
+  {
+   "name": "Nindalf Hold",
+   "owner": "Neutral",
+   "level": 1,
+   "at": [
+    722,
+    -525
+   ],
+   "garrison": "marsh",
+   "tier": 2
+  },
+  {
+   "name": "Withered Heath",
+   "owner": "Neutral",
+   "level": 4,
+   "at": [
+    760,
+    352
+   ],
+   "garrison": "dragons",
+   "tier": 4
+  },
+  {
+   "name": "Wellinghall",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    522,
+    -428
+   ],
+   "garrison": "ents",
+   "tier": 3
+  },
+  {
+   "name": "Spider Hollow",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    722,
+    150
+   ],
+   "garrison": "spiders",
+   "tier": 3
+  },
+  {
+   "name": "Grey Havens",
+   "owner": "Elf",
+   "level": 4,
+   "at": [
+    -160,
+    0
+   ]
+  },
+  {
+   "name": "Harlindon",
+   "owner": "Elf",
+   "level": 2,
+   "at": [
+    -205,
+    -130
+   ]
+  },
+  {
+   "name": "Forlindon",
+   "owner": "Elf",
+   "level": 2,
+   "at": [
+    -205,
+    150
+   ]
+  },
+  {
+   "name": "Caras Galadhon",
+   "owner": "Elf",
+   "level": 4,
+   "at": [
+    572,
+    -275
+   ]
+  },
+  {
+   "name": "Thranduil's Halls",
+   "owner": "Elf",
+   "level": 3,
+   "at": [
+    760,
+    250
+   ]
+  },
+  {
+   "name": "Thorin's Halls",
+   "owner": "Dwarf",
+   "level": 3,
+   "at": [
+    -185,
+    100
+   ]
+  },
+  {
+   "name": "Dale",
+   "owner": "Dwarf",
+   "level": 3,
+   "at": [
+    860,
+    220
+   ]
+  },
+  {
+   "name": "Esgaroth",
+   "owner": "Dwarf",
+   "level": 2,
+   "at": [
+    905,
+    195
+   ]
+  },
+  {
+   "name": "Iron Hills",
+   "owner": "Dwarf",
+   "level": 3,
+   "at": [
+    975,
+    280
+   ]
+  },
+  {
+   "name": "Edoras",
+   "owner": "Human",
+   "level": 4,
+   "at": [
+    565,
+    -560
+   ],
+   "army": {
+    "template": "rohirrim",
+    "tier": 2,
+    "name": "Eomer's Eored"
+   }
+  },
+  {
+   "name": "Dunharrow",
+   "owner": "Human",
+   "level": 2,
+   "at": [
+    580,
+    -592
+   ]
+  },
+  {
+   "name": "Helm's Deep",
+   "owner": "Human",
+   "level": 3,
+   "at": [
+    465,
+    -560
+   ]
+  },
+  {
+   "name": "Dol Amroth",
+   "owner": "Human",
+   "level": 4,
+   "at": [
+    520,
+    -770
+   ]
+  },
+  {
+   "name": "Pelargir",
+   "owner": "Human",
+   "level": 3,
+   "at": [
+    735,
+    -748
+   ]
+  },
+  {
+   "name": "Lossarnach",
+   "owner": "Human",
+   "level": 2,
+   "at": [
+    715,
+    -672
+   ]
+  },
+  {
+   "name": "Linhir",
+   "owner": "Human",
+   "level": 2,
+   "at": [
+    625,
+    -742
+   ]
+  },
+  {
+   "name": "Osgiliath",
+   "owner": "Human",
+   "level": 2,
+   "at": [
+    768,
+    -618
+   ]
+  },
+  {
+   "name": "Minas Morgul",
+   "owner": "Undead",
+   "level": 4,
+   "at": [
+    800,
+    -672
+   ]
+  },
+  {
+   "name": "Carn Dum",
+   "owner": "Undead",
+   "level": 3,
+   "at": [
+    425,
+    255
+   ]
+  },
+  {
+   "name": "Udun",
+   "owner": "Heretic",
+   "level": 3,
+   "at": [
+    862,
+    -530
+   ]
+  },
+  {
+   "name": "Durthang",
+   "owner": "Heretic",
+   "level": 2,
+   "at": [
+    880,
+    -560
+   ]
+  },
+  {
+   "name": "Nurn",
+   "owner": "Heretic",
+   "level": 2,
+   "at": [
+    1050,
+    -770
+   ]
+  },
+  {
+   "name": "Nurn Farms",
+   "owner": "Heretic",
+   "level": 2,
+   "at": [
+    990,
+    -735
+   ]
+  }
+ ],
+ "ruins": [
+  {
+   "name": "Moria",
+   "at": [
+    455,
+    -240
+   ],
+   "guards": "balrog",
+   "tier": 5,
+   "gold": 3000,
+   "item": "Runestone (Artifact)"
+  },
+  {
+   "name": "Gollum's Cave",
+   "at": [
+    470,
+    44
+   ],
+   "guards": "goblins",
+   "tier": 3,
+   "gold": 150,
+   "item": "Ring of the Ages (Artifact)"
+  },
+  {
+   "name": "Amon Sul",
+   "at": [
+    245,
+    -5
+   ],
+   "guards": "wraiths",
+   "tier": 2,
+   "gold": 300,
+   "item": "Healing Ointment"
+  },
+  {
+   "name": "Barrow-downs",
+   "at": [
+    112,
+    -40
+   ],
+   "guards": "wights",
+   "tier": 2,
+   "gold": 250,
+   "item": "Wight Blade (Artifact)"
+  },
+  {
+   "name": "Fornost",
+   "at": [
+    140,
+    130
+   ],
+   "guards": "wights",
+   "tier": 3,
+   "gold": 500,
+   "item": "Banner of Protection"
+  },
+  {
+   "name": "Annuminas",
+   "at": [
+    38,
+    150
+   ],
+   "guards": "wights",
+   "tier": 2,
+   "gold": 400,
+   "item": "Tome of Thought"
+  },
+  {
+   "name": "Trolls' Cave",
+   "at": [
+    355,
+    0
+   ],
+   "guards": "trolls",
+   "tier": 2,
+   "gold": 600,
+   "item": "Runic Blade (Artifact)"
+  },
+  {
+   "name": "Ost-in-Edhil",
+   "at": [
+    415,
+    -170
+   ],
+   "guards": "orcs",
+   "tier": 2,
+   "gold": 400,
+   "item": "Elven Boots"
+  },
+  {
+   "name": "Mirrormere",
+   "at": [
+    522,
+    -226
+   ],
+   "guards": "orcs",
+   "tier": 3,
+   "gold": 700,
+   "item": "Mjolnir's Crown (Artifact)"
+  },
+  {
+   "name": "Eagles' Eyrie",
+   "at": [
+    505,
+    245
+   ],
+   "guards": "eagles",
+   "tier": 3,
+   "gold": 200,
+   "item": "Boots of Speed"
+  },
+  {
+   "name": "Amon Hen",
+   "at": [
+    705,
+    -472
+   ],
+   "guards": "uruks",
+   "tier": 2,
+   "gold": 300,
+   "item": "Potion of Restoration"
+  },
+  {
+   "name": "Dagorlad",
+   "at": [
+    860,
+    -462
+   ],
+   "guards": "wraiths",
+   "tier": 3,
+   "gold": 700,
+   "item": "Banner of Battle"
+  },
+  {
+   "name": "Smaug's Hoard",
+   "at": [
+    835,
+    305
+   ],
+   "guards": "dragons",
+   "tier": 5,
+   "gold": 4000,
+   "item": "Doragon's Eye"
+  },
+  {
+   "name": "Glittering Caves",
+   "at": [
+    482,
+    -588
+   ],
+   "guards": "goblin-scouts",
+   "tier": 2,
+   "gold": 1500,
+   "item": "Diamond (Valuable)"
+  },
+  {
+   "name": "Paths of the Dead",
+   "at": [
+    598,
+    -622
+   ],
+   "guards": "oathbreakers",
+   "tier": 3,
+   "gold": 900,
+   "item": "Skull Bracers (Artifact)"
+  },
+  {
+   "name": "Tower Hills",
+   "at": [
+    -95,
+    5
+   ],
+   "guards": "wights",
+   "tier": 1,
+   "gold": 200,
+   "item": "Soul Crystal (Artifact)"
+  },
+  {
+   "name": "Belegost",
+   "at": [
+    -215,
+    -35
+   ],
+   "guards": "orcs",
+   "tier": 3,
+   "gold": 900,
+   "item": "Dwarven Bracer (Artifact)"
+  },
+  {
+   "name": "Grey Mountains Hoard",
+   "at": [
+    650,
+    365
+   ],
+   "guards": "dragons",
+   "tier": 4,
+   "gold": 2500,
+   "item": "Ruby (Valuable)"
+  },
+  {
+   "name": "Rhudaur",
+   "at": [
+    300,
+    40
+   ],
+   "guards": "trolls",
+   "tier": 2,
+   "gold": 350,
+   "item": "Potion of Strength"
+  },
+  {
+   "name": "Gladden Fields",
+   "at": [
+    598,
+    -135
+   ],
+   "guards": "marsh",
+   "tier": 2,
+   "gold": 300,
+   "item": "Orb of Water"
+  },
+  {
+   "name": "Henneth Annun",
+   "at": [
+    800,
+    -575
+   ],
+   "guards": "orcs",
+   "tier": 2,
+   "gold": 300,
+   "item": "Banner of Speed"
+  },
+  {
+   "name": "Erech",
+   "at": [
+    540,
+    -660
+   ],
+   "guards": "oathbreakers",
+   "tier": 2,
+   "gold": 400,
+   "item": "Potion of Fortune"
+  },
+  {
+   "name": "Mount Gundabad Vault",
+   "at": [
+    545,
+    330
+   ],
+   "guards": "orcs",
+   "tier": 4,
+   "gold": 1200,
+   "item": "Banner of War"
+  },
+  {
+   "name": "Easterling Barrow",
+   "at": [
+    1000,
+    -170
+   ],
+   "guards": "easterlings",
+   "tier": 3,
+   "gold": 800,
+   "item": "Gold Ring (Valuable)"
+  },
+  {
+   "name": "Harad Tomb",
+   "at": [
+    960,
+    -960
+   ],
+   "guards": "haradrim",
+   "tier": 3,
+   "gold": 900,
+   "item": "Royal Scepter (Valuable)"
+  },
+  {
+   "name": "Forochel Wreck",
+   "at": [
+    120,
+    380
+   ],
+   "guards": "ice",
+   "tier": 2,
+   "gold": 500,
+   "item": "Ancient Relic (Valuable)"
+  },
+  {
+   "name": "Old Forest Barrow",
+   "at": [
+    100,
+    -15
+   ],
+   "guards": "ents",
+   "tier": 1,
+   "gold": 150,
+   "item": "Staff of Foliage"
+  },
+  {
+   "name": "Dimrill Gate",
+   "at": [
+    520,
+    -255
+   ],
+   "guards": "goblin-scouts",
+   "tier": 2,
+   "gold": 250,
+   "item": "Potion of Healing"
+  }
+ ],
+ "sites": [
+  {
+   "type": "Merchant",
+   "name": "The Prancing Pony",
+   "at": [
+    135,
+    10
+   ],
+   "greeting": "Barliman Butterbur at your service. Mind the Rangers.",
+   "items": [
+    [
+     "Potion of Healing",
+     8
+    ],
+    [
+     "Healing Ointment",
+     4
+    ],
+    [
+     "Potion of Restoration",
+     2
+    ],
+    [
+     "Elven Boots",
+     1
+    ],
+    [
+     "Banner of Protection",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "Merchant",
+   "name": "Lake-town Market",
+   "at": [
+    880,
+    150
+   ],
+   "greeting": "Goods from the Long Lake and the Lonely Mountain.",
+   "items": [
+    [
+     "Potion of Healing",
+     4
+    ],
+    [
+     "Iron Skin Potion",
+     1
+    ],
+    [
+     "Potion of Protection",
+     3
+    ],
+    [
+     "Boots of Speed",
+     1
+    ],
+    [
+     "Banner of Strength",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "Merchant",
+   "name": "Galadriel's Glade",
+   "at": [
+    595,
+    -290
+   ],
+   "greeting": "Cloaks that hide, rope that holds, bread for the road, and light for dark places.",
+   "items": [
+    [
+     "Elven Boots",
+     2
+    ],
+    [
+     "Life Potion",
+     2
+    ],
+    [
+     "Potion of Restoration",
+     3
+    ],
+    [
+     "Staff of Daylight",
+     1
+    ],
+    [
+     "Treebark Potion",
+     3
+    ]
+   ]
+  },
+  {
+   "type": "Merchant",
+   "name": "Pelargir Harbour",
+   "at": [
+    755,
+    -765
+   ],
+   "greeting": "Ships' stores and southern spice.",
+   "items": [
+    [
+     "Potion of Healing",
+     6
+    ],
+    [
+     "Potion of Striking",
+     3
+    ],
+    [
+     "Banner of Health",
+     1
+    ],
+    [
+     "Orb of Fire",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "Merchant",
+   "name": "Umbar Black Market",
+   "at": [
+    812,
+    -925
+   ],
+   "greeting": "No questions asked.",
+   "items": [
+    [
+     "Potion of Might",
+     2
+    ],
+    [
+     "Orb of Venom",
+     2
+    ],
+    [
+     "Unholy Dagger (Artifact)",
+     1
+    ],
+    [
+     "Talisman of Fear",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "Merchant",
+   "name": "Dorwinion Wine-house",
+   "at": [
+    1085,
+    25
+   ],
+   "greeting": "The wine the Elf-king himself drinks.",
+   "items": [
+    [
+     "Potion of Healing",
+     6
+    ],
+    [
+     "Potion of Vigor",
+     3
+    ],
+    [
+     "Highfather's Potion",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "Merchant",
+   "name": "Beorn's Honey Hall",
+   "at": [
+    660,
+    135
+   ],
+   "greeting": "Honey-cakes and cream. No orcs.",
+   "items": [
+    [
+     "Potion of Healing",
+     6
+    ],
+    [
+     "Healing Ointment",
+     4
+    ],
+    [
+     "Bear Pelt",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "MageTower",
+   "name": "Orthanc",
+   "at": [
+    470,
+    -470
+   ],
+   "greeting": "Saruman the Wise will share his lore, for a price.",
+   "spells": [
+    "Lightning",
+    "Haste",
+    "Strength",
+    "Chain lightning",
+    "True sight",
+    "Ice shield",
+    "Ignis mare",
+    "Weakness"
+   ]
+  },
+  {
+   "type": "MageTower",
+   "name": "Rhosgobel",
+   "at": [
+    625,
+    -40
+   ],
+   "greeting": "Radagast the Brown greets you among the birds.",
+   "spells": [
+    "Healing",
+    "Forestwalk",
+    "Bramble",
+    "Create Forest",
+    "Swift",
+    "Ancestor's call"
+   ]
+  },
+  {
+   "type": "MageTower",
+   "name": "White Tower Archives",
+   "at": [
+    725,
+    -625
+   ],
+   "greeting": "The lore of Numenor, kept by the Stewards.",
+   "spells": [
+    "Holy armor",
+    "Wrath of God",
+    "Major healing",
+    "Celerity",
+    "Tempest"
+   ]
+  },
+  {
+   "type": "MageTower",
+   "name": "Elostirion",
+   "at": [
+    -110,
+    20
+   ],
+   "greeting": "Cirdan's people keep the old spells of the West.",
+   "spells": [
+    "Tangle",
+    "Gust",
+    "Recovery",
+    "Wotan's blessing",
+    "Vithar's might"
+   ]
+  },
+  {
+   "type": "MageTower",
+   "name": "Mouth of Sauron",
+   "at": [
+    890,
+    -520
+   ],
+   "greeting": "The Lieutenant of the Tower sells to any who pay.",
+   "spells": [
+    "Pestilence",
+    "Plague",
+    "Tormentio",
+    "Ignis carn",
+    "Curse of Nygrael",
+    "Stone rain"
+   ]
+  },
+  {
+   "type": "Trainer",
+   "name": "Aldburg",
+   "at": [
+    620,
+    -550
+   ],
+   "greeting": "The riders of the Mark will teach you their craft."
+  },
+  {
+   "type": "Trainer",
+   "name": "Iron Hills Drill-yard",
+   "at": [
+    1000,
+    262
+   ],
+   "greeting": "Dain's veterans drill all comers."
+  },
+  {
+   "type": "Trainer",
+   "name": "Rangers' Hideout",
+   "at": [
+    798,
+    -600
+   ],
+   "greeting": "Faramir's rangers teach the art of the ambush."
+  },
+  {
+   "type": "Mercenaries",
+   "name": "Dale Sellswords",
+   "at": [
+    835,
+    175
+   ],
+   "greeting": "Bardings and Lake-men, for a fair wage.",
+   "mercenaries": [
+    [
+     "Spearman",
+     2
+    ],
+    [
+     "Man at Arms",
+     2
+    ],
+    [
+     "Centaur Lancer",
+     1
+    ]
+   ]
+  },
+  {
+   "type": "Mercenaries",
+   "name": "Rangers of the North",
+   "at": [
+    195,
+    55
+   ],
+   "greeting": "The Dunedain watch the borders. Some will ride with you.",
+   "mercenaries": [
+    [
+     "Elf Ranger",
+     3
+    ],
+    [
+     "Spearman",
+     3
+    ]
+   ]
+  },
+  {
+   "type": "Mercenaries",
+   "name": "Dunlending Sellswords",
+   "at": [
+    315,
+    -445
+   ],
+   "greeting": "Gold buys a Dunlending's spear, for now.",
+   "mercenaries": [
+    [
+     "Barbarian Warrior",
+     2
+    ],
+    [
+     "Trapper",
+     2
+    ]
+   ]
+  },
+  {
+   "type": "Mercenaries",
+   "name": "Corsair Crews",
+   "at": [
+    770,
+    -915
+   ],
+   "greeting": "Crews for hire, if your purse is deep.",
+   "mercenaries": [
+    [
+     "Man at Arms",
+     3
+    ],
+    [
+     "Wizard",
+     2
+    ]
+   ]
+  },
+  {
+   "type": "Mercenaries",
+   "name": "Beorning Toll-keepers",
+   "at": [
+    600,
+    85
+   ],
+   "greeting": "Beornings guard the passes. Pay the toll, or hire them.",
+   "mercenaries": [
+    [
+     "Barbarian Warrior",
+     2
+    ],
+    [
+     "Brown Bear",
+     2
+    ]
+   ]
+  }
+ ],
+ "roads": [
+  {
+   "name": "Great East Road",
+   "path": [
+    "@Grey Havens",
+    "@Michel Delving",
+    "@Hobbiton",
+    "@Brandy Hall",
+    "@Bree",
+    [
+     240,
+     15
+    ],
+    "@Rivendell"
+   ]
+  },
+  {
+   "name": "Greenway",
+   "path": [
+    "@Fornost",
+    [
+     130,
+     60
+    ],
+    "@Bree",
+    [
+     180,
+     -130
+    ],
+    "@Tharbad",
+    [
+     330,
+     -380
+    ],
+    [
+     420,
+     -520
+    ],
+    "@Helm's Deep"
+   ]
+  },
+  {
+   "name": "Rohan Road",
+   "path": [
+    "@Helm's Deep",
+    "@Edoras",
+    [
+     640,
+     -580
+    ],
+    "@Minas Tirith"
+   ]
+  },
+  {
+   "name": "Isengard Road",
+   "path": [
+    "@Isengard",
+    [
+     450,
+     -520
+    ],
+    "@Helm's Deep"
+   ]
+  },
+  {
+   "name": "Gondor Coast Road",
+   "path": [
+    "@Minas Tirith",
+    "@Pelargir",
+    [
+     620,
+     -740
+    ],
+    "@Dol Amroth"
+   ]
+  },
+  {
+   "name": "Osgiliath Road",
+   "path": [
+    "@Minas Tirith",
+    "@Osgiliath",
+    [
+     800,
+     -620
+    ],
+    [
+     810,
+     -560
+    ],
+    [
+     830,
+     -470
+    ],
+    [
+     860,
+     -462
+    ]
+   ]
+  },
+  {
+   "name": "Morgul Road",
+   "path": [
+    "@Osgiliath",
+    "@Minas Morgul"
+   ]
+  },
+  {
+   "name": "Old Forest Road",
+   "path": [
+    [
+     599,
+     85
+    ],
+    [
+     700,
+     80
+    ],
+    [
+     790,
+     80
+    ],
+    [
+     860,
+     90
+    ],
+    "@Esgaroth"
+   ]
+  },
+  {
+   "name": "High Pass",
+   "path": [
+    "@Rivendell",
+    [
+     475,
+     35
+    ],
+    [
+     560,
+     60
+    ],
+    [
+     599,
+     85
+    ],
+    "@Beorn's Hall"
+   ]
+  },
+  {
+   "name": "Dwarf Road",
+   "path": [
+    "@Erebor",
+    "@Dale",
+    "@Esgaroth",
+    "@Iron Hills"
+   ]
+  },
+  {
+   "name": "Mordor Road",
+   "path": [
+    "@Udun",
+    [
+     920,
+     -560
+    ],
+    "@Barad-dur",
+    [
+     1040,
+     -660
+    ],
+    "@Nurn"
+   ]
+  },
+  {
+   "name": "North-South Road",
+   "path": [
+    "@Fornost",
+    [
+     130,
+     60
+    ],
+    "@Bree"
+   ]
+  },
+  {
+   "name": "Shire roads",
+   "path": [
+    "@Michel Delving",
+    "@Tuckborough",
+    "@Longbottom"
+   ]
+  },
+  {
+   "name": "Rohan to Dunharrow",
+   "path": [
+    "@Edoras",
+    "@Dunharrow"
+   ]
+  },
+  {
+   "name": "Gondor south",
+   "path": [
+    "@Minas Tirith",
+    "@Lossarnach",
+    "@Pelargir",
+    "@Linhir",
+    "@Dol Amroth"
+   ]
+  },
+  {
+   "name": "Harad Road",
+   "path": [
+    [
+     760,
+     -760
+    ],
+    [
+     800,
+     -830
+    ],
+    "@Near Harad",
+    "@Harad Oasis"
+   ]
+  },
+  {
+   "name": "Rhun Road",
+   "path": [
+    "@Esgaroth",
+    [
+     960,
+     60
+    ],
+    "@Dorwinion"
+   ]
+  },
+  {
+   "name": "Easterling Road",
+   "path": [
+    "@Easterling Camp",
+    [
+     940,
+     -300
+    ],
+    [
+     880,
+     -440
+    ]
+   ]
+  },
+  {
+   "name": "Lindon road",
+   "path": [
+    "@Grey Havens",
+    "@Harlindon"
+   ]
+  },
+  {
+   "name": "Lindon north road",
+   "path": [
+    "@Grey Havens",
+    "@Forlindon"
+   ]
+  }
+ ],
+ "landmarks": [
+  {
+   "name": "Volcano",
+   "at": [
+    925,
+    -598
+   ],
+   "id": "mount-doom"
+  },
+  {
+   "name": "Earth Rift",
+   "at": [
+    955,
+    -625
+   ]
+  },
+  {
+   "name": "Lava Pit",
+   "around": [
+    925,
+    -600
+   ],
+   "radius": 45,
+   "count": 30
+  },
+  {
+   "name": "Unholy Gate",
+   "at": [
+    826,
+    -508
+   ],
+   "search": 4,
+   "id": "black-gate"
+  },
+  {
+   "name": "Spider Lair",
+   "at": [
+    836,
+    -607
+   ],
+   "search": 4
+  },
+  {
+   "name": "Impaled Skeleton",
+   "around": [
+    990,
+    -565
+   ],
+   "radius": 40,
+   "count": 24
+  },
+  {
+   "name": "Skeleton",
+   "polygon": [
+    [
+     820,
+     -440
+    ],
+    [
+     900,
+     -440
+    ],
+    [
+     900,
+     -485
+    ],
+    [
+     820,
+     -485
+    ]
+   ],
+   "count": 30
+  },
+  {
+   "name": "Cemetery",
+   "polygon": [
+    [
+     748,
+     -425
+    ],
+    [
+     815,
+     -430
+    ],
+    [
+     820,
+     -480
+    ],
+    [
+     760,
+     -485
+    ]
+   ],
+   "count": 12
+  },
+  {
+   "name": "Skeleton",
+   "size": 1,
+   "polygon": [
+    [
+     860,
+     -540
+    ],
+    [
+     1100,
+     -540
+    ],
+    [
+     1100,
+     -660
+    ],
+    [
+     860,
+     -660
+    ]
+   ],
+   "count": 42
+  },
+  {
+   "name": "Legions Habitation",
+   "polygon": [
+    [
+     860,
+     -540
+    ],
+    [
+     1100,
+     -540
+    ],
+    [
+     1100,
+     -780
+    ],
+    [
+     860,
+     -780
+    ]
+   ],
+   "count": 36
+  },
+  {
+   "name": "Undead Habitation",
+   "around": [
+    670,
+    -180
+   ],
+   "radius": 45,
+   "count": 18
+  },
+  {
+   "name": "Undead Habitation",
+   "around": [
+    425,
+    255
+   ],
+   "radius": 35,
+   "count": 12
+  },
+  {
+   "name": "Neutral Habitation",
+   "polygon": [
+    [
+     -60,
+     50
+    ],
+    [
+     50,
+     50
+    ],
+    [
+     50,
+     -50
+    ],
+    [
+     -60,
+     -50
+    ]
+   ],
+   "count": 48
+  },
+  {
+   "name": "Empire Habitation",
+   "polygon": [
+    [
+     450,
+     -460
+    ],
+    [
+     720,
+     -460
+    ],
+    [
+     720,
+     -590
+    ],
+    [
+     450,
+     -590
+    ]
+   ],
+   "count": 30
+  },
+  {
+   "name": "Empire Habitation",
+   "polygon": [
+    [
+     550,
+     -650
+    ],
+    [
+     790,
+     -650
+    ],
+    [
+     790,
+     -790
+    ],
+    [
+     550,
+     -790
+    ]
+   ],
+   "count": 30
+  },
+  {
+   "name": "Empire Statue",
+   "at": [
+    705,
+    -448
+   ],
+   "search": 3
+  },
+  {
+   "name": "Empire Statue",
+   "at": [
+    712,
+    -455
+   ],
+   "search": 3
+  },
+  {
+   "name": "Fall",
+   "at": [
+    722,
+    -500
+   ],
+   "search": 4
+  },
+  {
+   "name": "Elven House",
+   "around": [
+    420,
+    -8
+   ],
+   "radius": 40,
+   "count": 15
+  },
+  {
+   "name": "Elven House",
+   "around": [
+    572,
+    -275
+   ],
+   "radius": 30,
+   "count": 15
+  },
+  {
+   "name": "Elf City",
+   "around": [
+    -160,
+    0
+   ],
+   "radius": 50,
+   "count": 9
+  },
+  {
+   "name": "Mountain Clans House",
+   "around": [
+    872,
+    262
+   ],
+   "radius": 45,
+   "count": 18
+  },
+  {
+   "name": "Clans Statue",
+   "at": [
+    455,
+    -195
+   ],
+   "search": 4
+  },
+  {
+   "name": "Strong Magic Well",
+   "at": [
+    585,
+    -290
+   ],
+   "search": 5
+  },
+  {
+   "name": "Tower",
+   "at": [
+    90,
+    40
+   ],
+   "search": 4
+  },
+  {
+   "name": "Tower",
+   "at": [
+    -120,
+    20
+   ],
+   "search": 4
+  },
+  {
+   "name": "Ice",
+   "polygon": [
+    [
+     -120,
+     470
+    ],
+    [
+     250,
+     470
+    ],
+    [
+     300,
+     380
+    ],
+    [
+     -80,
+     380
+    ]
+   ],
+   "count": 75
+  },
+  {
+   "name": "Whirlpool",
+   "at": [
+    -400,
+    -300
+   ],
+   "water": true,
+   "search": 8
+  },
+  {
+   "name": "Seaweed",
+   "polygon": [
+    [
+     -300,
+     -250
+    ],
+    [
+     200,
+     -650
+    ],
+    [
+     100,
+     -750
+    ],
+    [
+     -350,
+     -400
+    ]
+   ],
+   "count": 30,
+   "water": true
+  },
+  {
+   "name": "Magic Well",
+   "at": [
+    588,
+    -262
+   ],
+   "search": 5,
+   "id": "mirror"
+  },
+  {
+   "name": "Empire Statue",
+   "at": [
+    690,
+    -470
+   ],
+   "search": 4
+  },
+  {
+   "name": "Empire Statue",
+   "at": [
+    694,
+    -478
+   ],
+   "search": 4
+  },
+  {
+   "name": "Tower",
+   "at": [
+    180,
+    95
+   ],
+   "search": 4
+  },
+  {
+   "name": "Tower",
+   "at": [
+    248,
+    2
+   ],
+   "search": 4
+  },
+  {
+   "name": "Cemetery",
+   "around": [
+    112,
+    -40
+   ],
+   "radius": 25,
+   "count": 4
+  },
+  {
+   "name": "Cemetery",
+   "around": [
+    590,
+    -615
+   ],
+   "radius": 20,
+   "count": 3
+  },
+  {
+   "name": "Clans Habitation",
+   "around": [
+    975,
+    280
+   ],
+   "radius": 40,
+   "count": 8
+  },
+  {
+   "name": "Clans Habitation",
+   "around": [
+    -185,
+    100
+   ],
+   "radius": 30,
+   "count": 5
+  },
+  {
+   "name": "Spider Lair",
+   "around": [
+    722,
+    150
+   ],
+   "radius": 35,
+   "count": 3
+  },
+  {
+   "name": "Elven House",
+   "around": [
+    760,
+    250
+   ],
+   "radius": 30,
+   "count": 4
+  },
+  {
+   "name": "Neutral Habitation",
+   "around": [
+    122,
+    -2
+   ],
+   "radius": 25,
+   "count": 6
+  },
+  {
+   "name": "Neutral Habitation",
+   "around": [
+    1062,
+    10
+   ],
+   "radius": 40,
+   "count": 6
+  },
+  {
+   "name": "Habitation",
+   "around": [
+    905,
+    -900
+   ],
+   "radius": 50,
+   "count": 8
+  },
+  {
+   "name": "Habitation",
+   "around": [
+    985,
+    -95
+   ],
+   "radius": 50,
+   "count": 8
+  },
+  {
+   "name": "Doragon's Altar",
+   "at": [
+    760,
+    370
+   ],
+   "search": 6
+  },
+  {
+   "name": "Hugin's Prison",
+   "at": [
+    520,
+    365
+   ],
+   "search": 6
+  },
+  {
+   "name": "Ice",
+   "polygon": [
+    [
+     -120,
+     470
+    ],
+    [
+     250,
+     470
+    ],
+    [
+     300,
+     380
+    ],
+    [
+     -80,
+     380
+    ]
+   ],
+   "count": 60
+  },
+  {
+   "name": "Whirlpool",
+   "at": [
+    740,
+    -860
+   ],
+   "water": true,
+   "search": 8
+  },
+  {
+   "name": "Seaweed",
+   "polygon": [
+    [
+     1040,
+     -60
+    ],
+    [
+     1180,
+     -20
+    ],
+    [
+     1260,
+     -120
+    ],
+    [
+     1200,
+     -230
+    ],
+    [
+     1080,
+     -200
+    ]
+   ],
+   "count": 10,
+   "water": true
+  }
+ ],
+ "resources": [
+  {
+   "type": "Gold",
+   "at": [
+    770,
+    -660
+   ]
+  },
+  {
+   "type": "LifeMana",
+   "at": [
+    720,
+    -625
+   ]
+  },
+  {
+   "type": "Gold",
+   "at": [
+    420,
+    30
+   ]
+  },
+  {
+   "type": "GroveMana",
+   "at": [
+    390,
+    -30
+   ]
+  },
+  {
+   "type": "Gold",
+   "at": [
+    900,
+    280
+   ]
+  },
+  {
+   "type": "RuneMana",
+   "at": [
+    845,
+    285
+   ]
+  },
+  {
+   "type": "Gold",
+   "at": [
+    1020,
+    -560
+   ]
+  },
+  {
+   "type": "InfernalMana",
+   "at": [
+    960,
+    -540
+   ]
+  },
+  {
+   "type": "Gold",
+   "at": [
+    700,
+    -170
+   ]
+  },
+  {
+   "type": "DeathMana",
+   "at": [
+    650,
+    -205
+   ]
+  }
+ ],
+ "resourceScatter": [
+  {
+   "name": "Eriador",
+   "types": [
+    "Gold",
+    "Gold",
+    "LifeMana",
+    "GroveMana"
+   ],
+   "count": 42,
+   "polygon": [
+    [
+     -140,
+     200
+    ],
+    [
+     440,
+     200
+    ],
+    [
+     440,
+     -380
+    ],
+    [
+     -100,
+     -380
+    ]
+   ]
+  },
+  {
+   "name": "Rohan and Gondor",
+   "types": [
+    "Gold",
+    "LifeMana"
+   ],
+   "count": 30,
+   "polygon": [
+    [
+     440,
+     -460
+    ],
+    [
+     780,
+     -460
+    ],
+    [
+     780,
+     -790
+    ],
+    [
+     420,
+     -760
+    ]
+   ]
+  },
+  {
+   "name": "Elven lands",
+   "types": [
+    "GroveMana"
+   ],
+   "count": 15,
+   "polygon": [
+    [
+     530,
+     -230
+    ],
+    [
+     610,
+     -230
+    ],
+    [
+     610,
+     -320
+    ],
+    [
+     530,
+     -320
+    ]
+   ]
+  },
+  {
+   "name": "Rhovanion",
+   "types": [
+    "Gold",
+    "GroveMana",
+    "RuneMana"
+   ],
+   "count": 30,
+   "polygon": [
+    [
+     600,
+     330
+    ],
+    [
+     960,
+     330
+    ],
+    [
+     960,
+     -100
+    ],
+    [
+     600,
+     -100
+    ]
+   ]
+  },
+  {
+   "name": "Mordor",
+   "types": [
+    "Gold",
+    "InfernalMana",
+    "InfernalMana"
+   ],
+   "count": 27,
+   "polygon": [
+    [
+     850,
+     -520
+    ],
+    [
+     1150,
+     -520
+    ],
+    [
+     1150,
+     -780
+    ],
+    [
+     850,
+     -780
+    ]
+   ]
+  },
+  {
+   "name": "Dwarf lands",
+   "types": [
+    "RuneMana",
+    "Gold"
+   ],
+   "count": 15,
+   "polygon": [
+    [
+     820,
+     340
+    ],
+    [
+     1060,
+     340
+    ],
+    [
+     1060,
+     190
+    ],
+    [
+     820,
+     190
+    ]
+   ]
+  },
+  {
+   "name": "Undead lands",
+   "types": [
+    "DeathMana"
+   ],
+   "count": 15,
+   "polygon": [
+    [
+     370,
+     320
+    ],
+    [
+     510,
+     320
+    ],
+    [
+     510,
+     190
+    ],
+    [
+     370,
+     190
+    ]
+   ]
+  },
+  {
+   "name": "South and east",
+   "types": [
+    "Gold"
+   ],
+   "count": 24,
+   "polygon": [
+    [
+     820,
+     -820
+    ],
+    [
+     1050,
+     -820
+    ],
+    [
+     1050,
+     -1000
+    ],
+    [
+     760,
+     -1000
+    ]
+   ]
+  },
+  {
+   "name": "Rhun",
+   "types": [
+    "Gold",
+    "InfernalMana"
+   ],
+   "count": 15,
+   "polygon": [
+    [
+     950,
+     -250
+    ],
+    [
+     1150,
+     -250
+    ],
+    [
+     1150,
+     0
+    ],
+    [
+     950,
+     0
+    ]
+   ]
+  },
+  {
+   "name": "Lindon",
+   "types": [
+    "GroveMana",
+    "Gold",
+    "RuneMana"
+   ],
+   "count": 12,
+   "polygon": [
+    [
+     -330,
+     260
+    ],
+    [
+     -160,
+     260
+    ],
+    [
+     -150,
+     -230
+    ],
+    [
+     -330,
+     -230
+    ]
+   ]
+  },
+  {
+   "name": "Harad",
+   "types": [
+    "Gold",
+    "InfernalMana",
+    "Gold"
+   ],
+   "count": 14,
+   "polygon": [
+    [
+     760,
+     -830
+    ],
+    [
+     1050,
+     -830
+    ],
+    [
+     1050,
+     -1050
+    ],
+    [
+     760,
+     -1050
+    ]
+   ]
+  }
+ ],
+ "armies": [
+  {
+   "name": "Shelob",
+   "template": "shelob",
+   "tier": 5,
+   "at": [
+    816,
+    -607
+   ],
+   "search": 3,
+   "bounty": "Life Potion",
+   "bountyText": "Shelob is driven back into her tunnels. Among the webs: a flask of life."
+  },
+  {
+   "name": "Black Gate host",
+   "template": "uruks",
+   "tier": 4,
+   "at": [
+    840,
+    -505
+   ],
+   "search": 4
+  },
+  {
+   "name": "Caradhras orcs",
+   "template": "orcs",
+   "tier": 3,
+   "at": [
+    490,
+    -185
+   ]
+  },
+  {
+   "name": "High Pass goblins",
+   "template": "goblins",
+   "tier": 2,
+   "at": [
+    475,
+    35
+   ]
+  },
+  {
+   "name": "Old Ford guard",
+   "template": "wargs",
+   "tier": 2,
+   "at": [
+    585,
+    85
+   ]
+  },
+  {
+   "name": "Fords of Isen",
+   "template": "uruks",
+   "tier": 3,
+   "at": [
+    430,
+    -540
+   ]
+  },
+  {
+   "name": "Cair Andros",
+   "template": "orcs",
+   "tier": 3,
+   "at": [
+    778,
+    -575
+   ]
+  },
+  {
+   "name": "Barrow-wight",
+   "template": "wights",
+   "tier": 1,
+   "at": [
+    118,
+    -55
+   ],
+   "loot": {
+    "chance": 1,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Bill Ferny's lot",
+   "template": "bandits",
+   "tier": 1,
+   "at": [
+    150,
+    -40
+   ],
+   "loot": {
+    "chance": 1,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   },
+   "bounty": "Potion of Swiftness",
+   "bountyText": "Bill Ferny runs off squealing. He drops a potion in his hurry."
+  },
+  {
+   "name": "Old Man Willow",
+   "template": "ents",
+   "tier": 2,
+   "at": [
+    95,
+    -25
+   ]
+  },
+  {
+   "name": "Treebeard's Ents",
+   "template": "ents",
+   "tier": 4,
+   "at": [
+    535,
+    -445
+   ],
+   "search": 5
+  },
+  {
+   "name": "Oathbreakers",
+   "template": "oathbreakers",
+   "tier": 4,
+   "at": [
+    600,
+    -610
+   ],
+   "search": 5
+  },
+  {
+   "name": "Haradrim host",
+   "template": "mumakil",
+   "tier": 4,
+   "at": [
+    880,
+    -880
+   ],
+   "search": 5
+  },
+  {
+   "name": "Smaug's Brood",
+   "template": "dragons",
+   "tier": 5,
+   "at": [
+    800,
+    345
+   ],
+   "search": 5,
+   "bounty": "Imperial Crown (Valuable)",
+   "bountyText": "The great wyrm falls. A crown of the Kings under the Mountain lies in its bed of gold."
+  },
+  {
+   "name": "Azog's Heirs",
+   "template": "orcs",
+   "tier": 4,
+   "at": [
+    530,
+    -270
+   ],
+   "search": 5,
+   "bounty": "Banner of Might",
+   "bountyText": "Azog's line is broken at the gates of Khazad-dum."
+  }
+ ],
+ "armyScatter": [
+  {
+   "name": "Shire edges",
+   "templates": [
+    "bandits",
+    "beasts"
+   ],
+   "tier": [
+    1,
+    1
+   ],
+   "count": 8,
+   "polygon": [
+    [
+     -120,
+     100
+    ],
+    [
+     130,
+     100
+    ],
+    [
+     130,
+     -120
+    ],
+    [
+     -120,
+     -120
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Eriador",
+   "templates": [
+    "wargs",
+    "bandits",
+    "trolls",
+    "beasts"
+   ],
+   "tier": [
+    1,
+    2
+   ],
+   "count": 28,
+   "polygon": [
+    [
+     -100,
+     200
+    ],
+    [
+     440,
+     200
+    ],
+    [
+     440,
+     -380
+    ],
+    [
+     -60,
+     -380
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Misty Mountains",
+   "templates": [
+    "orcs",
+    "goblins",
+    "wargs",
+    "trolls"
+   ],
+   "tier": [
+    2,
+    4
+   ],
+   "count": 24,
+   "polygon": [
+    [
+     430,
+     380
+    ],
+    [
+     540,
+     380
+    ],
+    [
+     530,
+     -420
+    ],
+    [
+     420,
+     -420
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Angmar",
+   "templates": [
+    "wights",
+    "orcs",
+    "trolls"
+   ],
+   "tier": [
+    2,
+    3
+   ],
+   "count": 10,
+   "polygon": [
+    [
+     370,
+     320
+    ],
+    [
+     510,
+     320
+    ],
+    [
+     510,
+     190
+    ],
+    [
+     370,
+     190
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Mirkwood",
+   "templates": [
+    "spiders",
+    "spiders",
+    "orcs",
+    "wargs"
+   ],
+   "tier": [
+    2,
+    4
+   ],
+   "count": 28,
+   "polygon": [
+    [
+     650,
+     330
+    ],
+    [
+     830,
+     330
+    ],
+    [
+     845,
+     120
+    ],
+    [
+     810,
+     -80
+    ],
+    [
+     730,
+     -240
+    ],
+    [
+     640,
+     -240
+    ],
+    [
+     628,
+     0
+    ],
+    [
+     640,
+     220
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Fangorn",
+   "templates": [
+    "ents"
+   ],
+   "tier": [
+    2,
+    4
+   ],
+   "count": 8,
+   "polygon": [
+    [
+     480,
+     -395
+    ],
+    [
+     565,
+     -395
+    ],
+    [
+     575,
+     -470
+    ],
+    [
+     490,
+     -480
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Rohan wilds",
+   "templates": [
+    "uruks",
+    "orcs",
+    "dunlendings"
+   ],
+   "tier": [
+    2,
+    3
+   ],
+   "count": 14,
+   "polygon": [
+    [
+     420,
+     -380
+    ],
+    [
+     720,
+     -380
+    ],
+    [
+     720,
+     -520
+    ],
+    [
+     420,
+     -520
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Brown Lands",
+   "templates": [
+    "orcs",
+    "wargs",
+    "easterlings"
+   ],
+   "tier": [
+    3,
+    4
+   ],
+   "count": 16,
+   "polygon": [
+    [
+     620,
+     -300
+    ],
+    [
+     820,
+     -300
+    ],
+    [
+     820,
+     -480
+    ],
+    [
+     660,
+     -480
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Life Potion",
+     "Potion of Restoration",
+     "Ruby (Valuable)",
+     "Diamond (Valuable)",
+     "Orb of Fire",
+     "Talisman of Strength",
+     "Banner of Fortitude",
+     "Gold Ring (Valuable)"
+    ]
+   }
+  },
+  {
+   "name": "Ithilien",
+   "templates": [
+    "orcs",
+    "haradrim"
+   ],
+   "tier": [
+    3,
+    4
+   ],
+   "count": 10,
+   "polygon": [
+    [
+     785,
+     -540
+    ],
+    [
+     812,
+     -540
+    ],
+    [
+     812,
+     -730
+    ],
+    [
+     785,
+     -730
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Life Potion",
+     "Potion of Restoration",
+     "Ruby (Valuable)",
+     "Diamond (Valuable)",
+     "Orb of Fire",
+     "Talisman of Strength",
+     "Banner of Fortitude",
+     "Gold Ring (Valuable)"
+    ]
+   }
+  },
+  {
+   "name": "Mordor",
+   "templates": [
+    "orcs",
+    "uruks",
+    "trolls",
+    "wraiths"
+   ],
+   "tier": [
+    4,
+    5
+   ],
+   "count": 32,
+   "polygon": [
+    [
+     850,
+     -520
+    ],
+    [
+     1150,
+     -520
+    ],
+    [
+     1150,
+     -780
+    ],
+    [
+     850,
+     -780
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Life Potion",
+     "Potion of Restoration",
+     "Ruby (Valuable)",
+     "Diamond (Valuable)",
+     "Orb of Fire",
+     "Talisman of Strength",
+     "Banner of Fortitude",
+     "Gold Ring (Valuable)"
+    ]
+   }
+  },
+  {
+   "name": "Harad",
+   "templates": [
+    "haradrim"
+   ],
+   "tier": [
+    3,
+    5
+   ],
+   "count": 14,
+   "polygon": [
+    [
+     700,
+     -840
+    ],
+    [
+     1050,
+     -840
+    ],
+    [
+     1050,
+     -1050
+    ],
+    [
+     740,
+     -1050
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Life Potion",
+     "Potion of Restoration",
+     "Ruby (Valuable)",
+     "Diamond (Valuable)",
+     "Orb of Fire",
+     "Talisman of Strength",
+     "Banner of Fortitude",
+     "Gold Ring (Valuable)"
+    ]
+   }
+  },
+  {
+   "name": "Rhun",
+   "templates": [
+    "easterlings"
+   ],
+   "tier": [
+    3,
+    4
+   ],
+   "count": 14,
+   "polygon": [
+    [
+     900,
+     -250
+    ],
+    [
+     1150,
+     -250
+    ],
+    [
+     1150,
+     50
+    ],
+    [
+     900,
+     50
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Life Potion",
+     "Potion of Restoration",
+     "Ruby (Valuable)",
+     "Diamond (Valuable)",
+     "Orb of Fire",
+     "Talisman of Strength",
+     "Banner of Fortitude",
+     "Gold Ring (Valuable)"
+    ]
+   }
+  },
+  {
+   "name": "Grey Mountains",
+   "templates": [
+    "dragons",
+    "orcs",
+    "goblins"
+   ],
+   "tier": [
+    3,
+    5
+   ],
+   "count": 10,
+   "polygon": [
+    [
+     520,
+     420
+    ],
+    [
+     960,
+     420
+    ],
+    [
+     960,
+     340
+    ],
+    [
+     520,
+     340
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Life Potion",
+     "Potion of Restoration",
+     "Ruby (Valuable)",
+     "Diamond (Valuable)",
+     "Orb of Fire",
+     "Talisman of Strength",
+     "Banner of Fortitude",
+     "Gold Ring (Valuable)"
+    ]
+   }
+  },
+  {
+   "name": "Forochel",
+   "templates": [
+    "ice"
+   ],
+   "tier": [
+    1,
+    3
+   ],
+   "count": 10,
+   "polygon": [
+    [
+     -120,
+     470
+    ],
+    [
+     250,
+     470
+    ],
+    [
+     300,
+     330
+    ],
+    [
+     -80,
+     330
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Gondor coast",
+   "templates": [
+    "haradrim",
+    "bandits"
+   ],
+   "tier": [
+    2,
+    3
+   ],
+   "count": 8,
+   "polygon": [
+    [
+     420,
+     -700
+    ],
+    [
+     700,
+     -700
+    ],
+    [
+     700,
+     -800
+    ],
+    [
+     420,
+     -780
+    ]
+   ],
+   "loot": {
+    "chance": 0.35,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Easy pickings: Eriador",
+   "templates": [
+    "wildbeasts",
+    "bandits",
+    "goblin-scouts",
+    "beasts"
+   ],
+   "tier": [
+    1,
+    1
+   ],
+   "count": 70,
+   "polygon": [
+    [
+     -140,
+     200
+    ],
+    [
+     440,
+     200
+    ],
+    [
+     440,
+     -380
+    ],
+    [
+     -100,
+     -380
+    ]
+   ],
+   "spacing": 4,
+   "loot": {
+    "chance": 0.7,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Easy pickings: Rhovanion",
+   "templates": [
+    "wildbeasts",
+    "goblin-scouts",
+    "bandits",
+    "beasts"
+   ],
+   "tier": [
+    1,
+    1
+   ],
+   "count": 50,
+   "polygon": [
+    [
+     560,
+     330
+    ],
+    [
+     1000,
+     330
+    ],
+    [
+     1000,
+     -120
+    ],
+    [
+     560,
+     -120
+    ]
+   ],
+   "spacing": 4,
+   "loot": {
+    "chance": 0.7,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Easy pickings: Rohan and Gondor",
+   "templates": [
+    "bandits",
+    "goblin-scouts",
+    "dunlendings",
+    "wildbeasts"
+   ],
+   "tier": [
+    1,
+    1
+   ],
+   "count": 40,
+   "polygon": [
+    [
+     420,
+     -430
+    ],
+    [
+     790,
+     -430
+    ],
+    [
+     790,
+     -800
+    ],
+    [
+     420,
+     -780
+    ]
+   ],
+   "spacing": 4,
+   "loot": {
+    "chance": 0.7,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Easy pickings: Lindon",
+   "templates": [
+    "wildbeasts",
+    "bandits"
+   ],
+   "tier": [
+    1,
+    1
+   ],
+   "count": 14,
+   "polygon": [
+    [
+     -330,
+     260
+    ],
+    [
+     -160,
+     260
+    ],
+    [
+     -150,
+     -230
+    ],
+    [
+     -330,
+     -230
+    ]
+   ],
+   "spacing": 4,
+   "loot": {
+    "chance": 0.7,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Easy pickings: the south",
+   "templates": [
+    "haradrim",
+    "bandits",
+    "marsh"
+   ],
+   "tier": [
+    1,
+    2
+   ],
+   "count": 30,
+   "polygon": [
+    [
+     700,
+     -840
+    ],
+    [
+     1050,
+     -840
+    ],
+    [
+     1050,
+     -1050
+    ],
+    [
+     740,
+     -1050
+    ]
+   ],
+   "spacing": 4,
+   "loot": {
+    "chance": 0.7,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  },
+  {
+   "name": "Easy pickings: the east",
+   "templates": [
+    "easterlings",
+    "wildbeasts",
+    "bandits"
+   ],
+   "tier": [
+    1,
+    2
+   ],
+   "count": 30,
+   "polygon": [
+    [
+     900,
+     -250
+    ],
+    [
+     1150,
+     -250
+    ],
+    [
+     1150,
+     50
+    ],
+    [
+     900,
+     50
+    ]
+   ],
+   "spacing": 4,
+   "loot": {
+    "chance": 0.7,
+    "items": [
+     "Potion of Healing",
+     "Potion of Healing",
+     "Healing Ointment",
+     "Silver Ring (Valuable)",
+     "Bronze Ring (Valuable)",
+     "Emerald (Valuable)",
+     "Potion of Protection",
+     "Potion of Striking",
+     "Haste scroll",
+     "Healing scroll"
+    ]
+   }
+  }
+ ],
+ "bagScatter": [
+  {
+   "name": "Common finds",
+   "count": 180,
+   "polygon": [
+    [
+     -200,
+     400
+    ],
+    [
+     1100,
+     400
+    ],
+    [
+     1100,
+     -1000
+    ],
+    [
+     -200,
+     -500
+    ]
+   ],
+   "items": [
+    "Potion of Healing",
+    "Potion of Healing",
+    "Healing Ointment",
+    "Silver Ring (Valuable)",
+    "Bronze Ring (Valuable)",
+    "Emerald (Valuable)",
+    "Potion of Protection",
+    "Potion of Striking",
+    "Haste scroll",
+    "Healing scroll"
+   ]
+  },
+  {
+   "name": "Rare finds",
+   "count": 50,
+   "polygon": [
+    [
+     600,
+     -300
+    ],
+    [
+     1150,
+     -300
+    ],
+    [
+     1150,
+     -800
+    ],
+    [
+     600,
+     -800
+    ]
+   ],
+   "items": [
+    "Life Potion",
+    "Potion of Restoration",
+    "Ruby (Valuable)",
+    "Diamond (Valuable)",
+    "Orb of Fire",
+    "Talisman of Strength",
+    "Banner of Fortitude"
+   ]
+  }
+ ],
+ "rods": [
+  {
+   "owner": "Human",
+   "count": 8,
+   "polygon": [
+    [
+     460,
+     -470
+    ],
+    [
+     720,
+     -470
+    ],
+    [
+     720,
+     -600
+    ],
+    [
+     460,
+     -600
+    ]
+   ]
+  },
+  {
+   "owner": "Human",
+   "count": 4,
+   "polygon": [
+    [
+     600,
+     -660
+    ],
+    [
+     790,
+     -660
+    ],
+    [
+     790,
+     -760
+    ],
+    [
+     600,
+     -760
+    ]
+   ]
+  },
+  {
+   "owner": "Elf",
+   "count": 5,
+   "around": [
+    420,
+    -160
+   ],
+   "radius": 40
+  },
+  {
+   "owner": "Elf",
+   "count": 4,
+   "polygon": [
+    [
+     -320,
+     240
+    ],
+    [
+     -170,
+     240
+    ],
+    [
+     -160,
+     -220
+    ],
+    [
+     -320,
+     -220
+    ]
+   ]
+  },
+  {
+   "owner": "Dwarf",
+   "count": 5,
+   "polygon": [
+    [
+     820,
+     330
+    ],
+    [
+     1050,
+     330
+    ],
+    [
+     1050,
+     200
+    ],
+    [
+     820,
+     200
+    ]
+   ]
+  },
+  {
+   "owner": "Dwarf",
+   "count": 3,
+   "around": [
+    -200,
+    100
+   ],
+   "radius": 40
+  },
+  {
+   "owner": "Heretic",
+   "count": 10,
+   "polygon": [
+    [
+     860,
+     -530
+    ],
+    [
+     1150,
+     -530
+    ],
+    [
+     1150,
+     -780
+    ],
+    [
+     860,
+     -780
+    ]
+   ]
+  },
+  {
+   "owner": "Undead",
+   "count": 5,
+   "around": [
+    670,
+    -180
+   ],
+   "radius": 60
+  },
+  {
+   "owner": "Undead",
+   "count": 3,
+   "around": [
+    425,
+    255
+   ],
+   "radius": 40
+  }
+ ],
+ "locations": [
+  {
+   "name": "Mount Doom",
+   "at": [
+    925,
+    -616
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Throne of Barad-dur",
+   "at": "@Barad-dur",
+   "radius": 2
+  },
+  {
+   "name": "Ford of Bruinen",
+   "at": [
+    392,
+    -25
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Old Forest",
+   "at": [
+    92,
+    -18
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Paths of the Dead",
+   "at": [
+    592,
+    -608
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Pelennor Fields",
+   "at": [
+    765,
+    -650
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Edoras fields",
+   "at": "@Edoras",
+   "radius": 2
+  },
+  {
+   "name": "Rhun muster",
+   "at": "@Easterling Camp",
+   "radius": 2
+  },
+  {
+   "name": "Umbar harbour",
+   "at": "@Umbar",
+   "radius": 2
+  },
+  {
+   "name": "Shire green",
+   "at": "@Bywater",
+   "radius": 2
+  },
+  {
+   "name": "West Gate of Moria",
+   "at": [
+    440,
+    -240
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Redhorn Pass",
+   "at": [
+    490,
+    -185
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Cirith Ungol pass",
+   "at": [
+    816,
+    -607
+   ],
+   "radius": 2
+  },
+  {
+   "name": "Fangorn heart",
+   "at": [
+    525,
+    -440
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Isengard ring",
+   "at": "@Isengard",
+   "radius": 3
+  },
+  {
+   "name": "Dol Guldur hill",
+   "at": "@Dol Guldur",
+   "radius": 3
+  },
+  {
+   "name": "Mordor plain",
+   "at": [
+    990,
+    -640
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Mirkwood road",
+   "at": [
+    700,
+    80
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Weathertop",
+   "at": [
+    245,
+    -5
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Long Lake shore",
+   "at": "@Esgaroth",
+   "radius": 2
+  },
+  {
+   "name": "Moria tunnel 1",
+   "at": [
+    466,
+    -240
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Moria tunnel 2",
+   "at": [
+    474,
+    -240
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Moria tunnel 3",
+   "at": [
+    482,
+    -240
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Moria tunnel 4",
+   "at": [
+    490,
+    -240
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Moria tunnel 5",
+   "at": [
+    498,
+    -240
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Moria tunnel 6",
+   "at": [
+    506,
+    -240
+   ],
+   "radius": 3
+  }
+ ],
+ "variables": [
+  {
+   "name": "Beacons lit",
+   "initial": 0
+  }
+ ],
+ "templates": {
+  "Riders of Rohan": {
+   "owner": "Human",
+   "army": "rohirrim",
+   "tier": 4,
+   "order": {
+    "kind": "DefendCity",
+    "city": "capital:Human"
+   }
+  },
+  "Easterling host": {
+   "owner": "Heretic",
+   "army": "easterling-host",
+   "tier": 4,
+   "order": {
+    "kind": "SecureCity",
+    "city": "@Dale"
+   }
+  },
+  "Corsair raiders": {
+   "owner": "Neutral",
+   "army": "corsairs",
+   "tier": 3,
+   "order": {
+    "kind": "SecureCity",
+    "city": "@Pelargir"
+   }
+  },
+  "Sharkey's ruffians": {
+   "owner": "Neutral",
+   "army": "ruffians",
+   "tier": 2,
+   "order": {
+    "kind": "SecureCity",
+    "city": "@Hobbiton"
+   }
+  },
+  "Huorns": {
+   "owner": "Neutral",
+   "army": "ents",
+   "tier": 3,
+   "order": {
+    "kind": "SecureCity",
+    "city": "@Isengard"
+   }
+  }
+ },
+ "neutralLife": {
+  "variable": "Shadow",
+  "growsWith": "Heretic",
+  "perTurn": 1,
+  "stages": [
+   {
+    "name": "quiet",
+    "at": 0,
+    "tierBonus": 0
+   },
+   {
+    "name": "shadow",
+    "at": 30,
+    "tierBonus": 1,
+    "portrait": "Specter",
+    "message": "The Shadow lengthens. Across the wild lands the bands that gather near their homes are stronger now, and the lost villages are fought for harder."
+   },
+   {
+    "name": "darkness",
+    "at": 60,
+    "tierBonus": 2,
+    "portrait": "Specter",
+    "message": "Darkness covers the land. The wild peoples gather in great strength. Strike at Dol Guldur, Minas Morgul or Isengard to push the Shadow back."
+   }
+  ],
+  "spawn": {
+   "every": 4,
+   "chance": 50,
+   "radius": 2,
+   "order": "DefendZone"
+  },
+  "retake": {
+   "every": 3,
+   "chance": 60,
+   "tierBonus": 1
+  },
+  "patrols": [
+   {
+    "name": "High Pass patrol",
+    "army": "goblins",
+    "tier": 2,
+    "path": [
+     "@Goblin-town",
+     [
+      475,
+      35
+     ],
+     [
+      520,
+      55
+     ],
+     [
+      475,
+      35
+     ]
+    ],
+    "home": "@Goblin-town"
+   },
+   {
+    "name": "Gundabad riders",
+    "army": "orcs",
+    "tier": 3,
+    "path": [
+     "@Gundabad",
+     [
+      480,
+      280
+     ],
+     "@Mount Gram",
+     [
+      450,
+      300
+     ]
+    ],
+    "home": "@Gundabad"
+   },
+   {
+    "name": "Gap of Rohan watch",
+    "army": "uruks",
+    "tier": 3,
+    "path": [
+     "@Isengard",
+     [
+      430,
+      -520
+     ],
+     [
+      400,
+      -500
+     ]
+    ],
+    "home": "@Isengard"
+   },
+   {
+    "name": "Fangorn eaves",
+    "army": "uruks",
+    "tier": 2,
+    "path": [
+     "@Isengard",
+     [
+      480,
+      -400
+     ],
+     [
+      500,
+      -470
+     ]
+    ],
+    "home": "@Isengard"
+   },
+   {
+    "name": "Dunland raiders",
+    "army": "dunlendings",
+    "tier": 2,
+    "path": [
+     "@Dunland Hill-fort",
+     [
+      380,
+      -520
+     ],
+     "@Dunlending Camp"
+    ],
+    "home": "@Dunland Hill-fort"
+   },
+   {
+    "name": "Troll walk",
+    "army": "trolls",
+    "tier": 2,
+    "path": [
+     "@Troll Hold",
+     [
+      330,
+      20
+     ],
+     "@Ettenmoors"
+    ],
+    "home": "@Troll Hold"
+   },
+   {
+    "name": "Warg hunt",
+    "army": "wargs",
+    "tier": 2,
+    "path": [
+     "@Warg Den",
+     [
+      600,
+      60
+     ],
+     [
+      560,
+      -80
+     ]
+    ],
+    "home": "@Warg Den"
+   },
+   {
+    "name": "Brown Lands pack",
+    "army": "wargs",
+    "tier": 3,
+    "path": [
+     "@Brown Lands Den",
+     [
+      760,
+      -380
+     ],
+     [
+      660,
+      -300
+     ]
+    ],
+    "home": "@Brown Lands Den"
+   },
+   {
+    "name": "Marsh lights",
+    "army": "marsh",
+    "tier": 2,
+    "path": [
+     "@Marsh-hold",
+     [
+      810,
+      -430
+     ],
+     "@Nindalf Hold"
+    ],
+    "home": "@Marsh-hold"
+   },
+   {
+    "name": "Spider hunt",
+    "army": "spiders",
+    "tier": 3,
+    "path": [
+     "@Spider Hollow",
+     [
+      700,
+      80
+     ],
+     [
+      780,
+      140
+     ]
+    ],
+    "home": "@Spider Hollow"
+   },
+   {
+    "name": "Cirith Ungol sentries",
+    "army": "orcs",
+    "tier": 3,
+    "path": [
+     "@Cirith Ungol",
+     [
+      880,
+      -620
+     ],
+     [
+      860,
+      -650
+     ]
+    ],
+    "home": "@Cirith Ungol"
+   },
+   {
+    "name": "Easterling outriders",
+    "army": "easterlings",
+    "tier": 3,
+    "path": [
+     "@Easterling Camp",
+     [
+      930,
+      -300
+     ],
+     "@Rhun"
+    ],
+    "home": "@Easterling Camp"
+   },
+   {
+    "name": "Harad caravan guard",
+    "army": "haradrim",
+    "tier": 3,
+    "path": [
+     "@Near Harad",
+     [
+      800,
+      -830
+     ],
+     "@Harad Oasis"
+    ],
+    "home": "@Near Harad"
+   },
+   {
+    "name": "Variag raiders",
+    "army": "variags",
+    "tier": 3,
+    "path": [
+     "@Khand",
+     [
+      930,
+      -840
+     ],
+     [
+      1040,
+      -900
+     ]
+    ],
+    "home": "@Khand"
+   },
+   {
+    "name": "Corsair shore party",
+    "army": "corsairs",
+    "tier": 2,
+    "path": [
+     "@Umbar",
+     [
+      760,
+      -880
+     ],
+     [
+      820,
+      -970
+     ]
+    ],
+    "home": "@Umbar"
+   },
+   {
+    "name": "Lossoth hunters",
+    "army": "lossoth",
+    "tier": 1,
+    "path": [
+     "@Lossoth Camp",
+     [
+      40,
+      400
+     ],
+     [
+      160,
+      390
+     ]
+    ],
+    "home": "@Lossoth Camp"
+   },
+   {
+    "name": "Beorning toll-riders",
+    "army": "beorn",
+    "tier": 2,
+    "path": [
+     "@Beorn's Hall",
+     [
+      599,
+      85
+     ],
+     "@Woodmen-town"
+    ],
+    "home": "@Beorn's Hall"
+   },
+   {
+    "name": "Shirriff rounds",
+    "army": "shirriffs",
+    "tier": 1,
+    "path": [
+     "@Hobbiton",
+     "@Michel Delving",
+     "@Longbottom",
+     "@Brandy Hall"
+    ],
+    "home": "@Hobbiton"
+   },
+   {
+    "name": "Bree-land watch",
+    "army": "bree",
+    "tier": 1,
+    "path": [
+     "@Bree",
+     "@Archet",
+     [
+      150,
+      -30
+     ]
+    ],
+    "home": "@Bree"
+   },
+   {
+    "name": "Dragon flight",
+    "army": "dragons",
+    "tier": 4,
+    "path": [
+     "@Withered Heath",
+     [
+      700,
+      330
+     ],
+     [
+      820,
+      330
+     ]
+    ],
+    "home": "@Withered Heath"
+   },
+   {
+    "name": "Ent moot walk",
+    "army": "ents",
+    "tier": 2,
+    "path": [
+     "@Wellinghall",
+     [
+      510,
+      -410
+     ],
+     [
+      550,
+      -460
+     ]
+    ],
+    "home": "@Wellinghall"
+   },
+   {
+    "name": "Woses' trackers",
+    "army": "woses",
+    "tier": 1,
+    "path": [
+     "@Woses' Hold",
+     [
+      690,
+      -590
+     ],
+     [
+      720,
+      -620
+     ]
+    ],
+    "home": "@Woses' Hold"
+   }
+  ]
+ },
+ "events": [
+  {
+   "name": "The Third Age ends",
+   "races": "all",
+   "when": [
+    {
+     "turn": 1
+    }
+   ],
+   "then": [
+    {
+     "message": "The Ring of Power has been found again. It lies hidden in the dark under the Misty Mountains, where a wretched creature hoards it. Whoever carries it into the fire of Mount Doom ends the Dark Lord forever. Or conquer every capital of your enemies.",
+     "audience": "Triggerer",
+     "portrait": "White Wizard"
+    },
+    {
+     "objective": "Destroy the Ring in Mount Doom, or capture every enemy capital."
+    }
+   ]
+  },
+  {
+   "name": "The Ring is unmade (Human)",
+   "races": [
+    "Human"
+   ],
+   "when": [
+    {
+     "itemToZone": "Ring of the Ages (Artifact)",
+     "zone": "Mount Doom"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Ring falls into the Crack of Doom. The Dark Tower crumbles and its shadow passes from the world.",
+     "audience": "AllPlayers",
+     "portrait": "White Wizard"
+    },
+    {
+     "destroyItem": "Ring of the Ages (Artifact)"
+    },
+    {
+     "win": "Human"
+    }
+   ]
+  },
+  {
+   "name": "The Ring is unmade (Elf)",
+   "races": [
+    "Elf"
+   ],
+   "when": [
+    {
+     "itemToZone": "Ring of the Ages (Artifact)",
+     "zone": "Mount Doom"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Ring falls into the Crack of Doom. The Dark Tower crumbles and its shadow passes from the world.",
+     "audience": "AllPlayers",
+     "portrait": "White Wizard"
+    },
+    {
+     "destroyItem": "Ring of the Ages (Artifact)"
+    },
+    {
+     "win": "Elf"
+    }
+   ]
+  },
+  {
+   "name": "The Ring is unmade (Dwarf)",
+   "races": [
+    "Dwarf"
+   ],
+   "when": [
+    {
+     "itemToZone": "Ring of the Ages (Artifact)",
+     "zone": "Mount Doom"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Ring falls into the Crack of Doom. The Dark Tower crumbles and its shadow passes from the world.",
+     "audience": "AllPlayers",
+     "portrait": "White Wizard"
+    },
+    {
+     "destroyItem": "Ring of the Ages (Artifact)"
+    },
+    {
+     "win": "Dwarf"
+    }
+   ]
+  },
+  {
+   "name": "The Ring is unmade (Undead)",
+   "races": [
+    "Undead"
+   ],
+   "when": [
+    {
+     "itemToZone": "Ring of the Ages (Artifact)",
+     "zone": "Mount Doom"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Ring falls into the Crack of Doom. The Dark Tower crumbles and its shadow passes from the world.",
+     "audience": "AllPlayers",
+     "portrait": "White Wizard"
+    },
+    {
+     "destroyItem": "Ring of the Ages (Artifact)"
+    },
+    {
+     "win": "Undead"
+    }
+   ]
+  },
+  {
+   "name": "The Ring returns to its master",
+   "races": [
+    "Heretic"
+   ],
+   "when": [
+    {
+     "itemToZone": "Ring of the Ages (Artifact)",
+     "zone": "Throne of Barad-dur"
+    }
+   ],
+   "then": [
+    {
+     "message": "The One Ring is in the hand of its maker again. Darkness falls over all lands.",
+     "audience": "AllPlayers",
+     "portrait": "Duke"
+    },
+    {
+     "win": "Heretic"
+    }
+   ]
+  },
+  {
+   "name": "Riddles in the dark",
+   "races": "all",
+   "when": [
+    {
+     "lootRuin": "Gollum's Cave"
+    }
+   ],
+   "then": [
+    {
+     "message": "In a cave under the mountains, beside a cold lake, you find a plain gold ring. The Eye of the Dark Lord turns towards it at once.",
+     "audience": "AllPlayers",
+     "portrait": "Goblin"
+    },
+    {
+     "reveal": "Mount Doom",
+     "races": "all"
+    },
+    {
+     "setVariable": "Shadow",
+     "op": "Add",
+     "value": 10
+    }
+   ]
+  },
+  {
+   "name": "Durin's Doors open",
+   "races": "all",
+   "when": [
+    {
+     "lootRuin": "Moria"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Balrog is gone and the halls of Khazad-dum lie open. A road runs under the Misty Mountains again.",
+     "audience": "AllPlayers",
+     "portrait": "Dwarf King"
+    },
+    {
+     "removeMountains": "Moria tunnel 1"
+    },
+    {
+     "removeMountains": "Moria tunnel 2"
+    },
+    {
+     "removeMountains": "Moria tunnel 3"
+    },
+    {
+     "removeMountains": "Moria tunnel 4"
+    },
+    {
+     "removeMountains": "Moria tunnel 5"
+    },
+    {
+     "removeMountains": "Moria tunnel 6"
+    }
+   ]
+  },
+  {
+   "name": "The Bruinen rises",
+   "races": [
+    "Undead",
+    "Heretic"
+   ],
+   "once": false,
+   "chance": 60,
+   "when": [
+    {
+     "enterZone": "Ford of Bruinen"
+    }
+   ],
+   "then": [
+    {
+     "message": "Elrond calls the river. White horses of foam crash down upon your riders!",
+     "audience": "Triggerer",
+     "portrait": "Elf Lord"
+    },
+    {
+     "castSpellZone": "Drown",
+     "zone": "Ford of Bruinen",
+     "caster": "Elf"
+    }
+   ]
+  },
+  {
+   "name": "Old Man Willow",
+   "races": "all",
+   "when": [
+    {
+     "enterZone": "Old Forest"
+    }
+   ],
+   "then": [
+    {
+     "message": "The trees close in. Old Man Willow wakes and his roots seize your army!",
+     "audience": "Triggerer",
+     "portrait": "Elf Lord"
+    },
+    {
+     "battle": "army:Old Man Willow"
+    }
+   ]
+  },
+  {
+   "name": "The Dead keep their oath",
+   "races": [
+    "Human"
+   ],
+   "when": [
+    {
+     "enterZone": "Paths of the Dead"
+    }
+   ],
+   "then": [
+    {
+     "message": "The heir of Isildur calls the Oathbreakers. 'We will fight, and then we will rest.'",
+     "audience": "Triggerer",
+     "portrait": "Specter"
+    },
+    {
+     "changeOwner": "army:Oathbreakers",
+     "to": "triggerer"
+    },
+    {
+     "order": "army:Oathbreakers",
+     "kind": "DefendCity",
+     "city": "@Pelargir"
+    }
+   ]
+  },
+  {
+   "name": "The Dead are roused",
+   "races": [
+    "Elf",
+    "Dwarf",
+    "Heretic",
+    "Undead"
+   ],
+   "once": false,
+   "chance": 70,
+   "when": [
+    {
+     "enterZone": "Paths of the Dead"
+    },
+    {
+     "armyExists": "army:Oathbreakers"
+    }
+   ],
+   "then": [
+    {
+     "message": "Cold voices whisper: 'The way is shut.' The Dead come for you!",
+     "audience": "Triggerer",
+     "portrait": "Specter"
+    },
+    {
+     "battle": "army:Oathbreakers"
+    }
+   ]
+  },
+  {
+   "name": "The beacons are lit",
+   "races": [
+    "Heretic",
+    "Undead"
+   ],
+   "when": [
+    {
+     "enterZone": "Pelennor Fields"
+    }
+   ],
+   "concerns": [
+    "Human",
+    "Heretic",
+    "Undead"
+   ],
+   "then": [
+    {
+     "message": "The beacons of Gondor are lit! Gondor calls for aid, and Rohan answers.",
+     "audience": "AllPlayers",
+     "portrait": "Pegasus Knight"
+    },
+    {
+     "setVariable": "Beacons lit",
+     "op": "Replace",
+     "value": 1
+    },
+    {
+     "createArmy": "Riders of Rohan",
+     "zone": "Edoras fields"
+    }
+   ]
+  },
+  {
+   "name": "The last march of the Ents",
+   "races": [
+    "Heretic"
+   ],
+   "when": [
+    {
+     "variable": "Shadow",
+     "min": 35
+    }
+   ],
+   "then": [
+    {
+     "message": "Treebeard has made up his mind. The Ents march on Isengard, and the Huorns follow.",
+     "audience": "AllPlayers",
+     "portrait": "Elf Lord"
+    },
+    {
+     "changeOwner": "army:Treebeard's Ents",
+     "to": "Elf"
+    },
+    {
+     "order": "army:Treebeard's Ents",
+     "kind": "SecureCity",
+     "city": "@Isengard"
+    },
+    {
+     "createArmy": "Huorns",
+     "zone": "Fangorn heart"
+    }
+   ]
+  },
+  {
+   "name": "Isengard is drowned",
+   "races": "all",
+   "when": [
+    {
+     "ownCity": "@Isengard"
+    }
+   ],
+   "then": [
+    {
+     "message": "The dam of the Isen is broken. Water and green things flood the ring of Isengard. In the tower you find a dark crystal: through the palantir the Tower of Barad-dur looks back at you.",
+     "audience": "Triggerer",
+     "portrait": "White Wizard"
+    },
+    {
+     "changeTerrain": "Isengard ring",
+     "terrain": "Elf",
+     "size": 7
+    },
+    {
+     "reveal": "Throne of Barad-dur",
+     "races": "all"
+    },
+    {
+     "setVariable": "Shadow",
+     "op": "Subtract",
+     "value": 10
+    }
+   ]
+  },
+  {
+   "name": "Gimli and the Lady",
+   "races": [
+    "Dwarf"
+   ],
+   "concerns": [
+    "Elf"
+   ],
+   "when": [
+    {
+     "enterCity": "@Caras Galadhon"
+    }
+   ],
+   "then": [
+    {
+     "message": "A dwarf kneels before the Lady of the Wood. She gives him three golden hairs, and the old grudge between Elves and Dwarves is healed.",
+     "audience": "AllPlayers",
+     "portrait": "Elf Queen"
+    },
+    {
+     "ally": [
+      "Elf",
+      "Dwarf"
+     ],
+     "permanent": false
+    }
+   ]
+  },
+  {
+   "name": "The Battle of Dale",
+   "races": [
+    "Heretic"
+   ],
+   "when": [
+    {
+     "variable": "Shadow",
+     "min": 45
+    }
+   ],
+   "then": [
+    {
+     "message": "Out of the East the Easterlings ride on Dale. King Brand and King Dain stand together before the gate.",
+     "audience": "AllPlayers",
+     "portrait": "Barbarian Chieftain"
+    },
+    {
+     "createArmy": "Easterling host",
+     "zone": "Rhun muster"
+    }
+   ]
+  },
+  {
+   "name": "The Corsairs sail",
+   "races": [
+    "Heretic"
+   ],
+   "once": false,
+   "chance": 60,
+   "when": [
+    {
+     "every": 8
+    },
+    {
+     "variable": "Shadow",
+     "min": 20
+    },
+    {
+     "ownCity": "@Umbar"
+    },
+    {
+     "armyExists": "template:Corsair raiders",
+     "exists": false
+    }
+   ],
+   "then": [
+    {
+     "createArmy": "Corsair raiders",
+     "zone": "Umbar harbour"
+    }
+   ],
+   "concerns": [
+    "Neutral"
+   ]
+  },
+  {
+   "name": "The Haradrim answer the call",
+   "races": [
+    "Heretic"
+   ],
+   "when": [
+    {
+     "variable": "Shadow",
+     "min": 25
+    },
+    {
+     "armyExists": "army:Haradrim host"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Southrons march north under the Red Eye, with great beasts of war among them.",
+     "audience": "AllPlayers",
+     "portrait": "Barbarian Chieftain"
+    },
+    {
+     "changeOwner": "army:Haradrim host",
+     "to": "Heretic"
+    },
+    {
+     "order": "army:Haradrim host",
+     "kind": "SecureCity",
+     "city": "@Osgiliath"
+    }
+   ]
+  },
+  {
+   "name": "The Eagles are coming",
+   "races": "all",
+   "when": [
+    {
+     "lootRuin": "Eagles' Eyrie"
+    }
+   ],
+   "then": [
+    {
+     "message": "Gwaihir the Windlord promises the Eagles' help. From the air they show you the land of Mordor.",
+     "audience": "Triggerer",
+     "portrait": "Elf Lord"
+    },
+    {
+     "reveal": "Mordor plain",
+     "races": "all"
+    },
+    {
+     "reveal": "Mount Doom",
+     "races": "all"
+    },
+    {
+     "giveSpell": "Swift"
+    }
+   ]
+  },
+  {
+   "name": "Dol Guldur is thrown down",
+   "races": [
+    "Human",
+    "Elf",
+    "Dwarf",
+    "Heretic"
+   ],
+   "when": [
+    {
+     "ownCity": "capital:Undead"
+    }
+   ],
+   "then": [
+    {
+     "message": "Galadriel throws down the walls of Dol Guldur, and southern Mirkwood is made clean.",
+     "audience": "AllPlayers",
+     "portrait": "Elf Queen"
+    },
+    {
+     "changeTerrain": "Dol Guldur hill",
+     "terrain": "Elf",
+     "size": 7
+    },
+    {
+     "setVariable": "Shadow",
+     "op": "Subtract",
+     "value": 15
+    }
+   ]
+  },
+  {
+   "name": "Minas Morgul is taken",
+   "races": [
+    "Human",
+    "Elf",
+    "Dwarf"
+   ],
+   "when": [
+    {
+     "ownCity": "@Minas Morgul"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Tower of Sorcery is taken and its pale light goes out.",
+     "audience": "AllPlayers",
+     "portrait": "Pegasus Knight"
+    },
+    {
+     "setVariable": "Shadow",
+     "op": "Subtract",
+     "value": 10
+    }
+   ]
+  },
+  {
+   "name": "The Black Gate falls",
+   "races": [
+    "Human",
+    "Elf",
+    "Dwarf",
+    "Undead"
+   ],
+   "when": [
+    {
+     "ownCity": "@Udun"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Black Gate of Mordor is cast down.",
+     "audience": "AllPlayers",
+     "portrait": "Pegasus Knight"
+    },
+    {
+     "removeLandmark": "black-gate"
+    }
+   ]
+  },
+  {
+   "name": "The Arkenstone",
+   "races": [
+    "Dwarf"
+   ],
+   "when": [
+    {
+     "ownItem": "Doragon's Eye"
+    }
+   ],
+   "then": [
+    {
+     "message": "The Heart of the Mountain is home again. The Dwarves of every house take heart.",
+     "audience": "AllPlayers",
+     "portrait": "Dwarf King"
+    },
+    {
+     "giveSpell": "Hymn of the Clans"
+    }
+   ]
+  },
+  {
+   "name": "The Mirror of Galadriel",
+   "races": "all",
+   "when": [
+    {
+     "visitSite": "Galadriel's Glade"
+    }
+   ],
+   "then": [
+    {
+     "message": "In the silver basin you see a great Eye, rimmed with fire, and far away a burning mountain.",
+     "audience": "Triggerer",
+     "portrait": "Elf Queen"
+    },
+    {
+     "reveal": "Mount Doom",
+     "races": "all"
+    }
+   ]
+  },
+  {
+   "name": "The Scouring of the Shire",
+   "races": [
+    "Heretic"
+   ],
+   "when": [
+    {
+     "variable": "Shadow",
+     "min": 50
+    },
+    {
+     "ownCity": "@Hobbiton"
+    }
+   ],
+   "then": [
+    {
+     "message": "Ruffians under a boss called Sharkey move into the Shire, cutting down trees and bullying hobbits.",
+     "audience": "AllPlayers",
+     "portrait": "Master Thug"
+    },
+    {
+     "createArmy": "Sharkey's ruffians",
+     "zone": "Shire green"
+    }
+   ],
+   "concerns": [
+    "Neutral"
+   ]
+  },
+  {
+   "name": "Caradhras the Cruel",
+   "races": "all",
+   "once": false,
+   "chance": 50,
+   "when": [
+    {
+     "enterZone": "Redhorn Pass"
+    }
+   ],
+   "then": [
+    {
+     "message": "Snow falls thick and stones roll from the heights. Caradhras will not let you pass easily.",
+     "audience": "Triggerer",
+     "portrait": "Dwarf King"
+    },
+    {
+     "castSpellZone": "Blizzard",
+     "zone": "Redhorn Pass"
+    }
+   ]
+  },
+  {
+   "name": "The Watcher in the Water",
+   "races": "all",
+   "when": [
+    {
+     "enterZone": "West Gate of Moria"
+    }
+   ],
+   "then": [
+    {
+     "message": "Long tentacles slide out of the dark pool before the Doors of Durin. The Watcher stirs!",
+     "audience": "Triggerer",
+     "portrait": "Kraken"
+    },
+    {
+     "castSpellZone": "Drown",
+     "zone": "West Gate of Moria"
+    }
+   ]
+  },
+  {
+   "name": "Shelob's Lair",
+   "races": "all",
+   "when": [
+    {
+     "enterZone": "Cirith Ungol pass"
+    }
+   ],
+   "then": [
+    {
+     "message": "A foul smell, webs in the dark, and many eyes. Something old and hungry lives in this pass.",
+     "audience": "Triggerer",
+     "portrait": "Giant Black Spider"
+    }
+   ]
+  },
+  {
+   "name": "Weathertop",
+   "races": [
+    "Elf",
+    "Human",
+    "Dwarf"
+   ],
+   "when": [
+    {
+     "enterZone": "Weathertop"
+    }
+   ],
+   "then": [
+    {
+     "message": "From the ruined watchtower of Amon Sul you can see far across Eriador. Black riders move on the road below.",
+     "audience": "Triggerer",
+     "portrait": "Specter"
+    },
+    {
+     "reveal": "Weathertop",
+     "races": "all"
+    }
+   ]
+  },
+  {
+   "name": "Lake-town's fear",
+   "races": [
+    "Undead",
+    "Heretic"
+   ],
+   "when": [
+    {
+     "enterZone": "Long Lake shore"
+    }
+   ],
+   "concerns": [
+    "Dwarf"
+   ],
+   "then": [
+    {
+     "message": "The bells of Esgaroth ring: enemies on the lake shore! The Host of Erebor marches down to the lake.",
+     "audience": "ConcernedRaces",
+     "portrait": "Dwarf King"
+    },
+    {
+     "moveArmy": "army:Host of Erebor",
+     "zone": "Long Lake shore"
+    }
+   ]
+  }
+ ],
+ "labels": [
+  {
+   "text": "The Shire",
+   "at": [
+    -10,
+    40
+   ]
+  },
+  {
+   "text": "Eriador",
+   "at": [
+    220,
+    -120
+   ]
+  },
+  {
+   "text": "Lindon",
+   "at": [
+    -200,
+    -120
+   ]
+  },
+  {
+   "text": "Angmar",
+   "at": [
+    440,
+    300
+   ]
+  },
+  {
+   "text": "Forodwaith",
+   "at": [
+    100,
+    420
+   ]
+  },
+  {
+   "text": "Rohan",
+   "at": [
+    600,
+    -490
+   ]
+  },
+  {
+   "text": "Gondor",
+   "at": [
+    640,
+    -720
+   ]
+  },
+  {
+   "text": "Mordor",
+   "at": [
+    1020,
+    -640
+   ]
+  },
+  {
+   "text": "Dagorlad",
+   "at": [
+    860,
+    -445
+   ]
+  },
+  {
+   "text": "Rhovanion",
+   "at": [
+    900,
+    0
+   ]
+  },
+  {
+   "text": "Rhun",
+   "at": [
+    1100,
+    -150
+   ]
+  },
+  {
+   "text": "Harad",
+   "at": [
+    880,
+    -980
+   ]
+  },
+  {
+   "text": "Enedwaith",
+   "at": [
+    260,
+    -470
+   ]
+  },
+  {
+   "text": "Belegaer",
+   "at": [
+    -150,
+    -500
+   ]
+  },
+  {
+   "text": "Forochel",
+   "at": [
+    60,
+    400
+   ]
+  },
+  {
+   "text": "Dunland",
+   "at": [
+    330,
+    -460
+   ]
+  },
+  {
+   "text": "Khand",
+   "at": [
+    1000,
+    -880
+   ]
+  },
+  {
+   "text": "Ithilien",
+   "at": [
+    800,
+    -640
+   ]
+  }
+ ],
+ "gateChecks": [
+  {
+   "name": "Mordor",
+   "from": "Minas Tirith",
+   "to": "Barad-dur",
+   "radiusMiles": 24,
+   "gates": [
+    {
+     "name": "Black Gate",
+     "at": [
+      836,
+      -503
+     ]
+    },
+    {
+     "name": "Cirith Ungol",
+     "at": [
+      816,
+      -607
+     ]
+    },
+    {
+     "name": "Morgul pass",
+     "at": [
+      816,
+      -655
+     ]
+    }
+   ]
+  },
+  {
+   "name": "Misty Mountains",
+   "from": "Hobbiton",
+   "to": "Caras Galadhon",
+   "radiusMiles": 30,
+   "gates": [
+    {
+     "name": "High Pass",
+     "at": [
+      475,
+      35
+     ]
+    },
+    {
+     "name": "Redhorn Pass",
+     "at": [
+      490,
+      -185
+     ]
+    },
+    {
+     "name": "Gap of Rohan",
+     "at": [
+      430,
+      -520
+     ],
+     "radiusMiles": 110
+    }
+   ]
+  }
+ ],
+ "distances": [
+  [
+   "Hobbiton",
+   "Rivendell"
+  ],
+  [
+   "Hobbiton",
+   "Bree"
+  ],
+  [
+   "Rivendell",
+   "Caras Galadhon"
+  ],
+  [
+   "Hobbiton",
+   "Minas Tirith"
+  ],
+  [
+   "Minas Tirith",
+   "Barad-dur"
+  ],
+  [
+   "Edoras",
+   "Minas Tirith"
+  ],
+  [
+   "Erebor",
+   "Rivendell"
+  ],
+  [
+   "Hobbiton",
+   "Gollum's Cave"
+  ],
+  [
+   "Gollum's Cave",
+   "Barad-dur"
+  ]
+ ]
+}

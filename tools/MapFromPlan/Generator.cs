@@ -106,7 +106,7 @@ internal static class Plan
 
 // Builds a CustomMap from a plan, layer by layer, placing everything through the editor's own rules (Preview* checks,
 // then Place*). Objects move to the nearest spot where they fit; anything that can't be placed is reported.
-internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definitions, GameNames names)
+internal sealed partial class Generator(JsonObject plan, IGameDefinitionProvider definitions, GameNames names)
 {
     private static readonly GridPosition[] SlotOrder =
         [GridPosition.FrontCenter, GridPosition.FrontTop, GridPosition.FrontBottom, GridPosition.BackCenter, GridPosition.BackTop, GridPosition.BackBottom];
@@ -117,6 +117,12 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
     private readonly Dictionary<string, WorldPosition> approaches = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<WorldPosition> stackPositions = [];
     private readonly List<WorldPosition> capitalPositions = [];
+    private readonly Dictionary<string, int> villageIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, JsonNode> villageNodes = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> ruinIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> siteIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> armyIds = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, int> landmarkIds = new(StringComparer.OrdinalIgnoreCase);
     private Geo geo = null!;
     private Noise noise = null!;
     private Random random = null!;
@@ -163,6 +169,15 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
         PlaceResources();
         PlaceArmies();
         PlaceBags();
+        ApplyRulesAndBanks();
+        PlaceCapitalForces();
+        PlaceRods();
+        PlaceLocations();
+        AddVariables();
+        AddTemplates();
+        AddNeutralLife();
+        AddStoryEvents();
+        AddConquestWins();
         AddRegionLabels();
 
         return map;
@@ -466,6 +481,8 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
             }
 
             AddStructure(name, placed.Footprint, LabelKind.Village);
+            villageIds[name] = placed.Id;
+            villageNodes[name] = village;
 
             if (village["garrison"] is not null)
             {
@@ -502,6 +519,7 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
             }
 
             AddStructure(name, placed.Footprint, LabelKind.Ruin);
+            ruinIds[name] = placed.Id;
             CustomMapUnit?[] guards = ruin["guards"] is null
                 ? new CustomMapUnit?[GridPosition.Count]
                 : BuildGarrison(Template(Plan.Text(ruin["guards"])), Plan.Integer(ruin["tier"], 1), 6);
@@ -544,6 +562,7 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
             }
 
             AddStructure(name, placed.Footprint, LabelKind.Site);
+            siteIds[name] = placed.Id;
             CustomMapMerchantItem[] items = [.. Plan.List(site["items"]).Select(entry => new CustomMapMerchantItem(names.Item(Plan.Text(entry[0])), Plan.Integer(entry[1], 1)))];
             WorldSpellDefinitionId[] spells = [.. Plan.Strings(site["spells"]).Select(names.Spell)];
             CustomMapMercenary[] mercenaries =
@@ -906,9 +925,14 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
                 WorldPosition? topLeft = Search(target, (int)radius, position =>
                     IsFreeFor(position, definition.Width, definition.Height, water) && map.PreviewLandmark(position, definition.Width, definition.Height).Fits);
 
-                if (topLeft is { } position && map.PlaceLandmark(position, definition).Landmark is not null)
+                if (topLeft is { } position && map.PlaceLandmark(position, definition).Landmark is { } landmark)
                 {
                     placed++;
+
+                    if (item["id"] is not null)
+                    {
+                        landmarkIds[Plan.Text(item["id"])] = landmark.Id;
+                    }
                 }
             }
 
@@ -993,12 +1017,12 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
 
         for (int i = 0; i < largeCount; i++)
         {
-            wanted.Add(names.Unit(large[random.Next(large.Length)], leader: false));
+            wanted.Add(names.Unit(large[random.Next(large.Length)], leader: false, RaceOf(template)));
         }
 
         while (wanted.Count < count && template["units"] is JsonArray { Count: > 0 })
         {
-            wanted.Add(names.Unit(Pick(template["units"]), leader: false));
+            wanted.Add(names.Unit(Pick(template["units"]), leader: false, RaceOf(template)));
         }
 
         foreach (UnitDefinition definition in wanted)
@@ -1024,7 +1048,7 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
     private CustomMapUnit?[] BuildArmy(JsonObject template, int tier)
     {
         CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
-        CustomMapUnit leader = MakeUnit(names.Unit(Pick(template["leaders"]), leader: true), 1 + ((tier - 1) * 3));
+        CustomMapUnit leader = MakeUnit(names.Unit(Pick(template["leaders"]), leader: true, RaceOf(template)), 1 + ((tier - 1) * 3));
         slots[GridPosition.FrontCenter.ToIndex()] = leader;
         AddSoldiers(slots, template, tier, tier, CustomMapStack.GetLeadership(slots));
 
@@ -1039,30 +1063,45 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
         return slots;
     }
 
+    private static WorldRace RaceOf(JsonObject template)
+    {
+        return template["race"] is null ? WorldRace.Neutral : Enum.Parse<WorldRace>(Plan.Text(template["race"]));
+    }
+
     private bool PlaceArmy(JsonObject template, int tier, Miles at, int radius, double spacing, string what)
+    {
+        return PlaceArmyAt(template, tier, at, radius, spacing, what) is not null;
+    }
+
+    private bool IsWater(WorldPosition position)
+    {
+        return map.IsValidPosition(position) && map.GetCell(position).Terrain == WorldMapTerrain.Water;
+    }
+
+    private CustomMapStack? PlaceArmyAt(JsonObject template, int tier, Miles at, int radius, double spacing, string what, bool water = false)
     {
         CustomMapUnit?[] slots = BuildArmy(template, tier);
 
         if (CustomMapStack.ValidateSlots(slots) is { } invalid)
         {
             Warn($"Army {what}: {invalid}.");
-            return false;
+            return null;
         }
 
         WorldPosition? position = Search(geo.ToPosition(at), radius, p =>
-            IsOpenLand(p) && !IsStructure(p) && (spacing == 0 || !keepClear[Index(p.X, p.Y)]) &&
+            (water ? IsWater(p) && map.GetLandmarkAt(p) is null : IsOpenLand(p)) && !IsStructure(p) && (spacing == 0 || !keepClear[Index(p.X, p.Y)]) &&
             stackPositions.All(other => Distance(other, p) >= Math.Max(spacing, 1.5)) &&
             capitalPositions.All(capital => Distance(capital, p) >= (spacing == 0 ? 0 : 10)) &&
             map.PreviewStack(p, WorldRace.Neutral).Fits);
 
-        if (position is { } tile && map.PlaceStack(tile, WorldRace.Neutral, slots).Error is null)
+        if (position is { } tile && map.PlaceStack(tile, WorldRace.Neutral, slots).Stack is { } stack)
         {
             stackPositions.Add(tile);
-            return true;
+            return stack;
         }
 
         Warn($"Army {what} not placed.");
-        return false;
+        return null;
     }
 
     private void PlaceArmies()
@@ -1070,7 +1109,16 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
         foreach (JsonNode army in Plan.List(plan["armies"]))
         {
             string templateName = Plan.Text(army["template"]);
-            PlaceArmy(Template(templateName), Plan.Integer(army["tier"], 1), Plan.Point(army["at"]), Plan.Integer(army["search"], 4), 0, $"'{Plan.Text(army["name"], templateName)}'");
+
+            if (PlaceArmyAt(Template(templateName), Plan.Integer(army["tier"], 1), Plan.Point(army["at"]), Plan.Integer(army["search"], 4), 0, $"'{Plan.Text(army["name"], templateName)}'", army["water"] is { } w && w.GetValue<bool>()) is { } stack)
+            {
+                if (army["name"] is not null)
+                {
+                    armyIds[Plan.Text(army["name"])] = stack.Id;
+                }
+
+                AddLoot(stack, army);
+            }
         }
 
         foreach (JsonNode scatter in Plan.List(plan["armyScatter"]))
@@ -1079,11 +1127,17 @@ internal sealed class Generator(JsonObject plan, IGameDefinitionProvider definit
             string[] templates = [.. Plan.Strings(scatter["templates"])];
             int[] tiers = [.. Plan.List(scatter["tier"]).Select(tier => Plan.Integer(tier, 1))];
             int count = Plan.Integer(scatter["count"], 1);
+            bool water = scatter["water"] is { } w && w.GetValue<bool>();
+            Func<Miles, bool> usable = water ? point => geo.IsInside(point, 2) && IsWater(geo.ToPosition(point)) : IsUsable;
 
             for (int i = 0; i < count; i++)
             {
                 int tier = random.Next(tiers[0], tiers[^1] + 1);
-                PlaceArmy(Template(templates[random.Next(templates.Length)]), tier, area.RandomPoint(random, IsUsable), 4, 5, $"scatter '{Plan.Text(scatter["name"])}'");
+
+                if (PlaceArmyAt(Template(templates[random.Next(templates.Length)]), tier, area.RandomPoint(random, usable), 4, Plan.Number(scatter["spacing"], 5), $"scatter '{Plan.Text(scatter["name"])}'", water) is { } stack)
+                {
+                    AddLoot(stack, scatter);
+                }
             }
         }
     }

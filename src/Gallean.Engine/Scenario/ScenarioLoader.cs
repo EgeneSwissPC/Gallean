@@ -198,7 +198,10 @@ public static class ScenarioLoader
             scenarioInfo.SuggestedLevel,
             scenarioInfo.MaxLeader,
             scenarioInfo.MaxCity,
-            nextScenarioId);
+            nextScenarioId)
+        {
+            ForeignSpellMarkup = scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.ForeignSpellMarkup ?? 0
+        };
 
         WorldState state = new(
             worldMap,
