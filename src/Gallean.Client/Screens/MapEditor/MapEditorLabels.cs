@@ -150,12 +150,25 @@ internal static class MapEditorLabels
         };
     }
 
+    // Sea creatures (water-only leaders) move on open water only, like in the game.
+    public static string SeaCreatureNeedsOpenWater => Tr("Sea creatures live in open water: this tile and the 8 around it must be water.");
+
+    // The same, short enough for a row of the leader list.
+    public static string NeedsOpenWater => Tr("Needs open water: water on all 8 sides");
+
+    // Why a sea creature can't lead the army of a village or capital.
+    public static string? SeaCreatureInCity(UnitDefinition leader)
+    {
+        return leader.IsWaterOnly ? Tr("Sea creatures cannot stand in a city") : null;
+    }
+
     public static string StackError(CustomMapStackError error, int leadership)
     {
         return error switch
         {
             CustomMapStackError.OutsideMap => Tr("Armies must stand inside the map."),
-            CustomMapStackError.Blocked => Tr("Armies cannot stand on water, mountains, buildings, resources or treasure. In a village, use its entrance."),
+            CustomMapStackError.Blocked => Tr("Armies cannot stand on mountains, buildings, landmarks, resources, rods or treasure. In a village, use its entrance."),
+            CustomMapStackError.OpenWater => SeaCreatureNeedsOpenWater,
             CustomMapStackError.VillageOwner => Tr("An army in a village or capital belongs to its owner."),
             CustomMapStackError.InvalidLevel => Tr("Unit levels go from the unit's own level to {0}.", CustomMapUnit.MaxLevel),
             CustomMapStackError.Guardian => Tr("The guardian stays in its capital."),

@@ -22,6 +22,7 @@ internal sealed partial class MapEditorCapitalScreenViewModel : MapEditorUnitsSc
         : base(game, editorGame, units)
     {
         this.onConfirm = onConfirm;
+        LeaderSiteProblem = MapEditorLabels.SeaCreatureInCity;
         Race = race;
         Title = Tr("Capital of {0} at {1}, {2}", MapEditorLabels.Owner(race), topLeft.X, topLeft.Y);
         Garrison = AddGroup(MapEditorUnitGroupKind.CapitalGarrison, garrison, () => CustomMapPlayer.GarrisonCapacity, () => race);

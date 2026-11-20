@@ -94,6 +94,10 @@ internal abstract partial class MapEditorUnitsScreenViewModel
     public GameViewModel Game { get; }
     public GameModel EditorGame { get; }
     public IReadOnlyList<UnitDefinition> AllUnits { get; }
+
+    // Why a leader can't lead an army where this screen's army stands (a sea creature away from open water); shown
+    // in the leader list. Army templates have no place yet, so every leader fits.
+    public Func<UnitDefinition, string?> LeaderSiteProblem { get; init; } = _ => null;
     public IReadOnlyList<MapEditorUnitGroup> Groups => groups;
     public DragDropViewModel DragDrop { get; }
     public DropZoneViewModel RemoveDropZone { get; } = new();
@@ -185,7 +189,7 @@ internal abstract partial class MapEditorUnitsScreenViewModel
             AllUnits,
             pickLeader: true,
             group.Race(),
-            definition => PlaceLeader(group.Slots, CustomMapUnit.From(definition), current) is null ? Tr("Needs a free row for a large leader") : null,
+            definition => LeaderSiteProblem(definition) ?? (PlaceLeader(group.Slots, CustomMapUnit.From(definition), current) is null ? Tr("Needs a free row for a large leader") : null),
             definition =>
             {
                 if (PlaceLeader(group.Slots, CustomMapUnit.From(definition), current) is { } placed)

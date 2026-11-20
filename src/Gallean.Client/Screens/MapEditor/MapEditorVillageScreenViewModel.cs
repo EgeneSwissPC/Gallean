@@ -28,6 +28,7 @@ internal sealed partial class MapEditorVillageScreenViewModel : MapEditorGarriso
     {
         this.onConfirm = onConfirm;
         this.onDelete = onDelete;
+        LeaderSiteProblem = MapEditorLabels.SeaCreatureInCity;
         Title = Tr("Village at {0}, {1}", village.TopLeft.X, village.TopLeft.Y);
         Owners = owners;
         Levels = MapEditorLabels.VillageLevels();
