@@ -469,16 +469,23 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             return sides;
         }
 
+        static bool IsKind(Db.SubraceType subrace) => subrace is >= Db.SubraceType.NeutralHuman and <= Db.SubraceType.NeutralWolf;
+
+        // The leader's kind; without a leader (garrisons) the most common kind among the units, ignoring units of no
+        // neutral kind (an ent of the elven race among wild elves doesn't make the village plain neutral).
         Db.SubraceType? KindOf(IEnumerable<CustomMapUnit?> slots)
         {
             CustomMapUnit[] units = [.. slots.OfType<CustomMapUnit>()];
-            CustomMapUnit? leader = units.FirstOrDefault(unit => unit.IsLeader);
-            Db.SubraceType[] subraces = leader is not null
-                ? [globalDb.Units[new Db.Id(leader.TypeId.Value)].SubraceType]
-                : [.. units.Select(unit => globalDb.Units[new Db.Id(unit.TypeId.Value)].SubraceType)];
-            Db.SubraceType? common = subraces.GroupBy(subrace => subrace).OrderByDescending(group => group.Count()).ThenBy(group => group.Key).Select(group => (Db.SubraceType?)group.Key).FirstOrDefault();
+            Db.SubraceType Subrace(CustomMapUnit unit) => globalDb.Units[new Db.Id(unit.TypeId.Value)].SubraceType;
 
-            return common is >= Db.SubraceType.NeutralHuman and <= Db.SubraceType.NeutralWolf ? common : null;
+            if (units.FirstOrDefault(unit => unit.IsLeader) is { } leader)
+            {
+                return IsKind(Subrace(leader)) ? Subrace(leader) : null;
+            }
+
+            return units.Select(Subrace).Where(IsKind).GroupBy(subrace => subrace)
+                .OrderByDescending(group => group.Count()).ThenBy(group => group.Key)
+                .Select(group => (Db.SubraceType?)group.Key).FirstOrDefault();
         }
 
         foreach (CustomMapVillage village in map.Villages.Where(village => village.Owner == WorldRace.Neutral))
