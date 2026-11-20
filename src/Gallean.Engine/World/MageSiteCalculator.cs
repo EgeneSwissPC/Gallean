@@ -17,7 +17,7 @@ internal static class MageSiteCalculator
         }
 
         WorldSpellDefinition definition = context.Definitions.GetSpell(spellId);
-        WorldResourceSet cost = PurchaseCalculator.GetPurchaseCost(definition.PurchaseCost, stack, context);
+        WorldResourceSet cost = PurchaseCalculator.GetPurchaseCost(GetListPrice(definition, player, context), stack, context);
 
         if (player.Spellbook.Acquired.Contains(spellId))
         {
@@ -30,5 +30,32 @@ internal static class MageSiteCalculator
         }
 
         return new PurchaseInfo(cost, Error: null);
+    }
+
+    // The tower's price before leader discounts: the spell's price, plus the map's markup (Gallean Upgrade map rule)
+    // when the spell belongs to another race than the buyer's.
+    public static WorldResourceSet GetListPrice(WorldSpellDefinition definition, WorldPlayer player, IEngineContext context)
+    {
+        int markup = context.Scenario.Definition.ForeignSpellMarkup;
+
+        if (markup <= 0 || definition.Race == player.Race)
+        {
+            return definition.PurchaseCost;
+        }
+
+        WorldResourceSet price = definition.PurchaseCost;
+
+        return new WorldResourceSet(
+            AddMarkup(price.Gold, markup),
+            AddMarkup(price.DeathMana, markup),
+            AddMarkup(price.RuneMana, markup),
+            AddMarkup(price.LifeMana, markup),
+            AddMarkup(price.InfernalMana, markup),
+            AddMarkup(price.GroveMana, markup));
+    }
+
+    private static int AddMarkup(int amount, int markup)
+    {
+        return amount + (int)Math.Round(amount * markup / 100.0, MidpointRounding.AwayFromZero);
     }
 }

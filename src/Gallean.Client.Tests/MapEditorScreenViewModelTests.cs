@@ -1353,6 +1353,33 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).Players[0].StartingBank.Gold, Is.EqualTo(1234));
     }
 
+    // Map rule: the mage tower markup box in the economy panel (one undo step while typing, saved with the map).
+    [Test]
+    public async Task SpellMarkupTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.ToggleEconomyCommand.Execute(null);
+        Assert.That(editor.SpellMarkupText, Is.EqualTo("0"));
+
+        editor.SpellMarkupText = "5";
+        editor.SpellMarkupText = "50";
+        editor.SpellMarkupText = "5x";
+        Assert.That((editor.Map.ForeignSpellMarkup, editor.IsDirty), Is.EqualTo((50, true)));
+        editor.SpellMarkupText = "999";
+        Assert.That(editor.Map.ForeignSpellMarkup, Is.EqualTo(CustomMap.MaxSpellMarkup));
+
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.ForeignSpellMarkup, editor.SpellMarkupText), Is.EqualTo((0, "0")), "One undo step for the typing.");
+
+        editor.SpellMarkupText = "50";
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).ForeignSpellMarkup, Is.EqualTo(50));
+    }
+
     [Test]
     public async Task SpreadPreviewTest()
     {

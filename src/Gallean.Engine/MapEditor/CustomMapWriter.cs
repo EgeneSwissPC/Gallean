@@ -78,6 +78,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events, map.Templates, map.Variables);
         WriteTable(stagingDirectory, "SVars.json", BuildVariables(map, scenarioId));
         WriteTable(stagingDirectory, "SStkTemp.json", BuildTemplates(map, scenarioId, prefix));
+        WriteTable(stagingDirectory, "SRules.json", new List<Db.ScenarioRules> { new(scenarioId, MakeId(prefix, "RL", 1), map.ForeignSpellMarkup) });
 
         if (Directory.Exists(scenarioDirectory))
         {

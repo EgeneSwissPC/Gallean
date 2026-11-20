@@ -1345,6 +1345,9 @@
     "{0} · switches itself off": "{0} · выключает само себя",
     "Capture a city": "Захватить город",
     "order: capture a city": "приказ: захватить город",
-    "to capture": "захватить"
+    "to capture": "захватить",
+    "Mage towers": "Башни магов",
+    "Spells of other races cost more by": "Заклинания других рас дороже на",
+    "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.": "Союзники в дипломатии отдают заклинание по обычной цене, так что у союзников оно дешевле."
   }
 }

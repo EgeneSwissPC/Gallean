@@ -55,6 +55,7 @@ namespace Gallean.Entities;
 [JsonSerializable(typeof(List<Db.ScenarioRoad>), TypeInfoPropertyName = "ScenarioRoadListInfo")]
 [JsonSerializable(typeof(List<Db.ScenarioRod>), TypeInfoPropertyName = "ScenarioRodListInfo")]
 [JsonSerializable(typeof(List<Db.ScenarioRuin>), TypeInfoPropertyName = "ScenarioRuinListInfo")]
+[JsonSerializable(typeof(List<Db.ScenarioRules>), TypeInfoPropertyName = "ScenarioRulesListInfo")]
 [JsonSerializable(typeof(List<Db.ScenarioSite>), TypeInfoPropertyName = "ScenarioSiteListInfo")]
 [JsonSerializable(typeof(List<Db.ScenarioSpell>), TypeInfoPropertyName = "ScenarioSpellListInfo")]
 [JsonSerializable(typeof(List<Db.ScenarioStack>), TypeInfoPropertyName = "ScenarioStackListInfo")]

@@ -1931,4 +1931,56 @@ public sealed class CustomMapTests
         Assert.That(peaks.NewMountains, Is.EqualTo(new[] { new WorldFootprint(new WorldPosition(36, 22), 5, 5) }));
         Assert.That(TilesWith(peaks, CustomMapTileStatus.Ok), Has.Count.EqualTo(25));
     }
+
+    // Map rule: mage towers charge the markup for another race's spells only; diplomacy keeps the list price, and the
+    // rule survives save and reopen (SRules.json). Original scenarios (no SRules.json) keep normal prices.
+    [Test]
+    public void ForeignSpellMarkupTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        WorldSpellDefinition[] spells = [.. store.ListSpells(definitions).Where(spell => spell.PurchaseCost.Gold > 0).OrderBy(spell => spell.Id.Value, StringComparer.Ordinal)];
+        WorldSpellDefinition own = spells.First(spell => spell.Race == WorldRace.Human);
+        WorldSpellDefinition foreign = spells.First(spell => spell.Race == WorldRace.Elf);
+        CustomMapSite tower = map.PlaceSite(new WorldPosition(16, 16), CustomMapSiteType.MageTower, 0, "Tower", "").Site!;
+        Assert.That(map.UpdateSite(tower.Id, 0, "Tower", "", [], [own.Id, foreign.Id], []), Is.Null);
+        Assert.That(map.PlaceStack(new WorldPosition(20, 12), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))).Error, Is.Null);
+        Assert.That((map.SetForeignSpellMarkup(50), map.SetForeignSpellMarkup(50), map.SetForeignSpellMarkup(900), map.ForeignSpellMarkup), Is.EqualTo((true, false, true, CustomMap.MaxSpellMarkup)));
+        Assert.That(map.SetForeignSpellMarkup(50), Is.True);
+        Assert.That(map.Clone().ForeignSpellMarkup, Is.EqualTo(50));
+        store.Save(map);
+        Assert.That(store.Open(map.Id, definitions).ForeignSpellMarkup, Is.EqualTo(50));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        Assert.That(scenario.Provider.Definition.ForeignSpellMarkup, Is.EqualTo(50));
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State;
+        WorldPlayer human = state.Players.Values.Single(player => player.Race == WorldRace.Human);
+        WorldMageSite site = state.Sites.Values.OfType<WorldMageSite>().Single();
+        WorldStack army = state.Stacks.Values.Single(stack => stack.OwnerId == human.Id && stack.Position == new WorldPosition(20, 12));
+        human = human with { Resources = new WorldResourceSet(99999, 99999, 99999, 99999, 99999, 99999) };
+
+        WorldResourceSet Price(WorldSpellDefinition spell) => MageSiteCalculator.GetPurchaseInfo(site, army, human, spell.Id, context).Cost;
+        WorldResourceSet Marked(WorldResourceSet price) => new(
+            price.Gold + (int)Math.Round(price.Gold / 2.0, MidpointRounding.AwayFromZero),
+            price.DeathMana + (int)Math.Round(price.DeathMana / 2.0, MidpointRounding.AwayFromZero),
+            price.RuneMana + (int)Math.Round(price.RuneMana / 2.0, MidpointRounding.AwayFromZero),
+            price.LifeMana + (int)Math.Round(price.LifeMana / 2.0, MidpointRounding.AwayFromZero),
+            price.InfernalMana + (int)Math.Round(price.InfernalMana / 2.0, MidpointRounding.AwayFromZero),
+            price.GroveMana + (int)Math.Round(price.GroveMana / 2.0, MidpointRounding.AwayFromZero));
+
+        Assert.That(Price(own), Is.EqualTo(own.PurchaseCost), "Own race: list price.");
+        Assert.That(Price(foreign), Is.EqualTo(Marked(foreign.PurchaseCost)), "Another race: +50 %.");
+        Assert.That(Price(foreign).Gold, Is.GreaterThan(foreign.PurchaseCost.Gold));
+        Assert.That(DiplomacyProposalCalculator.GetTradeValue(foreign.Id, context), Is.EqualTo(foreign.PurchaseCost.Gold), "Diplomacy keeps the list price.");
+
+        // Without the rule (0, and original scenarios with no SRules.json) prices stay as they were.
+        map.SetForeignSpellMarkup(0);
+        store.Save(map);
+        Scenario plain = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext plainContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, plain.Provider.Definition), plain.Provider, globals);
+        Assert.That(MageSiteCalculator.GetPurchaseInfo(site, army, human, foreign.Id, plainContext).Cost, Is.EqualTo(foreign.PurchaseCost));
+        Assert.That(ScenarioLoader.Load(globalDb, ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, new Db.ScenarioId("S135SC0000")), campaignDb, new ScenarioId("S135SC0000"), definitions, globals).Provider.Definition.ForeignSpellMarkup, Is.Zero);
+    }
 }
