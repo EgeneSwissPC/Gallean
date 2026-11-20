@@ -123,7 +123,7 @@ spread preview (commit `caab9b3`), and after the three locations phases (commits
 | --- | --- |
 | ~~Rods~~ | done: tool "Rods" (commits `ca0330f`, `97fe196`); see "Task: rods and the economy panel" |
 | ~~Locations~~ | done: tool "Locations" (`docs/map-editor-locations.md`, see "Task: locations") |
-| Events | phases 1-6 done (list, block editor, map picking, recipes, army templates, every kind, variables); the chain screen is left (`docs/map-editor-events.md`) |
+| ~~Events~~ | done: list (V), block editor, recipes, army templates, variables, chain screen (`docs/map-editor-events.md`) |
 | ~~Army templates~~ | done: "Armies" in the events list (events phase 5) |
 
 ## Missing: settings on things you can place
@@ -359,7 +359,12 @@ Phase 6 — done (merged as `1fe6e210`): every condition and effect kind of the 
 alliances, land share, sites, certain armies in zones and cities, items brought to zones, terrain, mountains,
 landmarks, variables) and the variables screen. Tests: `RemainingKindsSaveAndLoadTest`, `VariablePlayTest`,
 `EventKindsTest` (all 47 block kinds round-trip); suite 5232. Real client: a counter variable showed its message on
-turn 2. Left: the chain screen (phase 7).
+turn 2.
+
+Phase 7 — done (merged as `2f85594c`): the chain screen ("Chains" in the events list): events as boxes, green
+switch-on and red switch-off arrows, events that can never fire in orange, a click opens the event. Tests:
+`EventChainsTest`, `EventChainScreenTest`; suite 5234. Real client: a forgotten event showed orange and turned normal
+after switching it on from its box. **The events task is complete.**
 
 ## Task (later): victory settings
 

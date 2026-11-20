@@ -168,7 +168,7 @@ Full screen like the army screen, three columns:
 5. ~~**Army templates + army effects** (~2 days):~~ done, see "Phase 5 — done". create/move/remove/owner/order/battle, template editor on the army
    screen.
 6. ~~**Remaining kinds + variables** (~2 days).~~ done, see "Phase 6 — done".
-7. **Chain screen** (~1.5 days): events as boxes with switch-on/off arrows, unreachable events marked, click opens
+7. ~~**Chain screen** (~1.5 days):~~ done, see "Phase 7 — done". events as boxes with switch-on/off arrows, unreachable events marked, click opens
    the script.
 
 ## Phase 1 — done
@@ -423,6 +423,37 @@ turn 2 showed "The counter has reached two."; no errors in the log.
 Known limits:
 - Reveal for several chosen races at once (the race choice picks one or "the event races").
 - Spell and item names come from the game's lists; there is no check that a spell suits "cast on a zone".
+
+## Phase 7 — done
+
+Feature commits `b30ef92a`, `8eb2156f`, merged as `2f85594c` (branch `upgrade/map-editor-event-chains`). The events
+task is complete.
+
+What was built:
+- Engine (`CustomMapEventChains.cs`): `GetEventChains()` = the links (event → event, on or off, from "switch an
+  event" blocks), a column per event (breadth first along "switch on" links from the events switched on at the
+  start) and the events that can never fire (start switched off and nothing that can fire switches them on, also
+  through whole chains of such events).
+- Editor: "Chains" in the events list (next to "Armies" and "Variables") opens the chain screen. Every event is a
+  box with its name and "on at the start" / "switched on later" / "never fires"; boxes that can never fire are
+  orange. Events linked to each other form one band (quests read left to right), single events are listed below.
+  Green arrows switch on, red dashed arrows switch off; links back to an earlier column run below the boxes; an
+  event switching itself says so in its box. A summary line counts events and links and says how many can never
+  fire. A click on a box opens the event's blocks; saving updates the chain screen at once (also after undo).
+
+Tests: `CustomMapEventTests.EventChainsTest` (links, columns, an off switch, a back link, a chain that can never fire),
+`MapEditorScreenViewModelTests.EventChainScreenTest` (states, columns, summary, a box opens its event, switching it on
+there clears the warning), `VisualTests.MapEditorEventsTest` step 15 (a small quest plus a forgotten event). Suite 5234
+(+2); all 15 map editor visual tests pass.
+
+Real client (AOT build, `mapgen` map): Chains showed "Count turns → Two turns counted" with a green arrow and
+"Forgotten clue" in orange ("1 can never fire"); a click on it opened its blocks, ticking "Switched on at the start"
+and Save event brought back the chain screen with "Every event can fire". Found in that run: the "Variables" button
+label was cut ("Variab..."); the three buttons got smaller padding (checked in the visual test, English only).
+
+Known limits:
+- Big maps (100+ events in one chain) make a wide screen; it scrolls, but there is no zoom or search.
+- Links come only from "switch an event" blocks; events that affect each other through variables are not drawn.
 
 ## Open questions
 
