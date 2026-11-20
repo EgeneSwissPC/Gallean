@@ -993,6 +993,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         RebuildEventRows();
         RefreshTemplatesScreen();
         RefreshVariablesScreen();
+        RefreshChainScreen();
 
         CanUndo = undoSteps.Count > 0;
         IsDirty = true;

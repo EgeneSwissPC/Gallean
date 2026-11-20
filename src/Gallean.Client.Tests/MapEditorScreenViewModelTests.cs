@@ -1902,4 +1902,35 @@ public sealed class MapEditorScreenViewModelTests
         editor.SaveCommand.Execute(null);
         Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, loader.CreateDefinitions()).Events.Single(), Is.EqualTo(built));
     }
+
+    // Phase 7: the chain screen follows the events, marks the ones that can never fire, and a box opens its event.
+    [Test]
+    public async Task EventChainScreenTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, _) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.Map.AddEvent(CustomMapEvent.Create("Start", WorldRace.Human) with { Groups = [[new CustomMapTurnCondition(1, false)]], Effects = [new CustomMapSwitchEventEffect(2, true)] });
+        editor.Map.AddEvent(CustomMapEvent.Create("Next", WorldRace.Human) with { Enabled = false, Groups = [[new CustomMapTurnCondition(2, false)]] });
+        editor.Map.AddEvent(CustomMapEvent.Create("Lost", WorldRace.Human) with { Enabled = false, Groups = [[new CustomMapTurnCondition(3, false)]] });
+        editor.IsEventsOpen = true;
+
+        editor.OpenChainsCommand.Execute(null);
+        MapEditorChainScreenViewModel chains = Assert.IsOfType<MapEditorChainScreenViewModel>(game.TopScreen);
+        Assert.That(chains.Nodes.Select(node => (node.Name, node.State, node.NeverFires)), Is.EquivalentTo(new[] { ("Start", "on at the start", false), ("Next", "switched on later", false), ("Lost", "never fires", true) }));
+        Assert.That(chains.Links.Single().On, Is.True);
+        Assert.That(chains.Nodes.Single(node => node.Name == "Next").Margin.Left, Is.GreaterThan(chains.Nodes.Single(node => node.Name == "Start").Margin.Left));
+        Assert.That(chains.Summary, Does.Contain("1 can never fire"));
+
+        // A box opens the event; switching "Lost" on there updates the chains at once.
+        chains.Nodes.Single(node => node.Name == "Lost").OpenCommand.Execute(null);
+        MapEditorEventScreenViewModel screen = Assert.IsOfType<MapEditorEventScreenViewModel>(game.TopScreen);
+        screen.Enabled = true;
+        screen.ConfirmCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(chains));
+        Assert.That(chains.Nodes.Any(node => node.NeverFires), Is.False);
+        Assert.That(chains.Summary, Does.Contain("Every event can fire"));
+    }
 }

@@ -1087,5 +1087,21 @@ public sealed partial class VisualTests
 
         await SkipFramesAsync(10);
         await CaptureAsync(window, "14-more-kinds");
+        kinds.Close();
+
+        // Phase 7: a small quest (elder -> ruin -> reward, the ruin also switches the elder off), a forgotten event
+        // that can never fire, then the chain screen of everything.
+        CustomMapEvent Quest(string name, bool enabled, params CustomMapEffect[] effects) =>
+            CustomMapEvent.Create(name, WorldRace.Human) with { Enabled = enabled, Groups = [[new CustomMapTurnCondition(1, true)]], Effects = [.. effects] };
+        int elder = editor.Map.AddEvent(Quest("The elder asks for help", true)).Id;
+        int ruin = editor.Map.AddEvent(Quest("The tower is looted", false)).Id;
+        int reward = editor.Map.AddEvent(Quest("The elder rewards you", false)).Id;
+        editor.Map.UpdateEvent(editor.Map.GetEvent(elder)! with { Effects = [new CustomMapSwitchEventEffect(ruin, true)] });
+        editor.Map.UpdateEvent(editor.Map.GetEvent(ruin)! with { Effects = [new CustomMapSwitchEventEffect(reward, true), new CustomMapSwitchEventEffect(elder, false)] });
+        editor.Map.AddEvent(Quest("Forgotten clue", false));
+        editor.OpenChainsCommand.Execute(null);
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "15-chains");
+        Assert.That(Assert.IsOfType<MapEditorChainScreenViewModel>(gameViewModel.TopScreen).Nodes.Single(node => node.Name == "Forgotten clue").NeverFires, Is.True);
     }
 }

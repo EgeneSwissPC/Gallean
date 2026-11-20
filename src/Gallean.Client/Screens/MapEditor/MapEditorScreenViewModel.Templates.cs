@@ -144,6 +144,20 @@ internal sealed partial class MapEditorScreenViewModel
         ConfirmRemoval(new CustomMapEventTarget.Variable(id), map.GetVariable(id)?.Name ?? string.Empty, () => CommitTemplates(current => current.RemoveVariable(id)));
     }
 
+    [RelayCommand]
+    private void OpenChains()
+    {
+        Game.OpenScreen(new MapEditorChainScreenViewModel(Game, this));
+    }
+
+    private void RefreshChainScreen()
+    {
+        foreach (MapEditorChainScreenViewModel screen in Game.Screens.OfType<MapEditorChainScreenViewModel>())
+        {
+            screen.Refresh();
+        }
+    }
+
     private void RefreshVariablesScreen()
     {
         foreach (MapEditorVariablesScreenViewModel screen in Game.Screens.OfType<MapEditorVariablesScreenViewModel>())

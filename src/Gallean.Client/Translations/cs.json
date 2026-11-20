@@ -1328,6 +1328,20 @@
     "used by {0} events": "used by {0} events",
     "visits": "visits",
     "visits a site": "visits a site",
-    "{0} land": "{0} land"
+    "{0} land": "{0} land",
+    "Event chains": "Event chains",
+    "No events yet.": "No events yet.",
+    "Click to open the event": "Click to open the event",
+    "never fires": "never fires",
+    "on at the start": "on at the start",
+    "switched on later": "switched on later",
+    "Chains": "Chains",
+    "Which event switches which on or off": "Which event switches which on or off",
+    "{0} events, 1 link.": "{0} events, 1 link.",
+    "{0} events, {1} links.": "{0} events, {1} links.",
+    "{0} Every event can fire.": "{0} Every event can fire.",
+    "{0} {1} can never fire: they start switched off and nothing that can fire switches them on.": "{0} {1} can never fire: they start switched off and nothing that can fire switches them on.",
+    "{0} · switches itself on": "{0} · switches itself on",
+    "{0} · switches itself off": "{0} · switches itself off"
   }
 }
