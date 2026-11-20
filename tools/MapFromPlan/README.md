@@ -54,7 +54,46 @@ centre. Points outside it are reported.
   rivers only with `"label": true`.
 - `distances`: `[[from, to]]` structure names; prints movement points (plain 2, forest 4, road 1).
 - `gateChecks`: `{ from, to, radiusMiles, gates: [{ name, at, radiusMiles? }] }`: with all gates closed there must be
-  no path, and each gate alone must open one (e.g. Mordor's three ways in).
+  no path, and each gate alone must open one (e.g. Mordor's three ways in). `-nochecks` skips distances and gate
+  checks (minutes on a 1024 map).
+
+### Map editor features (rules, banks, zones, templates, events)
+
+- `rules`: `{ spellMarkup: percent, neutralKinds: bool }`: the editor's map rules (mage towers charge more for other
+  races' spells; each neutral kind is its own side). `startingBanks`: `{ Race: { Gold, LifeMana, ... } }`.
+- `capitals[].garrison` / `capitals[].army`: `{ template, tier }`; the guardian stays in the garrison. Templates with
+  `"race": "Human"` pick that race's units. `villages[].army`: an army stationed in the village (`name` to use it in
+  events). `armies[]`: `name` (for events), `loot: { chance, items, max }` (a bag next to the army), `bounty: item`,
+  `bountyText` (an event gives the item to whoever beats the army). `armyScatter[]` takes `loot` and `spacing` too.
+- `rods`: `{ owner, at }` or `{ owner, count, area }`: rods that already claim land.
+- `locations`: `{ name, at (point or "@Structure" = in front of its entrance), radius 0-3 }` zones for events.
+- `variables`: `{ name, initial }`. `templates`: `{ name: { owner, army, tier, order } }` armies events create.
+  Orders: `{ kind (Normal, Stand, Guard, Roam, Berserk, Explore, MoveToZone, DefendZone, DefendCity, SecureCity,
+  AttackArmy), zone | city ("@Village" or "capital:Race") | army }`.
+- `events`: `{ name, races ("all" or a list), concerns?, once, enabled, chance, when: [conditions] | whenAny:
+  [[...], [...]], then: [effects] }`. Conditions are one-key objects: `turn`, `every`, `enterZone`, `ownCity`,
+  `enterCity`, `lootRuin`, `destroyArmy`, `armyExists` (+`exists`), `ownItem`, `leaderItem` (+`army`), `relation`
+  `[r1, r2, War|Neutral|Peace]`, `alliance`, `land`, `visitSite`, `armyToZone` (+`zone`), `armyToCity` (+`city`),
+  `itemToZone` (+`zone`), `variable` (+`min`, `max`). Effects: `message` (+`audience`, `portrait` unit name,
+  `left`), `objective`, `win`, `lose`, `switch` (event name, +`on`), `reveal` (+`races`), `giveItem` (+`toCapital`),
+  `createArmy` (+`zone`), `removeArmy`, `moveArmy` (+`zone`), `moveBeside`, `changeOwner` (+`to`: race or
+  "triggerer"), `order` (+ an order), `battle`, `castSpell`, `castSpellZone` (+`zone`, `caster`), `giveSpell`,
+  `ally` (+`permanent`), `setRelation`, `removeMountains`, `removeLandmark` / `changeLandmark` (landmark `id` given
+  in `landmarks`), `changeTerrain` (+`terrain`, `size`), `setVariable` (+`op`, `value`), `destroyItem`. Armies in
+  events are `"army:Name"`, `"template:Name"` or `"triggerer"`. `conquestWins: true` adds the editor's "capture
+  every enemy capital" win for each race (any event with a win would otherwise end elimination wins).
+- `neutralLife`: neutrals that live on the map, all as ordinary editor events and templates:
+  - a variable (default `Shadow`) grows by `perTurn` at the start of every turn of `growsWith` (Legions), so it stops
+    when they fall; `stages: [{ name, at, tierBonus, message, portrait }]` pick the army strength by its range, so
+    events that lower it weaken the neutrals again;
+  - every neutral village with a `garrison` (unless `"life": false`) gets a zone in front of it, a band per stage
+    built from its garrison's template (so always of the village's kind) that gathers there (`spawn: { every,
+    chance, order: DefendZone | Roam }`, one at a time, only while the neutrals hold the village), and avengers per
+    stage with the "capture a city" order that march when a race holds the village (`retake: { every, chance,
+    tierBonus, message }`, one at a time);
+  - `patrols: [{ name, army, tier, path: [points or "@Structure"], home }]`: an army walks its waypoints in a loop
+    (a variable remembers the leg, so each leg event fires once per arrival) and a new one sets out every few turns
+    while the home village is in neutral hands.
 
 Names of units, items, spells and landmarks are the English names from `Globals/Tglobal.json`.
 
@@ -63,4 +102,8 @@ Names of units, items, spells and landmarks are the English names from `Globals/
 - One player per race (diplomacy, land and victory are keyed by race), so allies of one race share a player.
 - Only existing objects: new peoples are stand-ins (hobbits are peasants, Ents are the elves' Ent Minor).
 - Capital names stay the editor's "<Race> Capital"; villages, ruins and sites keep their plan names.
-- The world AI idles on custom maps (see `docs/ai/notes-custom-map-ai.md`).
+- The world AI idles on custom maps (see `docs/ai/notes-custom-map-ai.md`); full capital garrisons and armies help.
+- The editor offers no water-only units, so there are no sea creatures.
+- An event that fires stops the army that was moving: conditions that stay true ("the patrol is in zone A") must be
+  paired with something that changes when the event fires, or every step of every army of that race is cut short and
+  the AI replans after each tile (seconds per turn on a 1024 map).

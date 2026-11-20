@@ -10,10 +10,16 @@ using MapFromPlan;
 List<string> positional = [];
 string? mapId = null;
 List<(string Path, double[] Window)> closeUps = [];
+bool checks = true;
 
 for (int i = 0; i < args.Length; i++)
 {
-    if (args[i] == "-id" && i + 1 < args.Length)
+    if (args[i] == "-nochecks")
+    {
+        // Skip the travel distances and gate checks (slow on big maps).
+        checks = false;
+    }
+    else if (args[i] == "-id" && i + 1 < args.Length)
     {
         mapId = args[++i];
     }
@@ -66,7 +72,7 @@ foreach (string warning in generator.Warnings)
 
 // Travel between named places: movement points along the cheapest path (plain 2, forest 4, road 1; water and
 // mountains block), like WorldMovementCalculator for an ordinary leader.
-foreach (JsonNode pair in Plan.List(plan["distances"]))
+foreach (JsonNode pair in checks ? Plan.List(plan["distances"]) : [])
 {
     string from = Plan.Text(pair[0]);
     string to = Plan.Text(pair[1]);
@@ -86,7 +92,7 @@ foreach (JsonNode pair in Plan.List(plan["distances"]))
 
 // Gate checks: with every gate closed there must be no way from one place to the other, and each gate alone must
 // let armies through (e.g. Mordor's three ways in).
-foreach (JsonNode check in Plan.List(plan["gateChecks"]))
+foreach (JsonNode check in checks ? Plan.List(plan["gateChecks"]) : [])
 {
     string name = Plan.Text(check["name"]);
 
@@ -160,30 +166,7 @@ internal static class Travel
         int[] previous = new int[size * size];
         Array.Fill(cost, int.MaxValue);
         PriorityQueue<int, int> queue = new();
-        HashSet<WorldPosition> structures = [];
-
-        foreach (CustomMapVillage village in map.Villages)
-        {
-            structures.UnionWith(village.Footprint.EnumerateTiles());
-        }
-
-        foreach (CustomMapPlayer player in map.Players)
-        {
-            if (player.Footprint is { } footprint)
-            {
-                structures.UnionWith(footprint.EnumerateTiles());
-            }
-        }
-
-        foreach (CustomMapRuin ruin in map.Ruins)
-        {
-            structures.UnionWith(ruin.Footprint.EnumerateTiles());
-        }
-
-        foreach (CustomMapSite site in map.Sites)
-        {
-            structures.UnionWith(site.Footprint.EnumerateTiles());
-        }
+        bool[] solid = Solid(map);
 
         int startIndex = (start.Y * size) + start.X;
         cost[startIndex] = 0;
@@ -219,18 +202,12 @@ internal static class Travel
                 {
                     WorldPosition next = new(position.X + dx, position.Y + dy);
 
-                    if ((dx == 0 && dy == 0) || !map.IsValidPosition(next) || structures.Contains(next) || map.GetLandmarkAt(next) is not null ||
-                        (blocked is not null && blocked(next)))
+                    if ((dx == 0 && dy == 0) || !map.IsValidPosition(next) || solid[(next.Y * size) + next.X] || (blocked is not null && blocked(next)))
                     {
                         continue;
                     }
 
                     WorldMapCell cell = map.GetCell(next);
-
-                    if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain)
-                    {
-                        continue;
-                    }
 
                     int step = cell.Feature switch
                     {
@@ -251,5 +228,47 @@ internal static class Travel
         }
 
         return null;
+    }
+
+    private static CustomMap? solidMap;
+    private static bool[] solidTiles = [];
+
+    // Tiles no army walks on: water, mountains, structures and landmarks (computed once per map).
+    private static bool[] Solid(CustomMap map)
+    {
+        if (ReferenceEquals(map, solidMap))
+        {
+            return solidTiles;
+        }
+
+        int size = map.Size;
+        bool[] solid = new bool[size * size];
+        IEnumerable<WorldFootprint> footprints = map.Villages.Select(village => village.Footprint)
+            .Concat(map.Players.Where(player => player.Footprint is not null).Select(player => player.Footprint!.Value))
+            .Concat(map.Ruins.Select(ruin => ruin.Footprint))
+            .Concat(map.Sites.Select(site => site.Footprint))
+            .Concat(map.Landmarks.Select(landmark => new WorldFootprint(landmark.TopLeft, landmark.Width, landmark.Height)));
+
+        foreach (WorldFootprint footprint in footprints)
+        {
+            foreach (WorldPosition tile in footprint.EnumerateTiles())
+            {
+                if (map.IsValidPosition(tile))
+                {
+                    solid[(tile.Y * size) + tile.X] = true;
+                }
+            }
+        }
+
+        for (int index = 0; index < solid.Length; index++)
+        {
+            WorldMapCell cell = map.Cells[index];
+            solid[index] |= cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain;
+        }
+
+        solidMap = map;
+        solidTiles = solid;
+
+        return solid;
     }
 }

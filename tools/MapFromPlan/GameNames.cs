@@ -11,6 +11,8 @@ internal sealed class GameNames
     private readonly IReadOnlyList<ItemDefinition> items;
     private readonly IReadOnlyList<WorldSpellDefinition> spells;
     private readonly IReadOnlyList<WorldLandmarkDefinition> landmarks;
+    private readonly CustomMapStore store;
+    private readonly IGameDefinitionProvider definitions;
 
     public GameNames(string globalsDirectory, CustomMapStore store, IGameDefinitionProvider definitions)
     {
@@ -26,6 +28,8 @@ internal sealed class GameNames
         items = [.. store.ListItems(definitions).OrderBy(item => item.Id.Value, StringComparer.OrdinalIgnoreCase)];
         spells = [.. store.ListSpells(definitions).OrderBy(spell => spell.Id.Value, StringComparer.OrdinalIgnoreCase)];
         landmarks = [.. store.ListLandmarks(definitions).OrderBy(landmark => landmark.Id.Value, StringComparer.OrdinalIgnoreCase)];
+        this.store = store;
+        this.definitions = definitions;
     }
 
     public string Text(GlobalTextId id)
@@ -33,14 +37,15 @@ internal sealed class GameNames
         return texts.GetValueOrDefault(id.Value, id.Value);
     }
 
-    // A leader (Category Leader) or a non-leader unit with this name; neutral units first, then the races.
-    public UnitDefinition Unit(string name, bool leader)
+    // A leader (Category Leader) or a non-leader unit with this name; units of the given race first (neutral units
+    // when none is given), then the others.
+    public UnitDefinition Unit(string name, bool leader, WorldRace race = WorldRace.Neutral)
     {
         UnitDefinition? found = units
             .Where(unit => string.Equals(Text(unit.NameTextId), name, StringComparison.OrdinalIgnoreCase))
             .Where(unit => leader ? unit.Category == UnitCategory.Leader : unit.Category != UnitCategory.Leader)
             .Where(unit => unit.Category != UnitCategory.Guardian)
-            .OrderBy(unit => unit.Race == WorldRace.Neutral ? 0 : 1)
+            .OrderBy(unit => unit.Race == race ? 0 : 1)
             .FirstOrDefault();
 
         return found ?? throw new InvalidOperationException($"No {(leader ? "leader" : "unit")} named '{name}'.");
@@ -51,6 +56,26 @@ internal sealed class GameNames
         ItemDefinition? found = items.FirstOrDefault(item => string.Equals(Text(item.NameTextId), name, StringComparison.OrdinalIgnoreCase));
 
         return found?.Id ?? throw new InvalidOperationException($"No item named '{name}'.");
+    }
+
+    // A new capital's garrison: the race's guardian alone, in the editor's slot (a capital keeps exactly one).
+    public CustomMapUnit?[] CapitalGarrison(WorldRace race)
+    {
+        return store.GetCapitalDefaults(race, definitions).Garrison;
+    }
+
+    // A unit's type ID for message portraits (any category).
+    public string Portrait(string name)
+    {
+        UnitDefinition? found = units.FirstOrDefault(unit => string.Equals(Text(unit.NameTextId), name, StringComparison.OrdinalIgnoreCase));
+
+        return found?.Id.Value ?? throw new InvalidOperationException($"No unit named '{name}' for a portrait.");
+    }
+
+    public WorldSpellDefinition SpellDefinition(string name)
+    {
+        return spells.FirstOrDefault(spell => string.Equals(Text(spell.NameTextId), name, StringComparison.OrdinalIgnoreCase))
+               ?? throw new InvalidOperationException($"No spell named '{name}'.");
     }
 
     public WorldSpellDefinitionId Spell(string name)
