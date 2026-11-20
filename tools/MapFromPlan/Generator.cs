@@ -158,6 +158,7 @@ internal sealed partial class Generator(JsonObject plan, IGameDefinitionProvider
         PaintWater();
         PaintRivers();
         PaintMarshes();
+        PaintIslands();
         PlaceCapitals();
         PlaceVillages();
         PlaceRuins();
@@ -325,6 +326,27 @@ internal sealed partial class Generator(JsonObject plan, IGameDefinitionProvider
                     if (area.Contains(warped[Index(x, y)]) && noise.Fractal(x / 2.5, y / 2.5) < density)
                     {
                         map.Paint(new WorldPosition(x, y), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+                    }
+                }
+            }
+        }
+    }
+
+    // Islands: land raised out of seas and lakes after the water is painted ("islands": { terrain, area }).
+    private void PaintIslands()
+    {
+        foreach (JsonNode island in Plan.List(plan["islands"]))
+        {
+            Area area = Area.From(island)!;
+            WorldMapTerrain terrain = Enum.Parse<WorldMapTerrain>(Plan.Text(island["terrain"], "Neutral"));
+
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    if (area.Contains(warped[Index(x, y)]))
+                    {
+                        map.Paint(new WorldPosition(x, y), 0, CustomMapBrush.Land, terrain, random);
                     }
                 }
             }
@@ -1088,11 +1110,13 @@ internal sealed partial class Generator(JsonObject plan, IGameDefinitionProvider
             return null;
         }
 
+        bool sea = CustomMapStack.IsLedBySeaCreature(slots);
+        water |= sea;
         WorldPosition? position = Search(geo.ToPosition(at), radius, p =>
-            (water ? IsWater(p) && map.GetLandmarkAt(p) is null : IsOpenLand(p)) && !IsStructure(p) && (spacing == 0 || !keepClear[Index(p.X, p.Y)]) &&
+            (water ? IsWater(p) && map.GetLandmarkAt(p) is null && (!sea || map.IsOpenWater(p)) : IsOpenLand(p)) && !IsStructure(p) && (spacing == 0 || !keepClear[Index(p.X, p.Y)]) &&
             stackPositions.All(other => Distance(other, p) >= Math.Max(spacing, 1.5)) &&
             capitalPositions.All(capital => Distance(capital, p) >= (spacing == 0 ? 0 : 10)) &&
-            map.PreviewStack(p, WorldRace.Neutral).Fits);
+            map.PreviewStack(p, WorldRace.Neutral, sea).Fits);
 
         if (position is { } tile && map.PlaceStack(tile, WorldRace.Neutral, slots).Stack is { } stack)
         {
@@ -1128,7 +1152,7 @@ internal sealed partial class Generator(JsonObject plan, IGameDefinitionProvider
             int[] tiers = [.. Plan.List(scatter["tier"]).Select(tier => Plan.Integer(tier, 1))];
             int count = Plan.Integer(scatter["count"], 1);
             bool water = scatter["water"] is { } w && w.GetValue<bool>();
-            Func<Miles, bool> usable = water ? point => geo.IsInside(point, 2) && IsWater(geo.ToPosition(point)) : IsUsable;
+            Func<Miles, bool> usable = water ? point => geo.IsInside(point, 3) && map.IsOpenWater(geo.ToPosition(point)) : IsUsable;
 
             for (int i = 0; i < count; i++)
             {

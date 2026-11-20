@@ -34,7 +34,8 @@ centre. Points outside it are reported.
 - `land`: `{ terrain, area }` in order; later regions win. Terrain decides who earns from mines on it.
 - `water`: seas and lakes (areas). `rivers`: `{ path, width (tiles, at least 2.2), fords: [points], fordRadius }`;
   rivers are painted in tile space so armies can't slip across diagonally; fords stay dry.
-- `marshes`: `{ area, density }` scattered pools.
+- `marshes`: `{ area, density }` scattered pools. `islands`: `{ terrain, area }` land raised out of seas and lakes after
+  the water is painted.
 - `ranges`: `{ path, width (miles), gaps: [{ at, radius }] }`. A gap cuts the full width of the range. Filled with 5x5,
   3x3 and 1x1 mountains like the editor brush. `hills`: `{ area, density }` scattered 3x3/1x1 peaks.
 - `forests`: `{ area, density }`; `wildForest`: `{ threshold, scaleMiles, exceptTerrain }` for clumps elsewhere.
@@ -93,7 +94,11 @@ centre. Points outside it are reported.
     tierBonus, message }`, one at a time);
   - `patrols: [{ name, army, tier, path: [points or "@Structure"], home }]`: an army walks its waypoints in a loop
     (a variable remembers the leg, so each leg event fires once per arrival) and a new one sets out every few turns
-    while the home village is in neutral hands.
+    while the home village is in neutral hands (or always, without `home`); waypoints on water make boat or sea patrols;
+  - `spawners: [{ name, at, radius, army, tier, every, chance, order }]`: bands that gather in a zone of their own (a sea
+    lane, a haunted isle), one at a time, stronger by stage.
+- Sea creatures: templates led by a Mermaid, Sea Serpent or Kraken are placed on open water only (the tile and the 8
+  around it water); `armies[].water` / `armyScatter[].water` put any army on water (land leaders sail in boats).
 
 Names of units, items, spells and landmarks are the English names from `Globals/Tglobal.json`.
 
@@ -103,7 +108,6 @@ Names of units, items, spells and landmarks are the English names from `Globals/
 - Only existing objects: new peoples are stand-ins (hobbits are peasants, Ents are the elves' Ent Minor).
 - Capital names stay the editor's "<Race> Capital"; villages, ruins and sites keep their plan names.
 - The world AI idles on custom maps (see `docs/ai/notes-custom-map-ai.md`); full capital garrisons and armies help.
-- The editor offers no water-only units, so there are no sea creatures.
 - An event that fires stops the army that was moving: conditions that stay true ("the patrol is in zone A") must be
   paired with something that changes when the event fires, or every step of every army of that race is cut short and
   the AI replans after each tile (seconds per turn on a 1024 map).
