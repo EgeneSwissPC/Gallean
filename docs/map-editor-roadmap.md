@@ -7,8 +7,8 @@ planning rods and the economy panel, after rods in the engine (commit `ca0330f`)
 `97fe196`), after the economy panel (commit `687944d`), after the starting bank (commit `8ac6ac2`) and after the land
 spread preview (commit `caab9b3`), and after the three locations phases (commits `8a6ffe2d`, `8b9ccde8`,
 `b31aa076`), and after the seven events phases (2026-11-19/20, last merge `2f85594c`), and after the "capture a
-city" order, the map rules and MapFromPlan's event support (2026-11-20, see "Task: map rules"). Each section is meant
-as a separate task.
+city" order, the map rules and MapFromPlan's event support (2026-11-20, see "Task: map rules"), and after armies on
+water and sea creatures (2026-11-20, see "Task: water armies"). Each section is meant as a separate task.
 
 ## Decisions so far
 
@@ -54,6 +54,14 @@ as a separate task.
 - **Neutral kinds = the game's neutral subraces** (free men, wild elves, greenskins, dragons, marsh folk, sea creatures,
   barbarians, wolves; plain neutrals stay with player 0), decided by an army's leader and a village's garrison, like
   `tools/NeutralSplitter`. Different kinds are hostile (the engine has no "neutral but not allied").
+- **Armies on water, like the original maps**: any army may stand on water, where the game draws it in a boat (434 of
+  the 1,003 armies on water in the 111 original maps have a land leader). The three sea creatures that lead armies
+  (Mermaid, Sea Serpent, Kraken; water-only in the data) stand only on open water: the tile and the 8 around it are
+  water, tiles outside the map count as water, exactly the game's rule for where they can move (all 569 sea armies of
+  the original maps stand there). Elsewhere the leader list greys them out instead of refusing on save.
+- **Sea creatures keep their water**: the Land brush leaves a sea creature's 3x3 alone and villages, capitals, ruins and
+  sites can't cover it (they turn water into land); landmarks may stand next to it (they keep the water). The Water
+  brush now paints under any army (it sails).
 
 ## Already in the editor
 
@@ -119,6 +127,9 @@ as a separate task.
 - Map rules (new), in the economy panel: "Mage towers: spells of other races cost more by N %" and "Each kind of
   neutral is its own side"; saved in `SRules.json`
 - Army orders: "capture a city" (the game's SecureCity) for templates and the order block, next to defend a city
+- Armies on water (new): any army on water sails in a boat; the sea creatures (Mermaid, Sea Serpent, Kraken) lead
+  armies on open water (the tile and the 8 around it water); the Army hover line says "open water" or "near the
+  shore", the leader list greys sea creatures out where they can't live (and in villages and capitals)
 - Locations (new): tool "Locations" and list (L)
   - click places a named zone (1x1 to 7x7, + / -), its name typed in the list row; click selects, drag moves (snaps
     onto the map, Esc puts it back), Ctrl+click places a zone inside another, Shift+click removes; X/Y boxes
@@ -157,7 +168,8 @@ as a separate task.
 - **Armies:**
   - Leaders can't carry items.
   - The order is always normal, and neutral armies always stand still.
-  - There are no armies on water and no boats.
+  - ~~There are no armies on water and no boats.~~ Done: armies on water sail in boats, sea creatures on open water
+    (see "Task: water armies").
   - You can't name leaders or set AI priority.
 - **Terrain:** mountain and forest looks are random and can't be picked.
 - **Ruins:** gold and one item only, no mana.
@@ -346,7 +358,39 @@ learned the editor's later features and builds "The War of the Ring" (1024x1024)
 
 Measured on the 1024 map (Release engine, all AI, Ryzen 9): one round of all 13 sides takes 7 s on turn 1 and 18 s by
 turn 34 (two big neutral kinds about 3 s each). Known limits: different neutral kinds are hostile, never just
-neutral; plain neutrals (spiders, thugs, bears, ...) are one kind; the editor has no water-only units.
+neutral; plain neutrals (spiders, thugs, bears, ...) are one kind; ~~the editor has no water-only units~~ (done, see
+"Task: water armies").
+
+## Task: water armies — done
+
+What was built (2026-11-20; engine `29a50053`, editor `4ced9102`, writer fix `74d42120`, merge `4e0250f4`):
+- Engine: `CustomMapUnit.IsWaterOnly`, `CustomMapStack.IsSeaArmy`/`IsLedBySeaCreature`, `CustomMap.IsOpenWater`. The
+  army site check no longer refuses water; a sea creature's army gets the new `OpenWater` error away from open water.
+  `PreviewStack(tile, owner, sea: true)` lists the land tiles that stop it. New tile reasons `Land` and `SeaArmy`
+  (Land brush and buildings in a sea creature's 3x3). `ListUnits` offers the three water-only leaders; templates keep
+  them (`waterOnly` in `EditorEvents.json`).
+- Editor: the Army hover line adds "open water: armies sail in boats, sea creatures can live here" or "near the shore:
+  ... sea creatures need open water"; the leader list shows "open water only" on sea creatures and greys them out with
+  "Needs open water: water on all 8 sides" (a stationed army in a village or capital: "Sea creatures cannot stand in a
+  city"); mercenary camps can't sell them.
+- Tests: `CustomMapTests.SeaArmyRulesTest`, `OpenWaterAgreesWithGameTest` (every tile of a map with a lake, a coast at
+  the map edge and a one-tile channel against `WorldMovementCalculator`; mutation-checked: counting off-map tiles as
+  land fails it), `SeaArmySaveAndLoadTest` (reopen, loaded leader and level, the sea creature passes open water only,
+  the boat sails one tile), sea armies in `PreviewAgreesWithPlaceTest` (35 fit, 2,269 blocked on the busy map),
+  `MapEditorScreenViewModelTests.WaterArmyTest`, `VisualTests.MapEditorWaterArmiesTest`, `SharedUnitObjectTest`.
+  Suite 5,243; all 16 map editor visual tests pass.
+- Writer fix found on the way: the writer matched units to slots by object, so one `CustomMapUnit` object put into two
+  slots (a script; the editor makes one per slot) was saved once. It now indexes by slot.
+- Real client (AOT build, `mapgen` map with a Kraken and two Mermaids on the lake and an Empire Ranger on its shore):
+  the editor hover lines and right-click info are right; in the game the Ranger sails in a boat next to the Kraken,
+  and attacking it opens the ship-deck battle against the Kraken and both Mermaids.
+
+Known limits:
+- An army template led by a sea creature only appears when its location has open water within 3 tiles (the game looks
+  for a free tile there, `TryCreateStack`); the editor doesn't warn yet.
+- The Land brush's hover line counts the protected tiles ("leaves 1 tile alone") without saying a sea creature is the
+  reason, like for other blockers.
+- MapFromPlan doesn't place sea creatures yet (its armies still go on open land only).
 
 ## Task: events (Scratch-style blocks)
 
@@ -448,3 +492,6 @@ effect kinds now lives in `docs/map-editor-events.md` ("How events work in the g
     starting diplomacy belongs to player settings. Take player settings next?
 13. Events follow-ups: reveal to several chosen races, zoom/search on the chain screen, warnings when a template's
     order target is deleted. Worth a small follow-up task, or later?
+14. Water armies follow-ups: let MapFromPlan scatter sea creatures on open water (and add them to "The War of the
+    Ring": krakens off the coasts, Corsair boats), and warn when a sea creature's template has no open water within 3
+    tiles of its zone?
