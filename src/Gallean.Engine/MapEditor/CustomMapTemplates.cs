@@ -65,7 +65,7 @@ public sealed partial class CustomMap
         return order.Kind switch
         {
             CustomMapOrderKind.MoveToZone or CustomMapOrderKind.DefendZone => GetLocation(order.LocationId) is not null,
-            CustomMapOrderKind.DefendCity => order.City is { } city && CityExists(city),
+            CustomMapOrderKind.DefendCity or CustomMapOrderKind.SecureCity => order.City is { } city && CityExists(city),
             CustomMapOrderKind.AttackArmy => stacks.Any(stack => stack.Id == order.ArmyId),
             _ => true
         };
@@ -94,7 +94,8 @@ public enum CustomMapOrderKind
     MoveToZone,
     DefendZone,
     DefendCity,
-    AttackArmy
+    AttackArmy,
+    SecureCity
 }
 
 // An army's order, as the game's WorldStackOrder: the target field used depends on the kind.

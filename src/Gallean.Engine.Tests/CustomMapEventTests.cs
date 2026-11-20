@@ -499,6 +499,7 @@ public sealed class CustomMapEventTests
                 new CustomMapChangeOrderEffect(template, new CustomMapArmyOrder(CustomMapOrderKind.MoveToZone, LocationId: 1)),
                 new CustomMapChangeOrderEffect(neutralArmy, new CustomMapArmyOrder(CustomMapOrderKind.AttackArmy, ArmyId: 1)),
                 new CustomMapChangeOrderEffect(neutralArmy, new CustomMapArmyOrder(CustomMapOrderKind.DefendCity, City: new CustomMapCity.Village(1))),
+                new CustomMapChangeOrderEffect(neutralArmy, new CustomMapArmyOrder(CustomMapOrderKind.SecureCity, City: new CustomMapCity.Village(1))),
                 new CustomMapChangeOwnerEffect(neutralArmy, WorldRace.Elf),
                 new CustomMapChangeOwnerEffect(template, null),
                 new CustomMapMoveArmyEffect(new CustomMapArmyRef.Triggerer(), 2),
@@ -543,6 +544,7 @@ public sealed class CustomMapEventTests
             new ScenarioEventChangeOrderEffect(templateReference, new WorldStackOrder.MoveToLocation(new ScenarioLocationId(Id("LO", 1)), new WorldPosition(14, 10), 1), false),
             new ScenarioEventChangeOrderEffect(armyReference, new WorldStackOrder.AttackStack(new WorldStackId(Id("KC", 0x101))), false),
             new ScenarioEventChangeOrderEffect(armyReference, new WorldStackOrder.DefendCity(new WorldFortificationId(Id("FT", 0x101))), false),
+            new ScenarioEventChangeOrderEffect(armyReference, new WorldStackOrder.SecureCity(new WorldFortificationId(Id("FT", 0x101))), false),
             new ScenarioEventChangeOwnerEffect(armyReference, new ScenarioEventStackOwner.Subrace(elvenSubrace), false, true),
             new ScenarioEventChangeOwnerEffect(templateReference, ScenarioEventStackOwner.Triggerer.Instance, false, true),
             new ScenarioEventMoveStackEffect(null, new ScenarioLocationId(Id("LO", 2))),
@@ -615,6 +617,62 @@ public sealed class CustomMapEventTests
 
         Assert.That(result.Events.OfType<WorldStackBattleStartedEvent>().Single().DefenderStackId, Is.EqualTo(army));
         Assert.That(session.World.State.Stacks.Values.Single(stack => stack.SourceTemplateId is not null).Position.GetDistance(session.World.State.Stacks[army].Position), Is.LessThanOrEqualTo(1), "The raiders moved next to the army.");
+    }
+
+    // Neutrals retaking a village: a neutral template with the "capture a city" order (the game's SecureCity) is
+    // created next to an Empire village at the neutral player's turn start, and the neutral AI walks in and takes it.
+    [Test]
+    public void SecureCityPlayTest()
+    {
+        CustomMap map = CustomMap.Create(MapId, "Retake", 48, WorldMapTerrain.Neutral, [WorldRace.Human, WorldRace.Elf]);
+        Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(4, 4)), Is.Null);
+        Assert.That(map.PlaceCapital(WorldRace.Elf, new WorldPosition(38, 38)), Is.Null);
+        (CustomMapVillage? village, CustomMapPlacementError? error) = map.PlaceVillage(new WorldPosition(20, 20), 1, WorldRace.Human, "Eastholm");
+        Assert.That((village is not null, error), Is.EqualTo((true, (CustomMapPlacementError?)null)));
+        CustomMapLocation camp = map.PlaceLocation(new WorldPosition(26, 21), 1, "Camp");
+        CustomMapArmyTemplate retakers = map.AddTemplate(Raiders() with
+        {
+            Name = "Retakers",
+            Order = new CustomMapArmyOrder(CustomMapOrderKind.SecureCity, City: new CustomMapCity.Village(village!.Id))
+        });
+        Assert.That(map.IsTemplateSaveable(retakers), Is.True);
+        Assert.That(map.GetEventsUsing(new CustomMapEventTarget.Village(village.Id)), Is.Empty);
+        map.AddEvent(CustomMapEvent.Create("Muster", WorldRace.Neutral) with
+        {
+            Groups = [[new CustomMapTurnCondition(1, Repeat: false)]],
+            Effects = [new CustomMapCreateArmyEffect(retakers.Id, camp.Id)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+        Assert.That(store.Open(MapId, definitions).Templates.Single().Order, Is.EqualTo(retakers.Order));
+
+        ScenarioConfiguration configuration = new(
+            [new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)],
+            WorldDifficulty.Average,
+            Leader: null);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals, configuration);
+        WorldFortificationId villageId = new(Id("FT", 0x100 + village.Id));
+        Assert.That(scenario.Provider.StackTemplates.Single().Order, Is.EqualTo(new WorldStackOrder.SecureCity(villageId)));
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        TestWorldAiRunner runner = new(session, context);
+        WorldRace OwnerRace() => session.World.State.Players[((WorldCity)session.World.State.Fortifications[villageId]).OwnerId].Race;
+        Assert.That(OwnerRace(), Is.EqualTo(WorldRace.Human));
+
+        for (int turn = 0; turn < 3 && OwnerRace() != WorldRace.Neutral; turn++)
+        {
+            Assert.That(session.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+
+            while (session.World.State.Players[session.World.State.TurnInfo.CurrentPlayerId].IsAi)
+            {
+                runner.PlayTurn();
+            }
+        }
+
+        Assert.That(OwnerRace(), Is.EqualTo(WorldRace.Neutral), "The created army took the village back.");
+        Assert.That(session.World.State.Stacks.Values.Count(stack => stack.SourceTemplateId is not null), Is.EqualTo(1), "Created once.");
     }
 
     // Phase 6: every remaining kind through the game's loader, and variables as SVars rows.
