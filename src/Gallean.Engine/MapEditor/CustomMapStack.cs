@@ -14,12 +14,17 @@ public enum CustomMapStackError
     InvalidSlot,
     VillageOwner,
     InvalidLevel,
-    Guardian
+    Guardian,
+
+    // A sea creature leads the army (Mermaid, Sea Serpent, Kraken): it lives in open water only, so its tile and the
+    // eight around it must be water.
+    OpenWater
 }
 
 // A unit placed in an army, garrison or ruin. Level starts at the unit's own level and can go up to MaxLevel; hit
-// points and movement are the unit's full values at that level. A guardian only ever stands in its capital.
-public sealed record CustomMapUnit(UnitDefinitionId TypeId, int Level, int Hitpoints, bool IsLarge, int Leadership, int MovementPoints, bool IsGuardian = false)
+// points and movement are the unit's full values at that level. A guardian only ever stands in its capital. A
+// water-only unit (the sea creatures' leaders) moves on open water only when it leads an army.
+public sealed record CustomMapUnit(UnitDefinitionId TypeId, int Level, int Hitpoints, bool IsLarge, int Leadership, int MovementPoints, bool IsGuardian = false, bool IsWaterOnly = false)
 {
     // The highest level used in the original scenarios.
     public const int MaxLevel = 99;
@@ -36,7 +41,8 @@ public sealed record CustomMapUnit(UnitDefinitionId TypeId, int Level, int Hitpo
             definition.IsLarge,
             definition.Leadership ?? 0,
             definition.MovementPoints ?? 20,
-            definition.Category == UnitCategory.Guardian);
+            definition.Category == UnitCategory.Guardian,
+            definition.IsWaterOnly);
     }
 
     // The unit at a level from its own level up to MaxLevel, grown like a unit levelling up in the game (dynamic
@@ -65,6 +71,14 @@ public sealed record CustomMapUnit(UnitDefinitionId TypeId, int Level, int Hitpo
 public sealed record CustomMapStack(int Id, WorldPosition Position, WorldRace Owner, ImmutableArray<CustomMapUnit?> Slots)
 {
     public CustomMapUnit Leader => Slots.First(unit => unit is { IsLeader: true })!;
+
+    // Led by a sea creature: the game moves it on open water only (WorldMovementCalculator).
+    public bool IsSeaArmy => IsLedBySeaCreature(Slots);
+
+    public static bool IsLedBySeaCreature(IReadOnlyList<CustomMapUnit?> slots)
+    {
+        return slots.Any(unit => unit is { IsLeader: true, IsWaterOnly: true });
+    }
 
     public bool Equals(CustomMapStack? other)
     {

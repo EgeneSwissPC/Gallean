@@ -254,6 +254,8 @@ public sealed class CustomMapTests
     private CustomMapUnit NeutralSoldier => FindUnit(unit => unit is { Category: UnitCategory.Soldier, Race: WorldRace.Neutral, IsLarge: false });
     private CustomMapUnit LargeSoldier => FindUnit(unit => unit is { Category: UnitCategory.Soldier, Race: WorldRace.Neutral, IsLarge: true });
     private CustomMapUnit HumanLeader => FindUnit(unit => unit is { Category: UnitCategory.Leader, Race: WorldRace.Human, IsLarge: false });
+    private CustomMapUnit SeaLeader => FindUnit(unit => unit is { Category: UnitCategory.Leader, IsWaterOnly: true, IsLarge: false });
+    private CustomMapUnit SeaSoldier => FindUnit(unit => unit is { Category: UnitCategory.Soldier, Subrace: WorldSubraceType.NeutralWater, IsLarge: false });
 
     private static CustomMapUnit?[] Slots(params (GridPosition Position, CustomMapUnit Unit)[] units)
     {
@@ -285,16 +287,17 @@ public sealed class CustomMapTests
 
         Assert.That(map.PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, guard).Error, Is.Null);
         Assert.That(map.PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Occupied));
-        Assert.That(map.PlaceStack(new WorldPosition(24, 24), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Blocked), "Water.");
+        Assert.That(map.Clone().PlaceStack(new WorldPosition(24, 24), WorldRace.Neutral, guard).Error, Is.Null, "Water: the army sails in a boat.");
         Assert.That(map.PlaceStack(new WorldPosition(5, 5), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.Blocked), "Capital.");
         Assert.That(map.PlaceStack(new WorldPosition(21, 40), WorldRace.Dwarf, guard).Error, Is.EqualTo(CustomMapStackError.UnknownOwner));
         Assert.That(map.PlaceStack(new WorldPosition(60, 40), WorldRace.Neutral, guard).Error, Is.EqualTo(CustomMapStackError.OutsideMap));
 
-        // Armies block water and mountains under them, and capitals cannot be moved onto them.
+        // Armies block mountains under them (water is fine: they sail), and capitals cannot be moved onto them.
         Random random = new(1);
-        map.Paint(new WorldPosition(20, 40), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
         map.Paint(new WorldPosition(20, 40), 0, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
         Assert.That(map.GetCell(new WorldPosition(20, 40)), Is.EqualTo(new WorldMapCell(WorldMapTerrain.Neutral, WorldMapFeature.None, new WorldObjectVariant(0))));
+        map.Paint(new WorldPosition(20, 40), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        Assert.That(map.GetCell(new WorldPosition(20, 40)).Terrain, Is.EqualTo(WorldMapTerrain.Water));
         Assert.That(map.PlaceCapital(WorldRace.Human, new WorldPosition(18, 38)), Is.EqualTo(CustomMapPlacementError.Occupied));
 
         int id = map.Stacks.Single().Id;
@@ -363,6 +366,140 @@ public sealed class CustomMapTests
         }
 
         Assert.That(session.World.State.TurnInfo.TurnNumber, Is.GreaterThanOrEqualTo(4));
+    }
+
+    // Armies on water: any army may stand on water (the game draws it in a boat); a sea creature's army (Mermaid, Sea
+    // Serpent, Kraken lead it) only on open water, where the tile and the eight around it are water, and brushes and
+    // buildings keep that water.
+    [Test]
+    public void SeaArmyRulesTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapUnit?[] sea = Slots((GridPosition.FrontCenter, SeaLeader), (GridPosition.BackCenter, SeaSoldier));
+        CustomMapUnit?[] boat = Slots((GridPosition.FrontCenter, NeutralLeader));
+
+        Assert.That(SeaLeader.IsWaterOnly, Is.True);
+        Assert.That(CustomMapStack.IsLedBySeaCreature(sea), Is.True);
+        Assert.That(CustomMapStack.IsLedBySeaCreature(Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.BackCenter, SeaSoldier))), Is.False, "Sea soldiers under a land leader sail.");
+
+        // The lake is a radius-4 disk around 24, 24: 27, 24 is open water, 28, 24 is water on the shore.
+        Assert.That((map.IsOpenWater(new WorldPosition(24, 24)), map.IsOpenWater(new WorldPosition(27, 24)), map.IsOpenWater(new WorldPosition(28, 24)), map.IsOpenWater(new WorldPosition(20, 40))),
+            Is.EqualTo((true, true, false, false)));
+        Assert.That(map.Clone().PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, sea).Error, Is.EqualTo(CustomMapStackError.OpenWater), "Land.");
+        Assert.That(map.Clone().PlaceStack(new WorldPosition(28, 24), WorldRace.Neutral, sea).Error, Is.EqualTo(CustomMapStackError.OpenWater), "Shore.");
+        Assert.That(map.Clone().PlaceStack(new WorldPosition(28, 24), WorldRace.Neutral, boat).Error, Is.Null, "A boat on the shore.");
+
+        // The preview for a sea army on the shore shows the land tiles that stop it, before the tile itself.
+        CustomMapPlacementPreview shore = map.PreviewStack(new WorldPosition(28, 24), WorldRace.Neutral, sea: true);
+        Assert.That(shore.StackError, Is.EqualTo(CustomMapStackError.OpenWater));
+        Assert.That(TilesWith(shore, CustomMapTileStatus.Blocked), Is.EquivalentTo(new WorldPosition[] { new(29, 23), new(29, 24), new(29, 25), new(28, 24) }));
+        Assert.That(shore.FirstBlocked!.Value.Reason, Is.EqualTo(CustomMapTileReason.Land));
+        Assert.That(map.PreviewStack(new WorldPosition(24, 24), WorldRace.Neutral, sea: true).Fits, Is.True);
+
+        (CustomMapStack? kraken, CustomMapStackError? error) = map.PlaceStack(new WorldPosition(27, 24), WorldRace.Neutral, sea);
+        Assert.That((error, kraken!.IsSeaArmy), Is.EqualTo(((CustomMapStackError?)null, true)));
+        (CustomMapStack? sailors, _) = map.PlaceStack(new WorldPosition(28, 26), WorldRace.Neutral, boat);
+        Assert.That(map.UpdateStack(sailors!.Id, WorldRace.Neutral, sea), Is.EqualTo(CustomMapStackError.OpenWater), "A boat on the shore can't get a sea leader.");
+
+        // Land brushes leave the sea creature's 3x3 water alone and paint around it (also under the boat at 28, 26);
+        // Water paints under the boat again.
+        Random random = new(1);
+        map.Paint(new WorldPosition(29, 25), 1, CustomMapBrush.Land, WorldMapTerrain.Neutral, random);
+        Assert.That(map.GetCell(new WorldPosition(28, 24)).Terrain, Is.EqualTo(WorldMapTerrain.Water), "Next to the sea creature.");
+        Assert.That(map.GetCell(new WorldPosition(28, 25)).Terrain, Is.EqualTo(WorldMapTerrain.Water), "Next to the sea creature.");
+        Assert.That(map.GetCell(new WorldPosition(28, 26)).Terrain, Is.EqualTo(WorldMapTerrain.Neutral), "The boat's tile is two tiles away.");
+        Assert.That(map.IsOpenWater(new WorldPosition(27, 24)), Is.True);
+        map.Paint(new WorldPosition(28, 26), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        Assert.That(map.GetCell(new WorldPosition(28, 26)).Terrain, Is.EqualTo(WorldMapTerrain.Water));
+
+        // Buildings turn water into land, so they can't cover it; landmarks keep water and may stand next to it.
+        CustomMapPlacementPreview village = map.PreviewVillage(new WorldPosition(28, 21), 1, WorldRace.Neutral);
+        Assert.That(village.Error, Is.EqualTo(CustomMapPlacementError.Occupied));
+        Assert.That(village.Tiles.Single(tile => tile.Position == new WorldPosition(28, 23)).Reason, Is.EqualTo(CustomMapTileReason.SeaArmy));
+        Assert.That(map.PreviewLandmark(new WorldPosition(28, 23), 1, 1).Error, Is.Null);
+
+        // A sea creature can't lead a stationed army: the entrance is land.
+        CustomMapVillage free = map.PlaceVillage(new WorldPosition(10, 40), 1, WorldRace.Neutral, "Free").Village!;
+        Assert.That(map.Clone().PlaceStack(free.Entrance, WorldRace.Neutral, sea).Error, Is.EqualTo(CustomMapStackError.OpenWater));
+    }
+
+    // The editor's open water is the game's: on every tile of a map with a lake, a coast at the map edge and a
+    // one-tile channel, IsOpenWater agrees with where the game lets a water-only army move.
+    [Test]
+    public void OpenWaterAgreesWithGameTest()
+    {
+        CustomMap map = CreateMap();
+        Random random = new(1);
+        map.Paint(new WorldPosition(47, 24), 3, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        map.Paint(new WorldPosition(24, 47), 2, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+
+        for (int x = 0; x < 12; x++)
+        {
+            map.Paint(new WorldPosition(x, 46), 0, CustomMapBrush.Water, WorldMapTerrain.Neutral, random);
+        }
+
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        store.Save(map);
+        WorldState state = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        WorldMovementCalculator.MovementProfile sea = new(UnitMoveAbility.None, IsWaterOnly: true, IsLeaderDead: false, IsThief: false, IsIllusion: false);
+        int open = 0;
+        int edge = 0;
+
+        for (int y = 0; y < map.Size; y++)
+        {
+            for (int x = 0; x < map.Size; x++)
+            {
+                WorldPosition tile = new(x, y);
+                bool game = WorldMovementCalculator.IsPassable(state.Map, tile, sea);
+                Assert.That(map.IsOpenWater(tile), Is.EqualTo(game), $"{tile}");
+                open += game ? 1 : 0;
+                edge += game && (x == 0 || y == 0 || x == map.Size - 1 || y == map.Size - 1) ? 1 : 0;
+            }
+        }
+
+        TestContext.Out.WriteLine($"open water: {open} tiles, {edge} on the map edge");
+        Assert.That((open > 0, edge > 0), Is.EqualTo((true, true)), "Open water in the lake and at the map edge.");
+    }
+
+    // A sea creature's army and a boat survive save and reopen and load into the game as they were: the sea creature
+    // moves on open water only, the boat sails to the next water tile. A template led by a sea creature keeps it.
+    [Test]
+    public void SeaArmySaveAndLoadTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        CustomMapUnit?[] sea = Slots((GridPosition.FrontCenter, CustomMapUnit.From(definitions.GetUnit(SeaLeader.TypeId), 3, definitions)), (GridPosition.BackCenter, SeaSoldier));
+
+        Assert.That(map.PlaceStack(new WorldPosition(24, 24), WorldRace.Neutral, sea).Error, Is.Null);
+        Assert.That(map.PlaceStack(new WorldPosition(21, 24), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader))).Error, Is.Null);
+        map.AddTemplate(new CustomMapArmyTemplate(0, "Kraken", WorldRace.Neutral, [.. sea], new CustomMapArmyOrder(CustomMapOrderKind.Stand)));
+        store.Save(map);
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That(reopened.Stacks, Is.EquivalentTo(map.Stacks));
+        Assert.That(reopened.Stacks.Single(stack => stack.Position == new WorldPosition(24, 24)).IsSeaArmy, Is.True);
+        Assert.That(reopened.Templates.Single().Slots, Is.EqualTo(map.Templates.Single().Slots), "waterOnly is kept in EditorEvents.json.");
+        Assert.That(CustomMapStack.IsLedBySeaCreature(reopened.Templates.Single().Slots), Is.True);
+
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        WorldState state = session.World.State;
+        WorldStack kraken = state.Stacks.Values.Single(stack => stack.Position == new WorldPosition(24, 24));
+        Assert.That(kraken.GetLeader(definitions).Definition.IsWaterOnly, Is.True);
+        Assert.That(kraken.GetLeader(definitions).Unit.Level, Is.EqualTo(3));
+        WorldMovementCalculator.MovementProfile profile = WorldMovementCalculator.GetMovementProfile(kraken, definitions);
+        Assert.That(WorldMovementCalculator.IsPassable(state.Map, new WorldPosition(25, 24), profile), Is.True, "Open water.");
+        Assert.That(WorldMovementCalculator.IsPassable(state.Map, new WorldPosition(28, 24), profile), Is.False, "Shore.");
+
+        WorldStack boat = state.Stacks.Values.Single(stack => stack.Position == new WorldPosition(21, 24));
+        Assert.That(state.Map.GetCellAt(boat.Position).Terrain, Is.EqualTo(WorldMapTerrain.Water));
+        Assert.That(session.World.DispatchCommand(new WorldStepStackCommand(boat.Id, new WorldPosition(21, 25))).Error, Is.Null, "The boat sails.");
+        Assert.That(session.World.State.Stacks[boat.Id].Position, Is.EqualTo(new WorldPosition(21, 25)));
     }
 
     [Test]
@@ -1655,6 +1792,7 @@ public sealed class CustomMapTests
         map.PlaceStack(new WorldPosition(7, 19), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader)));
         map.PlaceStack(new WorldPosition(14, 12), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader)));
         map.PlaceStack(new WorldPosition(8, 8), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader)));
+        Assert.That(map.PlaceStack(new WorldPosition(25, 25), WorldRace.Neutral, Slots((GridPosition.FrontCenter, SeaLeader))).Error, Is.Null, "A sea creature in the lake.");
         map.PlaceRuin(new WorldPosition(20, 12), 0, "Rigel Ruin");
         map.PlaceBag(new WorldPosition(12, 14), 0);
         map.PlaceBag(new WorldPosition(22, 22), 0);
@@ -1666,7 +1804,7 @@ public sealed class CustomMapTests
         map.Paint(new WorldPosition(18, 18), 1, CustomMapBrush.Mountain, WorldMapTerrain.Neutral, random);
         map.Paint(new WorldPosition(34, 28), 1, CustomMapBrush.Forest, WorldMapTerrain.Neutral, random);
         Assert.That((map.Villages.Count, map.Stacks.Count, map.Ruins.Count, map.Bags.Count, map.Resources.Count, map.Sites.Count, map.Landmarks.Count, map.Mountains.Count),
-            Is.EqualTo((1, 3, 1, 2, 1, 1, 2, 4)));
+            Is.EqualTo((1, 4, 1, 2, 1, 1, 2, 4)));
 
         return map;
     }
@@ -1793,6 +1931,14 @@ public sealed class CustomMapTests
                     Assert.That(army.StackError ?? CustomMapStackError.NoLeader, Is.EqualTo(placed), $"army of {owner} at {tile}");
                     Assert.That(army.Tiles.Single().Status == CustomMapTileStatus.Blocked, Is.EqualTo(army.StackError is not null), $"army at {tile}");
                 }
+
+                // Sea creatures: the preview for a sea army gives the error a real sea army gets.
+                CustomMapPlacementPreview sea = map.PreviewStack(tile, WorldRace.Neutral, sea: true);
+                CustomMapStackError? seaPlaced = map.Clone().PlaceStack(tile, WorldRace.Neutral, Slots((GridPosition.FrontCenter, SeaLeader))).Error;
+                Assert.That(sea.StackError, Is.EqualTo(seaPlaced), $"sea army at {tile}");
+                Assert.That(TilesWith(sea, CustomMapTileStatus.Blocked).Count > 0, Is.EqualTo(seaPlaced is not null), $"sea army at {tile}");
+                (int seaFits, int seaBlocked) = counts.GetValueOrDefault("sea army");
+                counts["sea army"] = seaPlaced is null ? (seaFits + 1, seaBlocked) : (seaFits, seaBlocked + 1);
             }
         }
 
@@ -1922,11 +2068,14 @@ public sealed class CustomMapTests
         CustomMapPlacementPreview onElves = map.PreviewCapital(WorldRace.Human, new WorldPosition(36, 4));
         Assert.That((onElves.Error, ReasonAt(onElves, 38, 4)), Is.EqualTo((CustomMapPlacementError.Blocked, CustomMapTileReason.Structure)));
 
-        // Brushes: Water leaves armies alone and removes a touched mountain whole; Mountains shows its blocks.
+        // Brushes: Water paints under armies (they sail) and removes a touched mountain whole; Land keeps the open
+        // water around a sea creature; Mountains shows its blocks.
         CustomMapPlacementPreview water = map.PreviewPaint(new WorldPosition(17, 17), 0, CustomMapBrush.Water);
         Assert.That(water.RemovedMountains, Has.Length.EqualTo(1));
         Assert.That(TilesWith(water, CustomMapTileStatus.Changes), Has.Count.EqualTo(9));
-        Assert.That(ReasonAt(map.PreviewPaint(new WorldPosition(14, 12), 1, CustomMapBrush.Water), 14, 12), Is.EqualTo(CustomMapTileReason.Army));
+        Assert.That(ReasonAt(map.PreviewPaint(new WorldPosition(14, 12), 1, CustomMapBrush.Water), 14, 12), Is.EqualTo(CustomMapTileReason.None));
+        CustomMapPlacementPreview land = map.PreviewPaint(new WorldPosition(27, 25), 1, CustomMapBrush.Land);
+        Assert.That((ReasonAt(land, 26, 25), ReasonAt(land, 27, 25)), Is.EqualTo((CustomMapTileReason.SeaArmy, CustomMapTileReason.None)));
         CustomMapPlacementPreview peaks = map.PreviewPaint(new WorldPosition(40, 26), 4, CustomMapBrush.Mountain);
         Assert.That(peaks.NewMountains, Is.EqualTo(new[] { new WorldFootprint(new WorldPosition(36, 22), 5, 5) }));
         Assert.That(TilesWith(peaks, CustomMapTileStatus.Ok), Has.Count.EqualTo(25));
