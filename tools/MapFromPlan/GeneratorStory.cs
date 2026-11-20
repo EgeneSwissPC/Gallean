@@ -567,6 +567,35 @@ internal sealed partial class Generator
             }
         }
 
+        // Spawners: bands that gather in a zone of their own (a sea lane, a haunted isle) with no village to own;
+        // one at a time, stronger by stage like the village bands.
+        int spawners = 0;
+
+        foreach (JsonNode spawner in Plan.List(life["spawners"]))
+        {
+            string name = Plan.Text(spawner["name"]);
+            int zone = AddZone(name, ZoneCenter(spawner["at"]!), Plan.Integer(spawner["radius"], 2));
+            JsonObject army = Template(Plan.Text(spawner["army"]));
+            int tier = Plan.Integer(spawner["tier"], 1);
+
+            for (int s = 0; s < stages.Length; s++)
+            {
+                string stage = Plan.Text(stages[s]["name"], $"stage {s + 1}");
+                (int min, int max) = Range(s);
+                CustomMapArmyOrder order = Plan.Text(spawner["order"], "DefendZone") == "Roam" ? new CustomMapArmyOrder(CustomMapOrderKind.Roam) : new CustomMapArmyOrder(CustomMapOrderKind.DefendZone, LocationId: zone);
+                int band = AddTemplate($"{name} ({stage})", WorldRace.Neutral, BuildArmy(army, TierOf(s, tier)), order);
+                AddEvent($"{name}: they gather ({stage})", [WorldRace.Neutral], once: false, enabled: true, Plan.Integer(spawner["chance"], 50),
+                    [[
+                        new CustomMapTurnCondition(Plan.Integer(spawner["every"], 5), Repeat: true),
+                        new CustomMapVariableCondition(shadow, min, max),
+                        new CustomMapArmyExistsCondition(new CustomMapArmyRef.Template(band), false)
+                    ]],
+                    [new CustomMapCreateArmyEffect(band, zone)]);
+            }
+
+            spawners++;
+        }
+
         int patrols = 0;
 
         foreach (JsonNode patrol in Plan.List(life["patrols"]))
@@ -614,7 +643,7 @@ internal sealed partial class Generator
             patrols++;
         }
 
-        Console.WriteLine($"  neutral life: {villagesWithLife} villages with bands and avengers, {patrols} patrols, {stages.Length} stages");
+        Console.WriteLine($"  neutral life: {villagesWithLife} villages with bands and avengers, {spawners} spawners, {patrols} patrols, {stages.Length} stages");
     }
 
     private void AddStoryEvents()

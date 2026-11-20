@@ -361,6 +361,12 @@ turn 34 (two big neutral kinds about 3 s each). Known limits: different neutral 
 neutral; plain neutrals (spiders, thugs, bears, ...) are one kind; ~~the editor has no water-only units~~ (done, see
 "Task: water armies").
 
+MapFromPlan follow-up (2026-11-20): plans can raise `islands` out of the sea, place sea creatures on open water and
+boats on any water, and add `spawners` (bands in a zone of their own). "The War of the Ring" now has seven isles
+(Himling, Tol Fuin, Meneltarma, Tol Morwen, Tolfalas, the Isle of Osse, Gull Rock), ~90 sea creature armies, sea and
+corsair patrols, and an island quest chain (free four isles, Ulmo's kraken joins you). Round time on the 1024 map:
+9 s on turn 1, 15 s by turn 14 (Release engine, all AI).
+
 ## Task: water armies — done
 
 What was built (2026-11-20; engine `29a50053`, editor `4ced9102`, writer fix `74d42120`, merge `4e0250f4`):

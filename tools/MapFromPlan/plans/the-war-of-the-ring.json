@@ -1402,6 +1402,15 @@
     0
    ],
    "radius": 18
+  },
+  {
+   "name": "Meneltarma",
+   "density": 0.3,
+   "around": [
+    -610,
+    -322
+   ],
+   "radius": 12
   }
  ],
  "forests": [
@@ -1646,6 +1655,26 @@
      -605
     ]
    ],
+   "label": false
+  },
+  {
+   "name": "Tol Fuin pines",
+   "density": 0.8,
+   "around": [
+    -520,
+    -225
+   ],
+   "radius": 22,
+   "label": false
+  },
+  {
+   "name": "Osse woods",
+   "density": 0.5,
+   "around": [
+    10,
+    -750
+   ],
+   "radius": 14,
    "label": false
   }
  ],
@@ -2278,6 +2307,74 @@
    "large": [
     "Grave Golem"
    ]
+  },
+  "sea": {
+   "leaders": [
+    "Sea Serpent",
+    "Mermaid"
+   ],
+   "units": [
+    "Merman",
+    "Mermaid"
+   ],
+   "large": [
+    "Kraken",
+    "Sea Serpent"
+   ]
+  },
+  "krakens": {
+   "leaders": [
+    "Kraken"
+   ],
+   "units": [
+    "Merman"
+   ],
+   "large": [
+    "Kraken",
+    "Sea Serpent"
+   ]
+  },
+  "mermaids": {
+   "leaders": [
+    "Mermaid"
+   ],
+   "units": [
+    "Merman",
+    "Mermaid"
+   ],
+   "large": []
+  },
+  "werewolves": {
+   "leaders": [
+    "Werewolf"
+   ],
+   "units": [
+    "Ghoul",
+    "Spirit Wolf"
+   ],
+   "large": []
+  },
+  "seaelves": {
+   "leaders": [
+    "Elf Lord"
+   ],
+   "units": [
+    "Forest Elf",
+    "Elf Ranger",
+    "Oracle Elf"
+   ],
+   "large": []
+  },
+  "fisherfolk": {
+   "leaders": [
+    "Spearman"
+   ],
+   "units": [
+    "Peasant",
+    "Spearman",
+    "Man at Arms"
+   ],
+   "large": []
   }
  },
  "villages": [
@@ -2913,6 +3010,50 @@
     990,
     -735
    ]
+  },
+  {
+   "name": "Himling Haven",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    -412,
+    -52
+   ],
+   "garrison": "fisherfolk",
+   "tier": 2
+  },
+  {
+   "name": "Sea-elf Haven",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    -372,
+    -438
+   ],
+   "garrison": "seaelves",
+   "tier": 2
+  },
+  {
+   "name": "Tolfalas Hold",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    562,
+    -838
+   ],
+   "garrison": "corsairs",
+   "tier": 3
+  },
+  {
+   "name": "Gull Rock",
+   "owner": "Neutral",
+   "level": 2,
+   "at": [
+    262,
+    -955
+   ],
+   "garrison": "corsairs",
+   "tier": 3
   }
  ],
  "ruins": [
@@ -3223,6 +3364,61 @@
    "tier": 2,
    "gold": 250,
    "item": "Potion of Healing"
+  },
+  {
+   "name": "Tower of Himling",
+   "at": [
+    -430,
+    -72
+   ],
+   "guards": "wights",
+   "tier": 3,
+   "gold": 800,
+   "item": "Horn of Awareness (Artifact)"
+  },
+  {
+   "name": "Tol Fuin Barrow",
+   "at": [
+    -512,
+    -240
+   ],
+   "guards": "werewolves",
+   "tier": 4,
+   "gold": 1500,
+   "item": "Thanatos Blade (Artifact)"
+  },
+  {
+   "name": "Hallow of Eru",
+   "at": [
+    -604,
+    -336
+   ],
+   "guards": "oathbreakers",
+   "tier": 5,
+   "gold": 3000,
+   "item": "Holy Chalice (Artifact)"
+  },
+  {
+   "name": "Corsair Cache",
+   "at": [
+    554,
+    -848
+   ],
+   "guards": "corsairs",
+   "tier": 2,
+   "gold": 1200,
+   "item": "Sapphire (Valuable)"
+  },
+  {
+   "name": "Osse's Grotto",
+   "at": [
+    -8,
+    -768
+   ],
+   "guards": "marsh",
+   "tier": 3,
+   "gold": 1600,
+   "item": "Orb of Icefall"
   }
  ],
  "sites": [
@@ -3626,6 +3822,76 @@
     ],
     [
      "Brown Bear",
+     2
+    ]
+   ]
+  },
+  {
+   "type": "Merchant",
+   "name": "Pearl Market",
+   "at": [
+    -388,
+    -422
+   ],
+   "greeting": "Pearls, charms of the deep and gifts of the Sea-elves.",
+   "items": [
+    [
+     "Ocean Charm",
+     1
+    ],
+    [
+     "Potion of Water Warding",
+     3
+    ],
+    [
+     "Orb of Water",
+     2
+    ],
+    [
+     "Boots of the Elements",
+     1
+    ],
+    [
+     "Potion of Healing",
+     6
+    ]
+   ]
+  },
+  {
+   "type": "MageTower",
+   "name": "Shrine of Ulmo",
+   "at": [
+    -366,
+    -446
+   ],
+   "greeting": "The Lord of Waters hears all that is spoken by the sea.",
+   "spells": [
+    "Drown",
+    "Seafaring",
+    "Ice shield",
+    "Water ward",
+    "Winds of travel"
+   ]
+  },
+  {
+   "type": "Mercenaries",
+   "name": "Mariners' Guild",
+   "at": [
+    12,
+    -748
+   ],
+   "greeting": "Free mariners of the southern isles. We sail for gold.",
+   "mercenaries": [
+    [
+     "Man at Arms",
+     3
+    ],
+    [
+     "Spearman",
+     3
+    ],
+    [
+     "Wizard",
      2
     ]
    ]
@@ -5013,6 +5279,108 @@
    "search": 5,
    "bounty": "Banner of Might",
    "bountyText": "Azog's line is broken at the gates of Khazad-dum."
+  },
+  {
+   "name": "Kraken of the West",
+   "template": "krakens",
+   "tier": 5,
+   "at": [
+    -585,
+    -310
+   ],
+   "search": 10,
+   "bounty": "Staff of Tempest",
+   "bountyText": "The great kraken sinks into the deep. Something gleams where it rose: a staff that commands the storm."
+  },
+  {
+   "name": "Ulmo's Herald",
+   "template": "krakens",
+   "tier": 4,
+   "at": [
+    -420,
+    -470
+   ],
+   "search": 10
+  },
+  {
+   "name": "Sea Serpent of Belfalas",
+   "template": "sea",
+   "tier": 3,
+   "at": [
+    610,
+    -870
+   ],
+   "search": 10
+  },
+  {
+   "name": "Watcher in the Water",
+   "template": "krakens",
+   "tier": 3,
+   "at": [
+    436,
+    -250
+   ],
+   "search": 5
+  },
+  {
+   "name": "Nurnen Serpent",
+   "template": "sea",
+   "tier": 2,
+   "at": [
+    1060,
+    -720
+   ],
+   "search": 8
+  },
+  {
+   "name": "Sea of Rhun Serpent",
+   "template": "sea",
+   "tier": 2,
+   "at": [
+    1150,
+    -120
+   ],
+   "search": 10
+  },
+  {
+   "name": "Long Lake Mermaids",
+   "template": "mermaids",
+   "tier": 1,
+   "at": [
+    884,
+    180
+   ],
+   "search": 8
+  },
+  {
+   "name": "Draugluin's Brood",
+   "template": "werewolves",
+   "tier": 4,
+   "at": [
+    -528,
+    -218
+   ],
+   "search": 6
+  },
+  {
+   "name": "Osse's Wrath",
+   "template": "krakens",
+   "tier": 4,
+   "at": [
+    60,
+    -800
+   ],
+   "search": 10
+  },
+  {
+   "name": "Southern Serpent",
+   "template": "sea",
+   "tier": 3,
+   "at": [
+    180,
+    -880
+   ],
+   "search": 10
   }
  ],
  "armyScatter": [
@@ -5986,6 +6354,141 @@
      "Healing scroll"
     ]
    }
+  },
+  {
+   "name": "Belegaer",
+   "templates": [
+    "sea",
+    "mermaids",
+    "sea",
+    "krakens"
+   ],
+   "tier": [
+    1,
+    3
+   ],
+   "count": 45,
+   "polygon": [
+    [
+     -330,
+     200
+    ],
+    [
+     -300,
+     100
+    ],
+    [
+     -310,
+     -100
+    ],
+    [
+     -290,
+     -180
+    ],
+    [
+     -200,
+     -300
+    ],
+    [
+     -100,
+     -390
+    ],
+    [
+     0,
+     -460
+    ],
+    [
+     100,
+     -530
+    ],
+    [
+     200,
+     -610
+    ],
+    [
+     250,
+     -700
+    ],
+    [
+     330,
+     -760
+    ],
+    [
+     -700,
+     -760
+    ],
+    [
+     -700,
+     200
+    ]
+   ],
+   "spacing": 8,
+   "water": true
+  },
+  {
+   "name": "Bay of Belfalas",
+   "templates": [
+    "sea",
+    "mermaids"
+   ],
+   "tier": [
+    1,
+    2
+   ],
+   "count": 12,
+   "polygon": [
+    [
+     420,
+     -800
+    ],
+    [
+     740,
+     -850
+    ],
+    [
+     760,
+     -950
+    ],
+    [
+     420,
+     -950
+    ]
+   ],
+   "spacing": 8,
+   "water": true
+  },
+  {
+   "name": "Southern Belegaer",
+   "templates": [
+    "sea",
+    "mermaids",
+    "krakens"
+   ],
+   "tier": [
+    1,
+    3
+   ],
+   "count": 20,
+   "polygon": [
+    [
+     -300,
+     -650
+    ],
+    [
+     400,
+     -800
+    ],
+    [
+     700,
+     -1000
+    ],
+    [
+     -200,
+     -1000
+    ]
+   ],
+   "spacing": 8,
+   "water": true
   }
  ],
  "bagScatter": [
@@ -6052,6 +6555,21 @@
     "Orb of Fire",
     "Talisman of Strength",
     "Banner of Fortitude"
+   ]
+  },
+  {
+   "name": "Pirate hoard",
+   "count": 6,
+   "around": [
+    260,
+    -960
+   ],
+   "radius": 14,
+   "items": [
+    "Gold Ring (Valuable)",
+    "Ruby (Valuable)",
+    "Sapphire (Valuable)",
+    "Potion of Might"
    ]
   }
  ],
@@ -6387,11 +6905,63 @@
     -240
    ],
    "radius": 3
+  },
+  {
+   "name": "Belegaer",
+   "at": [
+    -350,
+    -260
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Tol Fuin shore",
+   "at": [
+    -520,
+    -230
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Meneltarma summit",
+   "at": [
+    -610,
+    -330
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Ulmo's waters",
+   "at": [
+    -420,
+    -470
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Osse's shore",
+   "at": [
+    0,
+    -760
+   ],
+   "radius": 3
+  },
+  {
+   "name": "Southern sea",
+   "at": [
+    150,
+    -860
+   ],
+   "radius": 3
   }
  ],
  "variables": [
   {
    "name": "Beacons lit",
+   "initial": 0
+  },
+  {
+   "name": "Isles of the West",
    "initial": 0
   }
  ],
@@ -6831,6 +7401,153 @@
      ]
     ],
     "home": "@Woses' Hold"
+   },
+   {
+    "name": "Serpent run",
+    "army": "sea",
+    "tier": 2,
+    "path": [
+     [
+      -360,
+      -200
+     ],
+     [
+      -470,
+      -300
+     ],
+     [
+      -400,
+      -410
+     ],
+     [
+      -320,
+      -300
+     ]
+    ]
+   },
+   {
+    "name": "Corsair galley",
+    "army": "corsairs",
+    "tier": 2,
+    "path": [
+     [
+      760,
+      -900
+     ],
+     [
+      650,
+      -875
+     ],
+     [
+      560,
+      -870
+     ],
+     [
+      690,
+      -890
+     ]
+    ],
+    "home": "@Umbar"
+   },
+   {
+    "name": "Tolfalas raiders",
+    "army": "corsairs",
+    "tier": 2,
+    "path": [
+     "@Tolfalas Hold",
+     [
+      560,
+      -815
+     ],
+     [
+      610,
+      -830
+     ]
+    ],
+    "home": "@Tolfalas Hold"
+   },
+   {
+    "name": "Pirate galley",
+    "army": "corsairs",
+    "tier": 3,
+    "path": [
+     "@Gull Rock",
+     [
+      150,
+      -900
+     ],
+     [
+      40,
+      -800
+     ],
+     [
+      200,
+      -860
+     ]
+    ],
+    "home": "@Gull Rock"
+   }
+  ],
+  "spawners": [
+   {
+    "name": "Deeps of Numenor",
+    "at": [
+     -590,
+     -300
+    ],
+    "radius": 3,
+    "army": "krakens",
+    "tier": 3,
+    "every": 6,
+    "chance": 50
+   },
+   {
+    "name": "Belfalas shoals",
+    "at": [
+     600,
+     -880
+    ],
+    "radius": 3,
+    "army": "sea",
+    "tier": 1,
+    "every": 5,
+    "chance": 50
+   },
+   {
+    "name": "Lindon sea lanes",
+    "at": [
+     -360,
+     -150
+    ],
+    "radius": 3,
+    "army": "mermaids",
+    "tier": 1,
+    "every": 5,
+    "chance": 50
+   },
+   {
+    "name": "Tol Fuin howling",
+    "at": [
+     -520,
+     -232
+    ],
+    "radius": 2,
+    "army": "werewolves",
+    "tier": 2,
+    "every": 6,
+    "chance": 40
+   },
+   {
+    "name": "Osse's deep",
+    "at": [
+     60,
+     -805
+    ],
+    "radius": 3,
+    "army": "sea",
+    "tier": 2,
+    "every": 6,
+    "chance": 50
    }
   ]
  },
@@ -7630,6 +8347,278 @@
      "zone": "Long Lake shore"
     }
    ]
+  },
+  {
+   "name": "The Sundering Sea",
+   "races": "all",
+   "when": [
+    {
+     "enterZone": "Belegaer"
+    }
+   ],
+   "then": [
+    {
+     "message": "Gulls cry over the Sundering Sea. The old isles keep their secrets: the watchtower of Himling, the werewolf isle of Tol Fuin, the peak of drowned Numenor, the corsairs' nest on Tolfalas and Osse's grotto in the southern sea. Whoever frees four of them may hear the Lord of Waters.",
+     "audience": "Triggerer",
+     "portrait": "Mermaid"
+    },
+    {
+     "reveal": "Meneltarma summit",
+     "races": "all"
+    },
+    {
+     "objective": "Optional: free four of the five isles of the West, then Ulmo will answer."
+    }
+   ]
+  },
+  {
+   "name": "Isles: Himling",
+   "races": "all",
+   "when": [
+    {
+     "lootRuin": "Tower of Himling"
+    }
+   ],
+   "then": [
+    {
+     "message": "The old watchtower of Himling is yours. From its top the whole western sea lies open.",
+     "audience": "Triggerer",
+     "portrait": "Specter"
+    },
+    {
+     "setVariable": "Isles of the West",
+     "op": "Add",
+     "value": 1
+    },
+    {
+     "reveal": "Belegaer",
+     "races": "all"
+    }
+   ]
+  },
+  {
+   "name": "Isles: Tol Fuin",
+   "races": "all",
+   "when": [
+    {
+     "lootRuin": "Tol Fuin Barrow"
+    }
+   ],
+   "then": [
+    {
+     "message": "The barrow of the werewolves is broken open and the pines of Tol Fuin fall silent.",
+     "audience": "Triggerer",
+     "portrait": "Werewolf"
+    },
+    {
+     "setVariable": "Isles of the West",
+     "op": "Add",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "name": "Isles: Meneltarma",
+   "races": "all",
+   "when": [
+    {
+     "lootRuin": "Hallow of Eru"
+    }
+   ],
+   "then": [
+    {
+     "message": "On the summit of the Pillar of Heaven, the last of drowned Numenor, the hallow is opened. Far in the west a straight road seems to run on into the sky.",
+     "audience": "AllPlayers",
+     "portrait": "White Wizard"
+    },
+    {
+     "setVariable": "Isles of the West",
+     "op": "Add",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "name": "Isles: Tolfalas",
+   "races": "all",
+   "when": [
+    {
+     "ownCity": "@Tolfalas Hold"
+    }
+   ],
+   "then": [
+    {
+     "message": "The corsairs' nest on Tolfalas burns. The Bay of Belfalas is safer for a while.",
+     "audience": "Triggerer",
+     "portrait": "Squire"
+    },
+    {
+     "setVariable": "Isles of the West",
+     "op": "Add",
+     "value": 1
+    }
+   ]
+  },
+  {
+   "name": "Ulmo answers",
+   "races": "all",
+   "when": [
+    {
+     "variable": "Isles of the West",
+     "min": 4
+    }
+   ],
+   "then": [
+    {
+     "message": "The sea rises and a great voice speaks out of the waves: the Lord of Waters has seen your deeds. His herald, the kraken of the deep, will fight for you.",
+     "audience": "AllPlayers",
+     "portrait": "Kraken"
+    },
+    {
+     "changeOwner": "army:Ulmo's Herald",
+     "to": "triggerer"
+    },
+    {
+     "giveItem": "Ocean Charm"
+    },
+    {
+     "giveSpell": "Seafaring"
+    }
+   ]
+  },
+  {
+   "name": "Draugluin's brood",
+   "races": "all",
+   "when": [
+    {
+     "enterZone": "Tol Fuin shore"
+    }
+   ],
+   "then": [
+    {
+     "message": "Howls rise among the black pines. The werewolves of Tol Fuin come down to the shore!",
+     "audience": "Triggerer",
+     "portrait": "Werewolf"
+    },
+    {
+     "battle": "army:Draugluin's Brood"
+    }
+   ]
+  },
+  {
+   "name": "The Kraken stirs",
+   "races": "all",
+   "once": false,
+   "chance": 40,
+   "when": [
+    {
+     "enterZone": "Meneltarma summit"
+    },
+    {
+     "armyExists": "army:Kraken of the West"
+    }
+   ],
+   "then": [
+    {
+     "message": "The water boils around the drowned peak. The Kraken of the West is awake.",
+     "audience": "Triggerer",
+     "portrait": "Kraken"
+    },
+    {
+     "castSpellZone": "Drown",
+     "zone": "Meneltarma summit"
+    }
+   ]
+  },
+  {
+   "name": "A sailor's tale",
+   "races": "all",
+   "when": [
+    {
+     "visitSite": "Pearl Market"
+    }
+   ],
+   "then": [
+    {
+     "message": "An old Sea-elf tells of a plain gold ring hidden under the Misty Mountains, and of a mountain of fire far in the east where it was made.",
+     "audience": "Triggerer",
+     "portrait": "Elf Lord"
+    },
+    {
+     "reveal": "Mount Doom",
+     "races": "all"
+    }
+   ]
+  },
+  {
+   "name": "The pirate king's chart",
+   "races": "all",
+   "when": [
+    {
+     "ownCity": "@Gull Rock"
+    }
+   ],
+   "then": [
+    {
+     "message": "In the pirate king's chest on Gull Rock: a sea chart marking a grotto on the Isle of Osse, and a heavy gold ring.",
+     "audience": "Triggerer",
+     "portrait": "Squire"
+    },
+    {
+     "reveal": "Osse's shore",
+     "races": "all"
+    },
+    {
+     "giveItem": "Gold Ring (Valuable)"
+    }
+   ]
+  },
+  {
+   "name": "Osse's storm",
+   "races": "all",
+   "once": false,
+   "chance": 35,
+   "when": [
+    {
+     "enterZone": "Southern sea"
+    }
+   ],
+   "then": [
+    {
+     "message": "Osse, servant of the Lord of Waters, does not love sailors. A storm breaks over your ships!",
+     "audience": "Triggerer",
+     "portrait": "Mermaid"
+    },
+    {
+     "castSpellZone": "Tempest",
+     "zone": "Southern sea"
+    }
+   ]
+  },
+  {
+   "name": "Osse's Grotto",
+   "races": "all",
+   "when": [
+    {
+     "lootRuin": "Osse's Grotto"
+    }
+   ],
+   "then": [
+    {
+     "message": "Deep in the grotto lie the gifts that drowned sailors left to Osse. The storms around the isle die down.",
+     "audience": "Triggerer",
+     "portrait": "Mermaid"
+    },
+    {
+     "switch": "Osse's storm",
+     "on": false
+    },
+    {
+     "setVariable": "Isles of the West",
+     "op": "Add",
+     "value": 1
+    }
+   ]
   }
  ],
  "labels": [
@@ -7725,13 +8714,6 @@
    ]
   },
   {
-   "text": "Belegaer",
-   "at": [
-    -150,
-    -500
-   ]
-  },
-  {
    "text": "Forochel",
    "at": [
     60,
@@ -7757,6 +8739,41 @@
    "at": [
     800,
     -640
+   ]
+  },
+  {
+   "text": "Belegaer",
+   "at": [
+    -450,
+    -250
+   ]
+  },
+  {
+   "text": "Himling",
+   "at": [
+    -420,
+    -40
+   ]
+  },
+  {
+   "text": "Tol Fuin",
+   "at": [
+    -520,
+    -200
+   ]
+  },
+  {
+   "text": "Meneltarma",
+   "at": [
+    -610,
+    -310
+   ]
+  },
+  {
+   "text": "Tol Morwen",
+   "at": [
+    -380,
+    -410
    ]
   }
  ],
@@ -7858,5 +8875,70 @@
    "Gollum's Cave",
    "Barad-dur"
   ]
+ ],
+ "islands": [
+  {
+   "name": "Himling",
+   "terrain": "Neutral",
+   "around": [
+    -420,
+    -60
+   ],
+   "radius": 30
+  },
+  {
+   "name": "Tol Fuin",
+   "terrain": "Undead",
+   "around": [
+    -520,
+    -230
+   ],
+   "radius": 34
+  },
+  {
+   "name": "Meneltarma",
+   "terrain": "Neutral",
+   "around": [
+    -610,
+    -330
+   ],
+   "radius": 22
+  },
+  {
+   "name": "Tol Morwen",
+   "terrain": "Elf",
+   "around": [
+    -380,
+    -430
+   ],
+   "radius": 28
+  },
+  {
+   "name": "Tolfalas",
+   "terrain": "Neutral",
+   "around": [
+    560,
+    -842
+   ],
+   "radius": 16
+  },
+  {
+   "name": "Isle of Osse",
+   "terrain": "Neutral",
+   "around": [
+    0,
+    -760
+   ],
+   "radius": 26
+  },
+  {
+   "name": "Gull Rocks",
+   "terrain": "Neutral",
+   "around": [
+    260,
+    -960
+   ],
+   "radius": 18
+  }
  ]
-}
+}
