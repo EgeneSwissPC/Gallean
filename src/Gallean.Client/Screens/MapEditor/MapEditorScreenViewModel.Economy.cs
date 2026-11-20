@@ -56,6 +56,24 @@ internal sealed partial class MapEditorScreenViewModel
     private bool showingSpellMarkup;
     private int spellMarkupUndoCount = -1;
 
+    // Neutrals: one side per kind (map rule).
+    [ObservableProperty]
+    public partial bool NeutralKinds { get; set; }
+
+    partial void OnNeutralKindsChanged(bool value)
+    {
+        if (showingSpellMarkup || map.NeutralKinds == value)
+        {
+            return;
+        }
+
+        undoSteps.Push(map.Clone());
+        TrimUndo();
+        map.NeutralKinds = value;
+        CanUndo = true;
+        IsDirty = true;
+    }
+
     private void ShowSpellMarkup()
     {
         showingSpellMarkup = true;
@@ -63,6 +81,7 @@ internal sealed partial class MapEditorScreenViewModel
         try
         {
             SpellMarkupText = map.ForeignSpellMarkup.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            NeutralKinds = map.NeutralKinds;
         }
         finally
         {

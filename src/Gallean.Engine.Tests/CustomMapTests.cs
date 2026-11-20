@@ -1983,4 +1983,51 @@ public sealed class CustomMapTests
         Assert.That(MageSiteCalculator.GetPurchaseInfo(site, army, human, foreign.Id, plainContext).Cost, Is.EqualTo(foreign.PurchaseCost));
         Assert.That(ScenarioLoader.Load(globalDb, ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, new Db.ScenarioId("S135SC0000")), campaignDb, new ScenarioId("S135SC0000"), definitions, globals).Provider.Definition.ForeignSpellMarkup, Is.Zero);
     }
+
+    // Map rule "neutral kinds": each neutral subrace type gets its own neutral player (only one kind per side, kinds
+    // hostile to each other); plain neutrals stay with player 0; off = one neutral player. Survives save and reopen.
+    [Test]
+    public void NeutralKindsTest()
+    {
+        CustomMapUnit Named(string name, bool leader) => CustomMapUnit.From(Units
+            .Where(unit => unit.Race == WorldRace.Neutral && unit.IsLarge == false && (leader ? unit.Category == UnitCategory.Leader : unit.Category != UnitCategory.Leader))
+            .Where(unit => globalDb.Units[new Db.Id(unit.Id.Value)].SubraceType == (name switch { "greenskin" => Db.SubraceType.NeutralGreenSkin, "wolf" => Db.SubraceType.NeutralWolf, _ => Db.SubraceType.Neutral }))
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First());
+
+        CustomMap map = CreateMap();
+        CustomMapStack goblins = map.PlaceStack(new WorldPosition(14, 14), WorldRace.Neutral, Slots((GridPosition.FrontCenter, Named("greenskin", true)))).Stack!;
+        CustomMapStack wolves = map.PlaceStack(new WorldPosition(14, 18), WorldRace.Neutral, Slots((GridPosition.FrontCenter, Named("wolf", true)))).Stack!;
+        CustomMapStack plain = map.PlaceStack(new WorldPosition(18, 14), WorldRace.Neutral, Slots((GridPosition.FrontCenter, Named("plain", true)))).Stack!;
+        CustomMapVillage village = map.PlaceVillage(new WorldPosition(4, 16), 2, WorldRace.Neutral, "Orc town").Village!;
+        Assert.That(map.UpdateVillage(village.Id, 2, WorldRace.Neutral, "Orc town", Slots((GridPosition.FrontCenter, Named("greenskin", false)))), Is.Null);
+        CustomMapArmyTemplate raiders = map.AddTemplate(new CustomMapArmyTemplate(0, "Raiders", WorldRace.Neutral, [.. Slots((GridPosition.FrontCenter, Named("wolf", true)))], CustomMapArmyOrder.Normal));
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+
+        WorldPlayerId OwnerOfStack(WorldState state, int id) => state.Stacks[new WorldStackId(CustomMapWriter.GetArmyStackId(map.Id, id))].OwnerId;
+        Scenario Load() => ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables());
+
+        // Off: one neutral player owns everything neutral.
+        store.Save(map);
+        Assert.That(Load().State.Players.Values.Count(player => player.Race == WorldRace.Neutral), Is.EqualTo(1));
+
+        map.NeutralKinds = true;
+        store.Save(map);
+        Scenario scenario = Load();
+        WorldState state = scenario.State;
+        Assert.That(state.Players.Values.Count(player => player.Race == WorldRace.Neutral), Is.EqualTo(3), "Player 0, greenskins, wolves.");
+        WorldPlayerId greenskins = OwnerOfStack(state, goblins.Id);
+        WorldPlayerId wolfSide = OwnerOfStack(state, wolves.Id);
+        WorldPlayerId primary = OwnerOfStack(state, plain.Id);
+        Assert.That(new[] { greenskins, wolfSide, primary }.Distinct().Count(), Is.EqualTo(3));
+        Assert.That(primary, Is.EqualTo(WorldCommandHelpers.GetNeutralPlayerId(state)), "Plain neutrals stay with the primary neutral player.");
+        Assert.That(((WorldCity)state.Fortifications[new WorldFortificationId(CustomMapWriter.GetVillageId(map.Id, village.Id))]).OwnerId, Is.EqualTo(greenskins), "An orc garrison makes it a greenskin village.");
+        Assert.That(state.Players[scenario.Provider.StackTemplates.Single().OwnerId].Id, Is.EqualTo(wolfSide), "A wolf-led template joins the wolves.");
+        Assert.That((DiplomacyCalculator.IsHostile(state, greenskins, wolfSide), DiplomacyCalculator.IsHostile(state, greenskins, primary)), Is.EqualTo((true, true)));
+        Assert.That(state.Players.Values.Where(player => player.Race != WorldRace.Neutral).Select(player => player.Race), Is.EquivalentTo(new[] { WorldRace.Human, WorldRace.Elf }));
+
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That((reopened.NeutralKinds, reopened.Stacks.Count(stack => stack.Owner == WorldRace.Neutral), reopened.Villages.Single().Owner), Is.EqualTo((true, 3, WorldRace.Neutral)));
+        Assert.That(raiders.Id, Is.EqualTo(1));
+    }
 }

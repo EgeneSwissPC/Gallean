@@ -99,6 +99,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             CustomMapEventsFile.ReadTemplates(Path.Combine(mapsDirectory, info.ScenarioId.Value, CustomMapEventsFile.FileName)),
             CustomMapEventsFile.ReadVariables(Path.Combine(mapsDirectory, info.ScenarioId.Value, CustomMapEventsFile.FileName)));
         map.SetForeignSpellMarkup(scenario.Provider.Definition.ForeignSpellMarkup);
+        map.NeutralKinds = database.ScenarioRulesByScenario[info.ScenarioId].FirstOrDefault()?.NeutralKinds ?? false;
 
         return map;
     }

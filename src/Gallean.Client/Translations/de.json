@@ -1348,6 +1348,9 @@
     "to capture": "to capture",
     "Mage towers": "Mage towers",
     "Spells of other races cost more by": "Spells of other races cost more by",
-    "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.": "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source."
+    "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.": "Allies trading a spell in diplomacy still ask its normal price, so allies become the cheaper source.",
+    "Neutrals": "Neutrals",
+    "Each kind of neutral is its own side": "Each kind of neutral is its own side",
+    "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.": "Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side."
   }
 }

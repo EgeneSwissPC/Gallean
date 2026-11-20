@@ -10,6 +10,7 @@ public static partial class Db
     public record ScenarioRules(
         [property: ScenarioKey, JsonPropertyName("NO_SCEN")] ScenarioId ScenarioId,
         [property: DataKey, JsonPropertyName("RULES_ID")] Id RulesId,
-        [property: JsonPropertyName("SPELL_MARKUP")] int ForeignSpellMarkup
+        [property: JsonPropertyName("SPELL_MARKUP")] int ForeignSpellMarkup,
+        [property: JsonPropertyName("NEUTRAL_KINDS")] bool NeutralKinds
     );
 }

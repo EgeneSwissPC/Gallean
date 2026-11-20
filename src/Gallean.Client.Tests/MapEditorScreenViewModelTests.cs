@@ -1375,9 +1375,18 @@ public sealed class MapEditorScreenViewModelTests
         editor.UndoCommand.Execute(null);
         Assert.That((editor.Map.ForeignSpellMarkup, editor.SpellMarkupText), Is.EqualTo((0, "0")), "One undo step for the typing.");
 
+        // Neutral kinds: a checkbox, one undo step.
+        Assert.That(editor.NeutralKinds, Is.False);
+        editor.NeutralKinds = true;
+        Assert.That(editor.Map.NeutralKinds, Is.True);
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.NeutralKinds, editor.NeutralKinds), Is.EqualTo((false, false)));
+        editor.NeutralKinds = true;
+
         editor.SpellMarkupText = "50";
         editor.SaveCommand.Execute(null);
-        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).ForeignSpellMarkup, Is.EqualTo(50));
+        CustomMap saved = loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions);
+        Assert.That((saved.ForeignSpellMarkup, saved.NeutralKinds), Is.EqualTo((50, true)));
     }
 
     [Test]
