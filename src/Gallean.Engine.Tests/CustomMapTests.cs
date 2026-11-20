@@ -502,6 +502,24 @@ public sealed class CustomMapTests
         Assert.That(session.World.State.Stacks[boat.Id].Position, Is.EqualTo(new WorldPosition(21, 25)));
     }
 
+    // Callers may put one unit object into several slots (the editor makes a new one per slot, a script may not):
+    // the writer keeps every slot's unit, so the game loads all of them.
+    [Test]
+    public void SharedUnitObjectTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        CustomMapUnit soldier = NeutralSoldier;
+
+        Assert.That(map.PlaceStack(new WorldPosition(20, 40), WorldRace.Neutral, Slots((GridPosition.FrontCenter, NeutralLeader), (GridPosition.BackTop, soldier), (GridPosition.BackBottom, soldier))).Error, Is.Null);
+        store.Save(map);
+
+        WorldState state = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables()).State;
+        WorldStack stack = state.Stacks.Values.Single(candidate => candidate.Position == new WorldPosition(20, 40));
+        Assert.That((stack.Units[GridPosition.BackTop]?.DefinitionId, stack.Units[GridPosition.BackBottom]?.DefinitionId), Is.EqualTo((soldier.TypeId, soldier.TypeId)));
+        Assert.That(stack.Units[GridPosition.BackTop], Is.Not.SameAs(stack.Units[GridPosition.BackBottom]));
+    }
+
     [Test]
     public void MoveUnitTest()
     {
