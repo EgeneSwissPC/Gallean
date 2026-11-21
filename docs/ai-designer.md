@@ -1,6 +1,6 @@
 # AI designer: a mode for building your own AIs
 
-gallean-upgrade only. Status: spec, nothing built yet. Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
+gallean-upgrade only. Status: phase 1 done (engine: designed map AIs). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
 done) and the world AI diagram in `docs/ai/`.
 
 ## Decisions
@@ -17,6 +17,8 @@ done) and the world AI diagram in `docs/ai/`.
   their own designer, and they are picked separately (Map AI / Battle AI), like today.
 - A designed AI shows up wherever an AI can be picked: the Settings drop-downs, the AI players panel (race screen and
   game menu) and the tournament tool.
+- **Stage switching: only the first true stage plays** (open question U, taken as recommended because phase 1 needs it; reversible later by letting stages add up).
+- **Priority tiers instead of a strict order** (phase 1): the economy and army slots are lists of *tiers*; blocks in one tier share a priority and compare scores, like Classic's attack / thief / rod / enter city / take bag. Without tiers a copy of Classic couldn't play like Classic. The designer screen will show a tier as blocks side by side in one row.
 - A save or setting that names a designed AI you don't have plays Classic+ (the designed AI's file is not part of the
   save; see open question W for sharing).
 
@@ -139,8 +141,8 @@ way.
 
 ## Phases (rough sizes)
 
-1. Engine: designed map AI document + files, stage conditions (the five), complete profile (all priorities, switch
-   off), `DesignedWorldAiBrain`, registry source, tournament `--ais`. ~2–3 days.
+1. ~~Engine: designed map AI document + files, stage conditions (the five), complete profile (all priorities, switch
+   off), `DesignedWorldAiBrain`, registry source, tournament `--ais`. ~2–3 days.~~ Done.
 2. Client: AI editor mode, main-menu button, AI list screen. ~1 day.
 3. Client: map AI designer screen (palette, stage cards, drag and drop, fields, save/undo, broken-block marks).
    ~4 days.
@@ -162,7 +164,7 @@ The lookahead AI (`ai-switching.md` phase 6) can later become a block ("think ah
 - **T.** First set of new behaviour blocks. Candidates: keep N armies home (guard the capital), gather before
   attacking (wait until N armies stand together), rush the nearest enemy capital, keep N gold in reserve, prefer
   leader type X, raid with thieves, patrol own cities. Recommendation: the first four, as one phase.
-- **U.** Stage switching: only the first true stage plays, or can several be active (later cards adding to earlier
+- ~~**U.** Stage switching~~ -> first true stage only (phase 1). Old text: Stage switching: only the first true stage plays, or can several be active (later cards adding to earlier
   ones)? Recommendation: first true stage only; easier to read.
 - **V.** Should the AI see a stage change (e.g. a message "the Undead change their strategy")? Recommendation: no
   message in the game; the designer's Test shows how often each stage was active.
@@ -170,3 +172,15 @@ The lookahead AI (`ai-switching.md` phase 6) can later become a block ("think ah
   Recommendation: both; export/import in phase 2's list screen, maps in phase 7.
 - **X.** When Lookahead is decided (`ai-switching.md` questions H–K), does it become a block here instead of a
   separate AI? Recommendation: yes, a "think ahead" rule block with a time budget.
+
+## Phase 1 — done
+
+Commit f9a1bff8, merged in 7bbcb0bb.
+
+- Model (`src/Gallean.Engine/Ai/Designer/`): `DesignedWorldAi` (ID `custom:<file name>`, name, stages), `DesignedWorldStage` (name; When = OR of AND groups, empty = always; `Economy` and `Army` as priority tiers; `DesignedWorldRules`: hurt %, healed %, reinforce %, attack power %, leader savings gold, wait for a free capital, null = Classic's value), `DesignedStageCondition` (FromTurn, GoldAbove, CitiesBelow, EnemyNearCapital(tiles), LostCity), `WorldAiActionKind` (5 economy + 10 army actions; change order always runs at 0). `DesignedWorldAi.FromClassic` = one default stage with Classic's order.
+- Engine: `WorldAiProfile.Priorities` (when set, every action's priority comes from it and missing actions are never done; null = Classic's constants, so Classic and the personalities are unchanged). `DesignedStageEvaluator` finds the active stage (first true When; none -> Classic) and turns it into a profile (economy tiers end at 0, army tiers at 1). `DesignedWorldAiBrain` plays it through the Classic controller. "I lost a city": `WorldAiMemory.OwnedCities` + `LostCityTurn` (init props, saved; the brain compares at the first action of a turn). "Enemy near capital" counts hostile armies on explored tiles within N tiles of the capital entrance (same fog as Classic).
+- Files: `DesignedWorldAiStore` (one JSON file per AI, `Utf8JsonWriter`/`JsonDocument` for AOT, temp file + move on save, broken files skipped, unknown condition/action kinds skipped). Registry: `AiBrainRegistry.SetDesignedWorldAis` adds them after the built-ins in `WorldBrains`; a missing `custom:` ID resolves to Classic+.
+- Tournament: `--ais <dir>`, `--ai custom:<name>`, `--new-ai <dir> <name>` (writes a Classic copy to edit by hand); example `tools/AiTournament/examples/turtle-then-strike.json` (3 stages: take a lost city back / from turn 20 strike / build up).
+- Tests: `DesignedWorldAiTests` (12: file round trip, unknown kinds skipped, store save/list/delete with a broken file, Classic stage = Classic's priorities, rules -> profile, Classic copy chooses the same commands and scores as Classic for 5 actions, a left-out action is never done, each condition, first true stage wins / no stage -> null, lost city noticed at turn start, memory survives a save, registry incl. missing -> Classic+). Suite 5341.
+- Tournament checks: S099, 8 games x 50 turns: Classic before phase 1, Classic after, and `custom:classic-copy` give the same results (CSV identical apart from the AI name columns). `turtle-then-strike` vs Classic: S100 12 games 3 wins / 2.4 cities (Classic 5 / 2.6); S099 6 games first capture turn 26 (28.6). It plays and differs; it isn't tuned.
+- Not done here (by plan): no client yet (phase 2: AI editor mode and list), so designed AIs are only reachable through the tournament tool for now; no real-client run in this phase.
