@@ -20,6 +20,10 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- Phase 3 decisions (2026-11-21): the owner row uses the races' round lord portraits from the diplomacy screen
+  (and a neutral leader's face for the neutrals): the game's race select screen has no race banners, so "banners"
+  in SC2 became portraits. The difficulty picker (user, before phase 3) sits in the battlefield panel and travels
+  in `BattleBenchSetup.Difficulty`. A capital garrison gets the race's guardian automatically (game rule).
 - Phase 2 decision: the bench fixes the game difficulty (default Average) instead of taking it from the host map,
   because it sets the computer players' accuracy and experience bonuses (S099 is Very hard, generated maps
   Average). The sandbox screen can offer a difficulty picker later; the tool has `--difficulty`.
@@ -173,7 +177,7 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
    with all five races, the neutrals, a city and every capital; `tools/AiTournament --battle` uses it by default
    (`--map` keeps a built-in host). Margin of error in the results (bench + tool). Pure engine: full suite, no
    client check.
-3. **Sandbox setup screen** (~2 days): main-menu entry below AI editor; two army panels (map editor army grid and
+3. ~~**Sandbox setup screen**~~ (done, see "Phase 3 — done"; ~2 days): main-menu entry below AI editor; two army panels (map editor army grid and
    unit picker, "Anything goes" checkbox with a red rule line), owner picker with race banners, battlefield panel
    (Open / City + level picture / Capital, "as garrison"), AI per side, Swap sides, presets (save, load, delete).
 4. **Leader items and upgrades on screen** (~1.5 days): the army tab's 7 equipment slots with a fitting-items
@@ -337,3 +341,49 @@ suite; the real-client check moves to phase 3.
   the level, as before.
 - The margin is shown symmetric (± half-width) around the measured share; the true Wilson interval is slightly
   skewed near 0 % and 100 %.
+
+## Phase 3 — done (setup screen)
+
+Merged in d50ef2d6 (feature 984b5f7b, layout fix 07eaa303).
+
+### What was built
+- Main menu: "Battle sandbox" below "AI editor" (`GameViewModel.BattleSandbox.cs`; loads the generated host map
+  as an editor game for unit lists and leader panels, plus the bench).
+- `Screens/BattleSandbox/`: `BattleSandboxScreenViewModel` (derives from the map editor's
+  `MapEditorUnitsScreenViewModel`, so unit list, drag and drop, Remove zone and level bar are the map editor's own)
+  and `BattleSandboxSideViewModel` per side: owner row (Empire, Undead, Legions, Clans, Elves, Neutrals), party grid
+  with leadership, Battle AI drop-down, "Anything goes", "Save as" + Save, "Saved armies" + Load / Delete.
+  Battlefield panel: Open field / City / Capital, round city or capital picture from the city screen, city level
+  − / +, "Defends as the garrison", difficulty, Swap sides. Problems show in one line under the panels, naming the
+  side.
+- Shared map editor code: `MapEditorUnitGroup.Kind` settable (defender army ↔ garrison) and `AllowsAnything`
+  (skips the group rules and the leader-first step); always off in the map editor.
+- Engine: `AiBattleBench.CreateHostMap`, `GetGuardian(race)`, `BattleBenchSetup.Difficulty`.
+- Presets in `~/.local/share/GalleanUpgrade/Battles/armies/` (`AppDirectories.BattleArmies`), the same JSON the
+  command-line bench reads.
+- 28 new UI strings in all 7 catalogs (ru translated), plus the missing "Loading…".
+
+### Tests
+- `BattleSandboxTests` (6, client): opens from the main menu with defaults; building armies through the real unit
+  list (leader first, levels via the level bar); "Anything goes" allows a 4th soldier for a Pegasus Knight and an
+  army without a leader, and switching it off brings the rule back; battlefield (city level, garrison forbids a
+  leader, capital garrison gets the guardian and loses it again, neutral capital refused before the garrison's
+  own problem, Elves as owners, difficulty in the setup); Swap sides swaps everything; presets save, load on the
+  other side, list in a new screen, delete.
+- Engine: `AiBattleBenchTests` 24 (difficulty per setup added to an existing test).
+- Visual `BattleSandboxTest` (main menu, empty, city, capital, problem, Russian) reviewed at 1366x768: the first
+  run showed the defender panel cut off on the right and the side problem text crowding the panel; fixed
+  (narrower panels, problems in one line under the panels). `MainMenuTest` passes; the extra entry fits.
+- Full non-visual suite: 5400 passed (5394 + 6), none failed.
+- Real client (AOT build, Debian 12 image, 1920x1080): main menu → Battle sandbox opens; clicked an empty slot →
+  leader list → Pegasus Knight; added an Acolyte; typed "Raiders" in Save as and saved → `Battles/armies/Raiders.json`
+  written with both units (AOT-safe JSON confirmed); City and Capital + garrison showed the city/capital picture and
+  the guardian in the defender's grid.
+
+### Known limits
+- No large leader portrait/stat panel like the map editor's army screen (no room for two at 1366 px); right-click a
+  unit for its details.
+- A new army's leader lands front center whatever slot was clicked (map editor behaviour).
+- In Russian the "Saved armies" drop-down is narrow next to the longer Load/Delete labels (long names are cut).
+- Delete removes a preset without asking.
+- Watch battle and Run N come in phases 6 and 5; leader items in phase 4.
