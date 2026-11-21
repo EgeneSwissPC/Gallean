@@ -20,6 +20,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- SB (user, 2026-11-21): game rules by default, "Anything goes" checkbox per army.
 - SA (user, 2026-11-21): the sandbox is its own main-menu entry "Battle sandbox", below "AI editor".
 
 ## 1. The problem today
@@ -64,7 +65,10 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   1366x768; tighten the spacing if it doesn't. The designer's Test button opens the same screen later.
 - **Setup screen**: two army panels side by side (Attacker | Defender). Each is the game's 2x3 army grid: click a
   slot to pick any unit (search, race filter), set its level with the level bar, drag to move, large units take a
-  whole row like in the game. A leadership line ("4 / 6") warns when the army breaks the game's rules (question SB).
+  whole row like in the game. A leadership line ("4 / 6"); when the army breaks a game rule, a red line says which
+  and Watch/Run stay disabled, unless the army's "Anything goes" checkbox is ticked (decided, SB). With the box
+  ticked, the shared map-editor army grid skips its "Not enough leadership" refusal (a flag; the map editor itself
+  is unchanged). The checkbox covers garrisons too.
   Under each army: the **AI** drop-down (every built-in battle AI, later designed ones too) and the preset row:
   **Save preset**, **Load preset**, **Delete**. Between the panels: **Swap sides**, **Watch battle**, and
   **Run 10 / 20 / 30** (question SD).
@@ -103,9 +107,9 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 
 ### Questions for the sandbox
 - ~~**SA. Entry**~~: answered — (a) its own main-menu entry "Battle sandbox", below AI editor (user, 2026-11-21).
-- **SB. Rules**: (a) only armies the game allows (leadership limit, large units, a leader in every army) with a
-  red line when broken; (b) an "anything goes" switch (e.g. 6 dragons without a leader) for stress tests.
-  Recommended (a) by default plus (b) as a checkbox, since you asked for "any combination possible in game".
+- ~~**SB. Rules**~~: answered — the game's rules by default plus an "anything goes" checkbox per army (saved in
+  the preset as `allowAnyArmy`); a broken rule shows a red line in the army panel and disables Watch/Run until fixed
+  or ticked (user, 2026-11-21).
 - ~~**SC/SF in the engine**~~: the user asked for leader items, city defence and neutral sides before phase 2; they
   are in the bench (phase 1b). SC/SF remain open only for how the sandbox screen shows them.
 - **SC. What else counts**: leader items and leader upgrades (Leadership, etc.), defending inside a city
