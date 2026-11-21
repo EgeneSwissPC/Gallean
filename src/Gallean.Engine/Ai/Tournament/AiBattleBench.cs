@@ -1,26 +1,31 @@
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using Gallean.Common;
 using Gallean.Entities;
 
 namespace Gallean.Engine;
 
-// Gallean Upgrade (docs/battle-ai-designer.md phase 1): fights the same battle many times, headless.
+// Gallean Upgrade (docs/battle-ai-designer.md): fights the same battle many times, headless.
 // Army A (with its battle AI) against army B (with its own). Each run builds the battle exactly like the
-// game does when one army attacks another in the open (WorldCommandHelpers.CreateStackBattleState, on a
-// tile without a city, owners = two players of the host map, both computer players so world battle modifiers
-// such as the difficulty's accuracy bonus apply to both alike), then
-// resolves it like an AI-vs-AI battle in the game (BattleAutoResolveCommand with both AI IDs: the attacker
-// retreats after round 15, hard stop at round 45). Every run has its own seed: same seed = same battle.
-// With swapSides, army A attacks in even runs and defends in odd runs.
+// game does (WorldCommandHelpers.CreateStackBattleState, or CreateGarrisonBattleState when the defender is a
+// city's garrison) from a host map: the armies are owned by players of that map (by race; Neutral = the
+// neutral player), all computer players so world battle modifiers such as the difficulty's accuracy bonus
+// apply to both alike. The defender stands in the open, in a city of a chosen level (with the city's
+// protection, like in the game) or in its race's capital, as an army or as the garrison. Then the battle is
+// resolved like an AI-vs-AI battle in the game (BattleAutoResolveCommand with both AI IDs: the attacker
+// retreats after round 15, hard stop at round 45). Every run has its own seed: same seed = same battle. With
+// swapSides, army A attacks in even runs and defends in odd runs.
 public sealed class AiBattleBench
 {
     private readonly IGameDefinitionProvider definitions;
     private readonly GlobalVariables globals;
     private readonly Scenario scenario;
     private readonly WorldStack template;
+    private readonly WorldCity? cityTemplate;
     private readonly WorldPlayerId firstOwner;
     private readonly WorldPlayerId secondOwner;
-    private readonly WorldPosition position;
+    private readonly WorldPosition openTile;
+    private readonly Dictionary<UnitModifierDefinitionId, int> leaderUpgrades = [];
 
     public AiBattleBench(GlobalDatabase globalDb, CampaignDatabase campaignDb, ScenarioDatabase scenarioDb, string hostMapId)
     {
@@ -39,6 +44,7 @@ public sealed class AiBattleBench
 
         WorldState state = scenario.State;
         template = state.Stacks.Values.FirstOrDefault() ?? throw new InvalidOperationException($"{hostMapId} has no army to copy.");
+        cityTemplate = state.Fortifications.Values.OfType<WorldCity>().FirstOrDefault();
 
         List<WorldPlayerId> players = [.. state.Players.Values.Where(player => player.Race is not WorldRace.Neutral).Select(player => player.Id)];
         if (players.Count < 2)
@@ -48,12 +54,31 @@ public sealed class AiBattleBench
 
         firstOwner = players[0];
         secondOwner = players.Count > 1 ? players[1] : players[0];
-        position = FindOpenTile(state);
+        openTile = FindOpenTile(state);
+
+        // Every leader upgrade of every lord, with the lowest level any lord can take it at.
+        foreach (IGrouping<Db.Id, Db.LeaderUpgrade> lord in globalDb.LeaderUpgradesByBelongsToId)
+        {
+            foreach (LeaderUpgradeDefinition upgrade in definitions.GetLeaderUpgrades(new LordDefinitionId(lord.Key)))
+            {
+                leaderUpgrades[upgrade.ModifierId] = Math.Min(upgrade.MinLevel, leaderUpgrades.GetValueOrDefault(upgrade.ModifierId, int.MaxValue));
+            }
+        }
     }
 
     public IGameDefinitionProvider Definitions => definitions;
 
-    // Every army that starts on the host map, as presets (name = map ID + army ID + leader type).
+    // The races that own a player on the host map (Neutral included when the map has neutrals).
+    public IReadOnlyList<WorldRace> Races => [.. scenario.State.Players.Values.Select(player => player.Race).Distinct().Order()];
+
+    // The races that have a capital on the host map.
+    public IReadOnlyList<WorldRace> CapitalRaces => [.. scenario.State.Fortifications.Values.OfType<WorldCapital>()
+        .Select(capital => scenario.State.Players[capital.OwnerId].Race).Distinct().Order()];
+
+    public IReadOnlyList<UnitModifierDefinitionId> LeaderUpgradeIds => [.. leaderUpgrades.Keys.Order()];
+
+    // Every army that starts on the host map, as presets (name = map ID + army ID + leader type), with its
+    // leader's items and upgrades.
     public IReadOnlyList<BattleArmy> ExportArmies(string mapId)
     {
         List<BattleArmy> result = [];
@@ -61,48 +86,135 @@ public sealed class AiBattleBench
         foreach (WorldStack stack in scenario.State.Stacks.Values)
         {
             ImmutableArray<BattleArmyUnit> units = [.. stack.Units.GetUnits().Select(pair => new BattleArmyUnit(pair.Item1.DefinitionId, pair.Item1.Level, pair.Item2))];
-            string leader = stack.Units.GetUnits().Select(pair => definitions.GetUnit(pair.Item1.DefinitionId)).FirstOrDefault(definition => definition.Leadership is > 0)?.Id.Value ?? "no-leader";
+            WorldUnit? leader = stack.Units.GetUnits().Select(pair => pair.Item1).FirstOrDefault(unit => definitions.GetUnit(unit.DefinitionId).Leadership is > 0);
 
-            if (!units.IsEmpty)
+            if (units.IsEmpty)
             {
-                result.Add(new BattleArmy($"{mapId}-{stack.Id.Value}-{leader}", units));
+                continue;
             }
+
+            result.Add(new BattleArmy($"{mapId}-{stack.Id.Value}-{leader?.DefinitionId.Value ?? "no-leader"}", units)
+            {
+                Equipment = [.. stack.Equipment.Items.Select(pair => new BattleArmyItem(pair.Key, pair.Value.DefinitionId))],
+                LeaderUpgrades = leader is null
+                    ? []
+                    : [.. leader.Modifiers.Where(modifier => modifier.Source is UnitModifierSource.Unit && leaderUpgrades.ContainsKey(modifier.DefinitionId)).Select(modifier => modifier.DefinitionId)]
+            });
         }
 
         return result;
     }
 
-    // Null when the army is fine, else what is wrong with it (unknown unit, bad slot, game rule broken).
-    public string? Validate(BattleArmy army)
+    // Null when the army is fine, else what is wrong with it (unknown unit or item, bad slot, game rule broken).
+    // asGarrison: the army defends as a city's garrison (no leader, no items, guardians allowed).
+    public string? Validate(BattleArmy army, bool asGarrison = false)
     {
-        return TryBuildUnits(army, "V", out _, out string? error) ? null : error;
+        return TryBuildArmy(army, "V", asGarrison, out _, out string? error) ? null : error;
+    }
+
+    // Null when both armies can fight this way on the host map (every way round the runs use), else why not.
+    public string? Validate(BattleBenchSide armyA, BattleBenchSide armyB, BattleBenchSetup setup, bool swapSides)
+    {
+        string? problem = ValidateBattle(armyA, armyB, setup);
+
+        if (problem is null && swapSides)
+        {
+            problem = ValidateBattle(armyB, armyA, setup);
+        }
+
+        return problem;
+    }
+
+    private string? ValidateBattle(BattleBenchSide attacker, BattleBenchSide defender, BattleBenchSetup setup)
+    {
+        bool asGarrison = setup.DefenderIsGarrison && setup.Place is not BattleBenchPlace.Open;
+
+        if ((Validate(attacker.Army) ?? ValidateOwner(attacker, BattleBenchSetup.Open)) is { } attackerProblem)
+        {
+            return $"army \"{attacker.Army.Name}\" (attacking): {attackerProblem}";
+        }
+
+        if ((Validate(defender.Army, asGarrison) ?? ValidateOwner(defender, setup)) is { } defenderProblem)
+        {
+            return $"army \"{defender.Army.Name}\" (defending): {defenderProblem}";
+        }
+
+        return null;
     }
 
     public BattleBenchResult Run(BattleBenchSide armyA, BattleBenchSide armyB, int runs, int firstSeed, bool swapSides, int parallel = 1, CancellationToken cancellationToken = default)
     {
-        UnitGrid<WorldUnit> unitsA = BuildUnits(armyA.Army, "A");
-        UnitGrid<WorldUnit> unitsB = BuildUnits(armyB.Army, "B");
+        return Run(armyA, armyB, BattleBenchSetup.Open, runs, firstSeed, swapSides, parallel, cancellationToken);
+    }
+
+    public BattleBenchResult Run(BattleBenchSide armyA, BattleBenchSide armyB, BattleBenchSetup setup, int runs, int firstSeed, bool swapSides, int parallel = 1, CancellationToken cancellationToken = default)
+    {
+        // The battle doesn't depend on the seed: build it once per way round.
+        BattleState aAttacks = CreateBattle(armyA, armyB, setup);
+        BattleState? bAttacks = swapSides ? CreateBattle(armyB, armyA, setup) : null;
         BattleBenchRun[] results = new BattleBenchRun[runs];
 
         Parallel.For(0, runs, new ParallelOptions { MaxDegreeOfParallelism = Math.Max(1, parallel), CancellationToken = cancellationToken }, index =>
         {
-            bool aAttacks = !swapSides || index % 2 == 0;
-            results[index] = Fight(armyA, unitsA, armyB, unitsB, firstSeed + index, aAttacks);
+            bool armyAAttacks = !swapSides || index % 2 == 0;
+            results[index] = Fight(armyA, armyB, armyAAttacks ? aAttacks : bAttacks!, firstSeed + index, armyAAttacks);
         });
 
-        return new BattleBenchResult(armyA, armyB, [.. results]);
+        return new BattleBenchResult(armyA, armyB, [.. results]) { Setup = setup };
     }
 
     // One battle; also used by the tests to compare a run with a hand-played one.
-    public BattleBenchRun RunOne(BattleBenchSide armyA, BattleBenchSide armyB, int seed, bool aAttacks)
+    public BattleBenchRun RunOne(BattleBenchSide armyA, BattleBenchSide armyB, int seed, bool aAttacks, BattleBenchSetup? setup = null)
     {
-        return Fight(armyA, BuildUnits(armyA.Army, "A"), armyB, BuildUnits(armyB.Army, "B"), seed, aAttacks);
+        BattleBenchSetup actual = setup ?? BattleBenchSetup.Open;
+        BattleState initial = aAttacks ? CreateBattle(armyA, armyB, actual) : CreateBattle(armyB, armyA, actual);
+
+        return Fight(armyA, armyB, initial, seed, aAttacks);
     }
 
     // The battle as the game would start it (before BattleStartCommand), for tests and for the sandbox.
-    internal BattleState CreateBattle(BattleArmy attacker, BattleArmy defender)
+    internal BattleState CreateBattle(BattleArmy attacker, BattleArmy defender, BattleBenchSetup? setup = null)
     {
-        return CreateBattleState(BuildUnits(attacker, "A"), BuildUnits(defender, "B"), CreateContext(0));
+        return CreateBattle(new BattleBenchSide(attacker, AiBrainRegistry.ClassicId), new BattleBenchSide(defender, AiBrainRegistry.ClassicId), setup ?? BattleBenchSetup.Open);
+    }
+
+    internal BattleState CreateBattle(BattleBenchSide attacker, BattleBenchSide defender, BattleBenchSetup setup)
+    {
+        if ((ValidateOwner(attacker, BattleBenchSetup.Open) ?? ValidateOwner(defender, setup)) is { } problem)
+        {
+            throw new InvalidOperationException(problem);
+        }
+
+        bool asGarrison = setup.DefenderIsGarrison && setup.Place is not BattleBenchPlace.Open;
+        BuiltArmy attackerArmy = BuildArmy(attacker.Army, "A", asGarrison: false);
+        BuiltArmy defenderArmy = BuildArmy(defender.Army, "D", asGarrison);
+        WorldPlayerId attackerOwner = GetOwner(attacker, firstOwner);
+        WorldPlayerId defenderOwner = GetOwner(defender, secondOwner);
+        IEngineContext context = CreateContext(0);
+        WorldStack attackerStack = CreateStack("BenchAttacker", attackerOwner, attackerArmy, openTile);
+        WorldState state = scenario.State;
+
+        if (setup.Place is BattleBenchPlace.Open)
+        {
+            return WorldCommandHelpers.CreateStackBattleState(state, attackerStack, CreateStack("BenchDefender", defenderOwner, defenderArmy, openTile), context);
+        }
+
+        WorldFortification place = CreatePlace(setup, defenderOwner, asGarrison ? defenderArmy.Units : UnitGrid<WorldUnit>.Empty);
+        state = state with { Fortifications = state.Fortifications.SetItem(place.Id, place) };
+
+        // The place's protection reaches its army or garrison the way it does in the game (unit modifiers).
+        if (asGarrison)
+        {
+            state = FortificationCalculator.UpdateUnitModifiers(state, definitions);
+
+            return WorldCommandHelpers.CreateGarrisonBattleState(state, attackerStack, state.Fortifications[place.Id], context);
+        }
+
+        WorldStack defenderStack = CreateStack("BenchDefender", defenderOwner, defenderArmy, FortificationCalculator.GetEntrance(place.Footprint));
+        state = state with { Stacks = state.Stacks.SetItem(defenderStack.Id, defenderStack) };
+        state = FortificationCalculator.UpdateUnitModifiers(state, definitions);
+
+        return WorldCommandHelpers.CreateStackBattleState(state, attackerStack, state.Stacks[defenderStack.Id], context);
     }
 
     internal EngineContext CreateContext(int seed)
@@ -110,10 +222,9 @@ public sealed class AiBattleBench
         return new EngineContext(new RandomProvider(seed), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
     }
 
-    private BattleBenchRun Fight(BattleBenchSide armyA, UnitGrid<WorldUnit> unitsA, BattleBenchSide armyB, UnitGrid<WorldUnit> unitsB, int seed, bool aAttacks)
+    private BattleBenchRun Fight(BattleBenchSide armyA, BattleBenchSide armyB, BattleState initial, int seed, bool aAttacks)
     {
         EngineContext context = CreateContext(seed);
-        BattleState initial = aAttacks ? CreateBattleState(unitsA, unitsB, context) : CreateBattleState(unitsB, unitsA, context);
         BattleEngine engine = new(context, initial, NullBattleUnitUpgradeResolver.Instance);
 
         engine.DispatchCommand(new BattleStartCommand());
@@ -139,7 +250,7 @@ public sealed class AiBattleBench
             GetSideResult(initial, final, sideB, context));
     }
 
-    private BattleBenchSideResult GetSideResult(BattleState initial, BattleState final, BattleSide side, IEngineContext context)
+    private static BattleBenchSideResult GetSideResult(BattleState initial, BattleState final, BattleSide side, IEngineContext context)
     {
         UnitGrid<BattleUnit> start = side == BattleSide.Attacker ? initial.AttackerGrid : initial.DefenderGrid;
         UnitGrid<BattleUnit> end = side == BattleSide.Attacker ? final.AttackerGrid : final.DefenderGrid;
@@ -169,42 +280,99 @@ public sealed class AiBattleBench
         return new BattleBenchSideResult(units.ToImmutable());
     }
 
-    private BattleState CreateBattleState(UnitGrid<WorldUnit> attackerUnits, UnitGrid<WorldUnit> defenderUnits, IEngineContext context)
+    private WorldPlayerId GetOwner(BattleBenchSide side, WorldPlayerId fallback)
     {
-        WorldStack attacker = CreateStack("BenchAttacker", firstOwner, attackerUnits);
-        WorldStack defender = CreateStack("BenchDefender", secondOwner, defenderUnits);
+        if (side.Race is null)
+        {
+            return fallback;
+        }
 
-        return WorldCommandHelpers.CreateStackBattleState(scenario.State, attacker, defender, context);
+        return scenario.State.Players.Values.FirstOrDefault(player => player.Race == side.Race)?.Id
+            ?? throw new InvalidOperationException($"The host map has no {side.Race} player.");
     }
 
-    private WorldStack CreateStack(string id, WorldPlayerId owner, UnitGrid<WorldUnit> units)
+    private string? ValidateOwner(BattleBenchSide side, BattleBenchSetup setup)
+    {
+        if (side.Race is { } race && !scenario.State.Players.Values.Any(player => player.Race == race))
+        {
+            return $"the host map has no {race} player (races: {string.Join(", ", Races)})";
+        }
+
+        if (setup.Place is BattleBenchPlace.Capital)
+        {
+            WorldRace ownerRace = scenario.State.Players[GetOwner(side, secondOwner)].Race;
+
+            if (!CapitalRaces.Contains(ownerRace))
+            {
+                return $"a {ownerRace} army has no capital on the host map (capitals: {string.Join(", ", CapitalRaces)})";
+            }
+        }
+
+        if (setup.Place is BattleBenchPlace.City)
+        {
+            if (cityTemplate is null)
+            {
+                return "the host map has no city to copy";
+            }
+
+            if (setup.CityLevel is < 1 or > 5)
+            {
+                return $"city level {setup.CityLevel} (1-5)";
+            }
+        }
+
+        return null;
+    }
+
+    // A city of the chosen level owned by the defender (a copy of the host map's first city, which keeps its
+    // place and look), or the capital of the defender's race.
+    private WorldFortification CreatePlace(BattleBenchSetup setup, WorldPlayerId owner, UnitGrid<WorldUnit> garrison)
+    {
+        if (setup.Place is BattleBenchPlace.Capital)
+        {
+            WorldRace race = scenario.State.Players[owner].Race;
+            WorldCapital capital = scenario.State.Fortifications.Values.OfType<WorldCapital>().First(item => scenario.State.Players[item.OwnerId].Race == race);
+
+            return capital with { OwnerId = owner, Garrison = garrison, CapturedById = null };
+        }
+
+        return cityTemplate! with
+        {
+            DefinitionId = new WorldCityDefinitionId(cityTemplate.DefinitionId.Race, setup.CityLevel),
+            OwnerId = owner,
+            Garrison = garrison,
+            RiotTurns = 0
+        };
+    }
+
+    private WorldStack CreateStack(string id, WorldPlayerId owner, BuiltArmy army, WorldPosition position)
     {
         return template with
         {
             Id = new WorldStackId(id),
             OwnerId = owner,
             Position = position,
-            Units = units,
+            Units = army.Units,
             Inventory = WorldInventory.Empty,
-            Equipment = LeaderEquipment.Empty,
+            Equipment = army.Equipment,
             ExpirationTurn = null,
             SourceTemplateId = null
         };
     }
 
-    private UnitGrid<WorldUnit> BuildUnits(BattleArmy army, string prefix)
+    private BuiltArmy BuildArmy(BattleArmy army, string prefix, bool asGarrison)
     {
-        if (!TryBuildUnits(army, prefix, out UnitGrid<WorldUnit>? units, out string? error))
+        if (!TryBuildArmy(army, prefix, asGarrison, out BuiltArmy? built, out string? error))
         {
             throw new InvalidOperationException($"Army \"{army.Name}\": {error}");
         }
 
-        return units!;
+        return built;
     }
 
-    private bool TryBuildUnits(BattleArmy army, string prefix, out UnitGrid<WorldUnit>? units, out string? error)
+    private bool TryBuildArmy(BattleArmy army, string prefix, bool asGarrison, [NotNullWhen(true)] out BuiltArmy? built, out string? error)
     {
-        units = null;
+        built = null;
 
         if (army.Units.IsEmpty)
         {
@@ -214,6 +382,7 @@ public sealed class AiBattleBench
 
         WorldStackBuilder builder = new(definitions);
         UnitGrid<WorldUnit>.Builder raw = new();
+        WorldUnit? leader = null;
         int index = 0;
 
         foreach (BattleArmyUnit unit in army.Units)
@@ -238,8 +407,15 @@ public sealed class AiBattleBench
                 return false;
             }
 
-            int hitpoints = UnitStatsCalculator.GetStats(definition, unit.Level, [], definitions, globals).MaxHitpoints;
-            WorldUnit worldUnit = new(new WorldUnitId($"{prefix}{index}"), unit.TypeId, hitpoints, 0, unit.Level, [], null, IsTypeLocked: false);
+            WorldUnit worldUnit = new(new WorldUnitId($"{prefix}{index}"), unit.TypeId, 1, 0, unit.Level, [], null, IsTypeLocked: false);
+
+            // Capital guardians have leadership too, but they are no leaders (they stand in garrisons).
+            if (definition.Leadership is > 0 && definition.Category != UnitCategory.Guardian && leader is null)
+            {
+                // Leader upgrades are unit modifiers on the leader, like the ones the game grants on level-up.
+                worldUnit = worldUnit with { Modifiers = [.. army.LeaderUpgrades.Select(id => new UnitModifier(id, null))] };
+                leader = worldUnit;
+            }
 
             if (!builder.TryPlaceUnit(worldUnit, unit.Position) || !raw.TryPlace(worldUnit, unit.Position, definition.IsLarge))
             {
@@ -250,27 +426,170 @@ public sealed class AiBattleBench
             index++;
         }
 
-        if (army.AllowAnyArmy)
-        {
-            units = raw.Build();
-            error = null;
-            return true;
-        }
+        string? itemProblem = CheckItemsAndUpgrades(army, leader, asGarrison, out LeaderEquipment equipment);
 
-        if (!builder.TryBuild(out units, out WorldCommandError? ruleError))
+        if (itemProblem is not null && (!army.AllowAnyArmy || itemProblem.StartsWith("unknown", StringComparison.Ordinal)))
         {
-            error = ruleError switch
-            {
-                WorldCommandError.MultipleLeadersForbidden => "more than one leader",
-                WorldCommandError.LeadershipExceeded => "the units need more leadership than the leader has",
-                WorldCommandError.GuardianTransferForbidden => "guardians can't be in an army",
-                _ => ruleError.ToString()
-            };
+            error = itemProblem;
             return false;
         }
 
+        UnitGrid<WorldUnit> grid;
+
+        if (army.AllowAnyArmy)
+        {
+            grid = raw.Build();
+        }
+        else if (asGarrison)
+        {
+            // A garrison has no leader (and so no leadership limit); guardians may stand in it.
+            if (leader is not null)
+            {
+                error = "a garrison has no leader";
+                return false;
+            }
+
+            grid = raw.Build();
+        }
+        else
+        {
+            foreach ((WorldUnit unit, _) in raw.Build().GetUnits())
+            {
+                if (definitions.GetUnit(unit.DefinitionId).Category == UnitCategory.Guardian)
+                {
+                    error = "guardians can only be in a garrison";
+                    return false;
+                }
+            }
+
+            if (!builder.TryBuild(out UnitGrid<WorldUnit>? checkedGrid, out WorldCommandError? ruleError))
+            {
+                error = ruleError switch
+                {
+                    WorldCommandError.MultipleLeadersForbidden => "more than one leader",
+                    WorldCommandError.LeadershipExceeded => "the units need more leadership than the leader has",
+                    _ => ruleError.ToString()
+                };
+                return false;
+            }
+
+            grid = checkedGrid;
+        }
+
+        // Items (stat modifiers), then full hit points with every modifier, like a fresh army in the game.
+        grid = LeaderEquipmentCalculator.UpdateUnitModifiers(grid, equipment, definitions);
+
+        foreach ((WorldUnit unit, _) in grid.GetUnits())
+        {
+            UnitDefinition definition = definitions.GetUnit(unit.DefinitionId);
+            grid = grid.Replace(unit, unit with { Hitpoints = UnitStatsCalculator.GetStats(definition, unit.Level, unit.Modifiers, definitions, globals).MaxHitpoints });
+        }
+
+        built = new BuiltArmy(grid, equipment);
         error = null;
         return true;
+    }
+
+    // The game's equip rules (slot fits the item, the leader has the ability the item needs, one item per
+    // slot) and level-up rules (an upgrade of some lord, its minimum level reached, no repeats, at most
+    // min(level, max abilities) - 1 upgrades). Returns the equipment even when a rule is broken, so
+    // "anything goes" armies still carry their items.
+    private string? CheckItemsAndUpgrades(BattleArmy army, WorldUnit? leader, bool asGarrison, out LeaderEquipment equipment)
+    {
+        ImmutableSortedDictionary<LeaderEquipmentSlot, WorldItem>.Builder items = ImmutableSortedDictionary.CreateBuilder<LeaderEquipmentSlot, WorldItem>();
+        string? problem = null;
+        int index = 0;
+
+        foreach (BattleArmyItem item in army.Equipment)
+        {
+            ItemDefinition? definition = TryGetItem(item.ItemId);
+
+            if (definition is null)
+            {
+                equipment = LeaderEquipment.Empty;
+                return $"unknown item {item.ItemId.Value}";
+            }
+
+            if (items.ContainsKey(item.Slot))
+            {
+                problem ??= $"two items in the {item.Slot} slot";
+                continue;
+            }
+
+            if (!LeaderEquipmentCalculator.CanPlace(definition.Category, item.Slot))
+            {
+                problem ??= $"{item.ItemId.Value} ({definition.Category}) doesn't fit the {item.Slot} slot";
+            }
+
+            items[item.Slot] = WorldItemFactory.Create(new WorldItemId($"BenchItem{index}"), definition, globals);
+            index++;
+        }
+
+        equipment = new LeaderEquipment(items.ToImmutable());
+
+        foreach (UnitModifierDefinitionId upgrade in army.LeaderUpgrades)
+        {
+            if (!leaderUpgrades.ContainsKey(upgrade))
+            {
+                return $"unknown leader upgrade {upgrade.Value}";
+            }
+        }
+
+        if ((!army.Equipment.IsEmpty || !army.LeaderUpgrades.IsEmpty) && (leader is null || asGarrison))
+        {
+            return problem ?? (asGarrison ? "a garrison has no leader for items or upgrades" : "items and upgrades need a leader");
+        }
+
+        if (leader is null)
+        {
+            return problem;
+        }
+
+        int maxUpgrades = Math.Max(0, Math.Min(leader.Level, globals.MaxLeaderAbilities) - 1);
+
+        if (army.LeaderUpgrades.Length > maxUpgrades)
+        {
+            problem ??= $"a level {leader.Level} leader has at most {maxUpgrades} upgrades";
+        }
+
+        if (army.LeaderUpgrades.Distinct().Count() != army.LeaderUpgrades.Length)
+        {
+            problem ??= "an upgrade is taken twice";
+        }
+
+        foreach (UnitModifierDefinitionId upgrade in army.LeaderUpgrades)
+        {
+            if (leaderUpgrades[upgrade] > leader.Level)
+            {
+                problem ??= $"upgrade {upgrade.Value} needs leader level {leaderUpgrades[upgrade]}";
+            }
+        }
+
+        LeaderAbility abilities = CreateContext(0).UnitStats.GetWorldUnitAbilities(leader);
+
+        foreach ((LeaderEquipmentSlot slot, WorldItem item) in equipment.Items)
+        {
+            LeaderAbility? required = LeaderEquipmentCalculator.GetRequiredAbility(definitions.GetItem(item.DefinitionId).Category);
+
+            if (required is not null && !abilities.HasFlag(required.Value))
+            {
+                problem ??= $"{item.DefinitionId.Value} in the {slot} slot needs the leader ability {required}";
+            }
+        }
+
+        return problem;
+    }
+
+    private ItemDefinition? TryGetItem(ItemDefinitionId id)
+    {
+        try
+        {
+            return definitions.GetItem(id);
+        }
+        catch (KeyNotFoundException)
+        {
+            return null;
+        }
     }
 
     private static WorldPosition FindOpenTile(WorldState state)
@@ -292,9 +611,30 @@ public sealed class AiBattleBench
 
         throw new InvalidOperationException("The host map has no tile outside a city.");
     }
+
+    private sealed record BuiltArmy(UnitGrid<WorldUnit> Units, LeaderEquipment Equipment);
 }
 
-public sealed record BattleBenchSide(BattleArmy Army, string AiId);
+// Race: which player of the host map owns the army (null = a default playable race; Neutral = the neutral
+// player, whose leaders never flee).
+public sealed record BattleBenchSide(BattleArmy Army, string AiId)
+{
+    public WorldRace? Race { get; init; }
+}
+
+public enum BattleBenchPlace
+{
+    Open,
+    City,
+    Capital
+}
+
+// Where the defending army stands. City/Capital: the defender gets the place's protection (armor) and can't
+// flee, like in the game; DefenderIsGarrison = it fights as the place's garrison instead of an army in it.
+public sealed record BattleBenchSetup(BattleBenchPlace Place = BattleBenchPlace.Open, int CityLevel = 1, bool DefenderIsGarrison = false)
+{
+    public static BattleBenchSetup Open { get; } = new();
+}
 
 public enum BattleBenchWinner
 {
@@ -315,4 +655,7 @@ public sealed record BattleBenchSideResult(ImmutableArray<BattleBenchUnitResult>
 
 public sealed record BattleBenchRun(int Seed, bool ArmyAAttacks, BattleBenchWinner Winner, int Rounds, BattleBenchSideResult A, BattleBenchSideResult B);
 
-public sealed record BattleBenchResult(BattleBenchSide ArmyA, BattleBenchSide ArmyB, ImmutableArray<BattleBenchRun> Runs);
+public sealed record BattleBenchResult(BattleBenchSide ArmyA, BattleBenchSide ArmyB, ImmutableArray<BattleBenchRun> Runs)
+{
+    public BattleBenchSetup Setup { get; init; } = BattleBenchSetup.Open;
+}

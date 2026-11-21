@@ -7,8 +7,9 @@ using Gallean.Entities.GameData;
 namespace AiTournament;
 
 // Gallean Upgrade (docs/battle-ai-designer.md phase 1): the battle bench from the command line.
-//   --battle <army A> <army B> [--ai-a id] [--ai-b id] [--runs n] [--seed n] [--swap] [--parallel n]
-//            [--map id] [--csv file] [--verbose]
+//   --battle <army A> <army B> [--ai-a id] [--ai-b id] [--race-a race] [--race-b race] [--neutral-a] [--neutral-b]
+//            [--defender-in open|city|capital] [--city-level n] [--garrison]
+//            [--runs n] [--seed n] [--swap] [--parallel n] [--map id] [--csv file] [--verbose]
 //   --export-armies <map id> <dir>
 // An army is a preset file (BattleArmyStore JSON) or a preset name in --armies <dir>.
 internal static class BattleMode
@@ -28,6 +29,11 @@ internal static class BattleMode
         string? csvPath = null;
         string? armiesDirectory = null;
         bool verbose = false;
+        WorldRace? raceA = null;
+        WorldRace? raceB = null;
+        BattleBenchPlace place = BattleBenchPlace.Open;
+        int cityLevel = 1;
+        bool garrison = false;
 
         for (int i = 1; i < args.Length; i++)
         {
@@ -45,6 +51,13 @@ internal static class BattleMode
                 case "--csv": csvPath = Next(); break;
                 case "--armies": armiesDirectory = Next(); break;
                 case "--verbose": verbose = true; break;
+                case "--race-a": raceA = ParseRace(Next()); break;
+                case "--race-b": raceB = ParseRace(Next()); break;
+                case "--neutral-a": raceA = WorldRace.Neutral; break;
+                case "--neutral-b": raceB = WorldRace.Neutral; break;
+                case "--defender-in": place = Enum.Parse<BattleBenchPlace>(Next(), ignoreCase: true); break;
+                case "--city-level": cityLevel = int.Parse(Next(), CultureInfo.InvariantCulture); break;
+                case "--garrison": garrison = true; break;
                 default:
                     if (args[i].StartsWith("--", StringComparison.Ordinal))
                     {
@@ -59,7 +72,7 @@ internal static class BattleMode
 
         if (armies.Count != 2)
         {
-            Console.Error.WriteLine("Usage: AiTournament --battle <army A> <army B> [--ai-a id] [--ai-b id] [--runs n] [--seed n] [--swap] [--parallel n] [--map id] [--armies dir] [--csv file] [--verbose]");
+            Console.Error.WriteLine("Usage: AiTournament --battle <army A> <army B> [--ai-a id] [--ai-b id] [--race-a r] [--race-b r] [--neutral-a] [--neutral-b] [--defender-in open|city|capital] [--city-level n] [--garrison] [--runs n] [--seed n] [--swap] [--parallel n] [--map id] [--armies dir] [--csv file] [--verbose]");
             return 2;
         }
 
@@ -82,22 +95,29 @@ internal static class BattleMode
 
         (AiBattleBench bench, GlobalDatabase globalDb) = CreateBench(hostMap);
 
-        foreach (BattleArmy army in new[] { armyA, armyB })
-        {
-            string? problem = bench.Validate(army);
+        BattleBenchSide sideA = new(armyA, aiA) { Race = raceA };
+        BattleBenchSide sideB = new(armyB, aiB) { Race = raceB };
+        BattleBenchSetup setup = new(place, cityLevel, garrison);
+        string? problem = bench.Validate(sideA, sideB, setup, swap);
 
-            if (problem is not null)
-            {
-                Console.Error.WriteLine($"Army \"{army.Name}\": {problem}");
-                return 2;
-            }
+        if (problem is not null)
+        {
+            Console.Error.WriteLine(problem);
+            return 2;
         }
 
-        Console.WriteLine($"A: {armyA.Name} ({aiA})  vs  B: {armyB.Name} ({aiB}); {runs} runs, seeds from {seed}, " +
-            (swap ? "sides swapped every run" : "A attacks") + $", host map {hostMap}");
+        string where = place switch
+        {
+            BattleBenchPlace.City => $", defender in a level {cityLevel} city",
+            BattleBenchPlace.Capital => ", defender in its capital",
+            _ => ""
+        } + (garrison && place is not BattleBenchPlace.Open ? " as the garrison" : "");
+
+        Console.WriteLine($"A: {armyA.Name} ({aiA}{(raceA is null ? "" : ", " + raceA)})  vs  B: {armyB.Name} ({aiB}{(raceB is null ? "" : ", " + raceB)}); " +
+            $"{runs} runs, seeds from {seed}, " + (swap ? "sides swapped every run" : "A attacks") + where + $", host map {hostMap}");
 
         Stopwatch time = Stopwatch.StartNew();
-        BattleBenchResult result = bench.Run(new BattleBenchSide(armyA, aiA), new BattleBenchSide(armyB, aiB), runs, seed, swap, parallel);
+        BattleBenchResult result = bench.Run(sideA, sideB, setup, runs, seed, swap, parallel);
 
         if (verbose)
         {
@@ -168,6 +188,20 @@ internal static class BattleMode
         }
 
         return id => globalDb.Units.TryGetValue(new Db.Id(id.Value), out Db.Unit? unit) && texts.TryGetValue(unit.NameText, out string? name) ? name : id.Value;
+    }
+
+    private static WorldRace ParseRace(string text)
+    {
+        return text.ToLowerInvariant() switch
+        {
+            "empire" or "human" => WorldRace.Human,
+            "undead" => WorldRace.Undead,
+            "legions" or "heretic" => WorldRace.Heretic,
+            "clans" or "dwarf" => WorldRace.Dwarf,
+            "elves" or "elf" => WorldRace.Elf,
+            "neutral" => WorldRace.Neutral,
+            _ => throw new ArgumentException($"Unknown race {text} (empire, undead, legions, clans, elves, neutral)")
+        };
     }
 
     private static BattleArmy? LoadArmy(string argument, string? directory)

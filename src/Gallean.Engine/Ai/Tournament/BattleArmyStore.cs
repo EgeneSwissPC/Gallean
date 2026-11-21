@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace Gallean.Engine;
 
-// Gallean Upgrade (docs/battle-ai-designer.md phase 1): army presets as JSON files, one per army (<name>.json).
+// Gallean Upgrade (docs/battle-ai-designer.md): army presets as JSON files, one per army (<name>.json).
 // Written with Utf8JsonWriter and read with JsonDocument, because the client is native AOT (no
 // reflection-based JSON). Unknown properties are ignored, so files from newer builds still load.
 public sealed class BattleArmyStore(string directory)
@@ -104,6 +104,34 @@ public sealed class BattleArmyStore(string directory)
             }
 
             writer.WriteEndArray();
+
+            if (!army.Equipment.IsEmpty)
+            {
+                writer.WriteStartArray("equipment");
+
+                foreach (BattleArmyItem item in army.Equipment)
+                {
+                    writer.WriteStartObject();
+                    writer.WriteString("slot", item.Slot.ToString());
+                    writer.WriteString("item", item.ItemId.Value);
+                    writer.WriteEndObject();
+                }
+
+                writer.WriteEndArray();
+            }
+
+            if (!army.LeaderUpgrades.IsEmpty)
+            {
+                writer.WriteStartArray("leaderUpgrades");
+
+                foreach (UnitModifierDefinitionId upgrade in army.LeaderUpgrades)
+                {
+                    writer.WriteStringValue(upgrade.Value);
+                }
+
+                writer.WriteEndArray();
+            }
+
             writer.WriteEndObject();
         }
 
@@ -131,6 +159,37 @@ public sealed class BattleArmyStore(string directory)
             }
         }
 
-        return new BattleArmy(name, units.ToImmutable()) { AllowAnyArmy = allowAny };
+        ImmutableArray<BattleArmyItem>.Builder equipment = ImmutableArray.CreateBuilder<BattleArmyItem>();
+
+        if (root.TryGetProperty("equipment", out JsonElement equipmentElement) && equipmentElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement element in equipmentElement.EnumerateArray())
+            {
+                string slotName = element.GetProperty("slot").GetString() ?? "";
+
+                // A slot this build doesn't know is skipped (files from newer builds still load).
+                if (Enum.TryParse(slotName, ignoreCase: true, out LeaderEquipmentSlot slot) && Enum.IsDefined(slot))
+                {
+                    equipment.Add(new BattleArmyItem(slot, new ItemDefinitionId(element.GetProperty("item").GetString() ?? throw new FormatException("item"))));
+                }
+            }
+        }
+
+        ImmutableArray<UnitModifierDefinitionId>.Builder upgrades = ImmutableArray.CreateBuilder<UnitModifierDefinitionId>();
+
+        if (root.TryGetProperty("leaderUpgrades", out JsonElement upgradesElement) && upgradesElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement element in upgradesElement.EnumerateArray())
+            {
+                upgrades.Add(new UnitModifierDefinitionId(element.GetString() ?? throw new FormatException("leaderUpgrades")));
+            }
+        }
+
+        return new BattleArmy(name, units.ToImmutable())
+        {
+            AllowAnyArmy = allowAny,
+            Equipment = equipment.ToImmutable(),
+            LeaderUpgrades = upgrades.ToImmutable()
+        };
     }
 }
