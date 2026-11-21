@@ -1,0 +1,4 @@
+<?xml version="1.0"?>
+<TestSequence>
+  <Test Name="Gallean.Client.Tests.VisualTests.BattleSandboxTest" DisplayName="BattleSandboxTest" Source="/home/agent/work/Gallean-battlebench/src/Gallean.Client.Tests/bin/Debug/net11.0/Gallean.Client.Tests.dll" Completed="False" />
+</TestSequence>

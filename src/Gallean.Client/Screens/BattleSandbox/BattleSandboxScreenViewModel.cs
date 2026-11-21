@@ -129,11 +129,36 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
     [RelayCommand(CanExecute = nameof(IsValid))]
     private Task RunAsync()
     {
-        BattleSandboxRunViewModel run = new(bench, ToSide(Attacker), ToSide(Defender), Setup, RunCount, NextSeed(), AlternateSides, GetUnitTypeName);
+        BattleSandboxRunViewModel run = new(bench, ToSide(Attacker), ToSide(Defender), Setup, RunCount, NextSeed(), AlternateSides, GetUnitTypeName)
+        {
+            Watch = WatchRunAsync
+        };
         Game.OpenScreen(run);
 
         return run.StartAsync();
     }
+
+    // Phase 6: Watch battle. Both sides fight with their AI on the real battle screen, one unit action at a time
+    // under the auto-resolve rules, so a seed shows exactly the battle Run fought with it.
+    [RelayCommand(CanExecute = nameof(IsValid))]
+    private Task WatchAsync()
+    {
+        return WatchRunAsync(NextSeed(), armyAAttacks: true);
+    }
+
+    // Watches one battle of a Run: its seed, and which army attacked in it.
+    public Task<BattleScreenViewModel?> WatchRunAsync(int seed, bool armyAAttacks)
+    {
+        BattleBenchSide a = ToSide(Attacker);
+        BattleBenchSide b = ToSide(Defender);
+        LastWatchedSeed = seed;
+
+        return armyAAttacks
+            ? Game.WatchSandboxBattleAsync(bench, EditorGame.Texts, a, b, Setup, seed)
+            : Game.WatchSandboxBattleAsync(bench, EditorGame.Texts, b, a, Setup, seed);
+    }
+
+    public int? LastWatchedSeed { get; private set; }
 
     private string GetUnitTypeName(UnitDefinitionId id)
     {
@@ -300,6 +325,7 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
     protected override void OnRefreshed()
     {
         RunCommand.NotifyCanExecuteChanged();
+        WatchCommand.NotifyCanExecuteChanged();
 
         if (Attacker is not null && Defender is not null)
         {
@@ -313,6 +339,7 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
             Problem = Tr("Neutrals have no capital: choose another owner for the defender.");
             IsValid = false;
             RunCommand.NotifyCanExecuteChanged();
+            WatchCommand.NotifyCanExecuteChanged();
             return;
         }
 

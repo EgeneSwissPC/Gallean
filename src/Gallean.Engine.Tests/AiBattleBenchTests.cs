@@ -545,4 +545,44 @@ public sealed class AiBattleBenchTests
         Assert.That(sb.HitpointShare, Is.InRange(0.0, 1.0));
         Assert.That(sa.Units, Is.EqualTo(4));
     }
+
+    [TestCase(BattleBenchPlace.Open, false)]
+    [TestCase(BattleBenchPlace.City, true)]
+    public void WatchStepsFightTheRunBattleTest(BattleBenchPlace place, bool aAttacks)
+    {
+        // Watch plays the auto-resolve one unit action at a time; for every seed it must end exactly like Run.
+        BattleBenchSide a = new(GearedEmpire(), AiBrainRegistry.ClassicId);
+        BattleBenchSide b = new(Undead(), "ruthless");
+        BattleBenchSetup setup = new(place, 3);
+
+        for (int seed = 1; seed <= 12; seed++)
+        {
+            BattleBenchRun run = generated.RunOne(a, b, seed, aAttacks, setup);
+            BattleBenchSide attacker = aAttacks ? a : b;
+            BattleBenchSide defender = aAttacks ? b : a;
+            GameSession session = generated.CreateWatchSession(attacker, defender, setup, seed);
+            AiBattleBench.StartWatch(session);
+            BattleSession battle = session.Battle!;
+            int steps = 0;
+
+            while (battle.State.Outcome is null)
+            {
+                Assert.That(battle.DispatchCommand(new BattleAutoResolveCommand
+                {
+                    SingleStep = true,
+                    StartRoundNumber = generated.WatchStartRound,
+                    AttackerAiId = attacker.AiId,
+                    DefenderAiId = defender.AiId
+                }).Error, Is.Null);
+                Assert.That(++steps, Is.LessThan(2000));
+            }
+
+            BattleSide sideA = aAttacks ? BattleSide.Attacker : BattleSide.Defender;
+            Assert.That(battle.State.Outcome!.WinningSide == sideA ? BattleBenchWinner.A : BattleBenchWinner.B, Is.EqualTo(run.Winner), $"seed {seed}");
+            Assert.That(battle.State.RoundNumber, Is.EqualTo(run.Rounds), $"seed {seed}");
+            int hpA = (aAttacks ? battle.State.AttackerGrid : battle.State.DefenderGrid).GetUnits().Where(pair => pair.Item1.WorldUnitId is not null).Sum(pair => Math.Max(0, pair.Item1.Hitpoints));
+            Assert.That(hpA, Is.EqualTo(run.A.Hitpoints), $"seed {seed}");
+            Assert.That(battle.IsAttackerAi && battle.IsDefenderAi, Is.True);
+        }
+    }
 }

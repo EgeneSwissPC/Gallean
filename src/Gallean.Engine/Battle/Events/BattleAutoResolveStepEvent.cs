@@ -6,6 +6,9 @@ public sealed record BattleAutoResolveStepEvent(int StartRoundNumber, BattleSide
     public string? AttackerAiId { get; init; }
     public string? DefenderAiId { get; init; }
 
+    // Gallean Upgrade: stop after one unit's action instead of resolving the whole battle.
+    public bool SingleStep { get; init; }
+
     public override TResult Accept<TContext, TResult>(IBattleEventVisitor<TContext, TResult> visitor, TContext context)
     {
         return visitor.Visit(this, context);

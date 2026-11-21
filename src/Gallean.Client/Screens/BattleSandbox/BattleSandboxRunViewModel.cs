@@ -45,6 +45,9 @@ internal sealed partial class BattleSandboxRunViewModel : AbstractScreenViewMode
     }
 
     public int Runs { get; }
+
+    // Opens one battle of this run on the battle screen (seed, army A attacks).
+    public Func<int, bool, Task<BattleScreenViewModel?>>? Watch { get; init; }
     public int FirstSeed { get; }
     public Task? RunTask { get; private set; }
 
@@ -69,6 +72,23 @@ internal sealed partial class BattleSandboxRunViewModel : AbstractScreenViewMode
     public partial IReadOnlyList<BattleSandboxSideResultViewModel> Sides { get; private set; } = [];
 
     public bool HasResult => Result is not null && !IsRunning;
+
+    public bool CanWatchWin => HasResult && Watch is not null && FindRun(BattleBenchWinner.A) is not null;
+    public bool CanWatchLoss => HasResult && Watch is not null && FindRun(BattleBenchWinner.B) is not null;
+
+    private BattleBenchRun? FindRun(BattleBenchWinner winner) => Result?.Runs.FirstOrDefault(run => run.Winner == winner);
+
+    // The first battle the attacker of the setup (army A) won / lost, as it was fought.
+    [RelayCommand]
+    private Task WatchWinAsync() => WatchRunAsync(FindRun(BattleBenchWinner.A));
+
+    [RelayCommand]
+    private Task WatchLossAsync() => WatchRunAsync(FindRun(BattleBenchWinner.B));
+
+    private Task WatchRunAsync(BattleBenchRun? run)
+    {
+        return run is null || Watch is null ? Task.CompletedTask : Watch(run.Seed, run.ArmyAAttacks);
+    }
 
     public Task StartAsync()
     {
@@ -107,6 +127,8 @@ internal sealed partial class BattleSandboxRunViewModel : AbstractScreenViewMode
         {
             Result = BattleBenchResult.Combine(parts);
             BuildResults(Result);
+            OnPropertyChanged(nameof(CanWatchWin));
+            OnPropertyChanged(nameof(CanWatchLoss));
         }
         else
         {
