@@ -62,38 +62,7 @@ public sealed partial class VisualTests
             await CaptureAsync(window, "results");
             BattleSandboxRunViewModel results = Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen);
 
-            // Phase 6: watch the first battle the attacker lost; it must end exactly like that run.
-            BattleBenchRun loss = results.Result!.Runs.First(item => item.Winner == BattleBenchWinner.B);
-            await results.WatchLossCommand.ExecuteAsync(null);
-            BattleScreenViewModel watch = Assert.IsOfType<BattleScreenViewModel>(game.TopScreen);
-            Assert.That(watch.SandboxWatch, Is.Not.Null);
-            await WaitUntilAsync(() => watch.TransitionState is null);
-            await SkipFramesAsync(90);
-            await CaptureAsync(window, "watch");
-            await WaitUntilAsync(() => watch.IsBattleOver);
-            Assert.That(watch.IsBattleOver, Is.True, "the battle plays to its end by itself");
-            await CaptureAsync(window, "watch-end");
-            BattleModel watched = watch.GameModel.ActiveBattle!;
-            BattleSide lossWinner = loss.ArmyAAttacks ? BattleSide.Defender : BattleSide.Attacker;
-            Assert.That(watched.State.Outcome!.WinningSide, Is.EqualTo(lossWinner));
-            Assert.That(watched.State.RoundNumber, Is.EqualTo(loss.Rounds));
-            watch.ExitBattleCommand.Execute(null);
-            await WaitUntilAsync(() => game.TopScreen is BattleSandboxRunViewModel);
-            Assert.That(game.TopScreen, Is.SameAs(results), "back to the results after the battle");
             results.CloseCommand.Execute(null);
-
-            // Instant resolve while watching finishes the same battle at once.
-            BattleScreenViewModel? quick = await screen.WatchRunAsync(loss.Seed, loss.ArmyAAttacks);
-            Assert.That(quick, Is.Not.Null);
-            await WaitUntilAsync(() => quick!.TransitionState is null);
-            quick!.AutoResolveCommand.Execute(null);
-            await Assert.IsOfType<ConfirmPromptViewModel>(game.TopScreen).ConfirmCommand.ExecuteAsync(null);
-            await WaitUntilAsync(() => quick.IsBattleOver);
-            Assert.That(quick.GameModel.ActiveBattle!.State.Outcome!.WinningSide, Is.EqualTo(lossWinner));
-            Assert.That(quick.GameModel.ActiveBattle!.State.RoundNumber, Is.EqualTo(loss.Rounds));
-            quick.ExitBattleCommand.Execute(null);
-            await WaitUntilAsync(() => game.TopScreen is BattleSandboxScreenViewModel);
-            Assert.That(game.TopScreen, Is.SameAs(screen));
 
             screen.SetPlaceCommand.Execute(screen.Places.Single(option => option.Value == BattleBenchPlace.Capital));
             screen.Defender.Owners.Single(owner => owner.Race == WorldRace.Elf).SelectCommand.Execute(null);
@@ -118,6 +87,57 @@ public sealed partial class VisualTests
             await CaptureAsync(window, "ru-results");
             Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen).CloseCommand.Execute(null);
             settings.Language = Language.English;
+        }
+        finally
+        {
+            BattleSandboxScreenViewModel.ArmiesDirectory = previous;
+        }
+    }
+
+    // Phase 6: Watch. The battle a Run lost, on the real battle screen, played by both AIs; instant resolve
+    // finishes it exactly like that run; Continue goes back to the results.
+    [AvaloniaTest]
+    [NonParallelizable]
+    public async Task BattleSandboxWatchTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        string previous = BattleSandboxScreenViewModel.ArmiesDirectory;
+        BattleSandboxScreenViewModel.ArmiesDirectory = sb.GetPath("Battles/armies");
+
+        try
+        {
+            (GameViewModel game, GameView window, _) = InitializeMapEditor(sb);
+            await game.ShowMainMenuCommand.ExecuteAsync(null);
+            await game.ShowBattleSandboxCommand.ExecuteAsync(null);
+            BattleSandboxScreenViewModel screen = Assert.IsOfType<BattleSandboxScreenViewModel>(game.RootScreen);
+            await BattleSandboxTests.BuildArmiesAsync(game, screen);
+            screen.Defender.SelectedAi = screen.Defender.Ais.Single(option => option.Value == "ruthless");
+            screen.RunCount = 200;
+            screen.NextSeed = () => 1;
+            await screen.RunCommand.ExecuteAsync(null);
+            BattleSandboxRunViewModel results = Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen);
+            BattleBenchRun loss = results.Result!.Runs.First(item => item.Winner == BattleBenchWinner.B);
+            BattleSide lossWinner = loss.ArmyAAttacks ? BattleSide.Defender : BattleSide.Attacker;
+
+            await results.WatchLossCommand.ExecuteAsync(null);
+            BattleScreenViewModel watch = Assert.IsOfType<BattleScreenViewModel>(game.TopScreen);
+            Assert.That(watch.SandboxWatch, Is.EqualTo(new BattleSandboxWatch(AiBrainRegistry.ClassicId, "ruthless", 1)));
+            await WaitUntilAsync(() => watch.TransitionState is null);
+            await SkipFramesAsync(60);
+            Assert.That(watch.IsPlayerTurn, Is.False, "both sides are played by their AI");
+            await CaptureAsync(window, "watch");
+
+            watch.AutoResolveCommand.Execute(null);
+            await Assert.IsOfType<ConfirmPromptViewModel>(game.TopScreen).ConfirmCommand.ExecuteAsync(null);
+            await WaitUntilAsync(() => watch.IsBattleOver);
+            BattleState final = watch.GameModel.ActiveBattle!.State;
+            Assert.That(final.Outcome!.WinningSide, Is.EqualTo(lossWinner));
+            Assert.That(final.RoundNumber, Is.EqualTo(loss.Rounds));
+            await CaptureAsync(window, "watch-end");
+
+            watch.ExitBattleCommand.Execute(null);
+            await WaitUntilAsync(() => game.TopScreen is BattleSandboxRunViewModel);
+            Assert.That(game.TopScreen, Is.SameAs(results), "back to the results after the battle");
         }
         finally
         {
