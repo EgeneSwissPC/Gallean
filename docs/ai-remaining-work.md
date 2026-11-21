@@ -45,7 +45,7 @@ It is no longer "phase 6 of the AI designer"; it gets its own spec (section 2 be
 - Fixtures that read or change the designed AIs in the static registry are `[NonParallelizable]`.
 - Client JSON: `Utf8JsonWriter`/`JsonDocument` only (the client is native AOT).
 - Translations: `add_translations.py` overwrites existing keys; after running it, `git diff ru.json | grep '^-'` must show no removed lines.
-- Per phase: feature commit → full non-visual suite (**5370** after AI designer phase 5) → visual tests of the touched
+- Per phase: feature commit → full non-visual suite (**5380** after battle bench, battle AI designer phase 1) → visual tests of the touched
   screens (en + ru, reviewed for clipping at 1366x768) → AOT publish + real-client click-through → merge `--no-ff` →
   `Docs:` commit with a "Phase N — done" section.
 - `gallean-upgrade` is checked out in the worktree `~/work/Gallean-spellcast` (another session's); topic branches are
@@ -53,9 +53,9 @@ It is no longer "phase 6 of the AI designer"; it gets its own spec (section 2 be
 
 ---
 
-## 2. Battle AI designer (separate project, not started)
+## 2. Battle AI designer (separate project, phase 1 battle bench done)
 
-Spec: `docs/battle-ai-designer.md` (phases, open questions BA–BF with recommendations). Phase 1 = battle bench.
+Spec: `docs/battle-ai-designer.md` (phases, open questions BA–BF with recommendations). Phase 1 (battle bench, `tools/AiTournament --battle`) is done; next: battle sandbox (questions SA–SF).
 
 ### Why it is different from the map AI designer
 - **Time scale**: decisions are per unit per battle turn, a battle lasts a few rounds; there are no turns of the game,

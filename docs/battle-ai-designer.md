@@ -9,6 +9,10 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   (`DesignedBattleAi`, `AIs/battle/<name>.json`, `custom-battle:<name>`).
 - Classic stays untouched: a designed battle AI is a profile on the Classic planner (extra knobs whose defaults are
   Classic's behaviour), never an edit of the Classic code path. A missing `custom-battle:` ID falls back to Classic.
+- Phase 1 decision: the bench builds no hidden world of its own. It loads a host map (default `S099SC0000`), makes
+  two copies of one of its armies with the preset's units, owned by two of its players (both set to computer
+  players), on a tile without a city, and lets `WorldCommandHelpers.CreateStackBattleState` build the battle like
+  the game does. The sandbox (phases 2–3) reuses `AiBattleBench.CreateBattle`.
 - Phase 1 (the battle bench) comes first: it doesn't depend on any open question, and every later phase needs it to
   prove "Classic copy = Classic" and to tune designs.
 - **Battle sandbox** (user, 2026-11-21): a visual mode where the player builds two armies from any units at any
@@ -136,9 +140,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 
 ## 6. Phases
 
-1. **Battle bench** (~1 day): `BattleSandbox` world builder + `AiBattleBench` in the engine, army preset file
-   format, `tools/AiTournament --battle` with armies from presets or a scenario's stacks; first numbers for
-   Classic, Cautious, Ruthless. No open question blocks it.
+1. ~~**Battle bench** (~1 day)~~: done, see "Phase 1 — done" below.
 2. **Battle sandbox, setup screen + presets** (~2 days, after SA–SC): main-menu entry, two army panels reusing the
    map editor's army grid and unit picker, AI per side, save/load presets.
 3. **Battle sandbox, Watch + Run N** (~2 days, after SD–SF): spectator battle screen (both sides AI), Run N with
@@ -164,3 +166,50 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   Recommended (a) now, (b) as phase 6.
 - ~~**BE. Test armies**~~: answered by the user — any units at any level, saved as presets (battle sandbox, 3a).
 - **BF. Size**: ~11–12 days in total with the sandbox, confirmed per phase.
+
+## Phase 1 — done
+
+Merged in 20314881 (feature) and 48744c98 (fix found while measuring).
+
+### What was built
+- Engine `src/Gallean.Engine/Ai/Tournament/`:
+  - `BattleArmy` / `BattleArmyUnit`: an army preset (unit type, level, line/flank) plus `AllowAnyArmy` (skip the
+    game's army rules for stress tests).
+  - `BattleArmyStore`: one JSON file per army (Utf8JsonWriter / JsonDocument, AOT-safe; broken files skipped,
+    unknown properties ignored).
+  - `AiBattleBench`: `Validate` (unknown unit, bad or taken slot, large units, level below the unit's own, more
+    than one leader, leadership exceeded, guardians — the game's own `WorldStackBuilder` rules), `Run` (N runs,
+    seed + k per run, optional side swap, parallel), `RunOne`, `CreateBattle` (for the sandbox), `ExportArmies`
+    (every army of the host map as presets). A run = `BattleStartCommand` + `BattleAutoResolveCommand` with
+    both AI IDs, exactly like an AI-vs-AI battle in `GameSession`. Results per run and side: winner, rounds, per
+    unit survived / fled / hit points left.
+- `tools/AiTournament --battle <army A> <army B> [--ai-a] [--ai-b] [--runs] [--seed] [--swap] [--parallel]
+  [--map] [--armies dir] [--csv] [--verbose]` and `--export-armies <map> <dir>`; README section; example armies
+  in `tools/AiTournament/examples/armies/` (empire, undead, orcs, deathlords).
+
+### Tests
+- `AiBattleBenchTests` (10): same seed = same result (also with `--parallel`), other seeds differ; swap alternates
+  the attacker; a bench run equals a hand-dispatched auto-resolve of the same battle; the battle AI reaches the
+  battle (Classic flees from a far stronger army, Ruthless never does); both sides get the same world modifiers;
+  levels raise hit points; validation of every rule plus "anything goes"; store round trip; broken files and
+  unknown properties; every exported S099 army is valid.
+- Mutation check: passing no attacker AI ID makes `BattleAiReachesTheBattleTest` fail.
+- Full non-visual suite: 5380 passed (5370 + 10), none failed. No client change, so no visual or AOT run; the
+  real-client check moves to phase 2. Classic AI code untouched, so no S099 tournament rerun.
+
+### Findings
+- First measurement showed the attacker winning ~92 % of mirror battles. Cause: the host map's players were
+  human, and only computer players get the difficulty's accuracy/experience bonus, so the sides differed. Fixed
+  by making both bench players computer players (48744c98); mirror battles are now ~50/50 (Classic vs Classic,
+  undead vs undead, 200 runs swapped: 94 / 106 wins).
+- First numbers (200 runs, sides swapped, same undead army on both sides, against Classic): Ruthless 98 wins
+  (noise-level difference), Cautious 81 wins and fled in 66 runs, because it flees from even battles.
+- Empire (Pegasus Knight, 2 Squires, Acolyte) vs Undead (Death Knight, 2 Fighters, Initiate), all level 1:
+  Undead wins 198 of 200.
+- Speed: 1000 battles of 4 vs 4 in ~1 s with `--parallel 8`.
+
+### Known limits
+- No leader items, no city defence, no neutral side yet (sandbox questions SB, SC, SF).
+- "Fled" = a unit of the side was retreating or retreated at the end; a fled leader counts as alive.
+- Battles use the game's auto-resolve rules (attacker retreats after round 15, stop at 45). The Watch battle in
+  the sandbox plays step by step and may differ after round 15.
