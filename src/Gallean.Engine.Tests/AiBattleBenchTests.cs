@@ -149,6 +149,15 @@ public sealed class AiBattleBenchTests
     }
 
     [Test]
+    public void BothSidesGetTheSameWorldModifiersTest()
+    {
+        BattleState state = bench.CreateBattle(Empire(), Undead());
+
+        Assert.That(state.Modifiers.Attacker with { CanRetreat = true }, Is.EqualTo(state.Modifiers.Defender with { CanRetreat = true }));
+        Assert.That(state.Modifiers.Attacker.CanRetreat, Is.True);
+    }
+
+    [Test]
     public void LevelRaisesHitpointsTest()
     {
         BattleState low = bench.CreateBattle(Empire(), Undead(leaderLevel: 1, unitLevel: 1));
