@@ -1406,6 +1406,22 @@
     "Attacks only with a clear advantage and keeps its armies full and healed.": "Attacks only with a clear advantage and keeps its armies full and healed.",
     "Hires leaders early, plants rods first and sends armies out with fewer units.": "Hires leaders early, plants rods first and sends armies out with fewer units.",
     "Leaders flee as soon as the battle turns against them.": "Leaders flee as soon as the battle turns against them.",
-    "Never flees and never defends: every unit attacks.": "Never flees and never defends: every unit attacks."
+    "Never flees and never defends: every unit attacks.": "Never flees and never defends: every unit attacks.",
+    "AI editor": "AI editor",
+    "Your map AIs": "Your map AIs",
+    "No AIs of your own yet. Create one on the right.": "No AIs of your own yet. Create one on the right.",
+    "The AI designer comes in the next update.": "The AI designer comes in the next update.",
+    "New map AI": "New map AI",
+    "Start from": "Start from",
+    "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel. Battle AIs come in a later update.": "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel. Battle AIs come in a later update.",
+    "Create AI": "Create AI",
+    "My AI": "My AI",
+    "1 stage": "1 stage",
+    "{0} stages": "{0} stages",
+    "Delete AI": "Delete AI",
+    "Delete \"{0}\"? Games and settings that use it play Classic+ instead. This cannot be undone.": "Delete \"{0}\"? Games and settings that use it play Classic+ instead. This cannot be undone.",
+    "Designed in the AI editor.": "Designed in the AI editor.",
+    "Copy": "Copy",
+    "Make a copy of the selected AI": "Make a copy of the selected AI"
   }
 }

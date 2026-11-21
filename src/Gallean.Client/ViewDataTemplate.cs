@@ -40,6 +40,7 @@ internal sealed class ViewDataTemplate : IDataTemplate
             LoadGameScreenViewModel => new LoadGameScreenView(),
             LoadingScreenViewModel => new LoadingScreenView(),
             MapEditorMenuScreenViewModel => new MapEditorMenuScreenView(),
+            AiEditorMenuScreenViewModel => new AiEditorMenuScreenView(),
             MapEditorArmyScreenViewModel => new MapEditorArmyScreenView(),
             MapEditorVillageScreenViewModel => new MapEditorVillageScreenView(),
             MapEditorRuinScreenViewModel => new MapEditorRuinScreenView(),

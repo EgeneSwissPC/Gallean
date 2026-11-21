@@ -16,7 +16,7 @@ internal static class AiBrainFormatter
             "expansionist" => Tr("Expansionist"),
             "cautious" => Tr("Cautious"),
             "ruthless" => Tr("Ruthless"),
-            _ => id
+            _ => AiBrainRegistry.WorldBrains.FirstOrDefault(info => info.Id == id)?.Name ?? id
         };
     }
 
@@ -29,6 +29,7 @@ internal static class AiBrainFormatter
             "aggressive" => Tr("Attacks with less advantage and sends armies out earlier, before they are full or healed."),
             "builder" => Tr("Attacks only with a clear advantage and keeps its armies full and healed."),
             "expansionist" => Tr("Hires leaders early, plants rods first and sends armies out with fewer units."),
+            _ when id.StartsWith(DesignedWorldAi.IdPrefix, StringComparison.Ordinal) => Tr("Designed in the AI editor."),
             _ => string.Empty
         };
     }

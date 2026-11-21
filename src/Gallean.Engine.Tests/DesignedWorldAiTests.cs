@@ -3,6 +3,8 @@ using System.Collections.Immutable;
 namespace Gallean.Engine.Tests;
 
 // Gallean Upgrade: designed map AIs (docs/ai-designer.md, phase 1).
+// Reads or changes the designed AIs in AiBrainRegistry (static): never alongside other such fixtures.
+[NonParallelizable]
 public sealed class DesignedWorldAiTests
 {
     private static readonly WorldPlayerId AiId = new(1);

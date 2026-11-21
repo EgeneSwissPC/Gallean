@@ -1406,6 +1406,22 @@
     "Attacks only with a clear advantage and keeps its armies full and healed.": "Нападает только при явном перевесе, держит армии полными и вылеченными.",
     "Hires leaders early, plants rods first and sends armies out with fewer units.": "Рано нанимает предводителей, первым делом ставит жезлы и выводит армии с меньшим числом воинов.",
     "Leaders flee as soon as the battle turns against them.": "Предводители отступают, как только бой оборачивается против них.",
-    "Never flees and never defends: every unit attacks.": "Никогда не отступает и не защищается: атакует каждый воин."
+    "Never flees and never defends: every unit attacks.": "Никогда не отступает и не защищается: атакует каждый воин.",
+    "AI editor": "Редактор ИИ",
+    "Your map AIs": "Ваши ИИ карты",
+    "No AIs of your own yet. Create one on the right.": "Своих ИИ пока нет. Создайте его справа.",
+    "The AI designer comes in the next update.": "Конструктор ИИ появится в следующем обновлении.",
+    "New map AI": "Новый ИИ карты",
+    "Start from": "На основе",
+    "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel. Battle AIs come in a later update.": "Новый ИИ играет точно так же, как тот, на основе которого он создан, пока вы его не измените. Ваши ИИ появляются в настройках и на панели игроков ИИ. ИИ боя появятся в одном из следующих обновлений.",
+    "Create AI": "Создать ИИ",
+    "My AI": "Мой ИИ",
+    "1 stage": "1 этап",
+    "{0} stages": "Этапов: {0}",
+    "Delete AI": "Удалить ИИ",
+    "Delete \"{0}\"? Games and settings that use it play Classic+ instead. This cannot be undone.": "Удалить «{0}»? Игры и настройки, где он выбран, будут играть с ИИ «Классический+». Это нельзя отменить.",
+    "Designed in the AI editor.": "Создан в редакторе ИИ.",
+    "Copy": "Копия",
+    "Make a copy of the selected AI": "Сделать копию выбранного ИИ"
   }
 }

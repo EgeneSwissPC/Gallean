@@ -51,6 +51,9 @@ internal sealed class App(ILog log, GCMemoryInfo memoryInfo) : Application
     {
         GameSettingsStore gameSettingsStore = new(AppDirectories.Root);
         GameSettings gameSettings = await LoadSettingsAsync(gameSettingsStore);
+
+        // Gallean Upgrade (AI editor): designed map AIs, so settings and saves that name one find it.
+        DesignedAiLibrary.Reload();
         TextCatalog textCatalog = TextCatalogLoader.Load(gameSettings.EffectiveLanguage);
         textCatalog.MakeCurrent();
 

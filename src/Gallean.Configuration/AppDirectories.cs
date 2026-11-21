@@ -19,4 +19,7 @@ public static class AppDirectories
     public static string Maps { get; } = Path.Combine(Root, "Maps");
     public static string OriginalAssets { get; } = Path.Combine(Root, "OriginalAssets");
     public static string Saves { get; } = Path.Combine(Root, "Saves");
+
+    // Gallean Upgrade (AI editor): designed map AIs, one JSON file each.
+    public static string MapAis { get; } = Path.Combine(Root, "AIs", "map");
 }

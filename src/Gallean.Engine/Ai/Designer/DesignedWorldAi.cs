@@ -14,6 +14,22 @@ public sealed record DesignedWorldAi(string Id, string Name, ImmutableArray<Desi
         return new DesignedWorldAi(IdPrefix + fileName, name, [DesignedWorldStage.Classic]);
     }
 
+    // A designed AI that starts as a copy of a built-in map AI (Classic, Classic+ or a personality) or of
+    // another designed AI. Other IDs start from what they play as (AiBrainRegistry.ResolveWorld).
+    public static DesignedWorldAi FromBuiltIn(string sourceId, string fileName, string name)
+    {
+        IWorldAiBrain brain = AiBrainRegistry.ResolveWorld(sourceId);
+
+        ImmutableArray<DesignedWorldStage> stages = brain switch
+        {
+            DesignedWorldAiBrain designed => designed.Design.Stages,
+            ProfileWorldAiBrain personality => [DesignedStageEvaluator.FromProfile(personality.Profile, "Default")],
+            _ => [DesignedWorldStage.Classic]
+        };
+
+        return new DesignedWorldAi(IdPrefix + fileName, name, stages);
+    }
+
     public bool Equals(DesignedWorldAi? other)
     {
         return other is not null && Id == other.Id && Name == other.Name && Stages.SequenceEqual(other.Stages);

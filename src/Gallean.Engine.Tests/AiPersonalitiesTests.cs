@@ -1,6 +1,8 @@
 namespace Gallean.Engine.Tests;
 
 // Gallean Upgrade: the AI personalities (docs/ai-switching.md, phase 5).
+// Reads or changes the designed AIs in AiBrainRegistry (static): never alongside other such fixtures.
+[NonParallelizable]
 public sealed class AiPersonalitiesTests
 {
     [Test]
