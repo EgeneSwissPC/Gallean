@@ -130,6 +130,12 @@ internal sealed class GameLoader(IRandomProvider random, string? customMapsDirec
         return new AiTournamentRunner(globalDatabase.Value, campaignDatabase.Value, scenarioDatabase, scenarioId, maxTurns);
     }
 
+    // Gallean Upgrade (battle sandbox): the headless battle bench on its generated host map with every race.
+    public AiBattleBench CreateBattleBench()
+    {
+        return AiBattleBench.CreateWithGeneratedHost(globalDatabase.Value, campaignDatabase.Value);
+    }
+
     public CustomMapStore? CreateMapStore()
     {
         return customMapsDirectory is null ? null : new CustomMapStore(customMapsDirectory, globalDatabase.Value, campaignDatabase.Value);

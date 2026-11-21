@@ -80,7 +80,29 @@ public sealed class AiBattleBench
     // all five races. Made with the map editor's code (CustomMap + CustomMapStore), like a player's own map.
     public static AiBattleBench CreateWithGeneratedHost(GlobalDatabase globalDb, CampaignDatabase campaignDb, WorldDifficulty difficulty = WorldDifficulty.Average)
     {
-        IGameDefinitionProvider definitions = new GameDefinitionProvider(globalDb);
+        CustomMap map = CreateHostMap(new GameDefinitionProvider(globalDb));
+        string directory = Path.Combine(Path.GetTempPath(), "gallean-battle-host-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            CustomMapStore store = new(directory, globalDb, campaignDb);
+            store.Save(map);
+
+            return new AiBattleBench(globalDb, campaignDb, store.LoadDatabase(GeneratedHostId), GeneratedHostId, difficulty);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    // The generated host map itself (the battle sandbox also builds its editor game from it, for unit lists and
+    // leader panels of every race).
+    public static CustomMap CreateHostMap(IGameDefinitionProvider definitions)
+    {
         WorldRace[] races = [WorldRace.Human, WorldRace.Undead, WorldRace.Heretic, WorldRace.Dwarf, WorldRace.Elf];
         CustomMap map = CustomMap.Create(GeneratedHostId, GeneratedHostName, 48, WorldMapTerrain.Neutral, races);
 
@@ -100,22 +122,7 @@ public sealed class AiBattleBench
             throw new InvalidOperationException($"The generated host map refused its army: {stackError}.");
         }
 
-        string directory = Path.Combine(Path.GetTempPath(), "gallean-battle-host-" + Guid.NewGuid().ToString("N"));
-
-        try
-        {
-            CustomMapStore store = new(directory, globalDb, campaignDb);
-            store.Save(map);
-
-            return new AiBattleBench(globalDb, campaignDb, store.LoadDatabase(GeneratedHostId), GeneratedHostId, difficulty);
-        }
-        finally
-        {
-            if (Directory.Exists(directory))
-            {
-                Directory.Delete(directory, recursive: true);
-            }
-        }
+        return map;
 
         static void Require(CustomMapPlacementError? error, string what)
         {
@@ -136,6 +143,18 @@ public sealed class AiBattleBench
     // The races that have a capital on the host map.
     public IReadOnlyList<WorldRace> CapitalRaces => [.. scenario.State.Fortifications.Values.OfType<WorldCapital>()
         .Select(capital => scenario.State.Players[capital.OwnerId].Race).Distinct().Order()];
+
+    // The guardian in the race's capital on the host map (a capital garrison keeps it, like in the game), or null.
+    public UnitDefinitionId? GetGuardian(WorldRace race)
+    {
+        return scenario.State.Fortifications.Values.OfType<WorldCapital>()
+            .Where(capital => scenario.State.Players[capital.OwnerId].Race == race)
+            .SelectMany(capital => capital.Garrison.GetUnits())
+            .Select(pair => pair.Item1.DefinitionId)
+            .Where(id => definitions.GetUnit(id).Category == UnitCategory.Guardian)
+            .Cast<UnitDefinitionId?>()
+            .FirstOrDefault();
+    }
 
     public IReadOnlyList<UnitModifierDefinitionId> LeaderUpgradeIds => [.. leaderUpgrades.Keys.Order()];
 
@@ -254,7 +273,7 @@ public sealed class AiBattleBench
         WorldPlayerId defenderOwner = GetOwner(defender, secondOwner);
         IEngineContext context = CreateContext(0);
         WorldStack attackerStack = CreateStack("BenchAttacker", attackerOwner, attackerArmy, openTile);
-        WorldState state = scenario.State;
+        WorldState state = setup.Difficulty is { } difficulty ? scenario.State with { Difficulty = difficulty } : scenario.State;
 
         if (setup.Place is BattleBenchPlace.Open)
         {
@@ -696,6 +715,9 @@ public enum BattleBenchPlace
 public sealed record BattleBenchSetup(BattleBenchPlace Place = BattleBenchPlace.Open, int CityLevel = 1, bool DefenderIsGarrison = false)
 {
     public static BattleBenchSetup Open { get; } = new();
+
+    // The game difficulty for this battle (null = the bench's own, Average unless chosen at construction).
+    public WorldDifficulty? Difficulty { get; init; }
 }
 
 public enum BattleBenchWinner
