@@ -113,6 +113,23 @@ internal sealed partial class WorldEventQueue :
         }
     }
 
+    // Gallean Upgrade: drops waiting entries (spell animations cut short by a new cast).
+    public void RemoveQueued(Predicate<Entry> match)
+    {
+        lock (locker)
+        {
+            queue.RemoveAll(match);
+        }
+    }
+
+    public int CountQueued(Predicate<Entry> match)
+    {
+        lock (locker)
+        {
+            return queue.Count(entry => match(entry));
+        }
+    }
+
     public void Stop()
     {
         lock (locker)
