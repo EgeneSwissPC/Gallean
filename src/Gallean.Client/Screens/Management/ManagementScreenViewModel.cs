@@ -259,7 +259,7 @@ internal sealed partial class ManagementScreenViewModel : AbstractGameScreenView
 
     private bool CanSelectPreviousTab()
     {
-        return Tabs.Count > 1;
+        return Tabs.Count > 1 && !SelectedTab.IsTyping;
     }
 
     [RelayCommand(CanExecute = nameof(CanSelectNextTab))]
@@ -270,7 +270,7 @@ internal sealed partial class ManagementScreenViewModel : AbstractGameScreenView
 
     private bool CanSelectNextTab()
     {
-        return Tabs.Count > 1;
+        return Tabs.Count > 1 && !SelectedTab.IsTyping;
     }
 
     private int SelectedTabIndex()

@@ -21,6 +21,27 @@ internal sealed partial class SpellbookTabView : UserControl
         }
     }
 
+    // Gallean Upgrade: Enter in the group name saves the group.
+    private void OnGroupNameKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            if (ViewModel.SaveGroupCommand.CanExecute(null))
+            {
+                ViewModel.SaveGroupCommand.Execute(null);
+            }
+
+            e.Handled = true;
+        }
+    }
+
+    // Gallean Upgrade: while the name box has focus, the screen's letter hotkeys (Q and E switch tabs) are off.
+    // Avalonia checks key bindings before the text box sees the key, so they took the box away mid-word.
+    private void OnGroupNameFocusChanged(object? sender, FocusChangedEventArgs e)
+    {
+        ViewModel.IsTyping = sender is TextBox { IsFocused: true };
+    }
+
     private void OnSpellDoubleTapped(object? sender, TappedEventArgs e)
     {
         if (ViewModel.CastSelectedCommand.CanExecute(null))

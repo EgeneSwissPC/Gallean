@@ -383,7 +383,10 @@
                        Width="190"
                        VerticalAlignment="Center"
                        Text="{Binding GroupName}"
-                       MaxLength="{Binding GroupNameLength}" />
+                       MaxLength="{Binding GroupNameLength}"
+                       KeyDown="OnGroupNameKeyDown"
+                       GotFocus="OnGroupNameFocusChanged"
+                       LostFocus="OnGroupNameFocusChanged" />
               <Button Grid.Column="2" Classes="pill" Content="{local:Text 'Save group'}" Command="{Binding SaveGroupCommand}" VerticalAlignment="Center" />
               <Button Grid.Column="3" Classes="pill" Content="{local:Text 'Cancel'}" Command="{Binding CancelGroupCommand}" VerticalAlignment="Center" />
             </Grid>

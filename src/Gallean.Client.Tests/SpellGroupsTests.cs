@@ -245,6 +245,23 @@ public sealed class SpellGroupsTests
     }
 
     [Test]
+    public async Task CastGroupOnInvalidTargetTest()
+    {
+        using Setup setup = Create(LordCategory.Warrior);
+
+        // Restore movement only targets your own armies: an empty tile casts nothing, reports an error and keeps the
+        // cursor, so the next click can hit the army.
+        setup.World.SelectAction(new WorldCursorAction.CastSpellGroup("Speed", [RestoreId, HasteId], RestoreId));
+        await setup.World.HandleMapClickAsync(new WorldPosition(10, 0), null, 1);
+
+        Alert alert = Assert.NotNull(setup.World.Game.Alert.Current);
+        Assert.That(alert.Type, Is.EqualTo(AlertType.Error));
+        Assert.That(alert.Caption, Is.EqualTo("No spell of the group was cast"));
+        Assert.That(alert.Details, Does.StartWith("Restoration: "));
+        Assert.That(setup.World.HasSelectedAction, Is.True);
+    }
+
+    [Test]
     public async Task SpellCursorStaysForSecondCastTest()
     {
         // A mage lord may cast each spell twice a turn: after the first cast the cursor stays on the spell.
@@ -282,6 +299,25 @@ public sealed class SpellGroupsTests
         setup.World.CancelSelectedActionCommand.Execute(null);
 
         Assert.That(setup.World.HasSelectedAction, Is.False);
+    }
+
+    [Test]
+    public void StoreKeepsOtherRacesAndSurvivesBrokenFileTest()
+    {
+        SpellGroupStore.Save(WorldRace.Human, [new SpellGroup("Empire", [RestoreId])]);
+        SpellGroupStore.Save(WorldRace.Undead, [new SpellGroup("Na\u00efve \"quoted\" name", [HasteId, RestoreId]), new SpellGroup("Empty", [])]);
+
+        Assert.That(SpellGroupStore.Load(WorldRace.Human).Single().Name, Is.EqualTo("Empire"));
+        Assert.That(SpellGroupStore.Load(WorldRace.Undead).Select(group => (group.Name, string.Join(",", group.Spells.Select(spell => spell.Value)))),
+            Is.EqualTo(new[] { ("Na\u00efve \"quoted\" name", "haste,restore"), ("Empty", "") }));
+
+        File.WriteAllText(tempPath, "{ not json");
+
+        Assert.That(SpellGroupStore.Load(WorldRace.Undead), Is.Empty);
+
+        SpellGroupStore.Add(WorldRace.Undead, new SpellGroup("Fresh", [HasteId]));
+
+        Assert.That(SpellGroupStore.Load(WorldRace.Undead).Single().Name, Is.EqualTo("Fresh"));
     }
 
     [Test]

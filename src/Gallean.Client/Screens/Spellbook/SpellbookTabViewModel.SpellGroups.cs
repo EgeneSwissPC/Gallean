@@ -91,6 +91,7 @@ internal sealed partial class SpellbookTabViewModel
     private void EndPicking()
     {
         IsPickingGroup = false;
+        IsTyping = false;
         pickedSpells.Clear();
         ApplyPicks();
     }
