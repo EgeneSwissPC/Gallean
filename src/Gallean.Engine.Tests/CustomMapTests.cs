@@ -1582,6 +1582,41 @@ public sealed class CustomMapTests
         }));
     }
 
+    // Gallean Upgrade (switchable AI): on a fresh custom map Classic's capital leader waits to save up
+    // for a second leader; Classic+ (and every personality) doesn't, so its leader goes out.
+    [TestCase(AiBrainRegistry.ClassicId, false)]
+    [TestCase(AiPersonalities.ClassicPlusId, true)]
+    public void CapitalLeaderLeavesWithClassicPlusTest(string worldAi, bool leaves)
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State with
+        {
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = true })))
+        };
+        GameSession session = new(context, state) { AllowAiOnly = true, Ai = new AiSelection(worldAi, null) };
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        WorldPlayerId human = session.World.State.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldPosition entrance = WorldPlan.For(session.World.State).GetCapital(human)!.Entrance;
+
+        bool left = false;
+
+        while (session.World.State.TurnInfo.TurnNumber <= 6)
+        {
+            session.ExecuteAiAction();
+            left |= session.World.State.Stacks.Values.Any(stack => stack.OwnerId == human && stack.Position != entrance);
+        }
+
+        // (Classic+ leaves on turn 3 here; whether the army survives what it meets doesn't matter.)
+        Assert.That(left, Is.EqualTo(leaves));
+    }
+
     private static ScenarioDatabase SaveAndLoadDatabase(CustomMapStore store, CustomMap map)
     {
         store.Save(map);

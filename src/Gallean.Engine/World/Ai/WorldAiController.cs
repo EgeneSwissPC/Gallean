@@ -2,7 +2,7 @@ using Gallean.Common;
 
 namespace Gallean.Engine;
 
-internal sealed class WorldAiController(IEngineContext engine)
+internal sealed class WorldAiController(IEngineContext engine, WorldAiProfile? profile = null)
 {
     private const int MaxActionsPerTurn = 100;
 
@@ -12,7 +12,7 @@ internal sealed class WorldAiController(IEngineContext engine)
 
         if (memory.Turn.ActionsChosen < MaxActionsPerTurn)
         {
-            WorldAiPlanner planner = new(new WorldAiContext(engine, trace ?? NullWorldAiTrace.Instance));
+            WorldAiPlanner planner = new(new WorldAiContext(engine, trace ?? NullWorldAiTrace.Instance, profile));
             WorldPlayerId playerId = state.TurnInfo.CurrentPlayerId;
             WorldPlayer player = state.Players[playerId];
 

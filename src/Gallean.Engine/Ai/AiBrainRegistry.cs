@@ -6,8 +6,8 @@ public static class AiBrainRegistry
 {
     public const string ClassicId = "classic";
 
-    private static readonly IWorldAiBrain[] worldBrains = [ClassicWorldAiBrain.Instance];
-    private static readonly IBattleAiBrain[] battleBrains = [ClassicBattleAiBrain.Instance];
+    private static readonly IWorldAiBrain[] worldBrains = [ClassicWorldAiBrain.Instance, .. AiPersonalities.CreateWorldBrains()];
+    private static readonly IBattleAiBrain[] battleBrains = [ClassicBattleAiBrain.Instance, .. AiPersonalities.CreateBattleBrains()];
 
     // Brains that tests register to check that a selection reaches the AI. Never listed.
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IWorldAiBrain> testWorldBrains = new();

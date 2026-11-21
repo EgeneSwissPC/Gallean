@@ -4,8 +4,11 @@ internal sealed partial class BattleAiPlanner
 {
     private sealed record RetreatAction(IEngineContext Context, int Priority) : AbstractAction(Context, Priority)
     {
-        private static readonly UtilityScore.ResponseCurve PowerRatioCurve =
-            new UtilityScore.ResponseCurve.Polynomial(Slope: -7 * MaxScore, Exponent: 1, XShift: 250, YShift: 0);
+        // Gallean Upgrade: the share is a personality knob (Classic 250, the original XShift).
+        public int PowerShare { get; init; } = 250;
+
+        private UtilityScore.ResponseCurve PowerRatioCurve =>
+            new UtilityScore.ResponseCurve.Polynomial(Slope: -7 * MaxScore, Exponent: 1, XShift: PowerShare, YShift: 0);
 
         private WorldAiEstimator Estimator { get; } = new(Context);
 

@@ -1,10 +1,12 @@
 namespace Gallean.Engine;
 
 // Gallean Upgrade: canRetreat = false drops the retreat action (the "Refuse to flee" battle mode).
-internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUseItems, bool canRetreat = true)
+// Gallean Upgrade: a BattleAiProfile turns the personality's knobs (Classic = original behaviour).
+internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUseItems, bool canRetreat = true, BattleAiProfile? profile = null)
 {
-    private readonly IReadOnlyList<AbstractAction> actions = CreateActions(context, canUseItems)
-        .Where(action => canRetreat || action is not RetreatAction)
+    private readonly IReadOnlyList<AbstractAction> actions = CreateActions(context, canUseItems, profile ?? BattleAiProfile.Classic)
+        .Where(action => (canRetreat && (profile ?? BattleAiProfile.Classic).CanRetreat) || action is not RetreatAction)
+        .Where(action => (profile ?? BattleAiProfile.Classic).CanDefend || action is not DefendAction)
         .ToList();
 
     public BattleAiActionPlan DecideAction(BattleState state)
@@ -36,13 +38,13 @@ internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUs
         return BattleAiActionPlan.Skip(state.CurrentUnitId);
     }
 
-    private static IReadOnlyList<AbstractAction> CreateActions(IEngineContext context, bool canUseItems)
+    private static IReadOnlyList<AbstractAction> CreateActions(IEngineContext context, bool canUseItems, BattleAiProfile profile)
     {
         if (canUseItems)
         {
             return
             [
-                new RetreatAction(context, Priority: 3),
+                new RetreatAction(context, Priority: 3) { PowerShare = profile.RetreatPowerShare },
                 new HealItemAction(context, Priority: 3),
                 new AttackAction(context, Priority: 3),
                 new DefendAction(context, Priority: 3),
@@ -53,7 +55,7 @@ internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUs
         {
             return
             [
-                new RetreatAction(context, Priority: 3),
+                new RetreatAction(context, Priority: 3) { PowerShare = profile.RetreatPowerShare },
                 new AttackAction(context, Priority: 3),
                 new DefendAction(context, Priority: 3),
                 new SkipAction(context, Priority: 1)

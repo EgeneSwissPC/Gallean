@@ -1394,6 +1394,18 @@
     "One computer player in this game has its own Map AI and keeps it. Switch it to the new choice too?": "One computer player in this game has its own Map AI and keeps it. Switch it to the new choice too?",
     "{0} computer players in this game have their own Map AI and keep it. Switch them to the new choice too?": "{0} computer players in this game have their own Map AI and keep it. Switch them to the new choice too?",
     "One computer player in this game has its own Battle AI and keeps it. Switch it to the new choice too?": "One computer player in this game has its own Battle AI and keeps it. Switch it to the new choice too?",
-    "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?": "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?"
+    "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?": "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?",
+    "Classic+": "Classic+",
+    "Aggressive": "Aggressive",
+    "Builder": "Builder",
+    "Expansionist": "Expansionist",
+    "Cautious": "Cautious",
+    "Ruthless": "Ruthless",
+    "The original AI, but it no longer waits in the capital to save up for a leader.": "The original AI, but it no longer waits in the capital to save up for a leader.",
+    "Attacks with less advantage and sends armies out earlier, before they are full or healed.": "Attacks with less advantage and sends armies out earlier, before they are full or healed.",
+    "Attacks only with a clear advantage and keeps its armies full and healed.": "Attacks only with a clear advantage and keeps its armies full and healed.",
+    "Hires leaders early, plants rods first and sends armies out with fewer units.": "Hires leaders early, plants rods first and sends armies out with fewer units.",
+    "Leaders flee as soon as the battle turns against them.": "Leaders flee as soon as the battle turns against them.",
+    "Never flees and never defends: every unit attacks.": "Never flees and never defends: every unit attacks."
   }
 }

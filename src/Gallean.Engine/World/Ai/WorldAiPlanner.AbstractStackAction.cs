@@ -112,6 +112,12 @@ internal sealed partial class WorldAiPlanner
             WorldAiAttackPowerPercent attackPowerPercent = GetAttackPowerPercent(state.Difficulty, aiContext.Engine.Globals);
             int requiredPowerPercent = IsHumanPlayer(state, battle.DefenderId) ? attackPowerPercent.HumanTarget : attackPowerPercent.OtherTarget;
 
+            // Gallean Upgrade: personalities want more or less advantage (Classic = 100, unchanged).
+            if (aiContext.Profile.AttackPowerPercent != 100)
+            {
+                requiredPowerPercent = requiredPowerPercent * aiContext.Profile.AttackPowerPercent / 100;
+            }
+
             return new BattleInfo(target, targetPosition, encounter.Position, battle.State, battle.DefenderId, power, requiredPowerPercent);
         }
 
