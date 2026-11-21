@@ -1,0 +1,80 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             xmlns:sys="clr-namespace:System;assembly=System.Runtime"
+             x:Class="Gallean.Client.AiPlayersScreenView"
+             x:DataType="local:AiPlayersScreenViewModel"
+             x:Name="Root">
+
+  <!-- Gallean Upgrade: own AIs for single computer players (docs/ai-switching.md). -->
+  <Border Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
+    <local:ModalPanel Classes="accent" Width="660" Padding="28,24" Title="{local:Text 'AI players'}" InitialFocus="{Binding #CloseButton}">
+
+      <local:ModalPanel.Footer>
+        <Button x:Name="CloseButton" Margin="0,24,0,0" HorizontalAlignment="Right" Content="{local:Text 'Close'}" Classes="pill" Command="{Binding CloseCommand}" MinWidth="150" />
+      </local:ModalPanel.Footer>
+
+      <StackPanel Spacing="16" Grid.IsSharedSizeScope="True">
+        <TextBlock Text="{local:Text 'Computer players set to Settings choice use the Map AI and Battle AI from the settings.'}"
+                   Classes="body"
+                   TextWrapping="Wrap"
+                   Foreground="{StaticResource SecondaryTextBrush}" />
+
+        <TextBlock Text="{local:Text 'No computer players'}"
+                   Classes="body"
+                   IsVisible="{Binding !HasPlayers}"
+                   Foreground="{StaticResource PrimaryTextBrush}" />
+
+        <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16" IsVisible="{Binding HasPlayers}">
+          <TextBlock Grid.Column="1" Text="{local:Text 'Map AI'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" MinWidth="170" />
+          <TextBlock Grid.Column="2" Text="{local:Text 'Battle AI'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" MinWidth="170" />
+        </Grid>
+
+        <ItemsControl ItemsSource="{Binding Players}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="12" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:AiPlayerRowViewModel">
+              <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
+                <TextBlock Grid.Column="0"
+                           Text="{Binding Name}"
+                           Classes="body"
+                           TextTrimming="CharacterEllipsis"
+                           Foreground="{StaticResource PrimaryTextBrush}"
+                           FontWeight="{Binding HasOwnAi, Converter={x:Static local:AiOwnAiWeightConverter.Instance}}"
+                           VerticalAlignment="Center" />
+                <ComboBox Grid.Column="1"
+                          ItemsSource="{Binding #Root.((local:AiPlayersScreenViewModel)DataContext).WorldAis}"
+                          SelectedItem="{Binding WorldAi}"
+                          Width="170"
+                          VerticalAlignment="Center">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="sys:String">
+                      <TextBlock Text="{Binding Converter={x:Static local:AiChoiceConverter.Instance}}" Classes="body" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <ComboBox Grid.Column="2"
+                          ItemsSource="{Binding #Root.((local:AiPlayersScreenViewModel)DataContext).BattleAis}"
+                          SelectedItem="{Binding BattleAi}"
+                          Width="170"
+                          VerticalAlignment="Center">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate x:DataType="sys:String">
+                      <TextBlock Text="{Binding Converter={x:Static local:AiChoiceConverter.Instance}}" Classes="body" />
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+
+    </local:ModalPanel>
+  </Border>
+
+</UserControl>

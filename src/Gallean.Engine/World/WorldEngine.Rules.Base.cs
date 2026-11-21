@@ -55,6 +55,7 @@ internal partial class WorldEngine
         public virtual EventRuleResult<WorldEvent> Visit(WorldResourcesGivenEvent ev, WorldState state) => EventRuleResult<WorldEvent>.Empty;
         public virtual EventRuleResult<WorldEvent> Visit(WorldResourcesStolenEvent ev, WorldState state) => EventRuleResult<WorldEvent>.Empty;
         public virtual EventRuleResult<WorldEvent> Visit(WorldSummonUpkeepPaidEvent ev, WorldState state) => EventRuleResult<WorldEvent>.Empty;
+        public virtual EventRuleResult<WorldEvent> Visit(WorldAiOverrideChangedEvent ev, WorldState state) => EventRuleResult<WorldEvent>.Empty;
         public virtual EventRuleResult<WorldEvent> Visit(WorldRodCreatedEvent ev, WorldState state) => EventRuleResult<WorldEvent>.Empty;
         public virtual EventRuleResult<WorldEvent> Visit(WorldRodDestroyedEvent ev, WorldState state) => EventRuleResult<WorldEvent>.Empty;
         public virtual EventRuleResult<WorldEvent> Visit(WorldRoundStartedEvent ev, WorldState state) => EventRuleResult<WorldEvent>.Empty;

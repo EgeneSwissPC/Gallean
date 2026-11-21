@@ -15,6 +15,9 @@ internal sealed partial class RaceSelectScreenViewModel : AbstractScreenViewMode
     private readonly GameScenario scenario;
     private readonly CleanupList assetLeases = new();
 
+    // Gallean Upgrade: own AIs for computer-played races (docs/ai-switching.md).
+    private ImmutableDictionary<WorldRace, WorldAiOverride> aiOverrides = ImmutableDictionary<WorldRace, WorldAiOverride>.Empty;
+
     public RaceSelectScreenViewModel(
         GameViewModel gameViewModel,
         IAssetPreloader assetPreloader,
@@ -53,6 +56,42 @@ internal sealed partial class RaceSelectScreenViewModel : AbstractScreenViewMode
     public void OnPlayerTypeChanged()
     {
         NextCommand.NotifyCanExecuteChanged();
+        OpenAiPlayersCommand.NotifyCanExecuteChanged();
+    }
+
+    [RelayCommand(CanExecute = nameof(CanOpenAiPlayers))]
+    private void OpenAiPlayers()
+    {
+        List<AiPlayerRowViewModel> rows = [];
+
+        foreach (RaceSelectItemViewModel race in Races)
+        {
+            if (!race.IsHuman)
+            {
+                WorldAiOverride? current = aiOverrides.GetValueOrDefault(race.Race);
+                rows.Add(new AiPlayerRowViewModel(race.Race, race.Name, current?.WorldAi, current?.BattleAi));
+            }
+        }
+
+        gameViewModel.OpenScreen(new AiPlayersScreenViewModel(rows, ApplyAiPlayersAsync));
+    }
+
+    private bool CanOpenAiPlayers()
+    {
+        return Races.Any(race => !race.IsHuman);
+    }
+
+    private Task ApplyAiPlayersAsync(IReadOnlyList<AiPlayerRowViewModel> rows)
+    {
+        foreach (AiPlayerRowViewModel row in rows)
+        {
+            WorldRace race = (WorldRace)row.Key;
+            WorldAiOverride? value = row.ToOverride();
+
+            aiOverrides = value is null ? aiOverrides.Remove(race) : aiOverrides.SetItem(race, value);
+        }
+
+        return Task.CompletedTask;
     }
 
     public override void Dispose()
@@ -112,7 +151,11 @@ internal sealed partial class RaceSelectScreenViewModel : AbstractScreenViewMode
             }
         }
 
-        ScenarioConfigurationScreenViewModel configurationScreen = new(gameViewModel, texts, definitions, scenario, humanRaces.ToImmutable());
+        // Races switched back to human after getting an own AI drop it.
+        ImmutableDictionary<WorldRace, WorldAiOverride> overrides = aiOverrides.RemoveRange(
+            Races.Where(race => race.IsHuman).Select(race => race.Race));
+
+        ScenarioConfigurationScreenViewModel configurationScreen = new(gameViewModel, texts, definitions, scenario, humanRaces.ToImmutable(), overrides);
         gameViewModel.OpenScreen(configurationScreen);
     }
 

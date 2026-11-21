@@ -109,7 +109,8 @@ internal static class WorldCommandErrorFormatter
             WorldCommandError.UnitNotWounded => Tr("The unit is not wounded"),
             WorldCommandError.UnitResurrectForbidden => Tr("The unit cannot be resurrected"),
             WorldCommandError.UnitTrainingForbidden => Tr("The unit cannot be trained"),
-            WorldCommandError.UnitTypeLockForbidden => Tr("The type of this unit cannot be locked")
+            WorldCommandError.UnitTypeLockForbidden => Tr("The type of this unit cannot be locked"),
+            WorldCommandError.AiPlayerRequired => Tr("Only computer players can have their own AI")
         };
     }
 }
