@@ -811,7 +811,7 @@ internal sealed partial class WorldScreenViewModel :
         Game.OpenScreen(ManagementScreenViewModel.CreateForFortification(GameModel, Game, fortification.Id));
     }
 
-    [RelayCommand(CanExecute = nameof(CanDispatchCommand))]
+    [RelayCommand(CanExecute = nameof(CanOpenSpellbook))]
     private void OpenSpellbook()
     {
         ClearSelectedAction();

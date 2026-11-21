@@ -284,6 +284,79 @@ public sealed class SpellGroupsTests
         Assert.That(setup.World.Game.Alert.Current, Is.Null);
     }
 
+    private static WorldSpellDefinitionId? PlayingSpell(Setup setup)
+    {
+        return (setup.World.PlayingEntry as WorldEventQueue.Entry.SpellCast)?.SpellId;
+    }
+
+    [Test]
+    public async Task SpellbookOpensWhileSpellAnimationPlaysTest()
+    {
+        using Setup setup = Create(LordCategory.Mage);
+        (ManagementScreenViewModel screen, SpellbookTabViewModel spellbook, _) = OpenSpellbook(setup);
+
+        spellbook.SelectSpellCommand.Execute(Item(spellbook, RestoreId));
+        await spellbook.ActivateCommand.ExecuteAsync(null);
+        await setup.World.HandleMapClickAsync(new WorldPosition(30, 0), null, 1);
+
+        Assert.That(PlayingSpell(setup), Is.EqualTo(RestoreId));
+        Assert.That(setup.World.OpenSpellbookCommand.CanExecute(null), Is.True);
+
+        setup.World.CancelSelectedActionCommand.Execute(null);
+        setup.World.OpenSpellbookCommand.Execute(null);
+
+        Assert.That(setup.GameViewModel.TopScreen, Is.InstanceOf<ManagementScreenViewModel>());
+    }
+
+    [Test]
+    public async Task NewSpellCutsPreviousAnimationTest()
+    {
+        using Setup setup = Create(LordCategory.Mage);
+        (_, SpellbookTabViewModel spellbook, _) = OpenSpellbook(setup);
+
+        spellbook.SelectSpellCommand.Execute(Item(spellbook, RestoreId));
+        await spellbook.ActivateCommand.ExecuteAsync(null);
+        await setup.World.HandleMapClickAsync(new WorldPosition(30, 0), null, 1);
+
+        Assert.That(PlayingSpell(setup), Is.EqualTo(RestoreId));
+
+        // A different spell over the top, through the spellbook opened during the animation.
+        setup.World.CancelSelectedActionCommand.Execute(null);
+        (_, spellbook, _) = OpenSpellbook(setup);
+        spellbook.SelectSpellCommand.Execute(Item(spellbook, HasteId));
+        await spellbook.ActivateCommand.ExecuteAsync(null);
+        int before = setup.MovementPoints;
+        await setup.World.HandleMapClickAsync(new WorldPosition(30, 0), null, 1);
+
+        Assert.That(setup.MovementPoints, Is.GreaterThan(before));
+        Assert.That(PlayingSpell(setup), Is.EqualTo(HasteId));
+        Assert.That(setup.World.QueuedSpellAnimations, Is.Zero);
+    }
+
+    [Test]
+    public async Task NewGroupCutsPreviousGroupAnimationsTest()
+    {
+        using Setup setup = Create(LordCategory.Mage);
+        (_, SpellbookTabViewModel spellbook, SpellGroupsTabViewModel groups) = OpenSpellbook(setup);
+
+        MakeGroup(spellbook, "Both", RestoreId, HasteId);
+        await groups.Groups[0].CastCommand.ExecuteAsync(null);
+        await setup.World.HandleMapClickAsync(new WorldPosition(30, 0), null, 1);
+
+        Assert.That(PlayingSpell(setup), Is.EqualTo(RestoreId));
+        Assert.That(setup.World.QueuedSpellAnimations, Is.EqualTo(1));
+
+        WorldEventQueue.Entry? first = setup.World.PlayingEntry;
+
+        // Second cast of the group while the first one's animations still play: the old ones are dropped,
+        // only the new group's animations remain (its first playing, its second waiting).
+        await setup.World.HandleMapClickAsync(new WorldPosition(30, 0), null, 1);
+
+        Assert.That(PlayingSpell(setup), Is.EqualTo(RestoreId));
+        Assert.That(setup.World.QueuedSpellAnimations, Is.EqualTo(1));
+        Assert.That(setup.World.PlayingEntry, Is.Not.SameAs(first));
+    }
+
     [Test]
     public async Task SpellCursorEndsWithEscapeTest()
     {

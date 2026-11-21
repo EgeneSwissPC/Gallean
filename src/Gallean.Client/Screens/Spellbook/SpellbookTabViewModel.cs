@@ -165,6 +165,8 @@ internal sealed partial class SpellbookTabViewModel : ManagementTabViewModel
 
     private async Task CastGlobalSpellAsync(SpellbookItemViewModel item)
     {
+        (Game.RootScreen as WorldScreenViewModel)?.SkipSpellAnimations();
+
         if (await TryDispatchWorldActionAsync(new WorldCastSpellCommand(item.SpellId, Target: null)))
         {
             Screen.Close();

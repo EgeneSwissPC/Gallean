@@ -1,4 +1,5 @@
 using Gallean.Engine;
+using static Gallean.Client.WorldEventQueue;
 
 namespace Gallean.Client;
 
@@ -15,6 +16,8 @@ internal sealed partial class WorldScreenViewModel
         {
             return 0;
         }
+
+        SkipSpellAnimations();
 
         int cast = 0;
         List<string> skipped = [];
@@ -83,6 +86,7 @@ internal sealed partial class WorldScreenViewModel
         else if (action is WorldCursorAction.CastSpell spell)
         {
             ClearSelectedAction();
+            SkipSpellAnimations();
 
             ICommandResult<WorldCommandError, WorldEvent, Gallean.Common.Empty> result = await GameModel.World.DispatchCommandAsync(action.CreateCommand(position));
 
@@ -101,6 +105,30 @@ internal sealed partial class WorldScreenViewModel
     // The next spell may be cast while the last one's animation still plays (the click isn't lost): only the
     // engine work and the turn matter, not the queue of map animations.
     private bool CanCastDuringAnimations => !base.IsBusy && Snapshot.IsViewPlayerTurn && activeMove is null;
+
+    // The spellbook opens while a spell animation still plays (B or the button), like the next cast can.
+    private bool CanOpenSpellbook()
+    {
+        return !IsBusy || CanCastDuringAnimations;
+    }
+
+    // A new cast cuts the spell animations still playing or waiting (from an earlier spell or group) short, so
+    // the new spell shows at once instead of after the old ones. Other animations (moves, battles) stay.
+    internal void SkipSpellAnimations()
+    {
+        eventQueue.RemoveQueued(entry => entry is Entry.SpellCast or Entry.GlobalSpellCast);
+
+        if (eventQueue.PlayingEntry is Entry.SpellCast or Entry.GlobalSpellCast)
+        {
+            StopEntry();
+        }
+
+        ProcessEventQueue();
+    }
+
+    internal Entry? PlayingEntry => eventQueue.PlayingEntry;
+
+    internal int QueuedSpellAnimations => eventQueue.CountQueued(entry => entry is Entry.SpellCast or Entry.GlobalSpellCast);
 
     // Known, affordable and not yet cast the maximum number of times this turn.
     private bool CanCastSpellNow(WorldSpellDefinitionId spellId)
