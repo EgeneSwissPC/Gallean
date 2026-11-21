@@ -141,7 +141,7 @@ internal sealed partial class BattleSandboxRunViewModel : AbstractScreenViewMode
 
         return new BattleSandboxSideResultViewModel(
             title,
-            side.Army.Name,
+            side.Army.Name == title ? string.Empty : side.Army.Name,
             AiBrainFormatter.FormatName(side.AiId),
             Tr("Wins {0} % ± {1}", Math.Round(summary.Wins.Share * 100), Math.Ceiling(summary.Wins.Margin * 100)),
             details,

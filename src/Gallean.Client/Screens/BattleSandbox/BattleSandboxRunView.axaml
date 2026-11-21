@@ -34,7 +34,7 @@
             <DataTemplate x:DataType="local:BattleSandboxSideResultViewModel">
               <StackPanel Margin="6,0" Spacing="4">
                 <local:OutlinedTextBlock Text="{Binding Title}" Classes="object-name row" />
-                <TextBlock Text="{Binding ArmyName}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding ArmyName}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" IsVisible="{Binding ArmyName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                 <TextBlock Text="{Binding AiName}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
                 <local:OutlinedTextBlock Text="{Binding WinsText}" Classes="h3" Foreground="{StaticResource AccentBrush}" Margin="0,4,0,2" />
                 <ItemsControl ItemsSource="{Binding Details}">
