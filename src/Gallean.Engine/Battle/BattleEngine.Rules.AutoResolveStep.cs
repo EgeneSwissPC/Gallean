@@ -10,7 +10,13 @@ internal partial class BattleEngine
         private const int DefendRound = 30;
         private const int LimitRound = 45;
 
+        // Gallean Upgrade: a side that refuses to flee keeps fighting past RetreatRound. If the
+        // battle is still going after LimitRound (e.g. nobody can hurt the other side), it
+        // retreats after all, and the hard limit moves out so that retreat can happen.
+        private const int NoRetreatLimitRound = 90;
+
         private readonly BattleAiPlanner ai = new(context, canUseItems: false);
+        private readonly BattleAiPlanner noRetreatAi = new(context, canUseItems: false, canRetreat: false);
 
         public override EventRuleResult<BattleEvent> Visit(BattleAutoResolveStepEvent ev, BattleState state)
         {
@@ -22,11 +28,11 @@ internal partial class BattleEngine
             if (state.CurrentRound.Type is not BattleRoundType.Recovery &&
                 BattleOutcomeCalculator.GetOutcome(state) is not null)
             {
-                return EventRuleResult<BattleEvent>.Consume(new BattleAutoResolveStepEvent(ev.StartRoundNumber));
+                return EventRuleResult<BattleEvent>.Consume(new BattleAutoResolveStepEvent(ev.StartRoundNumber, ev.NoRetreatSide));
             }
 
             int elapsedRounds = state.RoundNumber - ev.StartRoundNumber;
-            if (elapsedRounds > LimitRound)
+            if (elapsedRounds > (ev.NoRetreatSide is null ? LimitRound : NoRetreatLimitRound))
             {
                 throw new InvalidOperationException("Battle auto-resolve failed to complete.");
             }
@@ -34,7 +40,15 @@ internal partial class BattleEngine
             BattleUnit currentUnit = state.CurrentUnit;
             IBattleCommand<Empty> command;
 
-            if (elapsedRounds > RetreatRound && currentUnit.Side == BattleSide.Attacker)
+            bool refusesToFlee = currentUnit.Side == ev.NoRetreatSide;
+
+            if (refusesToFlee)
+            {
+                command = elapsedRounds > LimitRound
+                    ? new BattleRetreatCommand(currentUnit.Id)
+                    : noRetreatAi.DecideAction(state).Command;
+            }
+            else if (elapsedRounds > RetreatRound && currentUnit.Side == BattleSide.Attacker)
             {
                 command = new BattleRetreatCommand(currentUnit.Id);
             }
@@ -62,7 +76,7 @@ internal partial class BattleEngine
             return EventRuleResult<BattleEvent>.Consume(
             [
                 .. newEvents,
-                new BattleAutoResolveStepEvent(ev.StartRoundNumber)
+                new BattleAutoResolveStepEvent(ev.StartRoundNumber, ev.NoRetreatSide)
             ]);
         }
     }

@@ -9,11 +9,11 @@ namespace Gallean.Client.Tests;
 // Gallean Upgrade: the "Heal and defend" battle button (H) and instant resolve in that mode.
 public sealed class BattleHealModeTests
 {
-    private static readonly BattleUnitId ClericId = new(1);
-    private static readonly BattleUnitId FighterId = new(2);
-    private static readonly BattleUnitId EnemyId = new(3);
+    internal static readonly BattleUnitId ClericId = new(1);
+    internal static readonly BattleUnitId FighterId = new(2);
+    internal static readonly BattleUnitId EnemyId = new(3);
 
-    private sealed record Setup(GameModel GameModel, GameViewModel GameViewModel, BattleModel Battle, BattleScreenViewModel ViewModel, TestAssetProvider Assets) : IDisposable
+    internal sealed record Setup(GameModel GameModel, GameViewModel GameViewModel, BattleModel Battle, BattleScreenViewModel ViewModel, TestAssetProvider Assets) : IDisposable
     {
         public BattleState State => Assert.NotNull(GameModel.Snapshot.BattleState);
 
@@ -23,7 +23,8 @@ public sealed class BattleHealModeTests
         }
     }
 
-    private static async Task<Setup> CreateBattleAsync(int enemyDamage)
+    // fighterIsLeader + a strong enemy makes a battle where the AI leader flees (Refuse to flee tests).
+    internal static async Task<Setup> CreateBattleAsync(int enemyDamage, int enemyHitpoints = 30, bool fighterIsLeader = false)
     {
         UnitDefinition clericDefinition = TestHelpers.SimpleUnitDefinition("cleric", maxHitpoints: 100, initiative: 60, damage: 0) with
         {
@@ -34,7 +35,17 @@ public sealed class BattleHealModeTests
             }
         };
         UnitDefinition fighterDefinition = TestHelpers.SimpleUnitDefinition("fighter", maxHitpoints: 100, initiative: 50, damage: 10);
-        UnitDefinition enemyDefinition = TestHelpers.SimpleUnitDefinition("enemy", maxHitpoints: 30, initiative: 30, damage: enemyDamage);
+        UnitDefinition enemyDefinition = TestHelpers.SimpleUnitDefinition("enemy", maxHitpoints: enemyHitpoints, initiative: 30, damage: enemyDamage);
+
+        if (fighterIsLeader)
+        {
+            fighterDefinition = fighterDefinition with
+            {
+                Category = UnitCategory.Leader,
+                LeaderCategory = UnitLeaderCategory.Fighter,
+                Leadership = 1
+            };
+        }
 
         GlobalVariables globals = new() { BattleInitiativeVariance = 0, BattleDamageVariance = 0 };
         WorldMap map = TestHelpers.SimpleMap(1, 1);
@@ -55,7 +66,7 @@ public sealed class BattleHealModeTests
         BattleState battleState = new BattleStateBuilder(engine.Definitions)
             .Add(TestHelpers.SimpleBattleUnit(ClericId, null, clericDefinition.Id, BattleSide.Attacker, hitpoints: 100))
             .Add(TestHelpers.SimpleBattleUnit(FighterId, null, fighterDefinition.Id, BattleSide.Attacker, hitpoints: 40))
-            .Add(TestHelpers.SimpleBattleUnit(EnemyId, null, enemyDefinition.Id, BattleSide.Defender, hitpoints: 30))
+            .Add(TestHelpers.SimpleBattleUnit(EnemyId, null, enemyDefinition.Id, BattleSide.Defender, hitpoints: enemyHitpoints))
             .Build(BattleModifiers.None, TestHelpers.SimpleBattleInfo());
 
         EngineContext battleEngine = new(new RandomProvider(0), engine.Definitions, engine.UnitStats, GameScenarioProvider.Empty, globals);
@@ -87,7 +98,8 @@ public sealed class BattleHealModeTests
         TestMetadataProviderBuilder metadataBuilder = new();
         AssetAnimationMetadata unitMetadata = new(FrameCount: 1, Width: 80, Height: 120, OffsetX: 375, OffsetY: 420, TriggerFrame: 1, SecondTriggerFrame: 0);
 
-        foreach ((UnitDefinitionId id, BattleSide side) in new[] { (clericDefinition.Id, BattleSide.Attacker), (fighterDefinition.Id, BattleSide.Attacker), (enemyDefinition.Id, BattleSide.Defender) })
+        // Both sides for every unit: a fleeing unit turns around.
+        foreach ((UnitDefinitionId id, BattleSide side) in new[] { clericDefinition.Id, fighterDefinition.Id, enemyDefinition.Id }.SelectMany(id => new[] { (id, BattleSide.Attacker), (id, BattleSide.Defender) }))
         {
             foreach (AssetAnimationKey.BattleUnitPose pose in new[] { AssetAnimationKey.BattleUnitPose.Attack, AssetAnimationKey.BattleUnitPose.Hit, AssetAnimationKey.BattleUnitPose.Idle })
             {
@@ -100,6 +112,8 @@ public sealed class BattleHealModeTests
             metadataBuilder.WithSprite(new AssetSpriteKey.BattleCorpse(IsLarge: false, Variant: variant), new AssetSpriteMetadata(Width: 44, Height: 28, PixelWidth: 44, PixelHeight: 28, OffsetX: -22, OffsetY: -20, Additive: false));
         }
 
+        metadataBuilder.WithAnimation(new AssetAnimationKey.BattleEffect.Death(UnitDeathAnimation.Human, IsLarge: false), new AssetAnimationMetadata(FrameCount: 26, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null));
+
         GameViewModel gameViewModel = new TestGameViewModelBuilder().WithAssets(assets).Build();
         BattleScreenViewModel viewModel = new(gameModel, battle, gameViewModel, metadataBuilder.Build(), NullAssetPreloader.Instance, new RandomProvider(0));
         gameViewModel.OpenScreen(viewModel);
@@ -108,7 +122,7 @@ public sealed class BattleHealModeTests
         return new Setup(gameModel, gameViewModel, battle, viewModel, assets);
     }
 
-    private static void Drive(Setup setup, Func<BattleState, bool> until)
+    internal static void Drive(Setup setup, Func<BattleState, bool> until)
     {
         for (int i = 0; i < 200 && !until(setup.State); i++)
         {
@@ -116,7 +130,7 @@ public sealed class BattleHealModeTests
         }
     }
 
-    private static async Task FinishAsync(Setup setup, params Task[] tasks)
+    internal static async Task FinishAsync(Setup setup, params Task[] tasks)
     {
         for (int i = 0; i < 200 && !tasks.All(task => task.IsCompleted); i++)
         {

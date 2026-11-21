@@ -2,7 +2,8 @@ using Gallean.Common;
 
 namespace Gallean.Engine;
 
-public sealed record BattleAiActionCommand(bool CanUseItems) : IBattleCommand<Empty>
+// Gallean Upgrade: CanRetreat = false never flees (the "Refuse to flee" battle mode).
+public sealed record BattleAiActionCommand(bool CanUseItems, bool CanRetreat = true) : IBattleCommand<Empty>
 {
     public BattleCommandResult Execute(BattleState state, IEngineContext context)
     {
@@ -11,7 +12,7 @@ public sealed record BattleAiActionCommand(bool CanUseItems) : IBattleCommand<Em
             return BattleCommandResult.Fail(BattleCommandError.ActionNotAvailable);
         }
 
-        BattleAiActionPlan plan = new BattleAiPlanner(context, canUseItems: CanUseItems).DecideAction(state);
+        BattleAiActionPlan plan = new BattleAiPlanner(context, canUseItems: CanUseItems, canRetreat: CanRetreat).DecideAction(state);
 
         return plan.Command.Execute(state, context);
     }
