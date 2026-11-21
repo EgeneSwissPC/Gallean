@@ -1,6 +1,6 @@
 # Switchable AI (world AI and battle AI)
 
-gallean-upgrade only. Status: phases 1-4 done (interfaces, registry, global Map AI / Battle AI settings, own AI per computer player, AI tournament tool; Classic only).
+gallean-upgrade only. Status: phases 1-5 done (interfaces, registry, global Map AI / Battle AI settings, own AI per computer player, AI tournament tool, 4 map + 2 battle personalities).
 
 ## Decisions
 
@@ -76,7 +76,7 @@ Later, only if the tournament shows it's worth it: a different algorithm (e.g. l
 2. ~~Global settings (both drop-downs) + engine context plumbing + mid-game switch. ~1 day.~~ Done.
 3. ~~Per-player overrides: save field, command, new-game and in-game panels, confirm prompt. ~1.5 days.~~ Done.
 4. ~~Tournament bench. ~1 day.~~ Done (`tools/AiTournament`).
-5. Personalities: Classic+, Aggressive, Builder, Expansionist; battle Cautious, Ruthless. ~1 day each, each measured on the bench.
+5. ~~Personalities: Classic+, Aggressive, Builder, Expansionist; battle Cautious, Ruthless. ~1 day each, each measured on the bench.~~ Done (all six as profiles, ~1 day in total).
 6. (Optional) Lookahead AI.
 7. Map editor: per-race AI saved in the map (after phase 3).
 
@@ -132,3 +132,28 @@ Commit bbfaedd3, merged in dd14eead.
 - Checks: same seed gives the same game (per-turn lines hashed twice, seeds 1 and 2 differ); `--parallel 4` gives the same CSV as one at a time (S099, 4 games); custom map `S600SC0000` (5 races, 320) runs; an unknown contender exits with the `--list` hint. Suite 5322.
 - Classic baseline: built-in scenarios with 2+ playable races mostly end as draws at 40 turns (scan of S095-S104: 3 "scenario ended" by events, 7 draws). S099 (4 races), 8 games x 50 turns, `--parallel 8`: 11 s, 32 seats, 0 wins, 0 eliminations, first capture on turn 27 on average, 3.4 cities at the end, 51 ms AI per turn (max 429 ms). So with Classic nobody gets eliminated in 50 turns; leads and cities are the useful measure until a personality is aggressive enough to win.
 - Known limits: built-in quests use their default difficulty (no option yet); draws count only cities, not armies or gold.
+
+## Phase 5 — done
+
+Commit 8cb5f5f0, merged in 29cdd5a9.
+
+- **Design taken: profiles, not six separate AIs.** `WorldAiProfile` / `BattleAiProfile` hold the knobs the Classic code used as constants (attack power %, hurt/healed/reinforce thresholds, leader overcommit gold, building/unit/rod priorities; retreat power share, can retreat, can defend). `WorldAiContext.Profile` and an optional `BattleAiPlanner` profile carry them; the defaults are the original values, so Classic is unchanged. `ProfileWorldAiBrain` / `ProfileBattleAiBrain` + `AiPersonalities` register them. One new knob: `WaitForFreeCapital` (the idle fix: don't save up for a leader while an army stands on the capital entrance), on in every world personality.
+- Profiles:
+  - Classic+: the idle fix only.
+  - Aggressive: attack power 80 %, heal below 70 % (healed at 85 %), reinforce below 60 %. A first try (75 %, 60/80/50, units before buildings) lost clearly to Classic (1.8 vs 3.2 cities at the end); the milder one is kept.
+  - Builder: attack power 130 %, heal below 90 % (healed at 95 %), reinforce below 90 %.
+  - Expansionist: leader overcommit 800 gold, reinforce below 50 %, rod priority 3.
+  - Cautious (battle): leaders consider fleeing below 40 % of the power (Classic 25 %).
+  - Ruthless (battle): no retreat, no defend.
+- Client: names/descriptions in `AiBrainFormatter` (ru translated). The drop-downs and the AI players panel list them automatically.
+- Tests: `AiPersonalitiesTests` (5: registry order, Classic profile = original constants, idle fix in every world personality, Cautious flees where Classic fights, Ruthless attacks where Classic flees), `CustomMapTests.CapitalLeaderLeavesWithClassicPlusTest` (2: on a fresh custom map Classic's capital leader stays for 6 turns, Classic+'s leaves on turn 3). Suite 5329. Classic unchanged: the S099 tournament CSV (8 games x 50 turns) is identical before and after.
+- Tournament, S100 (2 races), 12 games x 60 turns per pairing, contender vs Classic (wins / leads / cities at the end; Classic's numbers in brackets):
+  - Classic+: 4 / 11 / 2.8 (2 / 7 / 2.2), stronger.
+  - Aggressive: 0 / 8 / 2.1 (3 / 13 / 2.9), first capture turn 9 (11.4): captures earlier but loses armies, weaker.
+  - Builder: 2 / 8 / 2.2 (4 / 10 / 2.8), first capture turn 14: slower, a bit weaker.
+  - Expansionist: 2 / 11 / 2.6 (2 / 9 / 2.4), about even.
+  - Cautious: 5 / 11 / 2.9 (1 / 7 / 2.1), stronger.
+  - Ruthless: 4 / 12 / 3.0 (2 / 6 / 2.0), stronger.
+  - Samples are small (24 seats each); treat differences under ~3 wins as noise. On S099 (4 races, 50 turns) nobody wins with any of them; Aggressive captures first there too (turn 24 vs 29).
+- Real client (AOT, Debian 12 image): Settings lists Classic, Classic+, Aggressive, Builder, Expansionist / Classic, Cautious, Ruthless; picked Aggressive + Ruthless (settings.json has both); started 5th Column; on turn 4 the Elves attacked the player's city and, with Auto-play on the player's side, both Elven units fought to the death without fleeing; no errors in the log.
+- Known limits: a personality is still the Classic engine: it changes how far it goes, not how it thinks. Aggressive and Builder are flavours, weaker than Classic on these maps; Classic+, Cautious and Ruthless are the stronger picks.
