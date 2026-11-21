@@ -123,8 +123,10 @@ public sealed partial class VisualTests
             BattleScreenViewModel watch = Assert.IsOfType<BattleScreenViewModel>(game.TopScreen);
             Assert.That(watch.SandboxWatch, Is.EqualTo(new BattleSandboxWatch(AiBrainRegistry.ClassicId, "ruthless", 1)));
             await WaitUntilAsync(() => watch.TransitionState is null);
-            await SkipFramesAsync(60);
+            await SkipFramesAsync(5);
             Assert.That(watch.IsPlayerTurn, Is.False, "both sides are played by their AI");
+            Assert.That(watch.IsBattleOver, Is.False, "instant resolve is tested in the middle of the battle");
+            Assert.That(watch.AutoResolveCommand.CanExecute(null), Is.True);
             await CaptureAsync(window, "watch");
 
             watch.AutoResolveCommand.Execute(null);
