@@ -45,6 +45,7 @@ public interface IWorldEventVisitor<in TContext, out TResult>
     TResult Visit(WorldResourcesCapturedEvent ev, TContext context);
     TResult Visit(WorldResourcesGivenEvent ev, TContext context);
     TResult Visit(WorldResourcesStolenEvent ev, TContext context);
+    TResult Visit(WorldSummonUpkeepPaidEvent ev, TContext context);
     TResult Visit(WorldRodCreatedEvent ev, TContext context);
     TResult Visit(WorldRodDestroyedEvent ev, TContext context);
     TResult Visit(WorldRoundStartedEvent ev, TContext context);

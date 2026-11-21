@@ -11,7 +11,7 @@ namespace Gallean.Engine;
 /// </summary>
 internal static class OwnLandVisionCalculator
 {
-    public const int MinMapSize = 256;
+    public const int MinMapSize = LargeMapRules.MinMapSize;
 
     // The cells of each terrain, per map (the map object changes when land spreads): scanning a million cells on every
     // army step was the biggest part of a fog update on a 1024x1024 map.
@@ -19,7 +19,7 @@ internal static class OwnLandVisionCalculator
 
     public static bool AppliesTo(WorldMap map)
     {
-        return map.Width >= MinMapSize && map.Height >= MinMapSize;
+        return LargeMapRules.AppliesTo(map);
     }
 
     public static bool IsOwnLand(WorldState state, WorldPlayer player, WorldPosition position)
