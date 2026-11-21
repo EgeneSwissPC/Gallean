@@ -1,0 +1,266 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.AiDesignerScreenView"
+             x:DataType="local:AiDesignerScreenViewModel"
+             x:Name="Root">
+
+  <!-- Gallean Upgrade: the AI designer (docs/ai-designer.md, phase 3). Same blocks, colours and drag and drop
+       as the map editor's event screen. -->
+  <UserControl.Styles>
+    <Style Selector="Border.block">
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="8,3" />
+      <Setter Property="Margin" Value="0,2,4,2" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="#40000000" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.palette-block">
+      <Setter Property="CornerRadius" Value="6" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="Cursor" Value="Hand" />
+    </Style>
+    <Style Selector="Border.stage">
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="Padding" Value="10,6" />
+      <Setter Property="Margin" Value="0,0,0,10" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="BorderBrush" Value="#55FFFFFF" />
+      <Setter Property="Background" Value="#33000000" />
+    </Style>
+    <Style Selector="Border.stage.selected">
+      <Setter Property="BorderBrush" Value="{StaticResource ScenarioSelectAccentBrush}" />
+    </Style>
+    <Style Selector="Border.stage.problem">
+      <Setter Property="BorderBrush" Value="#E04A3A" />
+    </Style>
+    <Style Selector="Border.slot">
+      <Setter Property="Margin" Value="0,2" />
+      <Setter Property="Padding" Value="4" />
+      <Setter Property="MinHeight" Value="34" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="BorderBrush" Value="#55FFFFFF" />
+      <Setter Property="Background" Value="#22000000" />
+    </Style>
+    <Style Selector="Border.slot.new-row">
+      <Setter Property="MinHeight" Value="26" />
+      <Setter Property="BorderBrush" Value="#33FFFFFF" />
+      <Setter Property="Background" Value="Transparent" />
+    </Style>
+    <Style Selector="TextBlock.block-text">
+      <Setter Property="Foreground" Value="#F2EAD8" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,0,6,0" />
+    </Style>
+    <Style Selector="Button.mini">
+      <Setter Property="Width" Value="24" />
+      <Setter Property="Height" Value="24" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Margin" Value="2,0,0,0" />
+    </Style>
+  </UserControl.Styles>
+
+  <UserControl.Resources>
+    <DataTemplate x:Key="BlockTemplate" x:DataType="local:AiDesignerBlockViewModel">
+      <Border Classes="block" Background="{Binding Brush}" HorizontalAlignment="Left" PointerPressed="OnBlockPressed">
+        <StackPanel Orientation="Horizontal">
+          <ItemsControl ItemsSource="{Binding Parts}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+          <Button Classes="pill mini" Content="×" ToolTip.Tip="{local:Text 'Remove block'}" Click="OnRemoveBlockClick" />
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="SlotTemplate" x:DataType="local:AiDesignerSlotViewModel">
+      <StackPanel>
+        <ItemsControl ItemsSource="{Binding Tiers}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:AiDesignerTierViewModel">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Text="{Binding Number}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" Width="18" VerticalAlignment="Center" />
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                  <Button Classes="pill mini" Content="↑" ToolTip.Tip="{local:Text 'Higher priority'}"
+                          Command="{Binding Slot.Stage.MoveTierUpCommand}" CommandParameter="{Binding}" />
+                  <Button Classes="pill mini" Content="↓" ToolTip.Tip="{local:Text 'Lower priority'}"
+                          Command="{Binding Slot.Stage.MoveTierDownCommand}" CommandParameter="{Binding}" />
+                </StackPanel>
+                <Border Classes="slot" Tag="tier">
+                  <ItemsControl ItemsSource="{Binding Blocks}" ItemTemplate="{StaticResource BlockTemplate}">
+                    <ItemsControl.ItemsPanel>
+                      <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" />
+                      </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                  </ItemsControl>
+                </Border>
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <Border Classes="slot new-row" Tag="newtier" Margin="18,2,52,2">
+          <TextBlock Text="{local:Text 'Drop a block here for a new lowest row'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" IsHitTestVisible="False" />
+        </Border>
+        <TextBlock Text="{Binding UnusedText}" Classes="caption" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" Margin="18,0,0,0" />
+      </StackPanel>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <UserControl.DataTemplates>
+    <DataTemplate x:DataType="local:MapEditorBlockText">
+      <TextBlock Text="{Binding Text}" Classes="body block-text" IsVisible="{Binding !IsHidden}" />
+    </DataTemplate>
+    <DataTemplate x:DataType="local:MapEditorBlockNumber">
+      <TextBox Text="{Binding Text}" Width="56" Margin="0,1,6,1" VerticalAlignment="Center" TextAlignment="Center" IsVisible="{Binding !IsHidden}" />
+    </DataTemplate>
+  </UserControl.DataTemplates>
+
+  <Grid Background="{StaticResource ModalBackdropBrush}">
+    <ContentControl Classes="ornament-panel"
+                    Background="{StaticResource CapitalScenePanelBodyGradientBrush}"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center">
+      <Grid RowDefinitions="Auto,*,Auto" Margin="20,12" Width="1240" Height="660">
+        <DockPanel Grid.Row="0" Margin="0,0,0,8">
+          <local:OutlinedTextBlock DockPanel.Dock="Left" Text="{local:Text 'AI designer'}" Classes="object-name title" VerticalAlignment="Center" Margin="0,0,16,0" />
+          <TextBlock DockPanel.Dock="Left" Text="{local:Text 'Name'}" Classes="body" VerticalAlignment="Center" Margin="0,0,8,0" />
+          <TextBox x:Name="NameBox" DockPanel.Dock="Left" Text="{Binding Name}" MaxLength="{Binding NameLength}" Width="300" VerticalAlignment="Center" />
+          <TextBlock Text="{Binding StatusText}" Classes="body" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" />
+        </DockPanel>
+
+        <Grid Grid.Row="1" ColumnDefinitions="220,*,250" ColumnSpacing="14">
+          <!-- Palette: click adds to the selected stage, drag drops where you let go; drop a block here to remove it. -->
+          <Border Grid.Column="0" x:Name="Palette" Tag="palette" Classes="slot" Margin="0" Background="#33000000">
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl ItemsSource="{Binding Palette}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:AiDesignerPaletteGroup">
+                    <StackPanel Margin="0,2,0,6">
+                      <local:OutlinedTextBlock Text="{Binding Title}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+                      <ItemsControl ItemsSource="{Binding Items}">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="local:AiDesignerPaletteItem">
+                            <Border Classes="palette-block" Background="{Binding Brush}" PointerPressed="OnPaletteBlockPressed" PointerEntered="OnPaletteBlockEntered">
+                              <TextBlock Text="{Binding Label}" Classes="body block-text" TextWrapping="Wrap" />
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+
+          <!-- Stage cards, checked from the top; the last one plays when none above holds. -->
+          <ScrollViewer Grid.Column="1" x:Name="StagesView" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Margin="0,0,10,0">
+              <ItemsControl ItemsSource="{Binding Stages}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:AiDesignerStageViewModel">
+                    <Border Classes="stage" Classes.selected="{Binding IsSelected}" Classes.problem="{Binding HasProblem}" PointerPressed="OnStagePressed">
+                      <StackPanel Spacing="2">
+                        <DockPanel>
+                          <local:OutlinedTextBlock DockPanel.Dock="Left" Text="{Binding Number}" Classes="h5" Foreground="{StaticResource ScenarioSelectAccentBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
+                          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Classes="pill mini" Content="↑" ToolTip.Tip="{local:Text 'Check this stage earlier'}" IsVisible="{Binding CanMoveUp}" Command="{Binding MoveUpCommand}" />
+                            <Button Classes="pill mini" Content="↓" ToolTip.Tip="{local:Text 'Check this stage later'}" IsVisible="{Binding CanMoveDown}" Command="{Binding MoveDownCommand}" />
+                            <Button Classes="pill mini" Content="×" ToolTip.Tip="{local:Text 'Delete this stage'}" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}" />
+                          </StackPanel>
+                          <TextBlock DockPanel.Dock="Right" Text="{local:Text 'plays when no stage above holds'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" Margin="8,0" IsVisible="{Binding IsDefault}" />
+                          <TextBox Text="{Binding Name}" MaxLength="40" Width="260" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        </DockPanel>
+
+                        <!-- When: "and" groups joined by "or". -->
+                        <StackPanel IsVisible="{Binding ShowWhen}">
+                          <TextBlock Text="{local:Text 'When'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+                          <ItemsControl ItemsSource="{Binding Groups}">
+                            <ItemsControl.ItemTemplate>
+                              <DataTemplate x:DataType="local:AiDesignerGroupViewModel">
+                                <StackPanel>
+                                  <DockPanel IsVisible="{Binding !IsFirst}" Margin="18,2,0,0">
+                                    <Button DockPanel.Dock="Right" Classes="pill" Height="22" Padding="8,0" FontSize="{StaticResource FontSizeSm}" Content="{local:Text 'Remove this set'}"
+                                            Command="{Binding Stage.RemoveGroupCommand}" CommandParameter="{Binding}" />
+                                    <TextBlock Text="{local:Text 'or'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+                                  </DockPanel>
+                                  <Border Classes="slot" Tag="group" Margin="18,2,0,2">
+                                    <Panel>
+                                      <TextBlock Text="{local:Text 'Drop condition blocks here (all of them must hold)'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" IsHitTestVisible="False"
+                                                 IsVisible="{Binding HasNoBlocks}" />
+                                      <ItemsControl ItemsSource="{Binding Blocks}" ItemTemplate="{StaticResource BlockTemplate}">
+                                        <ItemsControl.ItemsPanel>
+                                          <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" />
+                                          </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                      </ItemsControl>
+                                    </Panel>
+                                  </Border>
+                                </StackPanel>
+                              </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                          </ItemsControl>
+                          <Button Classes="pill" Height="22" Padding="10,0" Margin="18,2,0,0" HorizontalAlignment="Left" FontSize="{StaticResource FontSizeSm}" Content="{local:Text '+ or'}"
+                                  ToolTip.Tip="{local:Text 'Another set of conditions: the stage plays when all blocks of any one set hold.'}" Command="{Binding AddGroupCommand}" />
+                        </StackPanel>
+
+                        <TextBlock Text="{local:Text 'Economy (top row first)'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
+                        <ContentControl Content="{Binding Economy}" ContentTemplate="{StaticResource SlotTemplate}" />
+
+                        <TextBlock Text="{local:Text 'Armies (top row first)'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
+                        <ContentControl Content="{Binding Army}" ContentTemplate="{StaticResource SlotTemplate}" />
+
+                        <TextBlock Text="{local:Text 'Rules and tuning'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
+                        <Border Classes="slot" Tag="rules" Margin="18,2,0,2">
+                          <Panel>
+                            <TextBlock Text="{local:Text 'Drop rule blocks here; without them the stage plays by the Classic values'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" IsHitTestVisible="False"
+                                       IsVisible="{Binding HasNoRules}" />
+                            <ItemsControl ItemsSource="{Binding Rules}" ItemTemplate="{StaticResource BlockTemplate}" />
+                          </Panel>
+                        </Border>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button x:Name="AddStageButton" Classes="pill" Height="28" Padding="12,0" HorizontalAlignment="Left" Content="{local:Text '+ Stage'}"
+                      ToolTip.Tip="{local:Text 'A new stage above the last one'}" Command="{Binding AddStageCommand}" />
+            </StackPanel>
+          </ScrollViewer>
+
+          <!-- Help for the block under the mouse, and problems. -->
+          <ScrollViewer Grid.Column="2" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="8">
+              <local:OutlinedTextBlock Text="{Binding HelpTitle}" Classes="h5" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
+              <TextBlock x:Name="HelpText" Text="{Binding HelpText}" Classes="body" TextWrapping="Wrap" />
+              <TextBlock x:Name="ProblemText" Text="{Binding ProblemText}" Classes="body" TextWrapping="Wrap" Foreground="#F07060" IsVisible="{Binding HasProblems}" Margin="0,10,0,0" />
+            </StackPanel>
+          </ScrollViewer>
+        </Grid>
+
+        <StackPanel Grid.Row="2" Margin="0,10,0,0" Classes="focus-group" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+          <Button x:Name="BackButton" Classes="pill" local:PlateChrome.TextureSeed="4" MinWidth="130" Content="{local:Text 'Back'}" Command="{Binding BackCommand}" />
+          <Button x:Name="UndoButton" Classes="pill" local:PlateChrome.TextureSeed="5" MinWidth="130" Content="{local:Text 'Undo'}" Command="{Binding UndoCommand}" HotKey="Ctrl+Z" />
+          <Button x:Name="RedoButton" Classes="pill" local:PlateChrome.TextureSeed="7" MinWidth="130" Content="{local:Text 'Redo'}" Command="{Binding RedoCommand}" HotKey="Ctrl+Y" />
+          <Button x:Name="SaveButton" Classes="pill primary" local:PlateChrome.TextureSeed="6" MinWidth="130" Content="{local:Text 'Save'}" Command="{Binding SaveCommand}" HotKey="Ctrl+S" />
+        </StackPanel>
+      </Grid>
+    </ContentControl>
+
+    <!-- The block being dragged follows the mouse here. -->
+    <Canvas x:Name="DragLayer" IsHitTestVisible="False">
+      <Border x:Name="DragGhost" Classes="palette-block" IsVisible="False" Opacity="0.85">
+        <TextBlock x:Name="DragGhostText" Classes="body block-text" />
+      </Border>
+    </Canvas>
+  </Grid>
+
+</UserControl>
