@@ -25,6 +25,7 @@ public sealed class AiBattleBenchTests
     private static readonly UnitModifierDefinitionId ArtifactLore = new("g000um4001");
 
     private AiBattleBench bench = null!;
+    private AiBattleBench generated = null!;
     private string directory = null!;
 
     [OneTimeSetUp]
@@ -34,6 +35,7 @@ public sealed class AiBattleBenchTests
         CampaignDatabase campaignDb = CampaignDatabaseLoader.Load(RiseOfTheElves.CampaignDatabasePath);
         ScenarioDatabase scenarioDb = ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, HostMap);
         bench = new AiBattleBench(globalDb, campaignDb, scenarioDb, HostMap);
+        generated = AiBattleBench.CreateWithGeneratedHost(globalDb, campaignDb);
     }
 
     [SetUp]
@@ -417,5 +419,72 @@ public sealed class AiBattleBenchTests
         Assert.That(back.Equipment, Is.EqualTo(GearedEmpire().Equipment));
         Assert.That(back.LeaderUpgrades, Is.EqualTo(GearedEmpire().LeaderUpgrades));
         Assert.That(bench.Validate(back), Is.Null);
+    }
+
+    [Test]
+    public void GeneratedHostHasEveryRaceTest()
+    {
+        WorldRace[] playable = [WorldRace.Human, WorldRace.Undead, WorldRace.Heretic, WorldRace.Dwarf, WorldRace.Elf];
+
+        Assert.That(generated.Races, Is.EquivalentTo(playable.Append(WorldRace.Neutral)));
+        Assert.That(generated.CapitalRaces, Is.EquivalentTo(playable));
+        Assert.That(bench.Races, Does.Not.Contain(WorldRace.Elf), "control: S099 has no Elves");
+
+        // Every race's capital and a city work on it, Elves included.
+        foreach (WorldRace race in playable)
+        {
+            BattleBenchSide defender = new(Undead(), AiBrainRegistry.ClassicId) { Race = race };
+            BattleState capital = generated.CreateBattle(new BattleBenchSide(Empire(), AiBrainRegistry.ClassicId), defender, new BattleBenchSetup(BattleBenchPlace.Capital));
+
+            Assert.That(FortificationArmor(capital), Is.GreaterThan(0), race.ToString());
+        }
+
+        Assert.That(FortificationArmor(generated.CreateBattle(Undead(), Undead(), new BattleBenchSetup(BattleBenchPlace.City, 3))), Is.GreaterThan(0));
+        Assert.That(generated.Validate(new BattleBenchSide(Empire(), AiBrainRegistry.ClassicId) { Race = WorldRace.Elf }, new BattleBenchSide(Undead(), AiBrainRegistry.ClassicId) { Race = WorldRace.Neutral }, BattleBenchSetup.Open, swapSides: true), Is.Null);
+    }
+
+    [Test]
+    public void GeneratedHostFightsLikeABuiltInHostTest()
+    {
+        // At the same difficulty the host map doesn't matter: the same battles, run for run.
+        BattleBenchSide a = new(GearedEmpire(), AiBrainRegistry.ClassicId);
+        BattleBenchSide b = new(Undead(), AiBrainRegistry.ClassicId);
+
+        Assert.That(Describe(generated.Run(a, b, 40, 1, swapSides: true)), Is.EqualTo(Describe(bench.Run(a, b, 40, 1, swapSides: true))));
+        Assert.That(Describe(generated.Run(a, b, new BattleBenchSetup(BattleBenchPlace.City, 4), 20, 1, false)), Is.EqualTo(Describe(bench.Run(a, b, new BattleBenchSetup(BattleBenchPlace.City, 4), 20, 1, false))));
+    }
+
+    [Test]
+    public void DifficultyIsFixedNotTakenFromTheHostTest()
+    {
+        GlobalDatabase globalDb = GlobalDatabaseLoader.Load(RiseOfTheElves.GlobalDatabasePath);
+        CampaignDatabase campaignDb = CampaignDatabaseLoader.Load(RiseOfTheElves.CampaignDatabasePath);
+        AiBattleBench easy = AiBattleBench.CreateWithGeneratedHost(globalDb, campaignDb, WorldDifficulty.Easy);
+
+        Assert.That(bench.Difficulty, Is.EqualTo(WorldDifficulty.Average));
+        Assert.That(generated.Difficulty, Is.EqualTo(WorldDifficulty.Average));
+        Assert.That(easy.Difficulty, Is.EqualTo(WorldDifficulty.Easy));
+
+        // The difficulty reaches the battle (computer players' accuracy bonus).
+        Assert.That(easy.CreateBattle(Undead(), Undead()).Modifiers.Attacker.AccuracyBonus, Is.Not.EqualTo(generated.CreateBattle(Undead(), Undead()).Modifiers.Attacker.AccuracyBonus));
+    }
+
+    [Test]
+    public void WinShareMarginTest()
+    {
+        BattleBenchShare half = BattleBenchShare.From(500, 1000);
+        BattleBenchShare none = BattleBenchShare.From(0, 1000);
+        BattleBenchShare few = BattleBenchShare.From(15, 30);
+
+        Assert.That(half.Share, Is.EqualTo(0.5));
+        Assert.That(half.Margin, Is.EqualTo(0.031).Within(0.001));
+        Assert.That(half.ToString(), Is.EqualTo("50 % ± 4"));
+        Assert.That(none.Margin, Is.GreaterThan(0));
+        Assert.That(none.ToString(), Is.EqualTo("0 % ± 1"), "never ± 0 at 0 of 1000");
+        Assert.That(few.Margin, Is.EqualTo(0.17).Within(0.01), "30 runs: ± 17 points");
+        Assert.That(BattleBenchShare.From(0, 0).Margin, Is.Zero);
+
+        BattleBenchResult result = generated.Run(new BattleBenchSide(Undead(), AiBrainRegistry.ClassicId), new BattleBenchSide(Undead(), AiBrainRegistry.ClassicId), 100, 1, false);
+        Assert.That(result.WinShare(BattleBenchWinner.A).Count + result.WinShare(BattleBenchWinner.B).Count + result.Wins(BattleBenchWinner.None), Is.EqualTo(100));
     }
 }

@@ -43,10 +43,10 @@ with `--parallel 4`, all draws, first capture on turn 22 on average, 47 ms AI pe
 
 ## Battle bench (`--battle`)
 
-Gallean Upgrade (`docs/battle-ai-designer.md`, phase 1). Fights the same battle many times, headless: army A with its
-battle AI against army B with its own. Each run builds the battle the way the game does when one army attacks another in
-the open (`WorldCommandHelpers.CreateStackBattleState` on a tile without a city, owned by two players of the host map) and
-resolves it like an AI-vs-AI battle in the game (`BattleAutoResolveCommand` with both AI IDs: the attacker retreats after
+Gallean Upgrade (`docs/battle-ai-designer.md`, phases 1, 1b and 2). Fights the same battle many times, headless: army A
+with its battle AI against army B with its own. Each run builds the battle the way the game does when one army attacks
+another (`WorldCommandHelpers.CreateStackBattleState`, or `CreateGarrisonBattleState` for a garrison) with players of a
+host map (by default a small generated map with all five races, their capitals, the neutrals and a city) and resolves it like an AI-vs-AI battle in the game (`BattleAutoResolveCommand` with both AI IDs: the attacker retreats after
 round 15, hard stop at round 45). The loop lives in the engine (`AiBattleBench`), for the battle sandbox later.
 
 ```
@@ -69,8 +69,9 @@ DOTNET_ROOT=~/.dotnet ./AiTournament --export-armies S099SC0000 /tmp/armies
   (unknown units and items are still refused).
 - `--ai-a`, `--ai-b` (classic): battle AIs (`--list`). `--runs n` (20), `--seed n` (1; run k uses seed + k, same seed =
   same battle), `--swap` (army A attacks in even runs and defends in odd runs; default: A always attacks),
-  `--parallel n`, `--map id` (host map for players and world modifiers, `S099SC0000`), `--csv file` (one row per run),
-  `--verbose` (one line per run).
+  `--parallel n`, `--map id` (a built-in host map instead of the generated one; only its races can own armies),
+  `--difficulty easy|average|hard|veryhard` (average; it sets the computer players' accuracy and experience bonuses and is
+  fixed, not taken from the host map), `--csv file` (one row per run), `--verbose` (one line per run).
 - `--race-a`, `--race-b` (empire, undead, legions, clans, elves, neutral): which player of the host map owns the army
   (default: the map's first two playable races). `--neutral-a` / `--neutral-b` = neutral: neutral leaders never flee.
 - `--defender-in open|city|capital` (open), `--city-level n` (1-5): the defender stands in a city of that level (a copy
@@ -81,5 +82,6 @@ DOTNET_ROOT=~/.dotnet ./AiTournament --export-armies S099SC0000 /tmp/armies
 - `--export-armies <map id> <dir>`: writes every army that starts on a built-in map as a preset (with its leader's
   items and upgrades).
 
-Per side it prints wins (attacking / defending), runs where the side fled, units alive, hit points left, and per unit how
+It prints each side's win share with its 95 % margin of error (Wilson interval half-width, e.g. `A 55 % ± 3`; at 30
+runs the margin is about ± 17 points, at 1000 about ± 3). Per side it prints wins (attacking / defending), runs where the side fled, units alive, hit points left, and per unit how
 often it survived. Measured: 20 runs of 4 vs 4 units take ~0.1 s.
