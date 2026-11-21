@@ -43,6 +43,28 @@
     <Style Selector="Button.spell-tile.selected">
       <Setter Property="Background" Value="{StaticResource SpellTileSelectedBrush}" />
     </Style>
+    <Style Selector="Button.spell-tile.picked">
+      <Setter Property="Background" Value="{StaticResource SpellTileSelectedBrush}" />
+    </Style>
+    <Style Selector="Button.spell-tile.picked Border.spell-border">
+      <Setter Property="BorderBrush" Value="{StaticResource SpellSelectedBorderBrush}" />
+      <Setter Property="BorderThickness" Value="3" />
+    </Style>
+    <Style Selector="Border.spell-pick-badge TextBlock">
+      <Setter Property="Foreground" Value="{StaticResource AccentBrush}" />
+    </Style>
+    <Style Selector="Border.spell-pick-badge">
+      <Setter Property="Width" Value="26" />
+      <Setter Property="Height" Value="26" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+      <Setter Property="VerticalAlignment" Value="Top" />
+      <Setter Property="Margin" Value="-4,-4,0,0" />
+      <Setter Property="CornerRadius" Value="13" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+      <Setter Property="Background" Value="#F2181410" />
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
 
     <Style Selector="Panel.spell-thumbnail">
       <Setter Property="Width" Value="76" />
@@ -184,6 +206,7 @@
                 Classes.researchable="{Binding Type, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static local:SpellbookItemType.Researchable}}"
                 Classes.locked="{Binding Type, Converter={x:Static local:EnumEqualsConverter.Instance}, ConverterParameter={x:Static local:SpellbookItemType.Locked}}"
                 Classes.selected="{Binding IsSelected}"
+                Classes.picked="{Binding IsPicked}"
                 Command="{Binding #Screen.((local:SpellbookTabViewModel)DataContext).SelectSpellCommand}"
                 CommandParameter="{Binding}"
                 DoubleTapped="OnSpellDoubleTapped">
@@ -200,6 +223,13 @@
               <Border Classes="spell-border" />
               <local:IconVisual Classes="spell-lock" Moniker="Locked" />
               <local:IconVisual Classes="spell-research" Classes.ready="{Binding Status.IsAvailable}" Moniker="Research" />
+              <Border Classes="spell-pick-badge" IsVisible="{Binding IsPicked}">
+                <TextBlock Text="{Binding PickOrder}"
+                           Classes="caption"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center" />
+              </Border>
             </Panel>
             <TextBlock Grid.Row="1"
                        Classes="caption spell-name"
@@ -318,19 +348,47 @@
   <Grid Background="Transparent" local:Backdrop.CloseCommand="{Binding Screen.CloseCommand}">
     <ContentControl Classes="ornament-panel" MaxWidth="900" MaxHeight="660" Margin="18" Padding="22,18,10,10" PointerPressed="OnContentPointerPressed">
       <Grid RowDefinitions="Auto,Auto,*">
-        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,12,12">
-          <TextBlock Grid.Column="0"
-                     Text="{Binding ResearchedCountText}"
-                     Classes="body"
-                     Foreground="{StaticResource PrimaryTextBrush}"
-                     VerticalAlignment="Center" />
-          <TextBlock Grid.Column="1"
-                     Text="{local:Text 'Tip: double-click a spell to cast it immediately'}"
-                     Classes="body"
-                     Foreground="{StaticResource SecondaryTextBrush}"
-                     FontStyle="Italic"
-                     VerticalAlignment="Center" />
-        </Grid>
+        <StackPanel Grid.Row="0" Margin="0,0,12,12" Spacing="8">
+          <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+            <TextBlock Grid.Column="0"
+                       Text="{Binding ResearchedCountText}"
+                       Classes="body"
+                       Foreground="{StaticResource PrimaryTextBrush}"
+                       VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1"
+                       Text="{local:Text 'Tip: double-click a spell to cast it immediately'}"
+                       Classes="body"
+                       Foreground="{StaticResource SecondaryTextBrush}"
+                       FontStyle="Italic"
+                       VerticalAlignment="Center"
+                       IsVisible="{Binding !IsPickingGroup}" />
+            <Button Grid.Column="2"
+                    Classes="pill"
+                    Content="{local:Text 'Create spell group'}"
+                    Command="{Binding StartGroupCommand}"
+                    IsVisible="{Binding !IsPickingGroup}"
+                    VerticalAlignment="Center" />
+          </Grid>
+          <Border Classes="card" Padding="14,8" IsVisible="{Binding IsPickingGroup}">
+            <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="10">
+              <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                <TextBlock Text="{local:Text 'Click spells in the order to cast them'}"
+                           Classes="body"
+                           Foreground="{StaticResource PrimaryTextBrush}"
+                           TextWrapping="Wrap" />
+                <TextBlock Text="{Binding PickedCountText}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+              </StackPanel>
+              <TextBox Grid.Column="1"
+                       x:Name="GroupNameBox"
+                       Width="190"
+                       VerticalAlignment="Center"
+                       Text="{Binding GroupName}"
+                       MaxLength="{Binding GroupNameLength}" />
+              <Button Grid.Column="2" Classes="pill" Content="{local:Text 'Save group'}" Command="{Binding SaveGroupCommand}" VerticalAlignment="Center" />
+              <Button Grid.Column="3" Classes="pill" Content="{local:Text 'Cancel'}" Command="{Binding CancelGroupCommand}" VerticalAlignment="Center" />
+            </Grid>
+          </Border>
+        </StackPanel>
 
         <ContentControl Grid.Row="1"
                         Margin="0,0,12,0"

@@ -1360,6 +1360,22 @@
     "the open water of a sea creature": "the open water of a sea creature",
     "open water only": "open water only",
     "Sea creatures cannot be hired": "Sea creatures cannot be hired",
-    "Needs open water: water on all 8 sides": "Needs open water: water on all 8 sides"
+    "Needs open water: water on all 8 sides": "Needs open water: water on all 8 sides",
+    "Select a target for the spell group on the map.": "Select a target for the spell group on the map.",
+    "{0}: needs a target on the map": "{0}: needs a target on the map",
+    "{0}: {1}": "{0}: {1}",
+    "No spell of the group was cast": "No spell of the group was cast",
+    "{0} of {1} spells cast": "{0} of {1} spells cast",
+    "1 spell in the group": "1 spell in the group",
+    "{0} spells in the group": "{0} spells in the group",
+    "Group {0}": "Group {0}",
+    "Create spell group": "Create spell group",
+    "Click spells in the order to cast them": "Click spells in the order to cast them",
+    "Save group": "Save group",
+    "Spell groups": "Spell groups",
+    "None of these spells can be cast now": "None of these spells can be cast now",
+    "{0} of {1} spells can be cast now": "{0} of {1} spells can be cast now",
+    "A group casts its spells one after another, in this order.": "A group casts its spells one after another, in this order.",
+    "No spell groups yet. Make one with Create spell group in the Spellbook.": "No spell groups yet. Make one with Create spell group in the Spellbook."
   }
 }

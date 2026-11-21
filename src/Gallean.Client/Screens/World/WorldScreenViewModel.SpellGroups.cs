@@ -1,0 +1,114 @@
+using Gallean.Engine;
+
+namespace Gallean.Client;
+
+// Gallean Upgrade: casting spell groups, and keeping the spell cursor after a cast so the same spell (or group)
+// can be cast again with the next click (mages may cast each spell twice a turn). Esc or right-click ends it.
+internal sealed partial class WorldScreenViewModel
+{
+    // Casts the spells one after another, in order. Targeted spells land on target; without a target they are
+    // skipped. A spell that can't be cast (mana, already cast this turn) is skipped and the rest still go.
+    // Returns how many spells were cast.
+    internal async Task<int> CastSpellGroupAsync(IReadOnlyList<WorldSpellDefinitionId> spells, WorldPosition? target)
+    {
+        if (IsBusy && !CanCastDuringAnimations)
+        {
+            return 0;
+        }
+
+        int cast = 0;
+        List<string> skipped = [];
+
+        foreach (WorldSpellDefinitionId spellId in spells)
+        {
+            if (WorldState.ScenarioState.IsEnded)
+            {
+                break;
+            }
+
+            WorldSpellDefinition spell = GameModel.Definitions.GetSpell(spellId);
+            string name = GameModel.Texts.GetGlobalText(spell.NameTextId).Text;
+            WorldSpellTarget? spellTarget = null;
+
+            if (spell.AreaRadius is not null)
+            {
+                if (target is not { } position)
+                {
+                    skipped.Add(Tr("{0}: needs a target on the map", name));
+                    continue;
+                }
+
+                spellTarget = new WorldSpellTarget(position, Radius: 0);
+            }
+
+            ICommandResult<WorldCommandError, WorldEvent, Gallean.Common.Empty> result =
+                await GameModel.World.DispatchCommandAsync(new WorldCastSpellCommand(spellId, spellTarget));
+
+            if (result.Failed)
+            {
+                skipped.Add(Tr("{0}: {1}", name, WorldCommandErrorFormatter.Format(result.Error.Value)));
+            }
+            else
+            {
+                cast++;
+            }
+        }
+
+        if (skipped.Count > 0)
+        {
+            string caption = cast == 0 ? Tr("No spell of the group was cast") : Tr("{0} of {1} spells cast", cast, spells.Count);
+
+            Game.ShowInfo(IconMoniker.Spellbook, caption, string.Join(Environment.NewLine, skipped));
+        }
+
+        return cast;
+    }
+
+    private async Task DispatchSpellActionAsync(WorldCursorAction action, WorldPosition position)
+    {
+        if (action is WorldCursorAction.CastSpellGroup group)
+        {
+            ClearSelectedAction();
+            await CastSpellGroupAsync(group.Spells, position);
+
+            if (group.Spells.Any(CanCastSpellNow))
+            {
+                SelectAction(action);
+            }
+        }
+        else if (action is WorldCursorAction.CastSpell spell)
+        {
+            ClearSelectedAction();
+
+            ICommandResult<WorldCommandError, WorldEvent, Gallean.Common.Empty> result = await GameModel.World.DispatchCommandAsync(action.CreateCommand(position));
+
+            if (result.Failed)
+            {
+                Game.ShowError(WorldCommandErrorFormatter.Format(result.Error.Value));
+            }
+
+            if (CanCastSpellNow(spell.SpellId))
+            {
+                SelectAction(action);
+            }
+        }
+    }
+
+    // The next spell may be cast while the last one's animation still plays (the click isn't lost): only the
+    // engine work and the turn matter, not the queue of map animations.
+    private bool CanCastDuringAnimations => !base.IsBusy && Snapshot.IsViewPlayerTurn && activeMove is null;
+
+    // Known, affordable and not yet cast the maximum number of times this turn.
+    private bool CanCastSpellNow(WorldSpellDefinitionId spellId)
+    {
+        if (WorldState.ScenarioState.IsEnded || !ReferenceEquals(Game.RootScreen, this))
+        {
+            return false;
+        }
+
+        ICommandResult<WorldCommandError, WorldEvent, WorldGetSpellbookInfoCommand.Result> result =
+            GameModel.World.DryRunCommand(new WorldGetSpellbookInfoCommand(ViewPlayerId));
+
+        return !result.Failed && result.Data.Acquired.Any(cast => cast.SpellId == spellId && cast.Error is null);
+    }
+}

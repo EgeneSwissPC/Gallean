@@ -135,7 +135,8 @@ public sealed class ManagementScreenViewModelTests
             "Party | not selected",
             "Buildings | not selected",
             "Spellbook | not selected",
-            "Diplomacy | not selected"
+            "Diplomacy | not selected",
+            "Spell groups | not selected"
         ]));
         Assert.That(screen.SelectedTab, Is.SameAs(screen.Tabs[0]));
     }
@@ -426,7 +427,7 @@ public sealed class ManagementScreenViewModelTests
         GameViewModel gameViewModel = new TestGameViewModelBuilder().Build();
         ManagementScreenViewModel screen = ManagementScreenViewModel.CreateForSpellbook(gameModel, gameViewModel);
 
-        Assert.That(FormatTabs(screen.Tabs), Is.EqualTo(["Spellbook | selected"]));
+        Assert.That(FormatTabs(screen.Tabs), Is.EqualTo(["Spellbook | selected", "Spell groups | not selected"]));
     }
 
     [Test]

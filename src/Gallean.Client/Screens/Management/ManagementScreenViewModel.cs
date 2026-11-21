@@ -58,6 +58,8 @@ internal sealed partial class ManagementScreenViewModel : AbstractGameScreenView
                 tabs.Add(new BuildingTabViewModel(gameModel, gameViewModel, screen));
                 tabs.Add(new SpellbookTabViewModel(gameModel, gameViewModel, screen));
                 tabs.Add(new DiplomacyTabViewModel(gameModel, gameViewModel, screen));
+                // Gallean Upgrade: last, so the other tabs keep their places (Q/E order, tests by index).
+                tabs.Add(new SpellGroupsTabViewModel(gameModel, gameViewModel, screen));
             }
 
             return tabs;
@@ -146,7 +148,7 @@ internal sealed partial class ManagementScreenViewModel : AbstractGameScreenView
             gameViewModel,
             ScreenMusic.Keep,
             new AssetSoundKey.BookOpen(),
-            screen => [new SpellbookTabViewModel(gameModel, gameViewModel, screen)]);
+            screen => [new SpellbookTabViewModel(gameModel, gameViewModel, screen), new SpellGroupsTabViewModel(gameModel, gameViewModel, screen)]);
     }
 
     public static ManagementScreenViewModel CreateForQuest(GameModel gameModel, GameViewModel gameViewModel)

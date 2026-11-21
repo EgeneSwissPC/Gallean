@@ -37,5 +37,12 @@ internal sealed partial class SpellbookItemViewModel : ObservableObject, IDetail
     [ObservableProperty]
     public partial bool IsSelected { get; set; }
 
+    // Gallean Upgrade: position in the spell group being made (1, 2, 3...), null when not picked.
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsPicked))]
+    public partial int? PickOrder { get; set; }
+
+    public bool IsPicked => PickOrder is not null;
+
     object? IDetailsSource.DetailsContent => Details;
 }
