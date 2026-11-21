@@ -20,6 +20,8 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- SC (user, 2026-11-21): reuse the original game's screens as closely as possible (army tab equipment slots,
+  level-up popup for upgrades), so players already know the interface. This is the rule for every sandbox screen.
 - SB (user, 2026-11-21): game rules by default, "Anything goes" checkbox per army.
 - SA (user, 2026-11-21): the sandbox is its own main-menu entry "Battle sandbox", below "AI editor".
 
@@ -112,9 +114,12 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   or ticked (user, 2026-11-21).
 - ~~**SC/SF in the engine**~~: the user asked for leader items, city defence and neutral sides before phase 2; they
   are in the bench (phase 1b). SC/SF remain open only for how the sandbox screen shows them.
-- **SC. What else counts**: leader items and leader upgrades (Leadership, etc.), defending inside a city
-  (fortification bonus, city guardian), and terrain. Recommended for the first version: leader items yes,
-  city defence as an option "defender is in a city of level N", terrain no (the battle doesn't use it).
+- ~~**SC. Leader items and upgrades on screen**~~: answered — copy the game's own screens: the army tab's row of 7
+  equipment slots under each army (click a slot: searchable list of items that fit it; items the leader can't use
+  yet marked red), and an Upgrades button opening a list like the level-up popup (tick abilities up to the leader's
+  limit). Valuables and special items (40 of the 336) are left out. Garrisons hide slots and upgrades; "anything
+  goes" allows red items (user, 2026-11-21).
+- **SC2. Where the defender stands and who owns the armies on screen**: asked next (split out of SC).
 - **SD. Run counts**: fixed buttons 10 / 20 / 30, or a number box (1–1000) with those three as quick picks.
   Recommended the number box plus quick picks.
 - **SE. Sides in Run N**: (a) swap attacker/defender every run (fair AI comparison); (b) keep sides as set up
