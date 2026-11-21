@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Gallean Upgrade: plays AI-only games on one map between AI contenders (world AI / battle AI pairs from
+       AiBrainRegistry) and reports wins, captures and AI time per turn. Usage: see README.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsAotCompatible>false</IsAotCompatible>
+    <RootNamespace>AiTournament</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="Gallean.Common" />
+    <Using Include="Gallean.Engine" />
+    <Using Include="Gallean.Engine.Contracts" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Gallean.Engine\Gallean.Engine.csproj" />
+    <ProjectReference Include="..\..\src\Gallean.Entities.GameData\Gallean.Entities.GameData.csproj" />
+  </ItemGroup>
+
+</Project>

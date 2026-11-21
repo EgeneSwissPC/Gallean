@@ -7,6 +7,9 @@ internal sealed record WorldAiActionCommand : IWorldCommand<Empty>
     // Gallean Upgrade: which AI decides (AiBrainRegistry ID); null = Classic.
     public string? BrainId { get; init; }
 
+    // Gallean Upgrade: keep playing when every player left is an AI (AI tournaments).
+    public bool AllowAiOnly { get; init; }
+
     public WorldCommandResult Execute(WorldState state, IEngineContext context)
     {
         WorldPlayerId playerId = state.TurnInfo.CurrentPlayerId;
@@ -19,7 +22,7 @@ internal sealed record WorldAiActionCommand : IWorldCommand<Empty>
 
         WorldPlan worldPlan = WorldPlan.For(state);
 
-        if (state.Players.Values.All(candidate => candidate.IsAi || worldPlan.IsPlayerDefeated(candidate.Id)))
+        if (!AllowAiOnly && state.Players.Values.All(candidate => candidate.IsAi || worldPlan.IsPlayerDefeated(candidate.Id)))
         {
             return WorldCommandResult.Fail(WorldCommandError.NoPlayersRemaining);
         }

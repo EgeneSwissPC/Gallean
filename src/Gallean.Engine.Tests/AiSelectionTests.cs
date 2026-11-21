@@ -108,6 +108,24 @@ public sealed class AiSelectionTests
     }
 
     [Test]
+    public void AiOnlyGameNeedsOptInTest()
+    {
+        GameSession session = BuildSession();
+        WorldState state = session.World.State;
+        GameSession aiOnly = new(session.EngineContext, state with
+        {
+            Players = state.Players.SetItems(state.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = true })))
+        });
+
+        Assert.That(() => aiOnly.ExecuteAiAction(), Throws.InstanceOf<WorldCommandException>());
+
+        aiOnly.AllowAiOnly = true;
+        aiOnly.ExecuteAiAction();
+
+        Assert.That(aiOnly.World.State.Stacks, Is.Not.EqualTo(state.Stacks));
+    }
+
+    [Test]
     public void UnknownWorldAiPlaysLikeClassicTest()
     {
         GameSession classic = BuildSession();
