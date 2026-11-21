@@ -467,6 +467,10 @@ public sealed class AiBattleBenchTests
 
         // The difficulty reaches the battle (computer players' accuracy bonus).
         Assert.That(easy.CreateBattle(Undead(), Undead()).Modifiers.Attacker.AccuracyBonus, Is.Not.EqualTo(generated.CreateBattle(Undead(), Undead()).Modifiers.Attacker.AccuracyBonus));
+
+        // A setup can choose its own difficulty: the same battle as a bench built at that difficulty.
+        BattleBenchSetup easySetup = BattleBenchSetup.Open with { Difficulty = WorldDifficulty.Easy };
+        Assert.That(generated.CreateBattle(Undead(), Undead(), easySetup).Modifiers, Is.EqualTo(easy.CreateBattle(Undead(), Undead()).Modifiers));
     }
 
     [Test]

@@ -28,8 +28,13 @@ internal sealed partial class MapEditorUnitGroup : ObservableObject
         IsOptional = isOptional;
     }
 
-    public MapEditorUnitGroupKind Kind { get; }
+    // Settable for the battle sandbox, whose defender switches between an army and a garrison.
+    public MapEditorUnitGroupKind Kind { get; set; }
     public bool IsArmy => Kind == MapEditorUnitGroupKind.Army;
+
+    // Gallean Upgrade (battle sandbox, "Anything goes"): any unit in any free slot; the army/garrison rules are not
+    // checked. Always off in the map editor.
+    public bool AllowsAnything { get; set; }
     public bool IsOptional { get; }
     public Func<WorldRace> Race { get; }
     public UnitGridViewModel UnitGrid { get; }
@@ -52,6 +57,11 @@ internal sealed partial class MapEditorUnitGroup : ObservableObject
 
     public string? Validate()
     {
+        if (AllowsAnything)
+        {
+            return null;
+        }
+
         if (IsArmy)
         {
             if (IsOptional && IsEmpty)
@@ -152,13 +162,13 @@ internal abstract partial class MapEditorUnitsScreenViewModel
     // Opens the unit list for an empty slot; an army without a leader gets the leader list first.
     public void AddUnit(MapEditorUnitGroup group, GridPosition position)
     {
-        if (group.IsArmy && !group.HasLeaderUnit)
+        if (group.IsArmy && !group.HasLeaderUnit && !group.AllowsAnything)
         {
             ChooseLeader(group);
             return;
         }
 
-        IReadOnlyList<UnitDefinition> candidates = group.IsArmy ? AllUnits : [.. AllUnits.Where(unit => unit.Leadership is not > 0)];
+        IReadOnlyList<UnitDefinition> candidates = group.IsArmy || group.AllowsAnything ? AllUnits : [.. AllUnits.Where(unit => unit.Leadership is not > 0)];
 
         Game.OpenScreen(new MapEditorUnitPickerViewModel(
             Game,
@@ -231,8 +241,8 @@ internal abstract partial class MapEditorUnitsScreenViewModel
     {
         GridPosition slot = CustomMapStack.GetUnitSlot(source.Slots, from);
 
-        if (source.Slots[slot.ToIndex()] is not { } unit || unit.IsGuardian ||
-            (unit.IsLeader && (!target.IsArmy || target.HasLeaderUnit)) ||
+        if (source.Slots[slot.ToIndex()] is not { } unit || (unit.IsGuardian && !target.AllowsAnything) ||
+            (unit.IsLeader && !target.AllowsAnything && (!target.IsArmy || target.HasLeaderUnit)) ||
             CustomMapStack.TryPlaceUnit(target.Slots, to, unit) is not { } placed)
         {
             return false;
@@ -370,6 +380,11 @@ internal abstract partial class MapEditorUnitsScreenViewModel
         if (CustomMapStack.TryPlaceUnit(group.Slots, position, unit) is not { } placed)
         {
             return unit.IsLarge ? Tr("Requires two free slots") : Tr("This slot is taken");
+        }
+
+        if (group.AllowsAnything)
+        {
+            return null;
         }
 
         if (group.IsArmy)

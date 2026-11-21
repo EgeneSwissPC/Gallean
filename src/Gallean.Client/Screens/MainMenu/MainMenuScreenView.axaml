@@ -92,6 +92,12 @@
                   local:PlateChrome.TextureSeed="9"
                   Content="{local:Text 'AI editor'}"
                   Command="{Binding Game.ShowAiEditorCommand}" />
+          <!-- Gallean Upgrade: the battle sandbox (docs/battle-ai-designer.md). -->
+          <Button x:Name="BattleSandbox"
+                  Classes="plate"
+                  local:PlateChrome.TextureSeed="10"
+                  Content="{local:Text 'Battle sandbox'}"
+                  Command="{Binding Game.ShowBattleSandboxCommand}" />
           <Button x:Name="Settings"
                   Classes="plate"
                   local:PlateChrome.TextureSeed="6"
