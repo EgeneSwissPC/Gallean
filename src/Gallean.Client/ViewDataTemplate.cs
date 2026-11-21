@@ -14,6 +14,7 @@ internal sealed class ViewDataTemplate : IDataTemplate
             BattleLogPopupViewModel => new BattleLogPopupView(),
             BattleSandboxScreenViewModel => new BattleSandboxScreenView(),
             BattleSandboxUpgradesViewModel => new BattleSandboxUpgradesView(),
+            BattleSandboxRunViewModel => new BattleSandboxRunView(),
             BattleScreenViewModel => new BattleScreenView(),
             BriefingScreenViewModel => new BriefingScreenView(),
             BuildingTabViewModel => new BuildingTabView(),

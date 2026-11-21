@@ -83,6 +83,63 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
     [ObservableProperty]
     public partial MapEditorOption<WorldDifficulty> SelectedDifficulty { get; set; }
 
+    // Phase 5: Run N.
+    public const int MinRuns = 1;
+    public const int MaxRuns = 10_000;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(RunsDownThousandCommand), nameof(RunsDownHundredCommand), nameof(RunsUpHundredCommand), nameof(RunsUpThousandCommand))]
+    public partial int RunCount { get; set; } = 1000;
+
+    [ObservableProperty]
+    public partial bool AlternateSides { get; set; }
+
+    // The next Run's first seed: a new sample every time (shown in the results, so a run can be repeated).
+    public Func<int> NextSeed { get; set; } = () => Random.Shared.Next(1, 1_000_000);
+
+    partial void OnRunCountChanged(int value)
+    {
+        int clamped = Math.Clamp(value, MinRuns, MaxRuns);
+
+        if (clamped != value)
+        {
+            RunCount = clamped;
+        }
+    }
+
+    private bool CanRunsDownThousand() => RunCount > 1000;
+    private bool CanRunsDownHundred() => RunCount > 100;
+    private bool CanRunsUpHundred() => RunCount < MaxRuns;
+    private bool CanRunsUpThousand() => RunCount < MaxRuns;
+
+    // The buttons stop at 100 and 10,000 (typing allows 1-10,000).
+    [RelayCommand(CanExecute = nameof(CanRunsDownThousand))]
+    private void RunsDownThousand() => RunCount = Math.Max(100, RunCount - 1000);
+
+    [RelayCommand(CanExecute = nameof(CanRunsDownHundred))]
+    private void RunsDownHundred() => RunCount = Math.Max(100, RunCount - 100);
+
+    [RelayCommand(CanExecute = nameof(CanRunsUpHundred))]
+    private void RunsUpHundred() => RunCount = Math.Min(MaxRuns, RunCount + 100);
+
+    [RelayCommand(CanExecute = nameof(CanRunsUpThousand))]
+    private void RunsUpThousand() => RunCount = Math.Min(MaxRuns, RunCount + 1000);
+
+    // Fights the battle RunCount times headless and shows the results (popup with progress and Cancel).
+    [RelayCommand(CanExecute = nameof(IsValid))]
+    private Task RunAsync()
+    {
+        BattleSandboxRunViewModel run = new(bench, ToSide(Attacker), ToSide(Defender), Setup, RunCount, NextSeed(), AlternateSides, GetUnitTypeName);
+        Game.OpenScreen(run);
+
+        return run.StartAsync();
+    }
+
+    private string GetUnitTypeName(UnitDefinitionId id)
+    {
+        return EditorGame.Definitions.TryGetUnit(id) is { } definition ? EditorGame.Texts.GetGlobalText(definition.NameTextId).Text : id.Value;
+    }
+
     public bool IsOpenField => Place == BattleBenchPlace.Open;
     public bool IsCity => Place == BattleBenchPlace.City;
     public bool IsCapital => Place == BattleBenchPlace.Capital;
@@ -242,6 +299,8 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
     // Says which side a grid problem belongs to (the base screen reports the first problem without its side).
     protected override void OnRefreshed()
     {
+        RunCommand.NotifyCanExecuteChanged();
+
         if (Attacker is not null && Defender is not null)
         {
             UpdateEquipment(Attacker);
@@ -253,6 +312,7 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
         {
             Problem = Tr("Neutrals have no capital: choose another owner for the defender.");
             IsValid = false;
+            RunCommand.NotifyCanExecuteChanged();
             return;
         }
 

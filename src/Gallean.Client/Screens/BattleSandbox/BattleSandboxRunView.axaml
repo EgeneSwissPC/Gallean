@@ -1,0 +1,70 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.BattleSandboxRunView"
+             x:DataType="local:BattleSandboxRunViewModel">
+
+  <!-- Gallean Upgrade: the battle sandbox's Run N popup (progress, then results), in the game's modal panel style. -->
+  <Border Background="{StaticResource ModalBackdropBrush}">
+    <local:ModalPanel Classes="accent" Width="860" MaxHeight="700" Padding="28,20">
+
+      <local:ModalPanel.Footer>
+        <Grid Classes="pill-group" ColumnDefinitions="*,Auto">
+          <Button Grid.Column="1" Content="{local:Text 'Cancel'}" Classes="pill" MinWidth="110" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}" />
+          <Button Grid.Column="1" Content="{local:Text 'Close'}" Classes="pill" MinWidth="110" Command="{Binding CloseCommand}" IsVisible="{Binding HasResult}" />
+        </Grid>
+      </local:ModalPanel.Footer>
+
+      <Grid RowDefinitions="Auto,Auto,*">
+        <local:OutlinedTextBlock Grid.Row="0" Classes="h2" Text="{local:Text 'Battle results'}" Foreground="{StaticResource PrimaryTextBrush}" />
+
+        <StackPanel Grid.Row="1" Spacing="6" Margin="0,10,0,10">
+          <ProgressBar Value="{Binding Progress}" Minimum="0" Maximum="1" Height="8" IsVisible="{Binding IsRunning}" />
+          <TextBlock Text="{Binding ProgressText}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding IsRunning}" />
+          <TextBlock Text="{Binding Summary}" Classes="body" TextWrapping="Wrap" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding HasResult}" />
+        </StackPanel>
+
+        <ItemsControl Grid.Row="2" ItemsSource="{Binding Sides}" IsVisible="{Binding HasResult}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <UniformGrid Columns="2" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:BattleSandboxSideResultViewModel">
+              <StackPanel Margin="6,0" Spacing="4">
+                <local:OutlinedTextBlock Text="{Binding Title}" Classes="object-name row" />
+                <TextBlock Text="{Binding ArmyName}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Text="{Binding AiName}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                <local:OutlinedTextBlock Text="{Binding WinsText}" Classes="h3" Foreground="{StaticResource AccentBrush}" Margin="0,4,0,2" />
+                <ItemsControl ItemsSource="{Binding Details}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="x:String">
+                      <TextBlock Text="{Binding}" Classes="caption" Foreground="{StaticResource PrimaryTextBrush}" TextWrapping="Wrap" />
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <local:OrnamentDivider Classes="section" Margin="0,6" />
+                <ItemsControl ItemsSource="{Binding Units}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:BattleSandboxUnitResultViewModel">
+                      <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,2">
+                        <Border Grid.Column="0" Classes="frame" Width="32" Height="32" CornerRadius="16" BorderThickness="1" ClipToBounds="True" Margin="0,0,8,0">
+                          <local:SpriteVisual SpriteKey="{Binding FaceKey}" Stretch="UniformToFill" />
+                        </Border>
+                        <TextBlock Grid.Column="1" Text="{Binding Name}" Classes="caption" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" Foreground="{StaticResource PrimaryTextBrush}" />
+                        <TextBlock Grid.Column="2" Text="{Binding SurvivedText}" Classes="caption" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" Margin="8,0,0,0" />
+                      </Grid>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </Grid>
+
+    </local:ModalPanel>
+  </Border>
+
+</UserControl>

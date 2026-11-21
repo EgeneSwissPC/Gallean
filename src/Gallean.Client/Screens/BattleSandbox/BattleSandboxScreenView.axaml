@@ -225,8 +225,22 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <local:OrnamentDivider Classes="section" />
             <Button Classes="pill" HorizontalAlignment="Center" Padding="16,0" Height="30" Content="{local:Text 'Swap sides'}" Command="{Binding SwapSidesCommand}" />
+            <local:OrnamentDivider Classes="section" />
+            <!-- Phase 5: Run N -->
+            <TextBlock Text="{local:Text 'Battles to run'}" Classes="caption field" HorizontalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center">
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="-1000" Command="{Binding RunsDownThousandCommand}" />
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="-100" Command="{Binding RunsDownHundredCommand}" />
+              <TextBox Text="{Binding RunCount}" Width="62" Height="26" MinHeight="26" Padding="4,0" TextAlignment="Center" VerticalContentAlignment="Center" MaxLength="5" />
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="+100" Command="{Binding RunsUpHundredCommand}" />
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="+1000" Command="{Binding RunsUpThousandCommand}" />
+            </StackPanel>
+            <CheckBox IsChecked="{Binding AlternateSides}" HorizontalAlignment="Center"
+                      ToolTip.Tip="{local:Text 'Each army attacks in every other battle: a fair comparison of two armies or two AIs.'}">
+              <TextBlock Text="{local:Text 'Alternate sides'}" Classes="caption" />
+            </CheckBox>
+            <Button Classes="pill primary" HorizontalAlignment="Center" Padding="20,0" Height="32" Content="{local:Text 'Run'}" Command="{Binding RunCommand}" />
           </StackPanel>
         </ContentControl>
 

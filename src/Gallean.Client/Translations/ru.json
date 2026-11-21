@@ -1591,6 +1591,22 @@
     "{0} ({1})": "{0} ({1})",
     "{0} upgrades (anything goes)": "Умений: {0} (без правил)",
     "{0}, level {1}": "{0}, уровень {1}",
-    "Upgrades {0} / {1}": "Умения {0} / {1}"
+    "Upgrades {0} / {1}": "Умения {0} / {1}",
+    "{0} of {1} battles": "{0} из {1} сражений",
+    "sides alternating": "стороны чередуются",
+    "sides as set up": "стороны как заданы",
+    "{0} battles ({1}), seeds from {2}, {3} rounds on average, {4} without a winner.": "Сражений: {0} ({1}), сиды с {2}, в среднем раундов: {3}, без победителя: {4}.",
+    "{0} battles ({1}), seeds from {2}, {3} rounds on average.": "Сражений: {0} ({1}), сиды с {2}, в среднем раундов: {3}.",
+    "Won {0} of {1} as attacker, {2} of {3} as defender": "Побед: {0} из {1} в нападении, {2} из {3} в защите",
+    "Fled in {0} battles": "Бежал в {0} сражениях",
+    "Units alive: {0} of {1} on average": "Выживших воинов: {0} из {1} в среднем",
+    "Hit points left: {0} %": "Осталось здоровья: {0} %",
+    "Wins {0} % ± {1}": "Побед {0} % ± {1}",
+    "survived {0} of {1}": "выжил {0} из {1}",
+    "Battle results": "Итоги сражений",
+    "Battles to run": "Сколько сражений",
+    "Each army attacks in every other battle: a fair comparison of two armies or two AIs.": "Армии нападают по очереди: честное сравнение двух армий или двух ИИ.",
+    "Alternate sides": "Чередовать стороны",
+    "Run": "Запустить"
   }
 }
