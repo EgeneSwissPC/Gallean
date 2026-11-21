@@ -415,7 +415,7 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
                 null,
                 clicked => ChooseItem(side, clicked));
         })];
-        side.UpgradesText = Tr("{0} / {1}", side.LeaderUpgrades.Length, GetMaxUpgrades(side));
+        side.UpgradesText = Tr("Upgrades {0} / {1}", side.LeaderUpgrades.Length, GetMaxUpgrades(side));
     }
 
     // The item list for one slot: only items that fit it (like the game's equip rules); items the leader can't use

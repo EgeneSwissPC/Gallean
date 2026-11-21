@@ -124,7 +124,7 @@
             </ItemsControl.ItemTemplate>
           </ItemsControl>
 
-          <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+          <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="{local:Text 'Battle AI'}" Classes="caption field" />
             <ComboBox Grid.Row="0" Grid.Column="1" Classes="sandbox" ItemsSource="{Binding Ais}" SelectedItem="{Binding SelectedAi}">
               <ComboBox.ItemTemplate>
@@ -133,17 +133,18 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <CheckBox Grid.Row="1" Grid.Column="1"
-                      IsChecked="{Binding AllowsAnything}"
-                      ToolTip.Tip="{local:Text 'Skip the game rules for this army: no leader needed, no leadership limit.'}">
-              <TextBlock Text="{local:Text 'Anything goes'}" Classes="caption" />
-            </CheckBox>
-            <TextBlock Grid.Row="4" Grid.Column="0" Text="{local:Text 'Upgrades'}" Classes="caption field" IsVisible="{Binding CanEquip}" />
-            <Button Grid.Row="4" Grid.Column="1" Classes="pill" Height="30" Padding="12,0" HorizontalAlignment="Left"
-                    IsVisible="{Binding CanEquip}" Command="{Binding ChooseUpgradesCommand}"
-                    ToolTip.Tip="{local:Text 'The leader abilities learned on level-up, like in the game'}">
-              <TextBlock Text="{Binding UpgradesText}" Classes="caption" />
-            </Button>
+            <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto">
+              <CheckBox Grid.Column="0"
+                        IsChecked="{Binding AllowsAnything}"
+                        ToolTip.Tip="{local:Text 'Skip the game rules for this army: no leader needed, no leadership limit.'}">
+                <TextBlock Text="{local:Text 'Anything goes'}" Classes="caption" />
+              </CheckBox>
+              <Button Grid.Column="1" Classes="pill" Height="28" Padding="10,0"
+                      IsVisible="{Binding CanEquip}" Command="{Binding ChooseUpgradesCommand}"
+                      ToolTip.Tip="{local:Text 'The leader abilities learned on level-up, like in the game'}">
+                <TextBlock Text="{Binding UpgradesText}" Classes="caption" />
+              </Button>
+            </Grid>
             <TextBlock Grid.Row="2" Grid.Column="0" Text="{local:Text 'Save as'}" Classes="caption field" />
             <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
               <TextBox Grid.Column="0" Text="{Binding PresetName}" MaxLength="40" Height="30" Watermark="{local:Text 'Army name'}" />

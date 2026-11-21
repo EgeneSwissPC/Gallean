@@ -272,7 +272,7 @@ public sealed class BattleSandboxTests
         upgrades.ConfirmCommand.Execute(null);
 
         Assert.That(side.LeaderUpgrades, Is.EqualTo(new[] { BannerBearer }));
-        Assert.That(side.UpgradesText, Is.EqualTo("1 / 2"));
+        Assert.That(side.UpgradesText, Is.EqualTo("Upgrades 1 / 2"));
         Assert.That(side.EquipmentSlots[0].HasProblem, Is.False);
         Assert.That(screen.IsValid, Is.True, screen.Problem);
         BattleArmy army = screen.ToArmy(side);
