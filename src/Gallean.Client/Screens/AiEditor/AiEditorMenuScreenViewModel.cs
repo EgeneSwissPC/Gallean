@@ -15,12 +15,12 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
 
     private readonly MusicQueue musicQueue = MusicQueue.Create([new AssetSoundKey.MenuMusic()], isLooping: true);
 
-    public AiEditorMenuScreenViewModel(GameViewModel game)
+    public AiEditorMenuScreenViewModel(GameViewModel game, string? selectId = null)
     {
         Game = game;
         Name = Tr("My AI");
         Background = MainMenuBackgroundViewModel.Create();
-        Refresh(selectId: null);
+        Refresh(selectId);
     }
 
     public GameViewModel Game { get; }
@@ -34,7 +34,7 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
     public override ScreenMusic Music => ScreenMusic.Tracks(musicQueue);
 
     [ObservableProperty]
-    [NotifyCanExecuteChangedFor(nameof(DeleteCommand), nameof(DuplicateCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteCommand), nameof(DuplicateCommand), nameof(EditCommand))]
     public partial AiEditorItem? SelectedAi { get; set; }
 
     [ObservableProperty]
@@ -91,6 +91,9 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
 
         DesignedAiLibrary.Store.Save(design);
         Refresh(design.Id);
+
+        // A new AI opens straight in the designer.
+        Game.ShowScreen(new AiDesignerScreenViewModel(Game, design));
     }
 
     private bool HasSelection()
@@ -136,15 +139,14 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
             }));
     }
 
-    // The designer screen arrives in the next phase (docs/ai-designer.md, phase 3).
-    [RelayCommand(CanExecute = nameof(CanEdit))]
+    [RelayCommand(CanExecute = nameof(HasSelection))]
     private void Edit()
     {
-    }
-
-    private static bool CanEdit()
-    {
-        return false;
+        if (SelectedAi is { } selected &&
+            DesignedAiLibrary.Store.LoadAll().FirstOrDefault(design => design.Id == selected.Id) is { } design)
+        {
+            Game.ShowScreen(new AiDesignerScreenViewModel(Game, design));
+        }
     }
 
     [RelayCommand]

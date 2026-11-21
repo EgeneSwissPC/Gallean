@@ -53,7 +53,8 @@
                Grid.Column="0"
                Classes="select-list"
                ItemsSource="{Binding Ais}"
-               SelectedItem="{Binding SelectedAi}">
+               SelectedItem="{Binding SelectedAi}"
+               DoubleTapped="OnAiDoubleTapped">
         <local:Blankslate.Content>
           <TextBlock Text="{local:Text 'No AIs of your own yet. Create one on the right.'}"
                      Classes="body"
@@ -82,9 +83,7 @@
                 Classes="pill primary"
                 local:PlateChrome.TextureSeed="3"
                 Content="{local:Text 'Edit'}"
-                Command="{Binding EditCommand}"
-                ToolTip.Tip="{local:Text 'The AI designer comes in the next update.'}"
-                ToolTip.ShowOnDisabled="True" />
+                Command="{Binding EditCommand}" />
       </Grid>
 
       <local:OutlinedTextBlock Grid.Row="2" Grid.Column="2" Text="{local:Text 'New map AI'}" Classes="label" Margin="0,0,0,8" />
