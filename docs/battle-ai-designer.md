@@ -226,6 +226,13 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
   worth over N gold / a quest item", so a designed AI can flee earlier or protect the leader; (c) optionally the
   map AI weighing cargo when choosing to attack or avoid a fight (separate from the battle AI). Classic stays
   unchanged.
+  User point (2026-11-22): expensive gear also makes the leader stronger, which argues for attacking, not fleeing.
+  Facts: equipped items already raise the units' battle stats, so the battle AI's power share (flee decision) and
+  the map AI's battle prediction (`WorldAiEstimator` simulates the battle with those stats) already count gear as
+  strength. What nothing counts is the risk: the value lost if the battle is lost. Proposal: the cargo condition
+  measures only the bag by default (things that add no strength), with a "count equipped items" option; the
+  decision then weighs value against the chance of losing (power share) instead of value alone, e.g. "carry over
+  N gold and power share below M %".
 - **BF. Size**: sandbox phases 2–6 ~6.5 days; designer phases 7–9 ~5–6 days; confirmed per phase.
 
 ## Phase 1 — done
