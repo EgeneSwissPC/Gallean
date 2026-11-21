@@ -1360,6 +1360,9 @@
     "the open water of a sea creature": "открытая вода морского существа",
     "open water only": "только открытая вода",
     "Sea creatures cannot be hired": "Морских существ нельзя нанять",
-    "Needs open water: water on all 8 sides": "Нужна открытая вода: вода со всех 8 сторон"
+    "Needs open water: water on all 8 sides": "Нужна открытая вода: вода со всех 8 сторон",
+    "Refuse to flee": "Стоять насмерть",
+    "The computer takes your turns, but your army never flees, until you press it again": "Компьютер ходит за вас, но ваша армия не отступает, пока вы не нажмёте снова",
+    "Would you like to resolve the rest of the battle automatically, without your army fleeing?": "Завершить остаток боя автоматически, без отступления вашей армии?"
   }
 }

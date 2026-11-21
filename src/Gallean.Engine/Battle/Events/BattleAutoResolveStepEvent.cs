@@ -1,6 +1,6 @@
 namespace Gallean.Engine;
 
-public sealed record BattleAutoResolveStepEvent(int StartRoundNumber) : BattleEvent
+public sealed record BattleAutoResolveStepEvent(int StartRoundNumber, BattleSide? NoRetreatSide = null) : BattleEvent
 {
     public override TResult Accept<TContext, TResult>(IBattleEventVisitor<TContext, TResult> visitor, TContext context)
     {

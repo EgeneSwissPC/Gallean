@@ -83,6 +83,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
             SkipCommand,
             ToggleAutoBattleCommand,
             ToggleHealModeCommand,
+            ToggleNoFleeModeCommand,
             AutoResolveCommand,
             ExitBattleCommand);
     }
@@ -170,7 +171,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
 
     private bool IsFinished => State.Outcome is not null;
 
-    private bool IsAiTurn => battle.IsAiTurn || IsAutoBattle || IsHealMode;
+    private bool IsAiTurn => battle.IsAiTurn || IsAutoBattle || IsHealMode || IsNoFleeMode;
 
     public async Task LoadAsync()
     {
@@ -431,6 +432,12 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
         if (IsHealMode)
         {
             OpenHealModeResolvePrompt();
+            return;
+        }
+
+        if (IsNoFleeMode)
+        {
+            OpenNoFleeResolvePrompt();
             return;
         }
 
@@ -1252,6 +1259,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
         SkipCommand.NotifyCanExecuteChanged();
         ToggleAutoBattleCommand.NotifyCanExecuteChanged();
         ToggleHealModeCommand.NotifyCanExecuteChanged();
+        ToggleNoFleeModeCommand.NotifyCanExecuteChanged();
         AutoResolveCommand.NotifyCanExecuteChanged();
         ExitBattleCommand.NotifyCanExecuteChanged();
     }

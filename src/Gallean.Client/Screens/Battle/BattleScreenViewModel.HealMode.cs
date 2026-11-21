@@ -33,11 +33,13 @@ internal sealed partial class BattleScreenViewModel
         return !IsFinished && battle.ViewerSide != BattleViewerSide.None;
     }
 
+    // Auto-play, Heal and defend and Refuse to flee switch each other off.
     partial void OnIsHealModeChanged(bool value)
     {
         if (value)
         {
             IsAutoBattle = false;
+            IsNoFleeMode = false;
         }
     }
 
@@ -45,6 +47,16 @@ internal sealed partial class BattleScreenViewModel
     {
         if (value)
         {
+            IsHealMode = false;
+            IsNoFleeMode = false;
+        }
+    }
+
+    partial void OnIsNoFleeModeChanged(bool value)
+    {
+        if (value)
+        {
+            IsAutoBattle = false;
             IsHealMode = false;
         }
     }
@@ -55,9 +67,17 @@ internal sealed partial class BattleScreenViewModel
         {
             await ResolveHealModeInstantlyAsync();
         }
+        else if (isNoFleeInstantRequested)
+        {
+            await ResolveNoFleeInstantlyAsync();
+        }
         else if (IsHealMode && !battle.IsAiTurn)
         {
             await DispatchBattleActionAsync(new BattleHealOrDefendCommand(State.CurrentUnitId), animate: true);
+        }
+        else if (IsNoFleeMode && !battle.IsAiTurn)
+        {
+            await DispatchBattleActionAsync(new BattleAiActionCommand(CanUseItems: false, CanRetreat: false), animate: true);
         }
         else
         {

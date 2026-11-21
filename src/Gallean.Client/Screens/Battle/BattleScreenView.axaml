@@ -13,6 +13,7 @@
     <KeyBinding Gesture="R" Command="{Binding RetreatCommand}" />
     <KeyBinding Gesture="A" Command="{Binding ToggleAutoBattleCommand}" />
     <KeyBinding Gesture="H" Command="{Binding ToggleHealModeCommand}" />
+    <KeyBinding Gesture="F" Command="{Binding ToggleNoFleeModeCommand}" />
     <KeyBinding Gesture="I" Command="{Binding AutoResolveCommand}" />
     <KeyBinding Gesture="D1" Command="{Binding SelectFirstItemCommand}" />
     <KeyBinding Gesture="D2" Command="{Binding SelectSecondItemCommand}" />
@@ -377,6 +378,13 @@
                     Command="{Binding ToggleHealModeCommand}"
                     ToolTip.Tip="{local:Text 'Healers heal the army and all other units defend, until you press it again'}">
               <local:HotkeyLabel Text="{local:Text 'Heal and defend'}" Hotkey="H" />
+            </Button>
+            <Button Classes="pill"
+                    Classes.selected="{Binding IsNoFleeMode}"
+                    local:PlateChrome.TextureSeed="5"
+                    Command="{Binding ToggleNoFleeModeCommand}"
+                    ToolTip.Tip="{local:Text 'The computer takes your turns, but your army never flees, until you press it again'}">
+              <local:HotkeyLabel Text="{local:Text 'Refuse to flee'}" Hotkey="F" />
             </Button>
             <Button Classes="pill"
                     local:PlateChrome.TextureSeed="2"

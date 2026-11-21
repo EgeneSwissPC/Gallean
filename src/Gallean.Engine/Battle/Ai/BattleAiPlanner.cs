@@ -1,8 +1,11 @@
 namespace Gallean.Engine;
 
-internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUseItems)
+// Gallean Upgrade: canRetreat = false drops the retreat action (the "Refuse to flee" battle mode).
+internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUseItems, bool canRetreat = true)
 {
-    private readonly IReadOnlyList<AbstractAction> actions = CreateActions(context, canUseItems);
+    private readonly IReadOnlyList<AbstractAction> actions = CreateActions(context, canUseItems)
+        .Where(action => canRetreat || action is not RetreatAction)
+        .ToList();
 
     public BattleAiActionPlan DecideAction(BattleState state)
     {
