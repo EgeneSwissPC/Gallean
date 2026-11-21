@@ -42,6 +42,7 @@ internal sealed partial class WorldEngine(IEngineContext context, WorldState ini
             new TurnStartingStackExpirationRule(context),
             new TurnStartedCityRiotRule(context),
             new TurnStartedGenerateResourcesRule(context),
+            new TurnResourcesGeneratedSummonUpkeepRule(context),
             new TurnStartedUpgradeAiLeadersRule(context),
             new TurnStartedGrantAiAutoExperienceRule(context),
             new TriggerScenarioEventsRule(context)

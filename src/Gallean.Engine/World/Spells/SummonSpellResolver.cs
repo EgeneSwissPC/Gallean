@@ -75,8 +75,15 @@ internal sealed class SummonSpellResolver : IWorldSpellResolver<WorldSummonStack
         }
 
         int? expirationTurn;
+        WorldResourceSet? summonUpkeep = null;
 
-        if (unitDefinition.Lifetime is not null)
+        if (LargeMapRules.AppliesTo(state.Map))
+        {
+            // Large maps: the army stays as long as its owner pays the casting cost again every turn.
+            expirationTurn = null;
+            summonUpkeep = spell.CastingCost;
+        }
+        else if (unitDefinition.Lifetime is not null)
         {
             expirationTurn = state.TurnInfo.TurnNumber + unitDefinition.Lifetime.Value;
         }
@@ -102,7 +109,10 @@ internal sealed class SummonSpellResolver : IWorldSpellResolver<WorldSummonStack
             expirationTurn,
             PendingLeaderUpgrades: 0,
             BattlesWon: 0,
-            SourceTemplateId: null);
+            SourceTemplateId: null)
+        {
+            SummonUpkeep = summonUpkeep
+        };
 
         return WorldCommandResult.Success(
             Empty.Value,
