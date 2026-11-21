@@ -1,6 +1,6 @@
 # Switchable AI (world AI and battle AI)
 
-gallean-upgrade only. Status: spec, nothing built yet.
+gallean-upgrade only. Status: phase 1 done (interfaces + registry, Classic only).
 
 ## Decisions
 
@@ -11,6 +11,9 @@ gallean-upgrade only. Status: spec, nothing built yet.
 - **Switching mid-game is allowed** at any time (Settings during a game, or the per-player panel).
 - **When the global switch changes and the current game has overrides,** the game asks once: "N AI players in this game have their own AI. Switch them too?" with the choices *Only players without their own AI* (default) and *Everyone (removes their overrides)*. Nothing is overwritten silently.
 - **Upstream:** no. gallean-upgrade only.
+- **Map creators** can give a race its own AI in the map editor; it becomes that player's override in games started from the map (later phase, after 3).
+- **Neutral armies** in battle use the global battle AI.
+- **The AI's name** is shown only in the per-player panel, not on the world screen.
 
 ## The problem today
 
@@ -24,7 +27,7 @@ gallean-upgrade only. Status: spec, nothing built yet.
 - **Settings → Game:** two drop-downs, "World AI" and "Battle AI", each with a one-line description under the selected entry. The settings panel is already at full height at 1366x768, so these need a compact row (e.g. both on one row) or a sub-page. Check `VisualTests.SettingsTest`/`SettingsRussianTest`.
 - **New game screen:** next to every AI player, a small "AI: default" marker. Clicking it opens per-player World AI / Battle AI pickers with a "Use global setting" entry (the default).
 - **During a game:** the same per-player panel is reachable from the in-game menu (list of AI players, each with its override or "global"). Overrides are highlighted, so you can see that a player is special.
-- **Map editor (open question E):** a map creator can give a race its own AI, which becomes that player's override in every game started from the map.
+- **Map editor:** a map creator can give a race its own AI, which becomes that player's override in every game started from the map.
 
 ## Technical approach
 
@@ -32,7 +35,7 @@ gallean-upgrade only. Status: spec, nothing built yet.
 2. **Registry:** `AiBrainRegistry` with ID, display name and description. Unknown IDs (an old save, a removed AI) fall back to Classic, with a log line.
 3. **Global setting:** `GameSettings.WorldAi` / `BattleAi` (record params with defaults, like `ShowPathOnHover`; no format bump). The client passes them into the engine context, so the engine doesn't read client settings itself.
 4. **Overrides in the save:** `WorldPlayer.AiOverride` (init prop, nullable: world ID, battle ID). Old saves have none, so they follow the global setting. Changing an override is an engine command (`WorldSetAiOverrideCommand`), so it is saved and undo-free like the other commands.
-5. **Battle side:** a battle against an AI player resolves that player's battle brain (override → global). Neutral armies use the global battle AI (open question F).
+5. **Battle side:** a battle against an AI player resolves that player's battle brain (override → global). Neutral armies use the global battle AI.
 6. **Memory when switching:** all personality brains share `WorldAiMemory`, so switching keeps the orders. A brain with its own memory format starts with an empty one on a switch (reset, not a crash).
 7. **Determinism:** brains may only use the engine random provider, so headless runs and tests stay reproducible.
 
@@ -62,15 +65,27 @@ Later, only if the tournament shows it's worth it: a different algorithm (e.g. l
 
 ## Phases
 
-1. Interfaces + registry + Classic wired through (no behaviour change; full suite identical). ~0.5 day.
+1. ~~Interfaces + registry + Classic wired through (no behaviour change; full suite identical). ~0.5 day.~~ Done.
 2. Global settings (both drop-downs) + engine context plumbing + mid-game switch. ~1 day.
 3. Per-player overrides: save field, command, new-game and in-game panels, confirm prompt. ~1.5 days.
 4. Tournament bench. ~1 day.
 5. Personalities: Classic+, Aggressive, Builder, Expansionist; battle Cautious, Ruthless. ~1 day each, each measured on the bench.
 6. (Optional) Lookahead AI.
+7. Map editor: per-race AI saved in the map (after phase 3).
+
+## Phase 1 — done
+
+Commit ed7bf4e3, merged in 0072b613.
+
+- `Engine/Ai/AiBrainInfo.cs` (ID, name, description) and `Engine/Ai/AiBrainRegistry.cs` (public `WorldBrains`/`BattleBrains` lists for the later pickers; internal `ResolveWorld`/`ResolveBattle`, unknown/empty/null ID -> Classic).
+- `IWorldAiBrain` (`World/Ai/Brains/`) and `IBattleAiBrain` (`Battle/Ai/Brains/`); `ClassicWorldAiBrain` wraps `WorldAiController`, `ClassicBattleAiBrain` wraps `BattleAiPlanner`. The AI code itself is untouched.
+- Entry points: `WorldAiActionCommand` and `BattleAiActionCommand` now go through the registry (with `null` until phase 2 passes the setting). `TestWorldAiRunner` and AI tests still call `WorldAiController` directly, which is the same code.
+- Tests: `AiBrainRegistryTests` (5: Classic first, unique IDs, fallback for null/empty/unknown). Full non-visual suite 5303 passed (5298 + 5), every existing AI test unchanged, so no behaviour change.
+- No real-client run: nothing visible changed. Phase 2 (the settings) gets the AOT click-through.
+
 
 ## Open questions
 
-- **E.** Can a map creator set a race's AI in the map editor (saved in the map, becoming that player's override)? Recommendation: yes, in a later phase after 3.
-- **F.** Neutral armies in battle: global battle AI, or always Classic? Recommendation: global.
-- **G.** Should the in-game per-player panel show the AI's name to the human (e.g. in the player list)? Recommendation: only in the panel, to keep the world screen clean.
+- ~~E. Map editor per-race AI~~ -> yes, later phase (see Decisions).
+- ~~F. Neutral armies' battle AI~~ -> global.
+- ~~G. Show the AI's name~~ -> only in the per-player panel.
