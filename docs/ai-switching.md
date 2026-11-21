@@ -185,6 +185,8 @@ Recommendation: **A first, as its own brain "Lookahead"**, measured on the tourn
 
 ## Phase 7 — map editor: per-race AI (planned, not started)
 
+See also `docs/ai-designer.md` (user decision: a separate AI editor mode where players build their own AIs in stages; its phase 7 lets maps carry designed AIs and takes this phase over).
+
 ### What the user would see
 In the economy panel (where the starting bank and the neutrals switch live), a new **AI** block: a race picker (every race of the map plus **Neutrals**), then **Map AI** and **Battle AI** drop-downs with "Settings choice" first (same entries and names as the AI players panel). A race with its own AI shows it in the picker label, like the bank.
 
