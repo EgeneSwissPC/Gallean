@@ -217,7 +217,7 @@ internal sealed partial class WorldScreenViewModel :
             return;
         }
 
-        if (IsBusy)
+        if (IsBusy && !(cursor.Action is WorldCursorAction.CastSpell or WorldCursorAction.CastSpellGroup && CanCastDuringAnimations))
         {
             return;
         }
@@ -891,6 +891,12 @@ internal sealed partial class WorldScreenViewModel :
 
     private async Task DispatchSelectedActionAsync(WorldCursorAction action, WorldPosition position)
     {
+        if (action is WorldCursorAction.CastSpell or WorldCursorAction.CastSpellGroup)
+        {
+            await DispatchSpellActionAsync(action, position);
+            return;
+        }
+
         ClearSelectedAction();
 
         await TryDispatchWorldActionAsync(action.CreateCommand(position));
@@ -1644,7 +1650,7 @@ internal sealed partial class WorldScreenViewModel :
     {
         (AssetAnimationKey.CursorType valid, AssetAnimationKey.CursorType invalid) = action switch
         {
-            WorldCursorAction.CastSpell => (AssetAnimationKey.CursorType.CastSpell, AssetAnimationKey.CursorType.CastSpellInvalid),
+            WorldCursorAction.CastSpell or WorldCursorAction.CastSpellGroup => (AssetAnimationKey.CursorType.CastSpell, AssetAnimationKey.CursorType.CastSpellInvalid),
             WorldCursorAction.UseItem => (AssetAnimationKey.CursorType.UseScroll, AssetAnimationKey.CursorType.UseScrollInvalid),
             WorldCursorAction.DropItem => (AssetAnimationKey.CursorType.DropBag, AssetAnimationKey.CursorType.Default),
             WorldCursorAction.CreateRod => (AssetAnimationKey.CursorType.CreateRod, AssetAnimationKey.CursorType.CreateRodInvalid),

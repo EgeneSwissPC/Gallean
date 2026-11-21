@@ -1363,6 +1363,22 @@
     "Needs open water: water on all 8 sides": "Нужна открытая вода: вода со всех 8 сторон",
     "Refuse to flee": "Стоять насмерть",
     "The computer takes your turns, but your army never flees, until you press it again": "Компьютер ходит за вас, но ваша армия не отступает, пока вы не нажмёте снова",
-    "Would you like to resolve the rest of the battle automatically, without your army fleeing?": "Завершить остаток боя автоматически, без отступления вашей армии?"
+    "Would you like to resolve the rest of the battle automatically, without your army fleeing?": "Завершить остаток боя автоматически, без отступления вашей армии?",
+    "Select a target for the spell group on the map.": "Выберите цель для группы заклинаний на карте.",
+    "{0}: needs a target on the map": "{0}: нужна цель на карте",
+    "{0}: {1}": "{0}: {1}",
+    "No spell of the group was cast": "Ни одно заклинание группы не сотворено",
+    "{0} of {1} spells cast": "Сотворено заклинаний: {0} из {1}",
+    "1 spell in the group": "1 заклинание в группе",
+    "{0} spells in the group": "Заклинаний в группе: {0}",
+    "Group {0}": "Группа {0}",
+    "Create spell group": "Создать группу заклинаний",
+    "Click spells in the order to cast them": "Щёлкайте заклинания в порядке их сотворения",
+    "Save group": "Сохранить группу",
+    "Spell groups": "Группы заклинаний",
+    "None of these spells can be cast now": "Сейчас нельзя сотворить ни одно из этих заклинаний",
+    "{0} of {1} spells can be cast now": "Можно сотворить сейчас: {0} из {1}",
+    "A group casts its spells one after another, in this order.": "Группа творит свои заклинания одно за другим, в этом порядке.",
+    "No spell groups yet. Make one with Create spell group in the Spellbook.": "Групп заклинаний пока нет. Создайте группу кнопкой «Создать группу заклинаний» в книге заклинаний."
   }
 }

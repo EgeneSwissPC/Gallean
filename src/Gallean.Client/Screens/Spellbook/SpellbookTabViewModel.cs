@@ -8,6 +8,7 @@ namespace Gallean.Client;
 internal sealed partial class SpellbookTabViewModel : ManagementTabViewModel
 {
     private WorldSpellDefinitionId? selectedSpellId;
+    private readonly List<WorldSpellDefinitionId> pickedSpells = [];
 
     public SpellbookTabViewModel(GameModel gameModel, GameViewModel gameViewModel, ManagementScreenViewModel screen)
         : base(gameModel, gameViewModel)
@@ -85,6 +86,12 @@ internal sealed partial class SpellbookTabViewModel : ManagementTabViewModel
     [RelayCommand]
     private void SelectSpell(SpellbookItemViewModel spell)
     {
+        if (IsPickingGroup)
+        {
+            TogglePick(spell);
+            return;
+        }
+
         selectedSpellId = spell.SpellId;
 
         ApplySelection();
@@ -188,8 +195,10 @@ internal sealed partial class SpellbookTabViewModel : ManagementTabViewModel
         Levels = BuildLevels(items);
         RequiredBuilding = BuildRequiredBuilding(info);
         ResearchedCountText = Tr("{0} of {1} spells researched", info.Acquired.Length, items.Count);
+        HasKnownSpells = info.Acquired.Length > 0;
 
         ApplySelection();
+        ApplyPicks();
     }
 
     private void ApplySelection()
