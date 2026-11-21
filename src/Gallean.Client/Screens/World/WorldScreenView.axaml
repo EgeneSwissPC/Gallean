@@ -307,11 +307,11 @@
         </Panel>
       </StackPanel>
 
-      <Grid x:Name="StackBar" ColumnDefinitions="*,Auto,*" VerticalAlignment="Bottom">
-        <ItemsControl Grid.Column="1" Classes="world-stack-bar" ItemsSource="{Binding StackItems}">
+      <Grid x:Name="StackBar" VerticalAlignment="Bottom">
+        <ItemsControl Classes="world-stack-bar" ItemsSource="{Binding StackItems}">
           <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
-              <StackPanel Orientation="Horizontal" Spacing="-40" />
+              <local:WorldStackBarPanel Spacing="-40" />
             </ItemsPanelTemplate>
           </ItemsControl.ItemsPanel>
           <ItemsControl.ItemTemplate>
