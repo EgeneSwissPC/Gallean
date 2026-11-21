@@ -105,6 +105,8 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 - **SB. Rules**: (a) only armies the game allows (leadership limit, large units, a leader in every army) with a
   red line when broken; (b) an "anything goes" switch (e.g. 6 dragons without a leader) for stress tests.
   Recommended (a) by default plus (b) as a checkbox, since you asked for "any combination possible in game".
+- ~~**SC/SF in the engine**~~: the user asked for leader items, city defence and neutral sides before phase 2; they
+  are in the bench (phase 1b). SC/SF remain open only for how the sandbox screen shows them.
 - **SC. What else counts**: leader items and leader upgrades (Leadership, etc.), defending inside a city
   (fortification bonus, city guardian), and terrain. Recommended for the first version: leader items yes,
   city defence as an option "defender is in a city of level N", terrain no (the battle doesn't use it).
@@ -209,7 +211,58 @@ Merged in 20314881 (feature) and 48744c98 (fix found while measuring).
 - Speed: 1000 battles of 4 vs 4 in ~1 s with `--parallel 8`.
 
 ### Known limits
-- No leader items, no city defence, no neutral side yet (sandbox questions SB, SC, SF).
+- ~~No leader items, no city defence, no neutral side yet~~: added in phase 1b (below).
 - "Fled" = a unit of the side was retreating or retreated at the end; a fled leader counts as alive.
 - Battles use the game's auto-resolve rules (attacker retreats after round 15, stop at 45). The Watch battle in
   the sandbox plays step by step and may differ after round 15.
+
+## Phase 1b — done (leader items, city defence, neutral sides)
+
+User request (2026-11-21): add these to the bench before phase 2. Merged in 5f0e5cb1 (feature 99492ceb).
+
+### Decisions taken
+- **Leader items need leader upgrades.** The game only lets a leader carry a banner, artifact, orb, etc. with the
+  matching ability (Banner Bearer, Artifact Lore, ...), and leaders get abilities from level-up upgrades. So presets
+  gained both `equipment` (slot + item) and `leaderUpgrades` (Gleaupg modifier IDs), checked with the game's own
+  rules (`LeaderEquipmentCalculator.CanPlace` / `GetRequiredAbility`, at most min(level, MaxLeaderAbilities) - 1
+  upgrades, minimum levels). "Anything goes" skips these rules too, not only the army rules.
+- **City defence = the real place.** The defender stands in a copy of the host map's first city with the chosen
+  level (1–5) or in its own race's capital; `FortificationCalculator.UpdateUnitModifiers` gives it the protection
+  exactly like in the game, and `CreateStackBattleState` adds the fortification armor and takes away the
+  defender's right to flee.
+- **Garrison mode** added (`--garrison`): the defender fights as the place's garrison (`CreateGarrisonBattleState`):
+  no leader, no leadership limit, guardians allowed (capital guardians such as Myzrael have leadership but are not
+  treated as leaders). The capital's guardian is not added automatically; put it in the garrison preset.
+- **Neutral side** = the host map's neutral player owns the army (`--neutral-a/-b`, or `--race-a/-b` with any race of
+  the host map); neutral leaders never flee (Classic's retreat rule); neutrals have no capital (refused).
+- The battle doesn't depend on the seed, so `Run` builds it once per way round (city state copy included).
+
+### Tests
+- `AiBattleBenchTests` now 20 (+10): items reach the battle (banner on every unit, artifact on the leader) and win
+  more (control: same army without items); item attacks and battle items reach the battle; upgrades are leader
+  modifiers; item/upgrade rules (missing ability, wrong slot, two items in a slot, unknown item even with
+  "anything goes", too many upgrades, repeated, unknown upgrade, garrison with items); city/capital protection
+  (armor 0 in the open, > 0 in a level 1 city, more in level 5, > 0 in a capital; defender can't flee); a city
+  changes a mirror battle (defender 30–70 % in the open, 20+ points more in a level 5 city); garrison rules;
+  neutral leaders never flee (control: a race's leader does); neutrals have no capital; store round trip with
+  items.
+- Mutation checks: a city that ignores the chosen level fails `CityGivesTheDefenderItsProtectionTest`; an army
+  that loses its equipment on the stack fails `ItemAttacksAndBattleItemsReachTheBattleTest` (it survived the
+  first test set, so that test was added).
+- Full non-visual suite: 5390 passed (5380 + 10), none failed. Still no client change.
+
+### First numbers (200 runs each, Classic both sides)
+- Undead vs the same undead army as defender: open 104/96, level 1 city: defender wins 146, level 5 city: 184,
+  Undead capital: 200 (the attacker fled in 28).
+- 4 undead attacking a level 3 city garrison of 6 level-2 Empire units: the garrison wins all 200.
+- Empire with a level 3 Pegasus Knight vs Undead: 18 wins plain, 54 with Banner of Striking + Runestone (and the
+  two upgrades they need).
+- Empire vs a far stronger undead army: as a race the leader flees in all 50 runs; as neutrals nobody flees and
+  the army dies.
+
+### Known limits
+- Battle items (potions, orbs, talismans in Battle1/2) are on the battle state, but the bench resolves battles with
+  the game's auto-resolve, which never uses items (also in the game). The sandbox's Watch battle will use them.
+- Only the host map's races can own armies; S099 has Empire, Undead, Legions, Clans and neutrals (no Elves). Use
+  `--map` with a map that has Elves for Elven-owned armies (units of any race can be in any army regardless).
+- The city copy keeps the host city's race look (`WorldCityDefinitionId.Race`); protection comes from the level.
