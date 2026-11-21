@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "name": "Turtle, then strike",
+  "stages": [
+    {
+      "name": "Lost a city: take it back",
+      "when": [[{"kind": "lostCity"}], [{"kind": "enemyNearCapital", "tiles": 6}]],
+      "economy": [["PurchaseUnit"], ["HireLeader"], ["CastSpell"], ["ResearchSpell"], ["ConstructBuilding"]],
+      "army": [["UseItem"], ["Resurrect"], ["AutoFit"], ["Attack", "EnterCity", "TakeBag"], ["Heal"], ["Move"]],
+      "rules": {"attackPowerPercent": 70, "reinforcePercent": 50, "waitForFreeCapital": true}
+    },
+    {
+      "name": "From turn 20: strike",
+      "when": [[{"kind": "fromTurn", "turn": 20}]],
+      "economy": [["CastSpell"], ["ResearchSpell"], ["HireLeader"], ["PurchaseUnit"], ["ConstructBuilding"]],
+      "army": [["UseItem"], ["Resurrect"], ["Heal"], ["AutoFit"], ["Attack", "Thief", "Rod", "EnterCity", "TakeBag"], ["Move"]],
+      "rules": {"attackPowerPercent": 85, "hurtPercent": 70, "reinforcePercent": 60, "waitForFreeCapital": true}
+    },
+    {
+      "name": "Build up",
+      "when": [],
+      "economy": [["CastSpell"], ["ResearchSpell"], ["HireLeader"], ["ConstructBuilding"], ["PurchaseUnit"]],
+      "army": [["UseItem"], ["Resurrect"], ["Heal"], ["AutoFit"], ["Attack", "Thief", "Rod", "EnterCity", "TakeBag"], ["Move"]],
+      "rules": {"attackPowerPercent": 120, "reinforcePercent": 90, "waitForFreeCapital": true}
+    }
+  ]
+}

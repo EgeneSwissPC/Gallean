@@ -27,4 +27,8 @@ internal sealed record WorldAiProfile
     public int BuildingPriority { get; init; } = 1;
     public int UnitPriority { get; init; } = 0;
     public int RodPriority { get; init; } = 2;
+
+    // AI designer: when set, every action's priority comes from here and actions missing from it are never
+    // done (change order always runs, at 0). Null = the priorities above and Classic's constants.
+    public System.Collections.Immutable.ImmutableDictionary<WorldAiActionKind, int>? Priorities { get; init; }
 }

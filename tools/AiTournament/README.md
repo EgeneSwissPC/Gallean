@@ -26,6 +26,10 @@ DOTNET_ROOT=~/.dotnet ./AiTournament --list
 - `--parallel n`: games at once (independent sessions; same results as one at a time). `--verbose`: one line per turn
   with each player's cities, armies and gold (forces one game at a time).
 - `--csv file`: one row per player per game.
+- `--ais <dir>`: load designed map AIs (`docs/ai-designer.md`) from that folder; pick one with `--ai custom:<file name>`.
+  `--new-ai <dir> <name>` writes `<dir>/<name>.json`, a designed AI that plays exactly like Classic, to edit by hand
+  until the AI editor exists. `--ais <dir> --list` lists them with the built-ins. Designed AIs live in
+  `~/.local/share/GalleanUpgrade/AIs/map/` once the AI editor exists.
 
 Per game it prints the outcome (`win` when one playable race is left or a scenario Win event fires, `draw` at the turn
 limit) and per player: cities at the start and the end, the turn of its first city or capital capture, and the AI time
