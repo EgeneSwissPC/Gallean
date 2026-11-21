@@ -56,10 +56,9 @@ internal sealed partial class RaceSelectScreenViewModel : AbstractScreenViewMode
     public void OnPlayerTypeChanged()
     {
         NextCommand.NotifyCanExecuteChanged();
-        OpenAiPlayersCommand.NotifyCanExecuteChanged();
     }
 
-    [RelayCommand(CanExecute = nameof(CanOpenAiPlayers))]
+    [RelayCommand]
     private void OpenAiPlayers()
     {
         List<AiPlayerRowViewModel> rows = [];
@@ -73,12 +72,11 @@ internal sealed partial class RaceSelectScreenViewModel : AbstractScreenViewMode
             }
         }
 
-        gameViewModel.OpenScreen(new AiPlayersScreenViewModel(rows, ApplyAiPlayersAsync));
-    }
+        // One row for all neutral players: the choice applies to every neutral player of the map.
+        WorldAiOverride? neutral = aiOverrides.GetValueOrDefault(WorldRace.Neutral);
+        rows.Add(new AiPlayerRowViewModel(WorldRace.Neutral, Tr("Neutrals"), neutral?.WorldAi, neutral?.BattleAi));
 
-    private bool CanOpenAiPlayers()
-    {
-        return Races.Any(race => !race.IsHuman);
+        gameViewModel.OpenScreen(new AiPlayersScreenViewModel(rows, ApplyAiPlayersAsync));
     }
 
     private Task ApplyAiPlayersAsync(IReadOnlyList<AiPlayerRowViewModel> rows)
