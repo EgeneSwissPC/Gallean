@@ -337,4 +337,97 @@ public sealed class BattleSandboxTests
         Assert.That(screen.Defender.CanEquip, Is.False);
         Assert.That(screen.ToArmy(screen.Defender).Equipment, Is.Empty);
     }
+
+    [Test]
+    public async Task RunCountTest()
+    {
+        (_, BattleSandboxScreenViewModel screen) = await OpenAsync();
+
+        Assert.That(screen.RunCount, Is.EqualTo(1000));
+        Assert.That(screen.AlternateSides, Is.False);
+        screen.RunsUpThousandCommand.Execute(null);
+        screen.RunsUpHundredCommand.Execute(null);
+        Assert.That(screen.RunCount, Is.EqualTo(2100));
+        screen.RunsDownThousandCommand.Execute(null);
+        screen.RunsDownThousandCommand.Execute(null);
+        Assert.That(screen.RunCount, Is.EqualTo(100));
+        Assert.That(screen.RunsDownHundredCommand.CanExecute(null), Is.False, "the buttons stop at 100");
+        screen.RunCount = 7;
+        Assert.That(screen.RunCount, Is.EqualTo(7), "typing allows fewer");
+        screen.RunCount = 50_000;
+        Assert.That(screen.RunCount, Is.EqualTo(BattleSandboxScreenViewModel.MaxRuns));
+        Assert.That(screen.RunsUpThousandCommand.CanExecute(null), Is.False);
+        Assert.That(screen.RunCommand.CanExecute(null), Is.False, "no armies yet");
+    }
+
+    [Test]
+    public async Task RunTest()
+    {
+        (GameViewModel game, BattleSandboxScreenViewModel screen) = await OpenAsync();
+        await BuildArmiesAsync(game, screen);
+        screen.RunCount = 250;
+        screen.AlternateSides = true;
+        screen.NextSeed = () => 42;
+        Assert.That(screen.RunCommand.CanExecute(null), Is.True);
+
+        await screen.RunCommand.ExecuteAsync(null);
+
+        BattleSandboxRunViewModel run = Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen);
+        Assert.That(run.HasResult, Is.True);
+        Assert.That(run.Result!.Runs, Has.Length.EqualTo(250));
+        Assert.That(run.Result.Runs.Select(item => item.Seed), Is.EqualTo(Enumerable.Range(42, 250)));
+        Assert.That(run.Result.Runs.Count(item => item.ArmyAAttacks), Is.EqualTo(125), "alternating sides");
+        Assert.That(run.Sides, Has.Count.EqualTo(2));
+        Assert.That(run.Sides[0].Units, Has.Count.EqualTo(3));
+        Assert.That(run.Sides[0].Details[0], Does.Contain("as attacker"));
+        Assert.That(run.Summary, Does.Contain("250"));
+
+        // The popup shows exactly what one engine run of the same battle gives (chunks change nothing).
+        AiBattleBench bench = AiBattleBench.CreateWithGeneratedHost(
+            Gallean.Entities.GlobalDatabaseLoader.Load(Gallean.Entities.GameData.RiseOfTheElves.GlobalDatabasePath),
+            Gallean.Entities.CampaignDatabaseLoader.Load(Gallean.Entities.GameData.RiseOfTheElves.CampaignDatabasePath));
+        BattleBenchResult direct = bench.Run(screen.ToSide(screen.Attacker), screen.ToSide(screen.Defender), screen.Setup, 250, 42, swapSides: true);
+        Assert.That(run.Result.Runs.Select(item => (item.Winner, item.Rounds)), Is.EqualTo(direct.Runs.Select(item => (item.Winner, item.Rounds))));
+
+        run.CloseCommand.Execute(null);
+        Assert.That(game.TopScreen, Is.SameAs(screen));
+    }
+
+    [Test]
+    public async Task RunCancelTest()
+    {
+        (GameViewModel game, BattleSandboxScreenViewModel screen) = await OpenAsync();
+        await BuildArmiesAsync(game, screen);
+        screen.RunCount = 5000;
+
+        Task running = screen.RunCommand.ExecuteAsync(null);
+        BattleSandboxRunViewModel run = Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen);
+
+        for (int wait = 0; wait < 500 && run.Progress == 0; wait++)
+        {
+            await Task.Delay(10);
+        }
+
+        run.CancelCommand.Execute(null);
+        await running;
+
+        // What was fought before Cancel is shown; the rest is not run.
+        Assert.That(run.HasResult, Is.True);
+        Assert.That(run.Result!.Runs.Length, Is.LessThan(5000));
+        Assert.That(run.Result.Runs.Length % BattleSandboxRunViewModel.ChunkSize, Is.Zero);
+    }
+
+    [Test]
+    public async Task RunCancelledAtOnceClosesTest()
+    {
+        (GameViewModel game, BattleSandboxScreenViewModel screen) = await OpenAsync();
+        await BuildArmiesAsync(game, screen);
+
+        Task running = screen.RunCommand.ExecuteAsync(null);
+        Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen).CancelCommand.Execute(null);
+        await running;
+
+        // Nothing finished before Cancel: no empty results, back to the setup.
+        Assert.That(game.TopScreen, Is.SameAs(screen).Or.InstanceOf<BattleSandboxRunViewModel>().With.Property(nameof(BattleSandboxRunViewModel.HasResult)).True);
+    }
 }

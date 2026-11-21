@@ -1591,6 +1591,22 @@
     "{0} ({1})": "{0} ({1})",
     "{0} upgrades (anything goes)": "{0} upgrades (anything goes)",
     "{0}, level {1}": "{0}, level {1}",
-    "Upgrades {0} / {1}": "Upgrades {0} / {1}"
+    "Upgrades {0} / {1}": "Upgrades {0} / {1}",
+    "{0} of {1} battles": "{0} of {1} battles",
+    "sides alternating": "sides alternating",
+    "sides as set up": "sides as set up",
+    "{0} battles ({1}), seeds from {2}, {3} rounds on average, {4} without a winner.": "{0} battles ({1}), seeds from {2}, {3} rounds on average, {4} without a winner.",
+    "{0} battles ({1}), seeds from {2}, {3} rounds on average.": "{0} battles ({1}), seeds from {2}, {3} rounds on average.",
+    "Won {0} of {1} as attacker, {2} of {3} as defender": "Won {0} of {1} as attacker, {2} of {3} as defender",
+    "Fled in {0} battles": "Fled in {0} battles",
+    "Units alive: {0} of {1} on average": "Units alive: {0} of {1} on average",
+    "Hit points left: {0} %": "Hit points left: {0} %",
+    "Wins {0} % ± {1}": "Wins {0} % ± {1}",
+    "survived {0} of {1}": "survived {0} of {1}",
+    "Battle results": "Battle results",
+    "Battles to run": "Battles to run",
+    "Each army attacks in every other battle: a fair comparison of two armies or two AIs.": "Each army attacks in every other battle: a fair comparison of two armies or two AIs.",
+    "Alternate sides": "Alternate sides",
+    "Run": "Run"
   }
 }

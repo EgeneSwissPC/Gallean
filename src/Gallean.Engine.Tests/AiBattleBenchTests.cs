@@ -523,4 +523,26 @@ public sealed class AiBattleBenchTests
         Assert.That(bench.GetMaxLeaderUpgrades(1), Is.Zero);
         Assert.That(bench.GetMaxLeaderUpgrades(3), Is.EqualTo(2));
     }
+
+    [Test]
+    public void SummaryTest()
+    {
+        BattleBenchSide a = new(Empire(), AiBrainRegistry.ClassicId);
+        BattleBenchSide b = new(Undead(), AiBrainRegistry.ClassicId);
+        BattleBenchResult whole = generated.Run(a, b, 40, 1, swapSides: true);
+        BattleBenchResult chunked = BattleBenchResult.Combine([generated.Run(a, b, 20, 1, swapSides: true), generated.Run(a, b, 20, 21, swapSides: true)]);
+
+        // Running in even-sized chunks gives the very same runs (seeds and sides line up).
+        Assert.That(Describe(chunked), Is.EqualTo(Describe(whole)));
+
+        BattleBenchSideSummary sa = whole.Summarize(BattleBenchWinner.A);
+        BattleBenchSideSummary sb = whole.Summarize(BattleBenchWinner.B);
+        Assert.That((sa.Attacks, sa.Defences, sb.Attacks, sb.Defences), Is.EqualTo((20, 20, 20, 20)));
+        Assert.That(sa.AttackWins + sa.DefenceWins, Is.EqualTo(sa.Wins.Count));
+        Assert.That(sa.Wins.Count + sb.Wins.Count + whole.Wins(BattleBenchWinner.None), Is.EqualTo(40));
+        Assert.That(sa.UnitSurvival.Select(unit => unit.TypeId), Is.EqualTo(Empire().Units.Select(unit => unit.TypeId)).Or.EquivalentTo(Empire().Units.Select(unit => unit.TypeId)));
+        Assert.That(sb.UnitSurvival.Sum(unit => unit.Survived) / 40.0, Is.EqualTo(sb.AverageSurvivors).Within(1e-9));
+        Assert.That(sb.HitpointShare, Is.InRange(0.0, 1.0));
+        Assert.That(sa.Units, Is.EqualTo(4));
+    }
 }

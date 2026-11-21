@@ -176,7 +176,7 @@
 
         <!-- The battlefield -->
         <ContentControl Grid.Column="1" Classes="ornament-panel" Background="{StaticResource CapitalScenePanelBodyGradientBrush}" VerticalAlignment="Top">
-          <StackPanel Width="240" Margin="14,12" Spacing="10">
+          <StackPanel Width="240" Margin="14,8" Spacing="5">
             <local:OutlinedTextBlock Text="{local:Text 'Battlefield'}" Classes="object-name title" HorizontalAlignment="Center" />
             <ItemsControl ItemsSource="{Binding Places}" HorizontalAlignment="Center">
               <ItemsControl.ItemsPanel>
@@ -196,10 +196,10 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            <Panel Width="120" Height="120" HorizontalAlignment="Center">
+            <Panel Width="84" Height="84" HorizontalAlignment="Center">
               <local:SpriteVisual SpriteKey="{Binding PlaceImageKey}" Stretch="UniformToFill" IsVisible="{Binding PlaceImageKey, Converter={x:Static ObjectConverters.IsNotNull}}">
                 <local:SpriteVisual.Clip>
-                  <EllipseGeometry Rect="0,0,120,120" />
+                  <EllipseGeometry Rect="0,0,84,84" />
                 </local:SpriteVisual.Clip>
               </local:SpriteVisual>
               <local:IconVisual Moniker="Stack" Width="40" Height="40" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding IsOpenField}" />
@@ -225,8 +225,21 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <local:OrnamentDivider Classes="section" />
-            <Button Classes="pill" HorizontalAlignment="Center" Padding="16,0" Height="30" Content="{local:Text 'Swap sides'}" Command="{Binding SwapSidesCommand}" />
+            <Button Classes="pill" HorizontalAlignment="Center" Padding="16,0" Height="28" Content="{local:Text 'Swap sides'}" Command="{Binding SwapSidesCommand}" />
+            <!-- Phase 5: Run N -->
+            <TextBlock Text="{local:Text 'Battles to run'}" Classes="caption field" HorizontalAlignment="Center" />
+            <StackPanel Orientation="Horizontal" Spacing="3" HorizontalAlignment="Center">
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="-1000" Command="{Binding RunsDownThousandCommand}" />
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="-100" Command="{Binding RunsDownHundredCommand}" />
+              <TextBox Text="{Binding RunCount}" Width="62" Height="26" MinHeight="26" Padding="4,0" TextAlignment="Center" VerticalContentAlignment="Center" MaxLength="5" />
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="+100" Command="{Binding RunsUpHundredCommand}" />
+              <Button Classes="pill" Height="26" Padding="5,0" FontSize="{StaticResource FontSizeSm}" Content="+1000" Command="{Binding RunsUpThousandCommand}" />
+            </StackPanel>
+            <CheckBox IsChecked="{Binding AlternateSides}" HorizontalAlignment="Center"
+                      ToolTip.Tip="{local:Text 'Each army attacks in every other battle: a fair comparison of two armies or two AIs.'}">
+              <TextBlock Text="{local:Text 'Alternate sides'}" Classes="caption" />
+            </CheckBox>
+            <Button Classes="pill primary" HorizontalAlignment="Center" Padding="20,0" Height="32" Content="{local:Text 'Run'}" Command="{Binding RunCommand}" />
           </StackPanel>
         </ContentControl>
 

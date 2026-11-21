@@ -786,7 +786,57 @@ public sealed record BattleBenchResult(BattleBenchSide ArmyA, BattleBenchSide Ar
 
     // The side's share of wins with its margin of error (95 %), e.g. 0.62 ± 0.06.
     public BattleBenchShare WinShare(BattleBenchWinner side) => BattleBenchShare.From(Wins(side), Runs.Length);
+
+    public double AverageRounds => Runs.IsEmpty ? 0 : Runs.Average(run => run.Rounds);
+
+    // Several partial results of the same battle (e.g. run in chunks for a progress bar) as one.
+    public static BattleBenchResult Combine(IReadOnlyList<BattleBenchResult> parts)
+    {
+        return new BattleBenchResult(parts[0].ArmyA, parts[0].ArmyB, [.. parts.SelectMany(part => part.Runs)]) { Setup = parts[0].Setup };
+    }
+
+    // Everything the sandbox and the tool show for one side (A or B).
+    public BattleBenchSideSummary Summarize(BattleBenchWinner side)
+    {
+        bool isA = side == BattleBenchWinner.A;
+        Func<BattleBenchRun, BattleBenchSideResult> select = isA ? run => run.A : run => run.B;
+        int attacks = Runs.Count(run => run.ArmyAAttacks == isA);
+        int attackWins = Runs.Count(run => run.Winner == side && run.ArmyAAttacks == isA);
+        int defenceWins = Runs.Count(run => run.Winner == side && run.ArmyAAttacks != isA);
+        BattleBenchSideResult? first = Runs.IsEmpty ? null : select(Runs[0]);
+        ImmutableArray<BattleBenchUnitSummary> units = first is null
+            ? []
+            : [.. first.Units.Select((unit, index) => new BattleBenchUnitSummary(unit.TypeId, unit.Position, Runs.Count(run => select(run).Units[index].Survived)))];
+
+        return new BattleBenchSideSummary(
+            WinShare(side),
+            attackWins,
+            attacks,
+            defenceWins,
+            Runs.Length - attacks,
+            Runs.Count(run => select(run).Fled),
+            Runs.IsEmpty ? 0 : Runs.Average(run => select(run).Survivors),
+            first?.Units.Length ?? 0,
+            Runs.IsEmpty ? 0 : Runs.Average(run => select(run).MaxHitpoints == 0 ? 0 : (double)select(run).Hitpoints / select(run).MaxHitpoints),
+            units);
+    }
 }
+
+public sealed record BattleBenchUnitSummary(UnitDefinitionId TypeId, GridPosition Position, int Survived);
+
+// Wins (share with margin, as attacker and as defender), runs where the side fled, average units alive (of Units),
+// average share of hit points left, and per unit how often it survived.
+public sealed record BattleBenchSideSummary(
+    BattleBenchShare Wins,
+    int AttackWins,
+    int Attacks,
+    int DefenceWins,
+    int Defences,
+    int Fled,
+    double AverageSurvivors,
+    int Units,
+    double HitpointShare,
+    ImmutableArray<BattleBenchUnitSummary> UnitSurvival);
 
 // A share out of n runs with its 95 % margin of error. The margin is the half-width of the Wilson score interval,
 // which stays honest near 0 % and 100 % (unlike p ± 1.96·sqrt(p(1-p)/n), which says ± 0 at 0 of 1000).

@@ -54,6 +54,14 @@ public sealed partial class VisualTests
             upgrades.ConfirmCommand.Execute(null);
             await CaptureAsync(window, "equipped");
 
+            // Phase 5: Run N with the results popup.
+            screen.RunCount = 300;
+            screen.AlternateSides = true;
+            screen.NextSeed = () => 1;
+            await screen.RunCommand.ExecuteAsync(null);
+            await CaptureAsync(window, "results");
+            Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen).CloseCommand.Execute(null);
+
             screen.SetPlaceCommand.Execute(screen.Places.Single(option => option.Value == BattleBenchPlace.Capital));
             screen.Defender.Owners.Single(owner => owner.Race == WorldRace.Elf).SelectCommand.Execute(null);
             screen.Attacker.AllowsAnything = true;
@@ -71,6 +79,11 @@ public sealed partial class VisualTests
             screen.SetPlaceCommand.Execute(screen.Places.Single(option => option.Value == BattleBenchPlace.City));
             screen.Defender.SelectedPreset = "Empire raiders";
             await CaptureAsync(window, "ru");
+            screen.NextSeed = () => 1;
+            screen.RunCount = 200;
+            await screen.RunCommand.ExecuteAsync(null);
+            await CaptureAsync(window, "ru-results");
+            Assert.IsOfType<BattleSandboxRunViewModel>(game.TopScreen).CloseCommand.Execute(null);
             settings.Language = Language.English;
         }
         finally
