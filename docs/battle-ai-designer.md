@@ -33,6 +33,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 - Phase 2 decision: the bench fixes the game difficulty (default Average) instead of taking it from the host map,
   because it sets the computer players' accuracy and experience bonuses (S099 is Very hard, generated maps
   Average). The sandbox screen can offer a difficulty picker later; the tool has `--difficulty`.
+- BA (user, 2026-11-22): battle AIs get a "Battle AIs" tab in the AI editor.
 - SE (user, 2026-11-21): sides as set up, "Alternate sides" checkbox off by default.
 - SD (user, 2026-11-21): default 1000 runs, ±100/±1000 buttons, results with margin of error.
 - SC2 (user, 2026-11-21): battlefield panel + owner picker with race banners; hidden generated host map with
@@ -200,9 +201,7 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
 
 ## 7. Open questions
 
-- **BA. Mode**: (a) a "Battle AIs" tab in the existing AI editor — one place, shares the list code; (b) its own
-  main-menu mode — fully separate as the user leaned towards, one more menu entry. Recommended (b), matching
-  "separate project".
+- ~~**BA. Mode**~~: answered — (a) a second tab "Battle AIs" in the existing AI editor ("Map AIs" | "Battle AIs"), reusing the list screen; no new main-menu entry (user, 2026-11-22).
 - **BB. Stages**: (a) one card with rules at first, stages later; (b) stages from the start with battle conditions
   (from round N, power share below/above N %, leader below N % HP, fewer than N units, enemy has a healer/mage/
   paralyser, attacker/defender, neutral/player). Recommended (b) with only round, power share and leader HP as the
