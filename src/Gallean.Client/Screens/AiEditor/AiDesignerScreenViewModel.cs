@@ -30,6 +30,7 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
         saved = current;
         SelectedStage = Stages.FirstOrDefault();
         RefreshProblems();
+        InitializeTest();
     }
 
     public GameViewModel Game { get; }
@@ -529,6 +530,8 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
 
     protected override bool TryClose()
     {
+        testCancellation?.Cancel();
+
         if (HasChanges)
         {
             Game.OpenScreen(new ConfirmPromptViewModel(

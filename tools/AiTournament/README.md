@@ -34,7 +34,9 @@ DOTNET_ROOT=~/.dotnet ./AiTournament --list
 Per game it prints the outcome (`win` when one playable race is left or a scenario Win event fires, `draw` at the turn
 limit) and per player: cities at the start and the end, the turn of its first city or capital capture, and the AI time
 per turn (average and max, battles included). The summary per contender adds wins, draws, *leads* (draws it ended with
-strictly the most cities), eliminations, average winning turn and first capture.
+strictly the most cities), eliminations, average winning turn and first capture. For a designed AI it also prints how
+many of its turns it spent in each stage (`Stages of custom:...: Strike 44%, Build up 37%, ...`). The game loop lives in
+the engine (`AiTournamentRunner`), shared with the AI designer's Test panel.
 
 Measured with Classic only (8 vCPU host, Release): `S099SC0000` (4 races), 30 turns, 4 games: 10 s one at a time, 7 s
 with `--parallel 4`, all draws, first capture on turn 22 on average, 47 ms AI per turn (max 404 ms).

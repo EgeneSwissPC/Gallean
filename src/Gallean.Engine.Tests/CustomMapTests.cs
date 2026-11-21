@@ -1617,6 +1617,49 @@ public sealed class CustomMapTests
         Assert.That(left, Is.EqualTo(leaves));
     }
 
+    // Gallean Upgrade (AI designer, phase 4): the shared tournament runner counts a designed AI's stages and
+    // replays a seed exactly.
+    [Test]
+    [NonParallelizable]
+    public void TournamentRunnerCountsStagesTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        store.Save(map);
+        DesignedWorldAi design = new("custom:runner-test", "Runner test", [
+            DesignedWorldStage.Classic with { Name = "Late", When = [[new DesignedStageCondition.FromTurn(4)]] },
+            DesignedWorldStage.Classic with { Name = "Early" }
+        ]);
+
+        try
+        {
+            AiBrainRegistry.SetDesignedWorldAis([design]);
+            AiTournamentRunner runner = new(globalDb, campaignDb, store.LoadDatabase(map.Id), map.Id, maxTurns: 6);
+            AiContender designed = new(design.Id, AiBrainRegistry.ClassicId);
+            AiContender classic = new(AiBrainRegistry.ClassicId, AiBrainRegistry.ClassicId);
+
+            IReadOnlyList<(AiContender[] Seating, int Seed)> plan = runner.Plan([designed, classic], gamesPerRotation: 1, firstSeed: 7);
+            Assert.That(plan.Select(game => (game.Seating[0], game.Seed)), Is.EqualTo(new[] { (designed, 7), (classic, 8) }));
+
+            AiGameResult first = runner.Play(plan[0].Seating, plan[0].Seed);
+            AiGameResult again = runner.Play(plan[0].Seating, plan[0].Seed);
+
+            AiPlayerResult mine = first.Players.Single(player => player.Contender == designed);
+            Assert.That(mine.StageTurns.Keys, Is.EquivalentTo(new[] { "Early", "Late" }));
+            Assert.That(mine.StageTurns.Values.Sum(), Is.EqualTo(mine.Turns + 1).Or.EqualTo(mine.Turns));
+            Assert.That(first.Players.Single(player => player.Contender == classic).StageTurns, Is.Empty);
+            Assert.That(again.Players.Select(player => (player.CitiesAtEnd, player.FirstCaptureTurn, player.IsDefeated, player.Turns)),
+                Is.EqualTo(first.Players.Select(player => (player.CitiesAtEnd, player.FirstCaptureTurn, player.IsDefeated, player.Turns))));
+
+            IReadOnlyList<AiContenderSummary> summary = AiContenderSummary.Summarize([designed, classic], [first]);
+            Assert.That(summary[0].StageTurns, Is.EqualTo(mine.StageTurns));
+        }
+        finally
+        {
+            AiBrainRegistry.SetDesignedWorldAis([]);
+        }
+    }
+
     private static ScenarioDatabase SaveAndLoadDatabase(CustomMapStore store, CustomMap map)
     {
         store.Save(map);

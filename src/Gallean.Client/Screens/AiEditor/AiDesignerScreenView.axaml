@@ -242,6 +242,43 @@
               <local:OutlinedTextBlock Text="{Binding HelpTitle}" Classes="h5" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
               <TextBlock x:Name="HelpText" Text="{Binding HelpText}" Classes="body" TextWrapping="Wrap" />
               <TextBlock x:Name="ProblemText" Text="{Binding ProblemText}" Classes="body" TextWrapping="Wrap" Foreground="#F07060" IsVisible="{Binding HasProblems}" Margin="0,10,0,0" />
+
+              <!-- Test: quick AI-only games of this AI (as it is on screen) against another one. -->
+              <local:OutlinedTextBlock Text="{local:Text 'Test'}" Classes="h5" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,12,0,0" />
+              <TextBlock Text="{local:Text 'Map'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+              <ComboBox x:Name="TestMapBox" HorizontalAlignment="Stretch" ItemsSource="{Binding TestMaps}" SelectedItem="{Binding TestMap}" IsEnabled="{Binding !IsTesting}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <TextBlock Text="{local:Text 'Against'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+              <ComboBox x:Name="TestOpponentBox" HorizontalAlignment="Stretch" ItemsSource="{Binding TestOpponents}" SelectedItem="{Binding TestOpponent}" IsEnabled="{Binding !IsTesting}">
+                <ComboBox.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorLabeled">
+                    <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
+                  </DataTemplate>
+                </ComboBox.ItemTemplate>
+              </ComboBox>
+              <Grid ColumnDefinitions="Auto,56,*,Auto,56" ColumnSpacing="6">
+                <TextBlock Grid.Column="0" Text="{local:Text 'Games'}" Classes="caption" VerticalAlignment="Center" />
+                <TextBox Grid.Column="1" x:Name="TestGamesBox" Text="{Binding TestGamesText}" TextAlignment="Center" IsEnabled="{Binding !IsTesting}" />
+                <TextBlock Grid.Column="3" Text="{local:Text 'Turns'}" Classes="caption" VerticalAlignment="Center" />
+                <TextBox Grid.Column="4" x:Name="TestTurnsBox" Text="{Binding TestTurnsText}" TextAlignment="Center" IsEnabled="{Binding !IsTesting}" />
+              </Grid>
+              <Grid ColumnDefinitions="*,*" ColumnSpacing="6">
+                <Button Grid.Column="0" x:Name="RunTestButton" Classes="pill primary" Height="28" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{local:Text 'Run test'}" Command="{Binding RunTestCommand}" />
+                <Button Grid.Column="1" x:Name="CancelTestButton" Classes="pill" Height="28" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{local:Text 'Cancel'}" Command="{Binding CancelTestCommand}" />
+              </Grid>
+              <TextBlock x:Name="TestProgressText" Text="{Binding TestProgress}" Classes="body" TextWrapping="Wrap" />
+              <ItemsControl ItemsSource="{Binding TestResults}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="x:String">
+                    <TextBlock Text="{Binding}" Classes="caption" TextWrapping="Wrap" Margin="0,2" />
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
             </StackPanel>
           </ScrollViewer>
         </Grid>

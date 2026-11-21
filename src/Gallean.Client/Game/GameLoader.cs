@@ -109,6 +109,27 @@ internal sealed class GameLoader(IRandomProvider random, string? customMapsDirec
             language);
     }
 
+    // Gallean Upgrade (AI designer, Test panel): maps with at least two playable races, skirmishes and custom maps.
+    public IReadOnlyList<(string Id, string Name, int Size)> ListAiTestMaps(Language language)
+    {
+        (IReadOnlyList<GameCampaign> campaigns, _, _) = LoadCampaigns(language);
+
+        return [.. campaigns
+            .Where(campaign => campaign.IsSkirmish)
+            .SelectMany(campaign => campaign.Scenarios)
+            .Where(scenario => scenario.PlayableRaces.Count >= 2)
+            .GroupBy(scenario => scenario.Id)
+            .Select(group => group.First())
+            .Select(scenario => (scenario.Id, scenario.Name, scenario.MapSize))];
+    }
+
+    public AiTournamentRunner CreateAiTournament(string scenarioId, int maxTurns)
+    {
+        ScenarioDatabase scenarioDatabase = ScenarioDatabaseLoader.Load(GetScenarioDirectory(scenarioId), scenarioId);
+
+        return new AiTournamentRunner(globalDatabase.Value, campaignDatabase.Value, scenarioDatabase, scenarioId, maxTurns);
+    }
+
     public CustomMapStore? CreateMapStore()
     {
         return customMapsDirectory is null ? null : new CustomMapStore(customMapsDirectory, globalDatabase.Value, campaignDatabase.Value);

@@ -10,7 +10,7 @@ using Gallean.Entities.GameData;
 
 string? mapId = null;
 string? mapsDirectory = null;
-List<Contender> contenders = [];
+List<AiContender> contenders = [];
 int games = 2;
 int maxTurns = 50;
 int seed = 1;
@@ -81,9 +81,9 @@ if (contenders.Count == 0)
     contenders.Add(Contender.Parse(AiBrainRegistry.ClassicId));
 }
 
-foreach (Contender contender in contenders)
+foreach (AiContender contender in contenders)
 {
-    if (!contender.IsKnown())
+    if (!Contender.IsKnown(contender))
     {
         Console.Error.WriteLine($"Unknown AI in {contender}; known: --list");
         return 2;
@@ -96,8 +96,8 @@ ScenarioDatabase scenarioDb = mapsDirectory is null
     ? ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, mapId)
     : new CustomMapStore(mapsDirectory, globalDb, campaignDb).LoadDatabase(mapId);
 
-TournamentRunner runner = new(globalDb, campaignDb, scenarioDb, mapId, maxTurns, verbose);
-List<GameResult> results = [];
+AiTournamentRunner runner = new(globalDb, campaignDb, scenarioDb, mapId, maxTurns, verbose ? Console.WriteLine : null);
+List<AiGameResult> results = [];
 int seats = runner.CountPlayableSeats();
 int rotations = contenders.Count == 1 ? 1 : contenders.Count;
 
@@ -112,30 +112,21 @@ if (seats < 2)
 
 Stopwatch total = Stopwatch.StartNew();
 
-// Every rotation seats the contenders one place further, so each plays every seat (race, start).
-List<(Contender[] Seating, int Seed)> plan = [];
-
-for (int rotation = 0; rotation < rotations; rotation++)
-{
-    for (int game = 0; game < games; game++)
-    {
-        plan.Add(([.. Enumerable.Range(0, seats).Select(seat => contenders[(seat + rotation) % contenders.Count])], seed + (rotation * games) + game));
-    }
-}
+List<(AiContender[] Seating, int Seed)> plan = [.. runner.Plan(contenders, games, seed)];
 
 if (parallel == 1 || verbose)
 {
-    foreach ((Contender[] seating, int gameSeed) in plan)
+    foreach ((AiContender[] seating, int gameSeed) in plan)
     {
-        GameResult result = runner.Play(seating, gameSeed);
+        AiGameResult result = runner.Play(seating, gameSeed);
         results.Add(result);
-        Console.WriteLine(result.Format());
+        Console.WriteLine(Summary.FormatGame(result));
     }
 }
 else
 {
     // Games are independent (own session, own random seed), so the results don't depend on the order.
-    GameResult[] parallelResults = new GameResult[plan.Count];
+    AiGameResult[] parallelResults = new AiGameResult[plan.Count];
     object consoleLock = new();
 
     Parallel.For(0, plan.Count, new ParallelOptions { MaxDegreeOfParallelism = parallel }, index =>
@@ -144,7 +135,7 @@ else
 
         lock (consoleLock)
         {
-            Console.WriteLine(parallelResults[index].Format());
+            Console.WriteLine(Summary.FormatGame(parallelResults[index]));
         }
     });
 
