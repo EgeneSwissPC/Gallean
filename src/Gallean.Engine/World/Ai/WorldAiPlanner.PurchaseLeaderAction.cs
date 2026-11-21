@@ -12,7 +12,7 @@ internal sealed partial class WorldAiPlanner
             Thief
         }
 
-        protected override WorldResourceSet OvercommitLimit => new(400, 0, 0, 0, 0, 0);
+        protected override WorldResourceSet OvercommitLimit => new(Context.Profile.LeaderOvercommitGold, 0, 0, 0, 0, 0);
 
         public override WorldAiActionPlan? Plan(WorldState state, WorldPlayerId playerId, WorldAiMemory memory)
         {
@@ -46,7 +46,8 @@ internal sealed partial class WorldAiPlanner
 
                 if (score > 0 &&
                     commandResult.Error is WorldCommandError.InsufficientResources &&
-                    CanOvercommit(player, leader.PurchaseCost))
+                    CanOvercommit(player, leader.PurchaseCost) &&
+                    (!Context.Profile.WaitForFreeCapital || plan.GetStackAt(capital.Entrance) is null))
                 {
                     return MakePlan(score, command, memory);
                 }

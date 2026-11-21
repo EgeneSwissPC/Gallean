@@ -7,11 +7,12 @@ internal partial class WorldAiOrderPlanner
     public readonly record struct OrderContext(WorldState State, WorldStack Stack);
 
     private const int HitpointsScale = 1000;
-    private const int HurtThreshold = 800;
-    private const int HealedThreshold = 900;
+    // Gallean Upgrade: thresholds come from the personality (Classic: 800 / 900 / 800).
+    private int HurtThreshold => Context.Profile.HurtThreshold;
+    private int HealedThreshold => Context.Profile.HealedThreshold;
 
     private const int StrengthScale = 1000;
-    private const int ReinforceThreshold = 800;
+    private int ReinforceThreshold => Context.Profile.ReinforceThreshold;
 
     WorldStackOrder IWorldStackOrderVisitor<OrderContext, WorldStackOrder>.Visit(WorldStackOrder.Normal order, OrderContext context)
     {

@@ -54,7 +54,7 @@ public sealed class AiPlayersTests
         AiPlayersScreenViewModel panel = Assert.IsOfType<AiPlayersScreenViewModel>(gameViewModel.TopScreen);
         Assert.That(panel.Players.Select(row => row.Name), Is.EqualTo(new[] { raceSelect.Races[0].Name, "Neutrals" }));
         Assert.That(panel.Players[0].WorldAi, Is.EqualTo(AiPlayerRowViewModel.SettingsChoice));
-        Assert.That(panel.WorldAis, Is.EqualTo(new[] { AiPlayerRowViewModel.SettingsChoice, AiBrainRegistry.ClassicId }));
+        Assert.That(panel.WorldAis, Is.EqualTo(new[] { AiPlayerRowViewModel.SettingsChoice }.Concat(AiBrainRegistry.WorldBrains.Select(brain => brain.Id))));
 
         panel.Players[0].BattleAi = AiBrainRegistry.ClassicId;
         panel.Players[1].WorldAi = AiBrainRegistry.ClassicId;

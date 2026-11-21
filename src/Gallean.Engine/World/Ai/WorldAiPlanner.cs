@@ -129,7 +129,7 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             new AutoFitAction(context, Priority: 3),
             new AttackAction(context, Priority: 2),
             new ThiefAction(context, Priority: 2),
-            new RodAction(context, Priority: 2),
+            new RodAction(context, Priority: context.Profile.RodPriority),
             new EnterCityAction(context, Priority: 2),
             new TakeBagAction(context, Priority: 2),
             new MoveAction(context, Priority: 1),
@@ -144,8 +144,8 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             new CastSpellAction(context, Priority: 4),
             new ResearchSpellAction(context, Priority: 3),
             new PurchaseLeaderAction(context, Priority: 2),
-            new ConstructBuildingAction(context, Priority: 1),
-            new PurchaseUnitAction(context, Priority: 0)
+            new ConstructBuildingAction(context, Priority: context.Profile.BuildingPriority),
+            new PurchaseUnitAction(context, Priority: context.Profile.UnitPriority)
         ];
     }
 }

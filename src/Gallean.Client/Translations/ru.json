@@ -1394,6 +1394,18 @@
     "One computer player in this game has its own Map AI and keeps it. Switch it to the new choice too?": "У одного компьютерного игрока в этой игре свой ИИ карты, и он его сохранит. Переключить и его?",
     "{0} computer players in this game have their own Map AI and keep it. Switch them to the new choice too?": "У компьютерных игроков в этой игре ({0}) свой ИИ карты, и они его сохранят. Переключить и их?",
     "One computer player in this game has its own Battle AI and keeps it. Switch it to the new choice too?": "У одного компьютерного игрока в этой игре свой ИИ боя, и он его сохранит. Переключить и его?",
-    "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?": "У компьютерных игроков в этой игре ({0}) свой ИИ боя, и они его сохранят. Переключить и их?"
+    "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?": "У компьютерных игроков в этой игре ({0}) свой ИИ боя, и они его сохранят. Переключить и их?",
+    "Classic+": "Классический+",
+    "Aggressive": "Агрессивный",
+    "Builder": "Строитель",
+    "Expansionist": "Захватчик",
+    "Cautious": "Осторожный",
+    "Ruthless": "Беспощадный",
+    "The original AI, but it no longer waits in the capital to save up for a leader.": "Исходный ИИ, но больше не ждёт в столице, копя на нового предводителя.",
+    "Attacks with less advantage and sends armies out earlier, before they are full or healed.": "Нападает при меньшем перевесе и выводит армии раньше, не дожидаясь пополнения и лечения.",
+    "Attacks only with a clear advantage and keeps its armies full and healed.": "Нападает только при явном перевесе, держит армии полными и вылеченными.",
+    "Hires leaders early, plants rods first and sends armies out with fewer units.": "Рано нанимает предводителей, первым делом ставит жезлы и выводит армии с меньшим числом воинов.",
+    "Leaders flee as soon as the battle turns against them.": "Предводители отступают, как только бой оборачивается против них.",
+    "Never flees and never defends: every unit attacks.": "Никогда не отступает и не защищается: атакует каждый воин."
   }
 }
