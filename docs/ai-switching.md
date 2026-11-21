@@ -1,6 +1,6 @@
 # Switchable AI (world AI and battle AI)
 
-gallean-upgrade only. Status: phases 1-3 done (interfaces, registry, global Map AI / Battle AI settings, own AI per computer player; Classic only).
+gallean-upgrade only. Status: phases 1-4 done (interfaces, registry, global Map AI / Battle AI settings, own AI per computer player, AI tournament tool; Classic only).
 
 ## Decisions
 
@@ -75,7 +75,7 @@ Later, only if the tournament shows it's worth it: a different algorithm (e.g. l
 1. ~~Interfaces + registry + Classic wired through (no behaviour change; full suite identical). ~0.5 day.~~ Done.
 2. ~~Global settings (both drop-downs) + engine context plumbing + mid-game switch. ~1 day.~~ Done.
 3. ~~Per-player overrides: save field, command, new-game and in-game panels, confirm prompt. ~1.5 days.~~ Done.
-4. Tournament bench. ~1 day.
+4. ~~Tournament bench. ~1 day.~~ Done (`tools/AiTournament`).
 5. Personalities: Classic+, Aggressive, Builder, Expansionist; battle Cautious, Ruthless. ~1 day each, each measured on the bench.
 6. (Optional) Lookahead AI.
 7. Map editor: per-race AI saved in the map (after phase 3).
@@ -121,3 +121,14 @@ Commits c18a184d + 6a1250ac, merged in 437d920e.
 ### Follow-up: neutral players in the panel
 
 Commit 62bb88f3, merged in 53fd837f. `AiPlayersPanel.CreateRows` lists every AI player; `RaceSelectScreenViewModel` adds a "Neutrals" row (always enabled). `AiPlayersTests` now check the race-screen Neutrals row reaches every neutral player of the started game and that the in-game panel lists the neutral player as "Neutrals"; visual `AiPlayersTest` reviewed. Suite 5321 (same tests, more assertions). Not run in the real client.
+
+## Phase 4 — done
+
+Commit bbfaedd3, merged in dd14eead.
+
+- Built as a console tool `tools/AiTournament` (like MapFromPlan, not in the solution) instead of a test-project bench: it runs with `dotnet run`/the built binary, takes built-in scenarios or custom maps, and needs no internals. Usage and options in its `README.md`.
+- Engine: `GameSession.AllowAiOnly` -> `WorldAiActionCommand.AllowAiOnly` skips the "no human left" stop (`NoPlayersRemaining`). The game never sets it. Test `AiSelectionTests.AiOnlyGameNeedsOptInTest` (an all-AI session throws without it, plays with it).
+- Tool: each playable race gets its seat's contender as `WorldAiOverride` (the panel's mechanism); neutrals keep Classic; seats rotate across contenders; game k uses seed + k; the game goes through `GameSession.ExecuteAiAction`, so AI-vs-AI battles auto-resolve with each side's battle AI exactly like in the client. Ends on a scenario end, one playable race left, or the turn limit (draw). Reports per player: cities start/end, first capture turn, AI ms per turn (avg/max); per contender: wins, draws, leads (draws ended with strictly the most cities), eliminations, average win turn, first capture; optional CSV; `--parallel n`; `--verbose` per-turn lines.
+- Checks: same seed gives the same game (per-turn lines hashed twice, seeds 1 and 2 differ); `--parallel 4` gives the same CSV as one at a time (S099, 4 games); custom map `S600SC0000` (5 races, 320) runs; an unknown contender exits with the `--list` hint. Suite 5322.
+- Classic baseline: built-in scenarios with 2+ playable races mostly end as draws at 40 turns (scan of S095-S104: 3 "scenario ended" by events, 7 draws). S099 (4 races), 8 games x 50 turns, `--parallel 8`: 11 s, 32 seats, 0 wins, 0 eliminations, first capture on turn 27 on average, 3.4 cities at the end, 51 ms AI per turn (max 429 ms). So with Classic nobody gets eliminated in 50 turns; leads and cities are the useful measure until a personality is aggressive enough to win.
+- Known limits: built-in quests use their default difficulty (no option yet); draws count only cities, not armies or gold.
