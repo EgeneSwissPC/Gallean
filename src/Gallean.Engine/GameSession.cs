@@ -32,7 +32,7 @@ public sealed partial class GameSession
             throw new InvalidOperationException("Cannot execute an AI action while a battle is active.");
         }
 
-        WorldCommandResult worldResult = World.DispatchCommand(new WorldAiActionCommand { BrainId = GetWorldAiId(World.State.TurnInfo.CurrentPlayerId) });
+        WorldCommandResult worldResult = World.DispatchCommand(new WorldAiActionCommand { BrainId = GetWorldAiId(World.State.TurnInfo.CurrentPlayerId), AllowAiOnly = AllowAiOnly });
         if (worldResult.Failed)
         {
             throw new WorldCommandException(worldResult.Error.Value);

@@ -7,6 +7,10 @@ public sealed partial class GameSession
 {
     public AiSelection Ai { get; set; } = AiSelection.Classic;
 
+    // Lets ExecuteAiAction run a game with AI players only (tools/AiTournament). The game itself
+    // never sets it: it stops the AI once no human is left.
+    public bool AllowAiOnly { get; set; }
+
     public string? GetWorldAiId(WorldPlayerId playerId)
     {
         WorldAiOverride? aiOverride = World.State.Players.GetValueOrDefault(playerId)?.AiOverride;
