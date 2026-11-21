@@ -108,6 +108,42 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task AiDesignerTestPanelTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        string previous = DesignedAiLibrary.Directory;
+        DesignedAiLibrary.Directory = sb.GetPath("AIs/map");
+
+        try
+        {
+            (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
+            DesignedWorldAi design = new("custom:turtle", "Turtle, then strike", [
+                DesignedWorldStage.Classic with { Name = "Strike", When = [[new DesignedStageCondition.FromTurn(4)]] },
+                DesignedWorldStage.Classic with { Name = "Build up" }
+            ]);
+            DesignedAiLibrary.Store.Save(design);
+            DesignedAiLibrary.Reload();
+
+            AiDesignerScreenViewModel designer = new(gameViewModel, design);
+            gameViewModel.ShowScreen(designer);
+            designer.TestGamesText = "2";
+            designer.TestTurnsText = "8";
+            await designer.RunTestCommand.ExecuteAsync(null);
+            Assert.That(designer.TestResults, Has.Count.EqualTo(3));
+
+            AiDesignerScreenView view = window.GetVisualDescendants().OfType<AiDesignerScreenView>().Single();
+            view.FindControl<TextBlock>("TestProgressText")!.BringIntoView();
+            await SkipFramesAsync(4);
+            await CaptureAsync(window, "results");
+        }
+        finally
+        {
+            DesignedAiLibrary.Directory = previous;
+            AiBrainRegistry.SetDesignedWorldAis([]);
+        }
+    }
+
+    [AvaloniaTest]
     public async Task AiDesignerRussianTest()
     {
         using Sandbox sb = Sandbox.Create();

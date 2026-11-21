@@ -1517,6 +1517,24 @@
     "plays when no stage above holds": "играет, если ни один этап выше не выполнен",
     "tiles of my capital": "клеток от моей столицы",
     "{0}: no conditions, so this stage always plays and the stages below it never do.": "{0}: нет условий, поэтому этот этап играет всегда, а этапы ниже — никогда.",
-    "{0}: the economy and army rows are empty, so the AI does nothing in this stage.": "{0}: ряды экономики и армий пусты, поэтому в этом этапе ИИ ничего не делает."
+    "{0}: the economy and army rows are empty, so the AI does nothing in this stage.": "{0}: ряды экономики и армий пусты, поэтому в этом этапе ИИ ничего не делает.",
+    "(no stage)": "(без этапа)",
+    "Against": "Против",
+    "Game {0} of {1}…": "Игра {0} из {1}…",
+    "Games": "Игр",
+    "Preparing…": "Подготовка…",
+    "Run test": "Запустить",
+    "Test": "Проверка",
+    "Test cancelled.": "Проверка отменена.",
+    "The test could not run on this map: {0}": "Проверка не запустилась на этой карте: {0}",
+    "This AI": "Этот ИИ",
+    "Time in each stage: {0}.": "Время в каждом этапе: {0}.",
+    "Turns": "Ходов",
+    "first city taken on turn {0}": "первый город взят на ходу {0}",
+    "no city taken": "городов не взято",
+    "{0} ({1} × {1})": "{0} ({1} × {1})",
+    "{0} games of up to {1} turns:": "Игр: {0}, до {1} ходов:",
+    "{0} {1} %": "{0} {1} %",
+    "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn.": "{0}: побед {1}, ничьих {2} (впереди {3}), выбыл {4} раз; городов в конце {5}; {6}; {7} мс на ход."
   }
 }

@@ -1517,6 +1517,24 @@
     "plays when no stage above holds": "plays when no stage above holds",
     "tiles of my capital": "tiles of my capital",
     "{0}: no conditions, so this stage always plays and the stages below it never do.": "{0}: no conditions, so this stage always plays and the stages below it never do.",
-    "{0}: the economy and army rows are empty, so the AI does nothing in this stage.": "{0}: the economy and army rows are empty, so the AI does nothing in this stage."
+    "{0}: the economy and army rows are empty, so the AI does nothing in this stage.": "{0}: the economy and army rows are empty, so the AI does nothing in this stage.",
+    "(no stage)": "(no stage)",
+    "Against": "Against",
+    "Game {0} of {1}…": "Game {0} of {1}…",
+    "Games": "Games",
+    "Preparing…": "Preparing…",
+    "Run test": "Run test",
+    "Test": "Test",
+    "Test cancelled.": "Test cancelled.",
+    "The test could not run on this map: {0}": "The test could not run on this map: {0}",
+    "This AI": "This AI",
+    "Time in each stage: {0}.": "Time in each stage: {0}.",
+    "Turns": "Turns",
+    "first city taken on turn {0}": "first city taken on turn {0}",
+    "no city taken": "no city taken",
+    "{0} ({1} × {1})": "{0} ({1} × {1})",
+    "{0} games of up to {1} turns:": "{0} games of up to {1} turns:",
+    "{0} {1} %": "{0} {1} %",
+    "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn.": "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn."
   }
 }

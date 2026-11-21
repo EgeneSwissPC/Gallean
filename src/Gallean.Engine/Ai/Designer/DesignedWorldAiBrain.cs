@@ -12,6 +12,18 @@ internal sealed class DesignedWorldAiBrain(DesignedWorldAi design) : IWorldAiBra
 
     public WorldAiActionPlan DecideAction(IEngineContext context, WorldState state, WorldAiMemory memory, IWorldAiTrace? trace = null)
     {
+        (DesignedWorldStage? stage, WorldAiMemory updated, ImmutableSortedSet<WorldFortificationId> owned) = FindStage(state, memory);
+        WorldAiProfile profile = stage is null ? WorldAiProfile.Classic : DesignedStageEvaluator.ToProfile(stage);
+
+        WorldAiActionPlan plan = new WorldAiController(context, profile).DecideAction(state, updated, trace);
+
+        return plan with { Memory = plan.Memory with { OwnedCities = owned, LostCityTurn = updated.LostCityTurn } };
+    }
+
+    // The stage that plays this decision. At the first decision of a turn it notices cities lost since the
+    // player's previous turn (the "I lost a city" condition), so the returned memory carries that mark.
+    public (DesignedWorldStage? Stage, WorldAiMemory Memory, ImmutableSortedSet<WorldFortificationId> Owned) FindStage(WorldState state, WorldAiMemory memory)
+    {
         WorldPlayerId playerId = state.TurnInfo.CurrentPlayerId;
         ImmutableSortedSet<WorldFortificationId> owned = DesignedStageEvaluator.GetOwnedCities(state, playerId);
         bool turnStarted = memory.Turn.TurnNumber != state.TurnInfo.TurnNumber || memory.Turn.PlayerId != playerId;
@@ -22,13 +34,8 @@ internal sealed class DesignedWorldAiBrain(DesignedWorldAi design) : IWorldAiBra
             lostCityTurn = state.TurnInfo.TurnNumber;
         }
 
-        memory = memory with { LostCityTurn = lostCityTurn };
+        WorldAiMemory updated = memory with { LostCityTurn = lostCityTurn };
 
-        DesignedWorldStage? stage = DesignedStageEvaluator.FindActiveStage(Design, state, playerId, memory);
-        WorldAiProfile profile = stage is null ? WorldAiProfile.Classic : DesignedStageEvaluator.ToProfile(stage);
-
-        WorldAiActionPlan plan = new WorldAiController(context, profile).DecideAction(state, memory, trace);
-
-        return plan with { Memory = plan.Memory with { OwnedCities = owned, LostCityTurn = lostCityTurn } };
+        return (DesignedStageEvaluator.FindActiveStage(Design, state, playerId, updated), updated, owned);
     }
 }

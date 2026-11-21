@@ -1,10 +1,10 @@
 namespace AiTournament;
 
-// A world AI / battle AI pair ("builder/ruthless"; "builder" alone = same ID for both if it is a
-// battle AI too, else Classic battle AI).
-internal sealed record Contender(string WorldAi, string BattleAi)
+// "--ai world/battle" -> AiContender ("builder" alone = same ID for both if it is a battle AI too, else
+// the Classic battle AI).
+internal static class Contender
 {
-    public static Contender Parse(string text)
+    public static AiContender Parse(string text)
     {
         string[] parts = text.Split('/', 2);
         string world = parts[0];
@@ -12,14 +12,12 @@ internal sealed record Contender(string WorldAi, string BattleAi)
             ? parts[1]
             : AiBrainRegistry.BattleBrains.Any(brain => brain.Id == world) ? world : AiBrainRegistry.ClassicId;
 
-        return new Contender(world, battle);
+        return new AiContender(world, battle);
     }
 
-    public bool IsKnown()
+    public static bool IsKnown(AiContender contender)
     {
-        return AiBrainRegistry.WorldBrains.Any(brain => brain.Id == WorldAi) &&
-               AiBrainRegistry.BattleBrains.Any(brain => brain.Id == BattleAi);
+        return AiBrainRegistry.WorldBrains.Any(brain => brain.Id == contender.WorldAi) &&
+               AiBrainRegistry.BattleBrains.Any(brain => brain.Id == contender.BattleAi);
     }
-
-    public override string ToString() => $"{WorldAi}/{BattleAi}";
 }
