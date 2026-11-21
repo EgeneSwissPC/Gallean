@@ -55,6 +55,8 @@ It is no longer "phase 6 of the AI designer"; it gets its own spec (section 2 be
 
 ## 2. Battle AI designer (separate project, not started)
 
+Spec: `docs/battle-ai-designer.md` (phases, open questions BA–BF with recommendations). Phase 1 = battle bench.
+
 ### Why it is different from the map AI designer
 - **Time scale**: decisions are per unit per battle turn, a battle lasts a few rounds; there are no turns of the game,
   no economy, no memory between battles. "Stages" would be about the state of one battle (round, who is winning, who
