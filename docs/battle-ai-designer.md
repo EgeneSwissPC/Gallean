@@ -20,6 +20,9 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- Phase 2 decision: the bench fixes the game difficulty (default Average) instead of taking it from the host map,
+  because it sets the computer players' accuracy and experience bonuses (S099 is Very hard, generated maps
+  Average). The sandbox screen can offer a difficulty picker later; the tool has `--difficulty`.
 - SE (user, 2026-11-21): sides as set up, "Alternate sides" checkbox off by default.
 - SD (user, 2026-11-21): default 1000 runs, ±100/±1000 buttons, results with margin of error.
 - SC2 (user, 2026-11-21): battlefield panel + owner picker with race banners; hidden generated host map with
@@ -166,7 +169,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 
 1. ~~**Battle bench** (~1 day)~~: done, see "Phase 1 — done" below.
 Re-split after the answers (2026-11-21); every sandbox phase copies the original game's screens:
-2. **Sandbox engine: generated host map** (~0.5 day, no screen): `AiBattleBench` from a small generated `CustomMap`
+2. ~~**Sandbox engine: generated host map**~~ (done, see "Phase 2 — done"; ~0.5 day, no screen): `AiBattleBench` from a small generated `CustomMap`
    with all five races, the neutrals, a city and every capital; `tools/AiTournament --battle` uses it by default
    (`--map` keeps a built-in host). Margin of error in the results (bench + tool). Pure engine: full suite, no
    client check.
@@ -298,3 +301,39 @@ User request (2026-11-21): add these to the bench before phase 2. Merged in 5f0e
 - Only the host map's races can own armies; S099 has Empire, Undead, Legions, Clans and neutrals (no Elves). Use
   `--map` with a map that has Elves for Elven-owned armies (units of any race can be in any army regardless).
 - The city copy keeps the host city's race look (`WorldCityDefinitionId.Race`); protection comes from the level.
+
+## Phase 2 — done (sandbox engine)
+
+Merged in 02b9fe2b (feature b4e0bfaa). Pure engine and tool work, nothing visible in the game: proven with the full
+suite; the real-client check moves to phase 3.
+
+### What was built
+- `AiBattleBench.CreateWithGeneratedHost`: builds a 48x48 custom map with the map editor's code (`CustomMap` +
+  `CustomMapStore`, in a temporary folder deleted right after loading): all five races with their capitals, the
+  neutral player, a level 1 neutral city and a neutral army to copy. Every race (Elves included) and the neutrals
+  can own an army; every race's capital works. `tools/AiTournament --battle` uses it by default; `--map` keeps a
+  built-in host.
+- Fixed difficulty: constructor parameter (default Average), `Difficulty` property, `--difficulty`.
+- Margin of error: `BattleBenchShare` (share with the 95 % Wilson interval half-width, shown as "55 % ± 3"),
+  `BattleBenchResult.Wins` / `WinShare`; the tool prints a "Wins:" line.
+
+### Tests
+- `AiBattleBenchTests` 24 (+4): the generated host has every race plus neutrals and every capital (control: S099 has
+  no Elves), each race's capital and a city give protection, an Elf vs neutral battle validates both ways round; at
+  the same difficulty the generated host fights exactly like S099, run for run (open and city); the difficulty is
+  fixed and reaches the battle; margin values (500/1000 ± 3.1 %, 15/30 ± 17 %, 0/1000 shown as "0 % ± 1").
+- Mutation check: taking the difficulty from the host fails 2 tests.
+- Full non-visual suite: 5394 passed (5390 + 4), none failed.
+
+### Findings
+- **The difficulty changed results.** Phase 1/1b numbers on S099 ran at S099's own difficulty (Very hard); from now
+  on the default is Average. Mirror battles (same undead army, 2000 runs, no side swap): attacker wins 55 % ± 3 at
+  Average, Hard and Very hard, 52 % ± 3 at Easy. So there is a small attacker edge in the open; the earlier "about
+  50/50" came from runs with swapped sides.
+- 1000 runs of 4 vs 4 take 1.5 s with the generated host (8 cores), so 1000 as the screen's default is fine.
+
+### Known limits
+- The generated city keeps the neutral city look (`WorldCityDefinitionId.Race` = Neutral); protection comes from
+  the level, as before.
+- The margin is shown symmetric (± half-width) around the measured share; the true Wilson interval is slightly
+  skewed near 0 % and 100 %.
