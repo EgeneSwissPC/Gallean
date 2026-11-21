@@ -8,10 +8,14 @@ public sealed record BattleAutoResolveCommand : IBattleCommand<Empty>
     // "Refuse to flee" battle mode); they keep fighting like in the rest of the auto-resolve.
     public BattleSide? NoRetreatSide { get; init; }
 
+    // Gallean Upgrade: the battle AI of each side (AiBrainRegistry ID); null = Classic.
+    public string? AttackerAiId { get; init; }
+    public string? DefenderAiId { get; init; }
+
     public BattleCommandResult Execute(BattleState state, IEngineContext context)
     {
         return BattleCommandResult.Success(
             Empty.Value,
-            [new BattleAutoResolveStepEvent(state.RoundNumber, NoRetreatSide)]);
+            [new BattleAutoResolveStepEvent(state.RoundNumber, NoRetreatSide) { AttackerAiId = AttackerAiId, DefenderAiId = DefenderAiId }]);
     }
 }

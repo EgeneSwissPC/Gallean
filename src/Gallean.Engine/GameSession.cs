@@ -32,7 +32,7 @@ public sealed partial class GameSession
             throw new InvalidOperationException("Cannot execute an AI action while a battle is active.");
         }
 
-        WorldCommandResult worldResult = World.DispatchCommand(new WorldAiActionCommand());
+        WorldCommandResult worldResult = World.DispatchCommand(new WorldAiActionCommand { BrainId = Ai.WorldAi });
         if (worldResult.Failed)
         {
             throw new WorldCommandException(worldResult.Error.Value);
@@ -40,7 +40,7 @@ public sealed partial class GameSession
 
         while (Battle is not null && Battle.IsAttackerAi && Battle.IsDefenderAi)
         {
-            BattleCommandResult battleResult = Battle.DispatchCommand(new BattleAutoResolveCommand());
+            BattleCommandResult battleResult = Battle.DispatchCommand(new BattleAutoResolveCommand { AttackerAiId = Ai.BattleAi, DefenderAiId = Ai.BattleAi });
             if (battleResult.Failed)
             {
                 throw new BattleCommandException(battleResult.Error.Value);

@@ -4,6 +4,9 @@ namespace Gallean.Engine;
 
 internal sealed record WorldAiActionCommand : IWorldCommand<Empty>
 {
+    // Gallean Upgrade: which AI decides (AiBrainRegistry ID); null = Classic.
+    public string? BrainId { get; init; }
+
     public WorldCommandResult Execute(WorldState state, IEngineContext context)
     {
         WorldPlayerId playerId = state.TurnInfo.CurrentPlayerId;
@@ -24,7 +27,7 @@ internal sealed record WorldAiActionCommand : IWorldCommand<Empty>
         WorldAiMemory memory = state.AiMemories.GetValueOrDefault(playerId, WorldAiMemory.Empty);
 
         // Gallean Upgrade: the AI algorithm is switchable (docs/ai-switching.md).
-        WorldAiActionPlan plan = AiBrainRegistry.ResolveWorld(null).DecideAction(context, state, memory);
+        WorldAiActionPlan plan = AiBrainRegistry.ResolveWorld(BrainId).DecideAction(context, state, memory);
 
         WorldCommandResult commandResult = plan.Command.Execute(state, context);
         if (commandResult.Failed)

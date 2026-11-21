@@ -252,6 +252,20 @@ public sealed class GameSettingsStoreTests
     }
 
     [Test]
+    public async Task LoadAiChoiceTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        sb.WriteTextFile(
+            "settings.json",
+            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"worldAi\": \"builder\", \"battleAi\": \"ruthless\"}");
+
+        GameSettingsStore store = new(sb.RootPath);
+
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null) with { WorldAi = "builder", BattleAi = "ruthless" }));
+    }
+
+    [Test]
     public async Task LoadUiSizeTest()
     {
         using Sandbox sb = Sandbox.Create();

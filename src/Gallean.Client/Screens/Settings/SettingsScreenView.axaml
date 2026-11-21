@@ -8,7 +8,7 @@
              x:DataType="local:SettingsScreenViewModel">
 
   <Border Background="{StaticResource ModalBackdropBrush}" local:Backdrop.CloseCommand="{Binding CloseCommand}">
-    <local:ModalPanel Classes="accent" Width="520" Padding="28,24" Title="{local:Text 'Settings'}" InitialFocus="{Binding #CloseButton}">
+    <local:ModalPanel Classes="accent" Width="660" Padding="28,24" Title="{local:Text 'Settings'}" InitialFocus="{Binding #CloseButton}">
 
       <local:ModalPanel.Footer>
         <Button x:Name="CloseButton" Margin="0,24,0,0" HorizontalAlignment="Right" Content="{local:Text 'Close'}" Classes="pill" Command="{Binding CloseCommand}" MinWidth="150" />
@@ -138,7 +138,9 @@
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" ColumnSpacing="16" RowSpacing="12">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" SharedSizeGroup="Label" />
+            <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
 
           <TextBlock Grid.Row="0"
@@ -248,6 +250,47 @@
             <ComboBox.ItemTemplate>
               <DataTemplate x:DataType="configuration:MovementSpeed">
                 <TextBlock Text="{Binding Converter={x:Static local:MovementSpeedConverter.Instance}}" Classes="body" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <!-- Gallean Upgrade: AI choice (docs/ai-switching.md), right of the speeds: the panel has no free height. -->
+          <TextBlock Grid.Row="3"
+                     Grid.Column="2"
+                     Text="{local:Text 'Map AI'}"
+                     Classes="body"
+                     Foreground="{StaticResource PrimaryTextBrush}"
+                     VerticalAlignment="Center" />
+          <ComboBox Grid.Row="3"
+                    Grid.Column="3"
+                    ItemsSource="{Binding WorldAis}"
+                    SelectedItem="{Binding WorldAi}"
+                    ToolTip.Tip="{Binding WorldAiDescription}"
+                    MinWidth="120"
+                    VerticalAlignment="Center">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="sys:String">
+                <TextBlock Text="{Binding Converter={x:Static local:AiBrainNameConverter.Instance}}" Classes="body" />
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <TextBlock Grid.Row="4"
+                     Grid.Column="2"
+                     Text="{local:Text 'Battle AI'}"
+                     Classes="body"
+                     Foreground="{StaticResource PrimaryTextBrush}"
+                     VerticalAlignment="Center" />
+          <ComboBox Grid.Row="4"
+                    Grid.Column="3"
+                    ItemsSource="{Binding BattleAis}"
+                    SelectedItem="{Binding BattleAi}"
+                    ToolTip.Tip="{Binding BattleAiDescription}"
+                    MinWidth="120"
+                    VerticalAlignment="Center">
+            <ComboBox.ItemTemplate>
+              <DataTemplate x:DataType="sys:String">
+                <TextBlock Text="{Binding Converter={x:Static local:AiBrainNameConverter.Instance}}" Classes="body" />
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>

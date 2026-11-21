@@ -81,7 +81,7 @@ internal sealed partial class BattleScreenViewModel
         }
         else
         {
-            await DispatchBattleActionAsync(new BattleAiActionCommand(CanUseItems: battle.IsAiTurn), animate: true);
+            await DispatchBattleActionAsync(new BattleAiActionCommand(CanUseItems: battle.IsAiTurn) { BrainId = battle.IsAiTurn ? Game.Settings.BattleAi : null }, animate: true);
         }
     }
 
@@ -130,7 +130,7 @@ internal sealed partial class BattleScreenViewModel
 
                 if (command is null || (await battle.DispatchCommandAsync(command)).Failed)
                 {
-                    await battle.DispatchCommandAsync(new BattleAutoResolveCommand());
+                    await battle.DispatchCommandAsync(WithBattleAis(new BattleAutoResolveCommand()));
                     break;
                 }
             }
@@ -149,7 +149,7 @@ internal sealed partial class BattleScreenViewModel
     {
         if (battle.IsAiTurn)
         {
-            return new BattleAiActionCommand(CanUseItems: true);
+            return new BattleAiActionCommand(CanUseItems: true) { BrainId = Game.Settings.BattleAi };
         }
 
         if (State.RoundNumber - startRound >= MaxInstantHealRounds)
