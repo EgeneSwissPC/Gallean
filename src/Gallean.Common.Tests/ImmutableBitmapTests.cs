@@ -212,4 +212,27 @@ public sealed class ImmutableBitmapTests
         Assert.That(second, Is.Not.EqualTo(first));
         Assert.That(builder.Get(0, 0), Is.True);
     }
+    [Test]
+    public void UnionWithTest()
+    {
+        ImmutableBitmap.Builder other = ImmutableBitmap.Create(3, 2).ToBuilder();
+        other.Set(0, 0);
+        other.Set(2, 1);
+        ImmutableBitmap source = ImmutableBitmap.Create(3, 2).ToBuilder().ToImmutable();
+        ImmutableBitmap.Builder builder = source.ToBuilder();
+
+        builder.UnionWith(other.ToImmutable());
+
+        Assert.That(FormatBitmap(builder.ToImmutable()), Is.EqualTo([
+            "#..",
+            "..#"
+        ]));
+        Assert.That(source.CountSet(), Is.EqualTo(0));
+
+        // Nothing new: the builder still hands back the bitmap it started from.
+        ImmutableBitmap.Builder same = other.ToImmutable().ToBuilder();
+        same.UnionWith(source);
+        Assert.That(same.ToImmutable(), Is.SameAs(other.ToImmutable()));
+        Assert.Throws<ArgumentException>(() => same.UnionWith(ImmutableBitmap.Create(2, 3)));
+    }
 }

@@ -669,6 +669,33 @@ public sealed class PathMapCalculatorTests
     }
 
     [Test]
+    public void BlockedCellsFollowEachStateTest()
+    {
+        // Blocked cells are kept across states that share the map and the obstacle collections; the armies standing on
+        // impassable cells and a changed collection must still be taken from each state.
+        WorldMap map = TestHelpers.BuildMap([
+            "~~~~."
+        ]);
+        ImmutableBitmap fog = CreateFullFog(map);
+        WorldMovementCalculator.MovementProfile seaCreature = DefaultProfile with { IsWaterOnly = true };
+        WorldStack stack = TestHelpers.SimpleStack(new WorldStackId("Stack"), new WorldPlayerId(1), new WorldPosition(3, 0), UnitGrid<WorldUnit>.Empty, movementPoints: 0);
+        WorldRod rod = new(new WorldRodId("Rod"), new WorldPlayerId(1), new WorldPosition(1, 0));
+        WorldState empty = CreateEmptyState(map);
+        WorldState withStack = empty with { Stacks = empty.Stacks.Add(stack.Id, stack) };
+        WorldState withRod = empty with { Rods = empty.Rods.Add(rod.Id, rod) };
+
+        WorldPath? PathTo(WorldState state, int x) =>
+            WorldPlan.For(state with { }).GetPath(new WorldPosition(0, 0), new WorldPosition(x, 0), fog, seaCreature, WorldMovementLimit.Unlimited);
+
+        // (3, 0) is next to land, so not deep water: impassable for a sea creature unless an army stands there.
+        Assert.That(PathTo(empty, 3), Is.Null, "shallow water");
+        Assert.That(PathTo(withStack, 3), Is.Not.Null, "an army on shallow water can be reached");
+        Assert.That(PathTo(empty, 3), Is.Null, "shallow water again once the army left");
+        Assert.That(PathTo(withRod, 1), Is.Null, "rod");
+        Assert.That(PathTo(empty, 1), Is.Not.Null, "rod gone");
+    }
+
+    [Test]
     public void BoundedMapFallbackTest()
     {
         WorldMap map = TestHelpers.SimpleMap(20, 1);

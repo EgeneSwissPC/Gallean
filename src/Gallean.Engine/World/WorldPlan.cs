@@ -17,6 +17,11 @@ public sealed class WorldPlan
 
     private static readonly ConditionalWeakTable<WorldState, WorldPlan> Cache = [];
 
+    // Obstacles and impassable cells only change when the map or the objects on it change, not when an army steps, so
+    // they are kept across states (a new state, and so a new plan, comes with every step). Rebuilding them scanned every
+    // cell of the map per step: ~10 ms on a 1024x1024 map, on the UI thread when the game works out where an army can go.
+    private static readonly ConditionalWeakTable<WorldMap, StaticCells> StaticCellsCache = [];
+
     private readonly Lazy<Dictionary<WorldPosition, WorldBag>> bags;
     private readonly Dictionary<WorldMovementCalculator.MovementProfile, ImmutableBitmap> blockedCells;
     private readonly Lazy<Dictionary<WorldPlayerId, WorldCapital>> capitals;
@@ -47,7 +52,7 @@ public sealed class WorldPlan
         fortifications = new Lazy<Dictionary<WorldPosition, WorldFortification>>(BuildFortifications);
         landmarks = new Lazy<Dictionary<WorldPosition, WorldLandmark>>(BuildLandmarks);
         objectives = [];
-        obstacleCells = new Lazy<ImmutableBitmap>(BuildObstacleCells);
+        obstacleCells = new Lazy<ImmutableBitmap>(GetObstacleCells);
         pathMaps = [];
         resourceNodes = new Lazy<Dictionary<WorldPosition, WorldResourceNode>>(BuildResourceNodes);
         rods = new Lazy<Dictionary<WorldPosition, WorldRod>>(BuildRods);
@@ -155,6 +160,56 @@ public sealed class WorldPlan
     public bool IsObstacleAt(WorldPosition position)
     {
         return obstacleCells.Value.Get(position.X, position.Y);
+    }
+
+    private StaticCells GetStaticCells()
+    {
+        lock (StaticCellsCache)
+        {
+            if (!StaticCellsCache.TryGetValue(state.Map, out StaticCells? cells) || !cells.Matches(state))
+            {
+                cells = new StaticCells(state);
+                StaticCellsCache.AddOrUpdate(state.Map, cells);
+            }
+
+            return cells;
+        }
+    }
+
+    // Keyed by the map and the object collections the obstacles come from; a state that shares all of them shares these.
+    private sealed class StaticCells(WorldState state)
+    {
+        private readonly object resourceNodes = state.ResourceNodes;
+        private readonly object rods = state.Rods;
+        private readonly object fortifications = state.Fortifications;
+        private readonly object sites = state.Sites;
+        private readonly object landmarks = state.Landmarks;
+        private readonly Dictionary<WorldMovementCalculator.MovementProfile, ImmutableBitmap> impassable = [];
+
+        public ImmutableBitmap? Obstacles { get; set; }
+
+        public bool Matches(WorldState other)
+        {
+            return ReferenceEquals(resourceNodes, other.ResourceNodes) &&
+                   ReferenceEquals(rods, other.Rods) &&
+                   ReferenceEquals(fortifications, other.Fortifications) &&
+                   ReferenceEquals(sites, other.Sites) &&
+                   ReferenceEquals(landmarks, other.Landmarks);
+        }
+
+        public ImmutableBitmap GetObstaclesAndImpassable(WorldMovementCalculator.MovementProfile profile, Func<ImmutableBitmap> build)
+        {
+            lock (impassable)
+            {
+                if (!impassable.TryGetValue(profile, out ImmutableBitmap? cells))
+                {
+                    cells = build();
+                    impassable.Add(profile, cells);
+                }
+
+                return cells;
+            }
+        }
     }
 
     public WorldBag? GetBagAt(WorldPosition position)
@@ -560,9 +615,41 @@ public sealed class WorldPlan
         return cells.ToImmutable();
     }
 
+    private ImmutableBitmap GetObstacleCells()
+    {
+        StaticCells cells = GetStaticCells();
+
+        lock (cells)
+        {
+            cells.Obstacles ??= BuildObstacleCells();
+
+            return cells.Obstacles;
+        }
+    }
+
+    // Obstacles, plus impassable cells that no army stands on.
     private ImmutableBitmap BuildBlockedCells(WorldMovementCalculator.MovementProfile profile)
     {
-        ImmutableBitmap.Builder cells = obstacleCells.Value.ToBuilder();
+        ImmutableBitmap obstacles = obstacleCells.Value;
+        ImmutableBitmap blocked = GetStaticCells().GetObstaclesAndImpassable(profile, () => BuildObstaclesAndImpassable(obstacles, profile));
+        ImmutableBitmap.Builder cells = blocked.ToBuilder();
+
+        foreach (WorldStack stack in state.Stacks.Values)
+        {
+            WorldPosition position = stack.Position;
+
+            if (!obstacles.Get(position.X, position.Y) && !WorldMovementCalculator.IsPassable(state.Map, position, profile))
+            {
+                cells.Clear(position.X, position.Y);
+            }
+        }
+
+        return cells.ToImmutable();
+    }
+
+    private ImmutableBitmap BuildObstaclesAndImpassable(ImmutableBitmap obstacles, WorldMovementCalculator.MovementProfile profile)
+    {
+        ImmutableBitmap.Builder cells = obstacles.ToBuilder();
 
         for (int y = 0; y < state.Map.Height; y++)
         {
@@ -570,8 +657,7 @@ public sealed class WorldPlan
             {
                 WorldPosition position = new(x, y);
 
-                // Passability first: the stack lookup is the expensive part and only matters for impassable cells.
-                if (!WorldMovementCalculator.IsPassable(state.Map, position, profile) && GetStackAt(position) is null)
+                if (!WorldMovementCalculator.IsPassable(state.Map, position, profile))
                 {
                     cells.Set(x, y);
                 }

@@ -70,6 +70,28 @@ public sealed partial record ImmutableBitmap
             }
         }
 
+        /// <summary>Sets every bit that is set in other (same size).</summary>
+        public void UnionWith(ImmutableBitmap other)
+        {
+            if (other.Width != Width || other.Height != Height)
+            {
+                throw new ArgumentException("The bitmaps differ in size.", nameof(other));
+            }
+
+            ulong[] words = other.words;
+
+            for (int index = 0; index < words.Length; index++)
+            {
+                ulong added = words[index] & ~data[index];
+
+                if (added != 0)
+                {
+                    Unshare();
+                    data[index] |= added;
+                }
+            }
+        }
+
         public ImmutableBitmap ToImmutable()
         {
             // Nothing changed since the source bitmap (or the last ToImmutable): hand back that same instance, so
