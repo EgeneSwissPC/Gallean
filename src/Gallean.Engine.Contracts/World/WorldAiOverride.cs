@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Gallean.Engine.Contracts;
 
 /// <summary>
@@ -6,5 +8,6 @@ namespace Gallean.Engine.Contracts;
 /// </summary>
 public sealed record WorldAiOverride(string? WorldAi, string? BattleAi)
 {
+    [JsonIgnore]
     public bool IsEmpty => WorldAi is null && BattleAi is null;
 }

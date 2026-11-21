@@ -145,6 +145,8 @@ public sealed class AiOverrideTests
         using MemoryStream stream = new();
 
         await WorldStateJsonSerializer.SerializeAsync(stream, engine.State);
+        string json = System.Text.Encoding.UTF8.GetString(stream.ToArray());
+        Assert.That(json, Does.Contain("\"worldAi\":\"builder\"").And.Not.Contain("isEmpty"));
         stream.Position = 0;
         WorldState actual = await WorldStateJsonSerializer.DeserializeAsync(stream);
 
