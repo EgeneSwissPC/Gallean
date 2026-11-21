@@ -1,6 +1,6 @@
 # AI designer: a mode for building your own AIs
 
-gallean-upgrade only. Status: phases 1-2 done (engine: designed map AIs; AI editor mode with the AI list). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
+gallean-upgrade only. Status: phases 1-3 done (engine; AI editor mode and list; the designer screen). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
 done) and the world AI diagram in `docs/ai/`.
 
 ## Decisions
@@ -20,6 +20,7 @@ done) and the world AI diagram in `docs/ai/`.
 - **Stage switching: only the first true stage plays** (open question U, taken as recommended because phase 1 needs it; reversible later by letting stages add up).
 - **Priority tiers instead of a strict order** (phase 1): the economy and army slots are lists of *tiers*; blocks in one tier share a priority and compare scores, like Classic's attack / thief / rod / enter city / take bag. Without tiers a copy of Classic couldn't play like Classic. The designer screen will show a tier as blocks side by side in one row.
 - **Phase 2 list screen** (taken while building, reversible): one list of the player's map AIs (no Battle AIs tab until battle designs exist, phase 6); built-in AIs aren't rows but the **Start from** choices of New (Classic, Classic+, the personalities and the player's own AIs); **Rename** moves to the designer's top bar (phase 3); **Copy** instead of "Duplicate" (the longer label was cut off in the 4-button row); **Edit** is shown but disabled with a tooltip until the designer exists. Export/import (question W) is not in this phase.
+- **Designer screen choices (phase 3, reversible)**: the designer is its own full screen (not a popup over the list); a priority row is a horizontal strip of blocks, and a new lowest row is a separate drop strip under the rows; whole rows and whole stages move with ↑/↓ buttons instead of dragging their headers (dragging is for blocks only, so it never competes with text boxes); the last card is always the default stage (no When); a design whose last stage has conditions gets an empty default stage after it when opened; an action appears once per stage (dropping it elsewhere moves it; clicking it in the palette when it's already there only shows a hint); rule and tuning blocks appear once each per stage; numbers are clamped to their range as you type, so there are no "missing value" blocks; hovering a palette block shows its help on the right. Edit and Create both open the designer; Back asks before leaving with unsaved changes.
 - A save or setting that names a designed AI you don't have plays Classic+ (the designed AI's file is not part of the
   save; see open question W for sharing).
 
@@ -145,8 +146,8 @@ way.
 1. ~~Engine: designed map AI document + files, stage conditions (the five), complete profile (all priorities, switch
    off), `DesignedWorldAiBrain`, registry source, tournament `--ais`. ~2–3 days.~~ Done.
 2. ~~Client: AI editor mode, main-menu button, AI list screen. ~1 day.~~ Done.
-3. Client: map AI designer screen (palette, stage cards, drag and drop, fields, save/undo, broken-block marks).
-   ~4 days.
+3. ~~Client: map AI designer screen (palette, stage cards, drag and drop, fields, save/undo, broken-block marks).
+   ~4 days.~~ Done.
 4. Test panel in the designer (shared tournament runner). ~1.5 days.
 5. New behaviour blocks, first set (open question T), each with tests and a tournament check. ~0.5–1 day each.
 6. Battle AI designer: engine (document, conditions, rules, target choice) + screen. ~4 days.
@@ -195,3 +196,15 @@ Commit 80f0a303, merged in e6fbd393.
 - Tests: `DesignedWorldAiStartTests` (7: starting from each built-in keeps its priorities and rules; Classic start = Classic stage; starting from a designed AI copies its stages), `AiEditorMenuTests` (7: create from Aggressive -> file, list row, registry, formatter, Settings drop-down, Start from list; copy has the same stages; delete via the prompt -> gone, the ID now plays Classic+; Back -> main menu; 5 file-name cases), visual `AiEditorMenuTest` (list + empty) and `MainMenuTest` reviewed. Fixtures that read or change the designed AIs in the static registry are `[NonParallelizable]`. Suite 5355.
 - Real client (AOT, Debian 12 image): main menu -> AI editor -> Name "Raider", Start from Aggressive -> Create AI: `AIs/map/raider.json` written (attack power 80), the row shows "1 stage · 2026-11-21"; Settings -> Map AI lists Raider after the personalities, picked it (settings.json `"worldAi": "custom:raider"`); started 5th Column, ended 3 turns: the Elves (Raider) attacked, the battle resolved to a victory; no errors in the log.
 - Found while building: the first label "Duplicate" was cut off ("Duplic…") in the 4-button row; renamed to "Copy" (checked in the visual test). The add-translations script overwrote the existing ru "Duplicate" (used by the map editor's events list); restored to "Копия".
+
+## Phase 3 — done
+
+Commits b713c723 + 5c06a48d, merged in a04f8a02.
+
+- `Screens/AiEditor/AiDesignerBlocks.cs` (palette items with label and help text, colours: conditions blue, economy gold, armies red, rules green, tuning purple; block sentences built from the event editor's `MapEditorBlockText`/`MapEditorBlockNumber`; row, slot and condition-set view models), `AiDesignerStageViewModel` (card: name, When sets, economy and army slots, rules; ↑/↓/× for the stage and ↑/↓ per row), `AiDesignerScreenViewModel` (model <-> view models, insert/move/remove with the rules above, problems, undo/redo by design snapshots, Save -> file + registry reload, Back with a prompt), `AiDesignerScreenView` (layout copied from the event screen: palette | cards | help, drag ghost; code-behind drop finder like the event screen's). The list's Edit (and double-click) opens it; Create opens the new AI in it.
+- Problems shown on the right and as a red card border: a non-default stage without conditions (it would always play and hide the stages below), a stage whose economy and army rows are both empty. Saving still works.
+- 96 new strings in all 7 catalogs (ru translated; existing catalog words like "Heal", "Resurrect" reuse their old translation); the obsolete "The AI designer comes in the next update." removed.
+- Tests: `AiDesignerTests` (7: load = file, remove/undo/redo, moving blocks between rows and into a new lowest row, moving a row, palette clicks incl. the default-stage and duplicate hints, rule numbers, + Stage and "+ or", problems, rename + prompt + save + back to the list with the AI selected, Create opens the designer). Visual `AiDesignerTest` drags with the headless mouse (palette -> condition set, stage block -> palette removes it), checks the hover help and that + Stage scrolls the new card into sight (mutation-checked: without the scroll the test fails); `AiDesignerRussianTest`; `AiEditorMenuTest`. All reviewed: no clipping at 1366x768 in en and ru. Suite 5362.
+- Real client (AOT, Debian 12 image): AI editor -> Create "Rusher" from Classic -> the designer opened; dragged "Buy units" from row 5 into row 1 with the real mouse (ghost followed, rows renumbered, `rusher.json` economy starts `[["CastSpell","PurchaseUnit"], ...`); + Stage, clicked "I lost a city" in the palette -> the new stage has `fromTurn` + `lostCity`; Save, Back -> the list shows "2 stages"; Settings -> Map AI lists Rusher, picked it; 5th Column: the Elves attacked on turn 3 and the battle resolved; no errors in the log.
+- Found in the real client and fixed (5c06a48d): after + Stage the new card was out of sight (inserted above the last card while the view stayed at the bottom); it now scrolls to the new card. Checked by the visual test, not re-run in the real client.
+- Known limits: stages and rows reorder with buttons, not by dragging their headers; no keyboard way to move blocks; the designer's Test panel is phase 4.
