@@ -12,10 +12,16 @@ public sealed record BattleAutoResolveCommand : IBattleCommand<Empty>
     public string? AttackerAiId { get; init; }
     public string? DefenderAiId { get; init; }
 
+    // Gallean Upgrade (battle sandbox Watch): play only the current unit's action, exactly as the auto-resolve
+    // would, so a screen can animate an auto-resolved battle step by step. StartRoundNumber = the round the
+    // auto-resolve started in (its round limits count from there); null = the current round.
+    public bool SingleStep { get; init; }
+    public int? StartRoundNumber { get; init; }
+
     public BattleCommandResult Execute(BattleState state, IEngineContext context)
     {
         return BattleCommandResult.Success(
             Empty.Value,
-            [new BattleAutoResolveStepEvent(state.RoundNumber, NoRetreatSide) { AttackerAiId = AttackerAiId, DefenderAiId = DefenderAiId }]);
+            [new BattleAutoResolveStepEvent(StartRoundNumber ?? state.RoundNumber, NoRetreatSide) { AttackerAiId = AttackerAiId, DefenderAiId = DefenderAiId, SingleStep = SingleStep }]);
     }
 }

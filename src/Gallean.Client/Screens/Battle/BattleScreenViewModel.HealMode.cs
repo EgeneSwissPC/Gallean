@@ -63,7 +63,11 @@ internal sealed partial class BattleScreenViewModel
 
     private async Task PlayAiStepAsync()
     {
-        if (isHealModeInstantRequested)
+        if (SandboxWatch is { } watch)
+        {
+            await DispatchBattleActionAsync(CreateWatchStep(watch, singleStep: true), animate: true);
+        }
+        else if (isHealModeInstantRequested)
         {
             await ResolveHealModeInstantlyAsync();
         }

@@ -83,6 +83,12 @@ internal partial class BattleEngine
                 newEvents = new BattleSkipCommand(currentUnit.Id).Execute(state, Context).Events;
             }
 
+            // Gallean Upgrade: a single step ends here; the whole auto-resolve continues with the next step.
+            if (ev.SingleStep)
+            {
+                return EventRuleResult<BattleEvent>.Consume([.. newEvents]);
+            }
+
             return EventRuleResult<BattleEvent>.Consume(
             [
                 .. newEvents,

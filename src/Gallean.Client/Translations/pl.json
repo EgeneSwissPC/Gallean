@@ -1607,6 +1607,12 @@
     "Battles to run": "Battles to run",
     "Each army attacks in every other battle: a fair comparison of two armies or two AIs.": "Each army attacks in every other battle: a fair comparison of two armies or two AIs.",
     "Alternate sides": "Alternate sides",
-    "Run": "Run"
+    "Run": "Run",
+    "Watch a win": "Watch a win",
+    "Watch a loss": "Watch a loss",
+    "Watch the first battle the attacker of the setup won, as it was fought": "Watch the first battle the attacker of the setup won, as it was fought",
+    "Watch the first battle the attacker of the setup lost, as it was fought": "Watch the first battle the attacker of the setup lost, as it was fought",
+    "Watch": "Watch",
+    "Watch one battle on the battle screen, both sides played by their AI": "Watch one battle on the battle screen, both sides played by their AI"
   }
 }

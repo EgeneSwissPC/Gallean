@@ -1607,6 +1607,12 @@
     "Battles to run": "Сколько сражений",
     "Each army attacks in every other battle: a fair comparison of two armies or two AIs.": "Армии нападают по очереди: честное сравнение двух армий или двух ИИ.",
     "Alternate sides": "Чередовать стороны",
-    "Run": "Запустить"
+    "Run": "Запустить",
+    "Watch a win": "Смотреть победу",
+    "Watch a loss": "Смотреть поражение",
+    "Watch the first battle the attacker of the setup won, as it was fought": "Посмотреть первое сражение, которое нападающий выиграл, точно как оно прошло",
+    "Watch the first battle the attacker of the setup lost, as it was fought": "Посмотреть первое сражение, которое нападающий проиграл, точно как оно прошло",
+    "Watch": "Смотреть",
+    "Watch one battle on the battle screen, both sides played by their AI": "Посмотреть одно сражение на экране боя: обе стороны ведёт их ИИ"
   }
 }

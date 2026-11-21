@@ -239,7 +239,11 @@
                       ToolTip.Tip="{local:Text 'Each army attacks in every other battle: a fair comparison of two armies or two AIs.'}">
               <TextBlock Text="{local:Text 'Alternate sides'}" Classes="caption" />
             </CheckBox>
-            <Button Classes="pill primary" HorizontalAlignment="Center" Padding="20,0" Height="32" Content="{local:Text 'Run'}" Command="{Binding RunCommand}" />
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+              <Button Classes="pill" Padding="14,0" Height="32" Content="{local:Text 'Watch'}" Command="{Binding WatchCommand}"
+                      ToolTip.Tip="{local:Text 'Watch one battle on the battle screen, both sides played by their AI'}" />
+              <Button Classes="pill primary" Padding="20,0" Height="32" Content="{local:Text 'Run'}" Command="{Binding RunCommand}" />
+            </StackPanel>
           </StackPanel>
         </ContentControl>
 

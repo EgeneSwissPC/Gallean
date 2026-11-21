@@ -9,9 +9,13 @@
     <local:ModalPanel Classes="accent" Width="860" MaxHeight="700" Padding="28,20">
 
       <local:ModalPanel.Footer>
-        <Grid Classes="pill-group" ColumnDefinitions="*,Auto">
-          <Button Grid.Column="1" Content="{local:Text 'Cancel'}" Classes="pill" MinWidth="110" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}" />
-          <Button Grid.Column="1" Content="{local:Text 'Close'}" Classes="pill" MinWidth="110" Command="{Binding CloseCommand}" IsVisible="{Binding HasResult}" />
+        <Grid Classes="pill-group" ColumnDefinitions="Auto,Auto,*,Auto">
+          <Button Grid.Column="0" Content="{local:Text 'Watch a win'}" Classes="pill" MinWidth="110" Command="{Binding WatchWinCommand}" IsVisible="{Binding CanWatchWin}"
+                  ToolTip.Tip="{local:Text 'Watch the first battle the attacker of the setup won, as it was fought'}" />
+          <Button Grid.Column="1" Content="{local:Text 'Watch a loss'}" Classes="pill" MinWidth="110" Command="{Binding WatchLossCommand}" IsVisible="{Binding CanWatchLoss}"
+                  ToolTip.Tip="{local:Text 'Watch the first battle the attacker of the setup lost, as it was fought'}" />
+          <Button Grid.Column="3" Content="{local:Text 'Cancel'}" Classes="pill" MinWidth="110" Command="{Binding CancelCommand}" IsVisible="{Binding IsRunning}" />
+          <Button Grid.Column="3" Content="{local:Text 'Close'}" Classes="pill" MinWidth="110" Command="{Binding CloseCommand}" IsVisible="{Binding HasResult}" />
         </Grid>
       </local:ModalPanel.Footer>
 

@@ -25,6 +25,10 @@ public sealed partial class GameSession
     public BattleSession? Battle { get; private set; }
     public IObservable<BattleSession> BattleStarted => battleStarted;
 
+    // Gallean Upgrade (battle sandbox Watch): a battle prepared by AiBattleBench.CreateWatchSession, started by
+    // AiBattleBench.StartWatch once the screen listens.
+    internal BattleSession? PendingWatch { get; set; }
+
     public void ExecuteAiAction()
     {
         if (Battle is not null)

@@ -331,6 +331,43 @@ public sealed class AiBattleBench
         return WorldCommandHelpers.CreateStackBattleState(state, attackerStack, state.Stacks[defenderStack.Id], context);
     }
 
+    // Watch (battle sandbox): a game session on the host map with this battle already started, both sides
+    // computer-controlled, random numbers from the seed. Played with BattleAutoResolveCommand { SingleStep = true,
+    // StartRoundNumber = WatchStartRound } and the two AI IDs, step by step, it fights exactly the battle Run
+    // fights for the same seed and sides (the auto-resolve rules: no items, attacker retreats after round 15).
+    public GameSession CreateWatchSession(BattleBenchSide attacker, BattleBenchSide defender, BattleBenchSetup setup, int seed)
+    {
+        BattleState initial = CreateBattle(attacker, defender, setup);
+        EngineContext context = CreateContext(seed);
+        WorldState state = setup.Difficulty is { } difficulty ? scenario.State with { Difficulty = difficulty } : scenario.State;
+
+        // The game's screens need a human viewer; the battle itself is already built (with both sides as computer
+        // players) and both sides stay AI-controlled.
+        WorldPlayer viewer = state.Players.Values.First(player => player.Race is not WorldRace.Neutral);
+        state = state with { Players = state.Players.SetItem(viewer.Id, viewer with { IsAi = false }) };
+        GameSession session = new(context, state);
+        WorldPosition position = setup.Place is BattleBenchPlace.Open ? openTile : FortificationCalculator.GetEntrance(CreatePlace(setup, GetOwner(defender, secondOwner), UnitGrid<WorldUnit>.Empty).Footprint);
+
+        WatchStartRound = initial.RoundNumber;
+        session.PendingWatch = new BattleSession(context, initial, NullBattleUnitUpgradeResolver.Instance, _ => { }, isAttackerAi: true, isDefenderAi: true, canAutoResolve: true, position)
+        {
+            AttackerOwnerId = GetOwner(attacker, firstOwner),
+            DefenderOwnerId = GetOwner(defender, secondOwner)
+        };
+
+        return session;
+    }
+
+    // Starts the battle of a session from CreateWatchSession (after the screen's game model subscribed to it).
+    public static void StartWatch(GameSession session)
+    {
+        BattleSession battle = session.PendingWatch ?? throw new InvalidOperationException("Not a watch session.");
+        session.PendingWatch = null;
+        session.StartBattle(battle);
+    }
+
+    public int WatchStartRound { get; private set; } = 1;
+
     internal EngineContext CreateContext(int seed)
     {
         return new EngineContext(new RandomProvider(seed), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);

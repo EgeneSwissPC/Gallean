@@ -39,4 +39,45 @@ internal sealed partial class GameViewModel
             ShowError(Tr("Failed to open the battle sandbox: {0}", ex.Message));
         }
     }
+
+    // Watch: the battle on the real battle screen, both sides played by their chosen AI one unit action at a time
+    // with the auto-resolve rules, from the seed (the same battle Run fought with that seed). The screen opens over
+    // the sandbox and closes back to it after the battle.
+    public async Task<BattleScreenViewModel?> WatchSandboxBattleAsync(AiBattleBench bench, IGameTextProvider texts, BattleBenchSide attacker, BattleBenchSide defender, BattleBenchSetup setup, int seed)
+    {
+        GameModel? gameModel = null;
+        BattleScreenViewModel? screen = null;
+
+        try
+        {
+            GameSession session = bench.CreateWatchSession(attacker, defender, setup, seed);
+            gameModel = new GameModel(session, texts, log, scheduler);
+            AiBattleBench.StartWatch(session);
+            BattleModel battle = gameModel.ActiveBattle ?? throw new InvalidOperationException("The battle did not start.");
+
+            screen = new BattleScreenViewModel(gameModel, battle, this, assets, AssetPreloader, random)
+            {
+                SandboxWatch = new BattleSandboxWatch(attacker.AiId, defender.AiId, bench.WatchStartRound)
+            };
+
+            await screen.LoadAsync();
+            OpenScreen(screen);
+
+            return screen;
+        }
+        catch (Exception ex)
+        {
+            log.Error("Failed to watch the sandbox battle.", ex);
+
+            if (screen is not null)
+            {
+                CloseScreen(screen);
+            }
+
+            gameModel?.Dispose();
+            ShowError(Tr("Failed to load battle.\n{0}", ex.Message));
+
+            return null;
+        }
+    }
 }
