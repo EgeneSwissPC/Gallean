@@ -1,0 +1,69 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.BattleSandboxUpgradesView"
+             x:DataType="local:BattleSandboxUpgradesViewModel">
+
+  <!-- Gallean Upgrade: the battle sandbox's leader upgrades, copied from the game's level-up popup (LeaderUpgradeView). -->
+  <Border Background="{StaticResource ModalBackdropBrush}">
+    <local:ModalPanel Classes="accent" Width="560" MaxHeight="680" Padding="28,24" InitialFocus="{Binding #DoneButton}">
+
+      <local:ModalPanel.Footer>
+        <Grid Classes="pill-group" ColumnDefinitions="*,Auto,Auto">
+          <Button Grid.Column="1"
+                  Content="{local:Text 'Cancel'}"
+                  Classes="pill"
+                  local:PlateChrome.TextureSeed="2"
+                  MinWidth="110"
+                  VerticalAlignment="Center"
+                  Command="{Binding CloseCommand}" />
+          <Button x:Name="DoneButton"
+                  Grid.Column="2"
+                  Content="{local:Text 'Done'}"
+                  Classes="pill success"
+                  local:PlateChrome.TextureSeed="1"
+                  MinWidth="110"
+                  VerticalAlignment="Center"
+                  Command="{Binding ConfirmCommand}" />
+        </Grid>
+      </local:ModalPanel.Footer>
+
+      <Grid RowDefinitions="Auto,*">
+        <Grid Grid.Row="0" ColumnDefinitions="Auto,*" Margin="0,0,0,16">
+          <local:UnitPortrait Grid.Column="0" Width="76" Height="92" Margin="0" FaceKey="{Binding FaceKey}" IsHitpointsVisible="False" />
+          <StackPanel Grid.Column="1" Margin="18,0,0,0" Spacing="6" VerticalAlignment="Center">
+            <local:OutlinedTextBlock Classes="h2" Foreground="{StaticResource PrimaryTextBrush}" TextWrapping="Wrap" Text="{Binding Title}" />
+            <TextBlock Classes="prose" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" Text="{Binding CountText}" />
+          </StackPanel>
+        </Grid>
+
+        <ScrollViewer Classes="list" Grid.Row="1">
+          <ItemsControl Classes="focus-group" ItemsSource="{Binding Options}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:BattleSandboxUpgradeItemViewModel">
+                <Button Classes="row" Classes.selected="{Binding IsSelected}" Command="{Binding SelectCommand}">
+                  <Grid ColumnDefinitions="Auto,*">
+                    <local:IconVisual Grid.Column="0"
+                                      Moniker="{Binding Icon}"
+                                      Width="24"
+                                      Height="24"
+                                      Margin="0,3,12,0"
+                                      VerticalAlignment="Top"
+                                      Foreground="{StaticResource AccentBrush}" />
+                    <StackPanel Grid.Column="1" Spacing="2">
+                      <local:OutlinedTextBlock Text="{Binding Name}" Classes="h4" Foreground="{StaticResource PrimaryTextBrush}" TextWrapping="Wrap" />
+                      <TextBlock Text="{Binding Description}" Classes="body" Foreground="{StaticResource SecondaryTextBrush}" TextWrapping="Wrap" />
+                      <ContentControl Content="{Binding Status}" Classes="caption" />
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+
+    </local:ModalPanel>
+  </Border>
+
+</UserControl>

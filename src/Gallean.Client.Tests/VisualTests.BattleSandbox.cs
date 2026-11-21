@@ -36,6 +36,24 @@ public sealed partial class VisualTests
             await screen.Attacker.UnitGrid.Slots.First(slot => slot.Position == GridPosition.FrontCenter).SelectCommand.ExecuteAsync(null);
             await CaptureAsync(window, "city");
 
+            // Phase 4: items and upgrades. The banner first (marked: no Banner Bearer yet), then the upgrade list.
+            screen.Attacker.EquipmentSlots[0].ClickCommand.Execute(null);
+            await CaptureAsync(window, "items");
+            MapEditorListPickerViewModel items = Assert.IsOfType<MapEditorListPickerViewModel>(game.TopScreen);
+            items.Options.Single(option => Equals(option.Value, new ItemDefinitionId("G000IG1003"))).PickCommand.Execute(null);
+            screen.Attacker.EquipmentSlots[4].ClickCommand.Execute(null);
+            Assert.IsOfType<MapEditorListPickerViewModel>(game.TopScreen).Options.Single(option => Equals(option.Value, new ItemDefinitionId("G000IG2001"))).PickCommand.Execute(null);
+            screen.LevelUpCommand.Execute(null);
+            screen.LevelUpCommand.Execute(null);
+            await CaptureAsync(window, "item-problem");
+            screen.Attacker.ChooseUpgradesCommand.Execute(null);
+            BattleSandboxUpgradesViewModel upgrades = Assert.IsOfType<BattleSandboxUpgradesViewModel>(game.TopScreen);
+            upgrades.Options.Single(option => option.ModifierId == new UnitModifierDefinitionId("g000um4003")).SelectCommand.Execute(null);
+            await CaptureAsync(window, "upgrades");
+            upgrades.Options.Single(option => option.ModifierId == new UnitModifierDefinitionId("g000um4001")).SelectCommand.Execute(null);
+            upgrades.ConfirmCommand.Execute(null);
+            await CaptureAsync(window, "equipped");
+
             screen.SetPlaceCommand.Execute(screen.Places.Single(option => option.Value == BattleBenchPlace.Capital));
             screen.Defender.Owners.Single(owner => owner.Race == WorldRace.Elf).SelectCommand.Execute(null);
             screen.Attacker.AllowsAnything = true;

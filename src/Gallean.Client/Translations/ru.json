@@ -1578,6 +1578,19 @@
     "The difficulty sets the accuracy and experience bonuses of computer players.": "Сложность задаёт бонусы к точности и опыту компьютерных игроков.",
     "This battle can't be set up: {0}": "Такое сражение не собрать: {0}",
     "{0} units of the army could not be placed.": "{0} воинов армии не удалось разместить.",
-    "Loading…": "Загрузка…"
+    "Loading…": "Загрузка…",
+    "Choose item: {0}": "Выберите предмет: {0}",
+    "Empties the slot.": "Освобождает ячейку.",
+    "Needs leader level {0}": "Нужен уровень предводителя {0}",
+    "No more upgrades at this level": "На этом уровне больше умений нет",
+    "The leader abilities learned on level-up, like in the game": "Умения, которые предводитель получает с уровнем, как в игре",
+    "The leader needs {0}": "Предводителю нужно умение «{0}»",
+    "This item does not fit the slot": "Этот предмет не подходит к ячейке",
+    "Upgrades": "Умения",
+    "Upgrades: {0} of {1} (one per level after the first)": "Умения: {0} из {1} (по одному за каждый уровень после первого)",
+    "a level {0} leader has at most {1} upgrades.": "у предводителя {0} уровня не больше {1} умений.",
+    "{0} ({1})": "{0} ({1})",
+    "{0} upgrades (anything goes)": "Умений: {0} (без правил)",
+    "{0}, level {1}": "{0}, уровень {1}"
   }
 }

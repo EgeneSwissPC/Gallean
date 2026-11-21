@@ -76,6 +76,7 @@
                                  MaxLines="2"
                                  TextTrimming="CharacterEllipsis" />
                       <TextBlock Text="{Binding Info}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                      <TextBlock Text="{Binding Warning}" Classes="caption" Foreground="{StaticResource AccentBrush}" IsVisible="{Binding Warning, Converter={x:Static StringConverters.IsNotNullOrEmpty}}" />
                     </StackPanel>
                   </Grid>
                 </Button>

@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -77,6 +78,20 @@ internal sealed partial class BattleSandboxSideViewModel : ObservableObject
 
     public string AiId => SelectedAi?.Value ?? AiBrainRegistry.ClassicId;
 
+    // Phase 4: the leader's items and level-up upgrades (kept while the leader changes; ignored for a garrison).
+    public ImmutableDictionary<LeaderEquipmentSlot, ItemDefinitionId> Equipment { get; set; } = ImmutableDictionary<LeaderEquipmentSlot, ItemDefinitionId>.Empty;
+    public ImmutableArray<UnitModifierDefinitionId> LeaderUpgrades { get; set; } = [];
+
+    [ObservableProperty]
+    public partial IReadOnlyList<BattleSandboxEquipmentSlotViewModel> EquipmentSlots { get; set; } = [];
+
+    // Items and upgrades need a leader in an army (not a garrison).
+    [ObservableProperty]
+    public partial bool CanEquip { get; set; }
+
+    [ObservableProperty]
+    public partial string UpgradesText { get; set; } = string.Empty;
+
     partial void OnOwnerChanged(WorldRace value)
     {
         foreach (BattleSandboxOwnerViewModel owner in Owners)
@@ -119,6 +134,12 @@ internal sealed partial class BattleSandboxSideViewModel : ObservableObject
         {
             screen.DeletePreset(name);
         }
+    }
+
+    [RelayCommand]
+    private void ChooseUpgrades()
+    {
+        screen.ChooseUpgrades(this);
     }
 
     [RelayCommand]

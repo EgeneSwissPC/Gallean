@@ -69,6 +69,13 @@ public sealed class AiBattleBench
                 leaderUpgrades[upgrade.ModifierId] = Math.Min(upgrade.MinLevel, leaderUpgrades.GetValueOrDefault(upgrade.ModifierId, int.MaxValue));
             }
         }
+
+        LeaderUpgradeChoices = [.. globalDb.LeaderUpgradesByBelongsToId
+            .SelectMany(lord => definitions.GetLeaderUpgrades(new LordDefinitionId(lord.Key)))
+            .GroupBy(upgrade => upgrade.ModifierId)
+            .Select(group => group.OrderBy(upgrade => upgrade.MinLevel).First())
+            .OrderBy(upgrade => upgrade.MinLevel)
+            .ThenByDescending(upgrade => upgrade.Priority)];
     }
 
     // The ID and name of the generated host map (it only lives in a temporary folder while the bench loads it).
@@ -157,6 +164,32 @@ public sealed class AiBattleBench
     }
 
     public IReadOnlyList<UnitModifierDefinitionId> LeaderUpgradeIds => [.. leaderUpgrades.Keys.Order()];
+
+    // Every leader upgrade any lord offers, once each (the lowest minimum level), sorted by minimum level then
+    // priority, for the sandbox's upgrade list.
+    public IReadOnlyList<LeaderUpgradeDefinition> LeaderUpgradeChoices { get; private set; } = [];
+
+    // How many upgrades a leader of this level has had in the game (one per level up to the abilities limit).
+    public int GetMaxLeaderUpgrades(int leaderLevel) => Math.Max(0, Math.Min(leaderLevel, globals.MaxLeaderAbilities) - 1);
+
+    // Whether an item fits a leader slot, and the ability the leader still lacks for it (with the army's upgrades),
+    // using the game's equip rules. The army's first leader counts; no leader = no abilities.
+    public BattleItemCheck CheckItem(BattleArmy army, LeaderEquipmentSlot slot, ItemDefinitionId itemId)
+    {
+        ItemDefinition item = definitions.GetItem(itemId);
+        bool fits = LeaderEquipmentCalculator.CanPlace(item.Category, slot);
+        LeaderAbility? required = LeaderEquipmentCalculator.GetRequiredAbility(item.Category);
+        BattleArmyUnit? leader = army.Units.FirstOrDefault(unit => definitions.TryGetUnit(unit.TypeId) is { Leadership: > 0, Category: not UnitCategory.Guardian });
+        LeaderAbility abilities = LeaderAbility.None;
+
+        if (leader is not null)
+        {
+            WorldUnit unit = new(new WorldUnitId("check"), leader.TypeId, 1, 0, leader.Level, [.. army.LeaderUpgrades.Select(id => new UnitModifier(id, null))], null, IsTypeLocked: false);
+            abilities = CreateContext(0).UnitStats.GetWorldUnitAbilities(unit);
+        }
+
+        return new BattleItemCheck(fits, required is { } ability && !abilities.HasFlag(ability) ? ability : null);
+    }
 
     // Every army that starts on the host map, as presets (name = map ID + army ID + leader type), with its
     // leader's items and upgrades.
@@ -694,6 +727,12 @@ public sealed class AiBattleBench
     }
 
     private sealed record BuiltArmy(UnitGrid<WorldUnit> Units, LeaderEquipment Equipment);
+}
+
+// Fits = the item can go in that slot at all; MissingAbility = the leader ability it needs that the leader lacks.
+public sealed record BattleItemCheck(bool Fits, LeaderAbility? MissingAbility)
+{
+    public bool IsAllowed => Fits && MissingAbility is null;
 }
 
 // Race: which player of the host map owns the army (null = a default playable race; Neutral = the neutral

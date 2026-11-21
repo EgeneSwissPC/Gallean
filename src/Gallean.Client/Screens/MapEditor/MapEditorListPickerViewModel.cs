@@ -35,6 +35,9 @@ internal sealed class MapEditorListPickerItemViewModel : IDetailsSource
     public object? Details => createDetails();
     public IRelayCommand PickCommand { get; internal set; } = null!;
 
+    // Gallean Upgrade (battle sandbox): a reason shown in red under the row; the row stays pickable.
+    public string? Warning { get; init; }
+
     object? IDetailsSource.DetailsContent => Details;
 }
 
