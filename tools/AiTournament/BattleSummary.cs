@@ -21,6 +21,7 @@ internal static class BattleSummary
 
         string drawText = draws > 0 ? FormattableString.Invariant($", {draws} without a winner") : "";
         text.AppendLine(FormattableString.Invariant($"Runs {runs}, average {result.Runs.Average(run => run.Rounds):F1} rounds{drawText}"));
+        text.AppendLine($"Wins: A {result.WinShare(BattleBenchWinner.A)}, B {result.WinShare(BattleBenchWinner.B)} (95 % margin of error)");
         AppendSide(text, "A", result.ArmyA, result.Runs, run => run.A, BattleBenchWinner.A, unitName);
         AppendSide(text, "B", result.ArmyB, result.Runs, run => run.B, BattleBenchWinner.B, unitName);
 

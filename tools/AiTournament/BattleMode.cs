@@ -9,12 +9,11 @@ namespace AiTournament;
 // Gallean Upgrade (docs/battle-ai-designer.md phase 1): the battle bench from the command line.
 //   --battle <army A> <army B> [--ai-a id] [--ai-b id] [--race-a race] [--race-b race] [--neutral-a] [--neutral-b]
 //            [--defender-in open|city|capital] [--city-level n] [--garrison]
-//            [--runs n] [--seed n] [--swap] [--parallel n] [--map id] [--csv file] [--verbose]
+//            [--runs n] [--seed n] [--swap] [--parallel n] [--map id] [--difficulty d] [--csv file] [--verbose]
 //   --export-armies <map id> <dir>
 // An army is a preset file (BattleArmyStore JSON) or a preset name in --armies <dir>.
 internal static class BattleMode
 {
-    private const string DefaultHostMap = "S099SC0000";
 
     public static int Run(string[] args)
     {
@@ -25,7 +24,8 @@ internal static class BattleMode
         int seed = 1;
         bool swap = false;
         int parallel = 1;
-        string hostMap = DefaultHostMap;
+        string? hostMap = null;
+        WorldDifficulty difficulty = WorldDifficulty.Average;
         string? csvPath = null;
         string? armiesDirectory = null;
         bool verbose = false;
@@ -58,6 +58,7 @@ internal static class BattleMode
                 case "--defender-in": place = Enum.Parse<BattleBenchPlace>(Next(), ignoreCase: true); break;
                 case "--city-level": cityLevel = int.Parse(Next(), CultureInfo.InvariantCulture); break;
                 case "--garrison": garrison = true; break;
+                case "--difficulty": difficulty = Enum.Parse<WorldDifficulty>(Next(), ignoreCase: true); break;
                 default:
                     if (args[i].StartsWith("--", StringComparison.Ordinal))
                     {
@@ -93,7 +94,7 @@ internal static class BattleMode
             return 2;
         }
 
-        (AiBattleBench bench, GlobalDatabase globalDb) = CreateBench(hostMap);
+        (AiBattleBench bench, GlobalDatabase globalDb) = CreateBench(hostMap, difficulty);
 
         BattleBenchSide sideA = new(armyA, aiA) { Race = raceA };
         BattleBenchSide sideB = new(armyB, aiB) { Race = raceB };
@@ -114,7 +115,7 @@ internal static class BattleMode
         } + (garrison && place is not BattleBenchPlace.Open ? " as the garrison" : "");
 
         Console.WriteLine($"A: {armyA.Name} ({aiA}{(raceA is null ? "" : ", " + raceA)})  vs  B: {armyB.Name} ({aiB}{(raceB is null ? "" : ", " + raceB)}); " +
-            $"{runs} runs, seeds from {seed}, " + (swap ? "sides swapped every run" : "A attacks") + where + $", host map {hostMap}");
+            $"{runs} runs, seeds from {seed}, " + (swap ? "sides swapped every run" : "A attacks") + where + $", host map {hostMap ?? "generated (every race)"}, {difficulty}");
 
         Stopwatch time = Stopwatch.StartNew();
         BattleBenchResult result = bench.Run(sideA, sideB, setup, runs, seed, swap, parallel);
@@ -162,13 +163,20 @@ internal static class BattleMode
         return 0;
     }
 
-    private static (AiBattleBench, GlobalDatabase) CreateBench(string hostMap)
+    // hostMap null = the generated host map with every race.
+    private static (AiBattleBench, GlobalDatabase) CreateBench(string? hostMap, WorldDifficulty difficulty = WorldDifficulty.Average)
     {
         GlobalDatabase globalDb = GlobalDatabaseLoader.Load(RiseOfTheElves.GlobalDatabasePath);
         CampaignDatabase campaignDb = CampaignDatabaseLoader.Load(RiseOfTheElves.CampaignDatabasePath);
+
+        if (hostMap is null)
+        {
+            return (AiBattleBench.CreateWithGeneratedHost(globalDb, campaignDb, difficulty), globalDb);
+        }
+
         ScenarioDatabase scenarioDb = ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, hostMap);
 
-        return (new AiBattleBench(globalDb, campaignDb, scenarioDb, hostMap), globalDb);
+        return (new AiBattleBench(globalDb, campaignDb, scenarioDb, hostMap, difficulty), globalDb);
     }
 
     // English unit names (Globals/Tglobal.json) for the summary; the unit ID when a name is missing.

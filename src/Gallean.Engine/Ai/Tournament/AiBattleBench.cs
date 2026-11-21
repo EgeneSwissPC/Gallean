@@ -6,6 +6,8 @@ using Gallean.Entities;
 namespace Gallean.Engine;
 
 // Gallean Upgrade (docs/battle-ai-designer.md): fights the same battle many times, headless.
+// The host map is a built-in scenario or, by default in the sandbox and the tool, a generated map with every
+// race (CreateWithGeneratedHost).
 // Army A (with its battle AI) against army B (with its own). Each run builds the battle exactly like the
 // game does (WorldCommandHelpers.CreateStackBattleState, or CreateGarrisonBattleState when the defender is a
 // city's garrison) from a host map: the armies are owned by players of that map (by race; Neutral = the
@@ -27,7 +29,9 @@ public sealed class AiBattleBench
     private readonly WorldPosition openTile;
     private readonly Dictionary<UnitModifierDefinitionId, int> leaderUpgrades = [];
 
-    public AiBattleBench(GlobalDatabase globalDb, CampaignDatabase campaignDb, ScenarioDatabase scenarioDb, string hostMapId)
+    // difficulty: the game difficulty both sides fight at. It sets the computer players' accuracy and experience
+    // bonuses, so it is fixed here instead of taken from the host map (S099 is Very hard, generated maps Average).
+    public AiBattleBench(GlobalDatabase globalDb, CampaignDatabase campaignDb, ScenarioDatabase scenarioDb, string hostMapId, WorldDifficulty difficulty = WorldDifficulty.Average)
     {
         definitions = new GameDefinitionProvider(globalDb);
         globals = new GlobalVariables();
@@ -38,6 +42,7 @@ public sealed class AiBattleBench
         {
             State = scenario.State with
             {
+                Difficulty = difficulty,
                 Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = true })))
             }
         };
@@ -66,7 +71,64 @@ public sealed class AiBattleBench
         }
     }
 
+    // The ID and name of the generated host map (it only lives in a temporary folder while the bench loads it).
+    public const string GeneratedHostId = "S899SC0000";
+    public const string GeneratedHostName = "Battle sandbox";
+
+    // A bench on a small generated map with every playable race (each with its capital), the neutrals, a city and
+    // an army to copy, so any race or the neutrals can own an army and every capital works. No built-in map has
+    // all five races. Made with the map editor's code (CustomMap + CustomMapStore), like a player's own map.
+    public static AiBattleBench CreateWithGeneratedHost(GlobalDatabase globalDb, CampaignDatabase campaignDb, WorldDifficulty difficulty = WorldDifficulty.Average)
+    {
+        IGameDefinitionProvider definitions = new GameDefinitionProvider(globalDb);
+        WorldRace[] races = [WorldRace.Human, WorldRace.Undead, WorldRace.Heretic, WorldRace.Dwarf, WorldRace.Elf];
+        CustomMap map = CustomMap.Create(GeneratedHostId, GeneratedHostName, 48, WorldMapTerrain.Neutral, races);
+
+        for (int index = 0; index < races.Length; index++)
+        {
+            Require(map.PlaceCapital(races[index], new WorldPosition(2 + (index * 9), 2)), $"{races[index]} capital");
+        }
+
+        Require(map.PlaceVillage(new WorldPosition(20, 20), 1, WorldRace.Neutral, "Sandbox city").Error, "city");
+
+        UnitDefinition leader = definitions.GetUnit(new UnitDefinitionId("g000uu5201"));
+        CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
+        slots[1] = CustomMapUnit.From(leader);
+
+        if (map.PlaceStack(new WorldPosition(30, 30), WorldRace.Neutral, slots).Error is { } stackError)
+        {
+            throw new InvalidOperationException($"The generated host map refused its army: {stackError}.");
+        }
+
+        string directory = Path.Combine(Path.GetTempPath(), "gallean-battle-host-" + Guid.NewGuid().ToString("N"));
+
+        try
+        {
+            CustomMapStore store = new(directory, globalDb, campaignDb);
+            store.Save(map);
+
+            return new AiBattleBench(globalDb, campaignDb, store.LoadDatabase(GeneratedHostId), GeneratedHostId, difficulty);
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        static void Require(CustomMapPlacementError? error, string what)
+        {
+            if (error is not null)
+            {
+                throw new InvalidOperationException($"The generated host map refused its {what}: {error}.");
+            }
+        }
+    }
+
     public IGameDefinitionProvider Definitions => definitions;
+
+    public WorldDifficulty Difficulty => scenario.State.Difficulty;
 
     // The races that own a player on the host map (Neutral included when the map has neutrals).
     public IReadOnlyList<WorldRace> Races => [.. scenario.State.Players.Values.Select(player => player.Race).Distinct().Order()];
@@ -658,4 +720,36 @@ public sealed record BattleBenchRun(int Seed, bool ArmyAAttacks, BattleBenchWinn
 public sealed record BattleBenchResult(BattleBenchSide ArmyA, BattleBenchSide ArmyB, ImmutableArray<BattleBenchRun> Runs)
 {
     public BattleBenchSetup Setup { get; init; } = BattleBenchSetup.Open;
+
+    public int Wins(BattleBenchWinner side) => Runs.Count(run => run.Winner == side);
+
+    // The side's share of wins with its margin of error (95 %), e.g. 0.62 ± 0.06.
+    public BattleBenchShare WinShare(BattleBenchWinner side) => BattleBenchShare.From(Wins(side), Runs.Length);
+}
+
+// A share out of n runs with its 95 % margin of error. The margin is the half-width of the Wilson score interval,
+// which stays honest near 0 % and 100 % (unlike p ± 1.96·sqrt(p(1-p)/n), which says ± 0 at 0 of 1000).
+public readonly record struct BattleBenchShare(int Count, int Total, double Share, double Margin)
+{
+    private const double Z = 1.959963984540054;
+
+    public static BattleBenchShare From(int count, int total)
+    {
+        if (total <= 0)
+        {
+            return new BattleBenchShare(count, total, 0, 0);
+        }
+
+        double p = (double)count / total;
+        double z2 = Z * Z;
+        double margin = Z * Math.Sqrt((p * (1 - p) / total) + (z2 / (4.0 * total * total))) / (1 + (z2 / total));
+
+        return new BattleBenchShare(count, total, p, margin);
+    }
+
+    // "62 % ± 6" (whole percents; the margin rounded up so it is never shown as 0 when it isn't).
+    public override string ToString()
+    {
+        return string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{Share * 100:F0} % ± {Math.Ceiling(Margin * 100):F0}");
+    }
 }
