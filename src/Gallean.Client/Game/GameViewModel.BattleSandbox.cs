@@ -22,15 +22,15 @@ internal sealed partial class GameViewModel
 
         try
         {
-            (GameModel editorGame, IReadOnlyList<UnitDefinition> units, AiBattleBench bench) = await RunAsync(() =>
+            (GameModel editorGame, MapEditorLibrary library, AiBattleBench bench) = await RunAsync(() =>
             {
                 IGameDefinitionProvider definitions = gameLoader.CreateDefinitions();
                 CustomMap host = AiBattleBench.CreateHostMap(definitions);
 
-                return (CreateEditorGame(store, host, definitions), MapEditorLibrary.Load(store, definitions).Units, gameLoader.CreateBattleBench());
+                return (CreateEditorGame(store, host, definitions), MapEditorLibrary.Load(store, definitions), gameLoader.CreateBattleBench());
             });
 
-            ShowScreen(new BattleSandboxScreenViewModel(this, editorGame, units, bench, new BattleArmyStore(BattleSandboxScreenViewModel.ArmiesDirectory)));
+            ShowScreen(new BattleSandboxScreenViewModel(this, editorGame, library, bench, new BattleArmyStore(BattleSandboxScreenViewModel.ArmiesDirectory)));
         }
         catch (Exception ex)
         {

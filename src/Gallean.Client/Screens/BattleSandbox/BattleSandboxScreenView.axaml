@@ -33,6 +33,30 @@
       <Setter Property="Height" Value="30" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
     </Style>
+    <!-- Equipment sockets, copied from the army tab (StackTabView), smaller to fit seven in a row. -->
+    <Style Selector="Button.equipment-slot">
+      <Setter Property="Width" Value="46" />
+      <Setter Property="Height" Value="46" />
+      <Setter Property="Padding" Value="0" />
+    </Style>
+    <Style Selector="Button.equipment-slot /template/ local|PlateChrome#PlateChrome">
+      <Setter Property="Shape" Value="Square" />
+    </Style>
+    <Style Selector="Button.equipment-slot local|SpriteVisual">
+      <Setter Property="Margin" Value="-6" />
+    </Style>
+    <Style Selector="Button.equipment-slot local|IconVisual">
+      <Setter Property="Width" Value="22" />
+      <Setter Property="Height" Value="22" />
+      <Setter Property="Opacity" Value="0.4" />
+      <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+    </Style>
+    <Style Selector="Border.slot-problem">
+      <Setter Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+      <Setter Property="BorderThickness" Value="2" />
+      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
     <Style Selector="TextBlock.field">
       <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
       <Setter Property="VerticalAlignment" Value="Center" />
@@ -42,7 +66,7 @@
   <UserControl.Resources>
     <DataTemplate x:Key="SandboxSideTemplate" x:DataType="local:BattleSandboxSideViewModel">
       <ContentControl Classes="ornament-panel" Background="{StaticResource CapitalScenePanelBodyGradientBrush}">
-        <StackPanel Width="390" Margin="16,10" Spacing="6">
+        <StackPanel Width="390" Margin="16,8" Spacing="5">
           <local:OutlinedTextBlock Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" />
 
           <ItemsControl ItemsSource="{Binding Owners}" HorizontalAlignment="Center">
@@ -71,12 +95,34 @@
             <local:OutlinedTextBlock Text="{Binding Group.CapacityText}" Classes="object-name row" Foreground="{StaticResource SecondaryTextBrush}" />
             <local:IconVisual Moniker="Leadership" Width="18" Height="18" Foreground="{StaticResource SecondaryTextBrush}" />
           </StackPanel>
-          <Viewbox Classes="unit-grid-container" Height="216" HorizontalAlignment="Center">
+          <Viewbox Classes="unit-grid-container" Height="164" HorizontalAlignment="Center">
             <ItemsControl Classes="unit-grid focus-group"
                           ItemsSource="{Binding UnitGrid.Slots}"
                           ItemTemplate="{StaticResource UnitGridSlotTemplate}"
                           ItemContainerTheme="{StaticResource UnitGridSlotContainerTheme}" />
           </Viewbox>
+
+          <!-- The leader's items, like the army tab's equipment sockets (phase 4). -->
+          <ItemsControl ItemsSource="{Binding EquipmentSlots}" HorizontalAlignment="Center" IsVisible="{Binding CanEquip}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="5" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:BattleSandboxEquipmentSlotViewModel">
+                <Panel ToolTip.Tip="{Binding ToolTip}">
+                  <Button Classes="socket equipment-slot" Command="{Binding ClickCommand}">
+                    <Panel>
+                      <local:SpriteVisual SpriteKey="{Binding SpriteKey}" Stretch="Uniform" IsVisible="{Binding HasItem}" />
+                      <local:IconVisual Moniker="{Binding Icon}" IsVisible="{Binding !HasItem}" />
+                    </Panel>
+                  </Button>
+                  <Border Classes="slot-problem" IsVisible="{Binding HasProblem}" />
+                </Panel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
 
           <Grid ColumnDefinitions="100,*" RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="6">
             <TextBlock Grid.Row="0" Grid.Column="0" Text="{local:Text 'Battle AI'}" Classes="caption field" />
@@ -87,11 +133,18 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <CheckBox Grid.Row="1" Grid.Column="1"
-                      IsChecked="{Binding AllowsAnything}"
-                      ToolTip.Tip="{local:Text 'Skip the game rules for this army: no leader needed, no leadership limit.'}">
-              <TextBlock Text="{local:Text 'Anything goes'}" Classes="caption" />
-            </CheckBox>
+            <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="*,Auto">
+              <CheckBox Grid.Column="0"
+                        IsChecked="{Binding AllowsAnything}"
+                        ToolTip.Tip="{local:Text 'Skip the game rules for this army: no leader needed, no leadership limit.'}">
+                <TextBlock Text="{local:Text 'Anything goes'}" Classes="caption" />
+              </CheckBox>
+              <Button Grid.Column="1" Classes="pill" Height="28" Padding="10,0"
+                      IsVisible="{Binding CanEquip}" Command="{Binding ChooseUpgradesCommand}"
+                      ToolTip.Tip="{local:Text 'The leader abilities learned on level-up, like in the game'}">
+                <TextBlock Text="{Binding UpgradesText}" Classes="caption" />
+              </Button>
+            </Grid>
             <TextBlock Grid.Row="2" Grid.Column="0" Text="{local:Text 'Save as'}" Classes="caption field" />
             <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="*,Auto" ColumnSpacing="6">
               <TextBox Grid.Column="0" Text="{Binding PresetName}" MaxLength="40" Height="30" Watermark="{local:Text 'Army name'}" />

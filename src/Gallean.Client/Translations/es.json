@@ -1578,6 +1578,19 @@
     "The difficulty sets the accuracy and experience bonuses of computer players.": "The difficulty sets the accuracy and experience bonuses of computer players.",
     "This battle can't be set up: {0}": "This battle can't be set up: {0}",
     "{0} units of the army could not be placed.": "{0} units of the army could not be placed.",
-    "Loading…": "Loading…"
+    "Loading…": "Loading…",
+    "Choose item: {0}": "Choose item: {0}",
+    "Empties the slot.": "Empties the slot.",
+    "Needs leader level {0}": "Needs leader level {0}",
+    "No more upgrades at this level": "No more upgrades at this level",
+    "The leader abilities learned on level-up, like in the game": "The leader abilities learned on level-up, like in the game",
+    "The leader needs {0}": "The leader needs {0}",
+    "This item does not fit the slot": "This item does not fit the slot",
+    "Upgrades: {0} of {1} (one per level after the first)": "Upgrades: {0} of {1} (one per level after the first)",
+    "a level {0} leader has at most {1} upgrades.": "a level {0} leader has at most {1} upgrades.",
+    "{0} ({1})": "{0} ({1})",
+    "{0} upgrades (anything goes)": "{0} upgrades (anything goes)",
+    "{0}, level {1}": "{0}, level {1}",
+    "Upgrades {0} / {1}": "Upgrades {0} / {1}"
   }
 }

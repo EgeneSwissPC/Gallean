@@ -227,4 +227,114 @@ public sealed class BattleSandboxTests
         Assert.That(again.Presets, Is.Empty);
         Assert.That(Directory.GetFiles(BattleSandboxScreenViewModel.ArmiesDirectory), Is.Empty);
     }
+
+    private static readonly ItemDefinitionId BannerOfStriking = new("G000IG1003");
+    private static readonly UnitModifierDefinitionId BannerBearer = new("g000um4003");
+
+    private static MapEditorListPickerViewModel ItemPicker(GameViewModel game) => Assert.IsOfType<MapEditorListPickerViewModel>(game.TopScreen);
+
+    [Test]
+    public async Task LeaderItemsTest()
+    {
+        (GameViewModel game, BattleSandboxScreenViewModel screen) = await OpenAsync();
+        await BuildArmiesAsync(game, screen);
+        BattleSandboxSideViewModel side = screen.Attacker;
+
+        Assert.That(side.CanEquip, Is.True);
+        Assert.That(side.EquipmentSlots.Select(slot => slot.Slot), Is.EqualTo(new[]
+        {
+            LeaderEquipmentSlot.Banner, LeaderEquipmentSlot.Tome, LeaderEquipmentSlot.Battle1, LeaderEquipmentSlot.Battle2,
+            LeaderEquipmentSlot.Artifact1, LeaderEquipmentSlot.Artifact2, LeaderEquipmentSlot.Boots
+        }));
+
+        // The banner slot lists banners only; the leader can't carry one yet, so it's marked.
+        side.EquipmentSlots[0].ClickCommand.Execute(null);
+        MapEditorListPickerViewModel picker = ItemPicker(game);
+        Assert.That(picker.Options, Is.Not.Empty);
+        Assert.That(picker.Options.All(option => option.Group == picker.Options[0].Group), Is.True, "banners only");
+        MapEditorListPickerItemViewModel banner = picker.Options.Single(option => Equals(option.Value, BannerOfStriking));
+        Assert.That(banner.Warning, Is.Not.Null);
+        banner.PickCommand.Execute(null);
+
+        Assert.That(side.EquipmentSlots[0].ItemId, Is.EqualTo(BannerOfStriking));
+        Assert.That(side.EquipmentSlots[0].HasProblem, Is.True);
+        Assert.That(screen.IsValid, Is.False);
+        Assert.That(screen.Problem, Does.StartWith("Attacker"));
+
+        // Level 3 and Banner Bearer make it legal; the upgrade list allows two upgrades at level 3.
+        await side.UnitGrid.Slots.First(slot => slot.Position == GridPosition.FrontCenter).SelectCommand.ExecuteAsync(null);
+        screen.LevelUpCommand.Execute(null);
+        screen.LevelUpCommand.Execute(null);
+        side.ChooseUpgradesCommand.Execute(null);
+        BattleSandboxUpgradesViewModel upgrades = Assert.IsOfType<BattleSandboxUpgradesViewModel>(game.TopScreen);
+        Assert.That(upgrades.MaxUpgrades, Is.EqualTo(2));
+        upgrades.Options.Single(option => option.ModifierId == BannerBearer).SelectCommand.Execute(null);
+        upgrades.ConfirmCommand.Execute(null);
+
+        Assert.That(side.LeaderUpgrades, Is.EqualTo(new[] { BannerBearer }));
+        Assert.That(side.UpgradesText, Is.EqualTo("Upgrades 1 / 2"));
+        Assert.That(side.EquipmentSlots[0].HasProblem, Is.False);
+        Assert.That(screen.IsValid, Is.True, screen.Problem);
+        BattleArmy army = screen.ToArmy(side);
+        Assert.That(army.Equipment, Is.EqualTo(new[] { new BattleArmyItem(LeaderEquipmentSlot.Banner, BannerOfStriking) }));
+        Assert.That(army.LeaderUpgrades, Is.EqualTo(new[] { BannerBearer }));
+
+        // Saved and loaded with the army, swapped with the sides.
+        side.PresetName = "Bannermen";
+        side.SavePresetCommand.Execute(null);
+        screen.Defender.SelectedPreset = "Bannermen";
+        screen.Defender.LoadPresetCommand.Execute(null);
+        Assert.That(screen.ToArmy(screen.Defender).Equipment, Is.EqualTo(army.Equipment));
+        Assert.That(screen.ToArmy(screen.Defender).LeaderUpgrades, Is.EqualTo(army.LeaderUpgrades));
+
+        // "No item" empties the slot.
+        side.EquipmentSlots[0].ClickCommand.Execute(null);
+        ItemPicker(game).Options[0].PickCommand.Execute(null);
+        Assert.That(side.EquipmentSlots[0].HasItem, Is.False);
+        Assert.That(screen.ToArmy(side).Equipment, Is.Empty);
+    }
+
+    [Test]
+    public async Task UpgradeLimitsTest()
+    {
+        (GameViewModel game, BattleSandboxScreenViewModel screen) = await OpenAsync();
+        await BuildArmiesAsync(game, screen);
+        BattleSandboxSideViewModel side = screen.Attacker;
+
+        // A level 1 leader has no upgrades; every row says why.
+        side.ChooseUpgradesCommand.Execute(null);
+        BattleSandboxUpgradesViewModel upgrades = Assert.IsOfType<BattleSandboxUpgradesViewModel>(game.TopScreen);
+        Assert.That(upgrades.MaxUpgrades, Is.Zero);
+        Assert.That(upgrades.Options.All(option => !option.SelectCommand.CanExecute(null) && option.Status.UnavailableReason is not null), Is.True);
+        upgrades.CloseCommand.Execute(null);
+
+        // With "Anything goes" every upgrade can be ticked.
+        side.AllowsAnything = true;
+        side.ChooseUpgradesCommand.Execute(null);
+        upgrades = Assert.IsOfType<BattleSandboxUpgradesViewModel>(game.TopScreen);
+        upgrades.Options[0].SelectCommand.Execute(null);
+        upgrades.Options[1].SelectCommand.Execute(null);
+        upgrades.ConfirmCommand.Execute(null);
+        Assert.That(side.LeaderUpgrades, Has.Length.EqualTo(2));
+        Assert.That(screen.IsValid, Is.True, screen.Problem);
+
+        // Without it, the screen reports too many upgrades.
+        side.AllowsAnything = false;
+        Assert.That(screen.IsValid, Is.False);
+        Assert.That(screen.Problem, Does.Contain("upgrades"));
+    }
+
+    [Test]
+    public async Task GarrisonHasNoItemsTest()
+    {
+        (GameViewModel game, BattleSandboxScreenViewModel screen) = await OpenAsync();
+        await BuildArmiesAsync(game, screen);
+        screen.Defender.Equipment = screen.Defender.Equipment.SetItem(LeaderEquipmentSlot.Banner, BannerOfStriking);
+
+        screen.SetPlaceCommand.Execute(screen.Places.Single(option => option.Value == BattleBenchPlace.City));
+        screen.AsGarrison = true;
+
+        Assert.That(screen.Defender.CanEquip, Is.False);
+        Assert.That(screen.ToArmy(screen.Defender).Equipment, Is.Empty);
+    }
 }

@@ -491,4 +491,36 @@ public sealed class AiBattleBenchTests
         BattleBenchResult result = generated.Run(new BattleBenchSide(Undead(), AiBrainRegistry.ClassicId), new BattleBenchSide(Undead(), AiBrainRegistry.ClassicId), 100, 1, false);
         Assert.That(result.WinShare(BattleBenchWinner.A).Count + result.WinShare(BattleBenchWinner.B).Count + result.Wins(BattleBenchWinner.None), Is.EqualTo(100));
     }
+
+    [Test]
+    public void ItemCheckAndUpgradeChoicesTest()
+    {
+        BattleArmy plain = GearedEmpire(withUpgrades: false) with { Equipment = [] };
+
+        Assert.That(bench.CheckItem(plain, LeaderEquipmentSlot.Banner, BannerOfStriking), Is.EqualTo(new BattleItemCheck(true, LeaderAbility.BannerUse)));
+        Assert.That(bench.CheckItem(GearedEmpire(), LeaderEquipmentSlot.Banner, BannerOfStriking).IsAllowed, Is.True);
+        Assert.That(bench.CheckItem(GearedEmpire(), LeaderEquipmentSlot.Boots, BannerOfStriking).Fits, Is.False);
+        Assert.That(bench.CheckItem(Garrison(), LeaderEquipmentSlot.Banner, BannerOfStriking).MissingAbility, Is.EqualTo(LeaderAbility.BannerUse), "no leader, no abilities");
+
+        // CheckItem agrees with Validate on every banner/artifact/tome case it decides.
+        foreach (ItemDefinitionId item in new[] { BannerOfStriking, Runestone, TomeOfAir })
+        {
+            foreach (LeaderEquipmentSlot slot in Enum.GetValues<LeaderEquipmentSlot>())
+            {
+                foreach (BattleArmy army in new[] { plain, GearedEmpire() with { Equipment = [] } })
+                {
+                    BattleItemCheck check = bench.CheckItem(army, slot, item);
+                    string? problem = bench.Validate(army with { Equipment = [new BattleArmyItem(slot, item)] });
+
+                    Assert.That(problem is null, Is.EqualTo(check.IsAllowed), $"{item.Value} in {slot}: {problem}");
+                }
+            }
+        }
+
+        Assert.That(bench.LeaderUpgradeChoices.Select(upgrade => upgrade.ModifierId), Is.Unique);
+        Assert.That(bench.LeaderUpgradeChoices.Select(upgrade => upgrade.ModifierId), Is.EquivalentTo(bench.LeaderUpgradeIds));
+        Assert.That(bench.LeaderUpgradeChoices.Select(upgrade => upgrade.ModifierId), Does.Contain(BannerBearer));
+        Assert.That(bench.GetMaxLeaderUpgrades(1), Is.Zero);
+        Assert.That(bench.GetMaxLeaderUpgrades(3), Is.EqualTo(2));
+    }
 }
