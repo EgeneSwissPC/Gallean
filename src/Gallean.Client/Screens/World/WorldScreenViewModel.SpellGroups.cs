@@ -54,11 +54,15 @@ internal sealed partial class WorldScreenViewModel
             }
         }
 
-        if (skipped.Count > 0)
+        if (skipped.Count > 0 && cast == 0)
         {
-            string caption = cast == 0 ? Tr("No spell of the group was cast") : Tr("{0} of {1} spells cast", cast, spells.Count);
-
-            Game.ShowInfo(IconMoniker.Spellbook, caption, string.Join(Environment.NewLine, skipped));
+            // Nothing happened (most often a click on a tile the spells can't target): an error like a single spell's.
+            Game.PlaySound(new AssetSoundKey.Beep());
+            Game.Alert.Show(new Alert(AlertType.Error, IconMoniker.Warning, Tr("No spell of the group was cast"), string.Join(Environment.NewLine, skipped)));
+        }
+        else if (skipped.Count > 0)
+        {
+            Game.ShowInfo(IconMoniker.Spellbook, Tr("{0} of {1} spells cast", cast, spells.Count), string.Join(Environment.NewLine, skipped));
         }
 
         return cast;

@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Gallean.Configuration;
 using Gallean.Engine;
 
@@ -11,7 +10,9 @@ internal sealed record SpellGroup(string Name, ImmutableArray<WorldSpellDefiniti
 
 // Gallean Upgrade: spell groups are a player preference, not game state: they live in one file next to the
 // settings (spell-groups.json), one list per race, so they work in every save and quest of that race.
-// Written with JsonNode (no reflection), so it works in the AOT build.
+// Read with JsonDocument and written with Utf8JsonWriter only: the client project sets PublishAot, which turns
+// reflection-based JSON off even in plain builds (JsonNode's generic Add<T>/Create<T> throws NotSupportedException
+// there, and the tests don't see it because the test project keeps reflection on).
 internal static class SpellGroupStore
 {
     public const int MaxNameLength = 32;
@@ -21,48 +22,44 @@ internal static class SpellGroupStore
 
     public static IReadOnlyList<SpellGroup> Load(WorldRace race)
     {
-        JsonObject root = ReadRoot();
-
-        if (root[race.ToString()] is not JsonArray groups)
-        {
-            return [];
-        }
-
-        List<SpellGroup> result = [];
-
-        foreach (JsonNode? node in groups)
-        {
-            if (node?["name"]?.GetValue<string>() is { } name && node["spells"] is JsonArray spells)
-            {
-                result.Add(new SpellGroup(name, [.. spells.Select(spell => new WorldSpellDefinitionId(spell!.GetValue<string>()))]));
-            }
-        }
-
-        return result;
+        return ReadAll().TryGetValue(race.ToString(), out List<SpellGroup>? groups) ? groups : [];
     }
 
     public static void Save(WorldRace race, IReadOnlyList<SpellGroup> groups)
     {
-        JsonObject root = ReadRoot();
-        JsonArray list = [];
+        Dictionary<string, List<SpellGroup>> all = ReadAll();
+        all[race.ToString()] = [.. groups];
 
-        foreach (SpellGroup group in groups)
-        {
-            JsonArray spells = [];
-
-            foreach (WorldSpellDefinitionId spell in group.Spells)
-            {
-                spells.Add(spell.Value);
-            }
-
-            list.Add(new JsonObject { ["name"] = group.Name, ["spells"] = spells });
-        }
-
-        root[race.ToString()] = list;
         Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
+
         using FileStream stream = File.Create(FilePath);
         using Utf8JsonWriter writer = new(stream, new JsonWriterOptions { Indented = true });
-        root.WriteTo(writer);
+
+        writer.WriteStartObject();
+
+        foreach ((string raceName, List<SpellGroup> raceGroups) in all)
+        {
+            writer.WriteStartArray(raceName);
+
+            foreach (SpellGroup group in raceGroups)
+            {
+                writer.WriteStartObject();
+                writer.WriteString("name", group.Name);
+                writer.WriteStartArray("spells");
+
+                foreach (WorldSpellDefinitionId spell in group.Spells)
+                {
+                    writer.WriteStringValue(spell.Value);
+                }
+
+                writer.WriteEndArray();
+                writer.WriteEndObject();
+            }
+
+            writer.WriteEndArray();
+        }
+
+        writer.WriteEndObject();
     }
 
     public static void Add(WorldRace race, SpellGroup group)
@@ -81,20 +78,53 @@ internal static class SpellGroupStore
         }
     }
 
-    private static JsonObject ReadRoot()
+    private static Dictionary<string, List<SpellGroup>> ReadAll()
     {
+        Dictionary<string, List<SpellGroup>> all = [];
+
         try
         {
-            if (File.Exists(FilePath) && JsonNode.Parse(File.ReadAllText(FilePath)) is JsonObject root)
+            if (!File.Exists(FilePath))
             {
-                return root;
+                return all;
+            }
+
+            using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(FilePath));
+
+            if (document.RootElement.ValueKind != JsonValueKind.Object)
+            {
+                return all;
+            }
+
+            foreach (JsonProperty race in document.RootElement.EnumerateObject())
+            {
+                if (race.Value.ValueKind != JsonValueKind.Array)
+                {
+                    continue;
+                }
+
+                List<SpellGroup> groups = [];
+
+                foreach (JsonElement group in race.Value.EnumerateArray())
+                {
+                    if (group.ValueKind == JsonValueKind.Object &&
+                        group.TryGetProperty("name", out JsonElement name) && name.ValueKind == JsonValueKind.String &&
+                        group.TryGetProperty("spells", out JsonElement spells) && spells.ValueKind == JsonValueKind.Array)
+                    {
+                        groups.Add(new SpellGroup(
+                            name.GetString()!,
+                            [.. spells.EnumerateArray().Where(spell => spell.ValueKind == JsonValueKind.String).Select(spell => new WorldSpellDefinitionId(spell.GetString()!))]));
+                    }
+                }
+
+                all[race.Name] = groups;
             }
         }
-        catch (Exception exception) when (exception is IOException or JsonException or InvalidOperationException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
         {
             // A broken file is ignored (and replaced on the next save) rather than breaking the spellbook.
         }
 
-        return [];
+        return all;
     }
 }
