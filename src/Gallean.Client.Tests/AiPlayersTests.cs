@@ -6,6 +6,8 @@ namespace Gallean.Client.Tests;
 
 // Gallean Upgrade: the AI players panel on the race screen and in the game menu, and the
 // question when the settings change while players have their own AI (docs/ai-switching.md).
+// Reads or changes the designed AIs in AiBrainRegistry (static): never alongside other such fixtures.
+[NonParallelizable]
 public sealed class AiPlayersTests
 {
     private static async Task WaitForAsync(Func<bool> condition)

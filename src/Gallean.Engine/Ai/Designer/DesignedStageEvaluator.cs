@@ -110,6 +110,60 @@ internal static class DesignedStageEvaluator
         };
     }
 
+    // The priority of every action a profile plays with: its Priorities, else Classic's constants with the
+    // profile's building/unit/rod priorities.
+    public static ImmutableDictionary<WorldAiActionKind, int> GetEffectivePriorities(WorldAiProfile profile)
+    {
+        return profile.Priorities ?? new Dictionary<WorldAiActionKind, int>
+        {
+            [WorldAiActionKind.CastSpell] = 4,
+            [WorldAiActionKind.ResearchSpell] = 3,
+            [WorldAiActionKind.HireLeader] = 2,
+            [WorldAiActionKind.ConstructBuilding] = profile.BuildingPriority,
+            [WorldAiActionKind.PurchaseUnit] = profile.UnitPriority,
+            [WorldAiActionKind.UseItem] = 6,
+            [WorldAiActionKind.Resurrect] = 5,
+            [WorldAiActionKind.Heal] = 4,
+            [WorldAiActionKind.AutoFit] = 3,
+            [WorldAiActionKind.Attack] = 2,
+            [WorldAiActionKind.Thief] = 2,
+            [WorldAiActionKind.Rod] = profile.RodPriority,
+            [WorldAiActionKind.EnterCity] = 2,
+            [WorldAiActionKind.TakeBag] = 2,
+            [WorldAiActionKind.Move] = 1
+        }.ToImmutableDictionary();
+    }
+
+    // A one-stage design that plays like the given profile (to start a designed AI from a built-in one).
+    public static DesignedWorldStage FromProfile(WorldAiProfile profile, string stageName)
+    {
+        ImmutableDictionary<WorldAiActionKind, int> priorities = GetEffectivePriorities(profile);
+        WorldAiProfile classic = WorldAiProfile.Classic;
+
+        return new DesignedWorldStage(
+            stageName,
+            [],
+            ToTiers(priorities, kind => kind <= WorldAiActionKind.PurchaseUnit),
+            ToTiers(priorities, kind => kind > WorldAiActionKind.PurchaseUnit),
+            new DesignedWorldRules(
+                profile.HurtThreshold == classic.HurtThreshold ? null : profile.HurtThreshold / 10,
+                profile.HealedThreshold == classic.HealedThreshold ? null : profile.HealedThreshold / 10,
+                profile.ReinforceThreshold == classic.ReinforceThreshold ? null : profile.ReinforceThreshold / 10,
+                profile.AttackPowerPercent == classic.AttackPowerPercent ? null : profile.AttackPowerPercent,
+                profile.LeaderOvercommitGold == classic.LeaderOvercommitGold ? null : profile.LeaderOvercommitGold,
+                profile.WaitForFreeCapital == classic.WaitForFreeCapital ? null : profile.WaitForFreeCapital));
+    }
+
+    // Actions grouped by priority, highest first; within a tier in enum order (Classic's own order).
+    private static ImmutableArray<ImmutableArray<WorldAiActionKind>> ToTiers(ImmutableDictionary<WorldAiActionKind, int> priorities, Func<WorldAiActionKind, bool> include)
+    {
+        return [.. priorities
+            .Where(pair => include(pair.Key))
+            .GroupBy(pair => pair.Value)
+            .OrderByDescending(group => group.Key)
+            .Select(group => group.Select(pair => pair.Key).Order().ToImmutableArray())];
+    }
+
     private static void AddTiers(ImmutableDictionary<WorldAiActionKind, int>.Builder priorities, ImmutableArray<ImmutableArray<WorldAiActionKind>> tiers, int lowest)
     {
         if (tiers.IsDefaultOrEmpty)

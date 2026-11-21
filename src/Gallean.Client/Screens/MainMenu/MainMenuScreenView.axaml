@@ -86,6 +86,12 @@
                   local:PlateChrome.TextureSeed="8"
                   Content="{local:Text 'Map editor'}"
                   Command="{Binding Game.ShowMapEditorCommand}" />
+          <!-- Gallean Upgrade: the AI editor mode (docs/ai-designer.md). -->
+          <Button x:Name="AiEditor"
+                  Classes="plate"
+                  local:PlateChrome.TextureSeed="9"
+                  Content="{local:Text 'AI editor'}"
+                  Command="{Binding Game.ShowAiEditorCommand}" />
           <Button x:Name="Settings"
                   Classes="plate"
                   local:PlateChrome.TextureSeed="6"
