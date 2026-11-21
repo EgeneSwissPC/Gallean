@@ -1,6 +1,6 @@
 # AI designer: a mode for building your own AIs
 
-gallean-upgrade only. Status: phases 1-4 done (engine; AI editor mode and list; the designer screen; the Test panel). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
+gallean-upgrade only. Status: phases 1-5 done (engine; AI editor mode and list; the designer screen; the Test panel; the first new behaviour blocks). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
 done) and the world AI diagram in `docs/ai/`.
 
 ## Decisions
@@ -149,7 +149,7 @@ way.
 3. ~~Client: map AI designer screen (palette, stage cards, drag and drop, fields, save/undo, broken-block marks).
    ~4 days.~~ Done.
 4. ~~Test panel in the designer (shared tournament runner). ~1.5 days.~~ Done.
-5. New behaviour blocks, first set (open question T), each with tests and a tournament check. ~0.5–1 day each.
+5. ~~New behaviour blocks, first set (open question T), each with tests and a tournament check. ~0.5–1 day each.~~ Done (the four recommended ones).
 6. Battle AI designer: engine (document, conditions, rules, target choice) + screen. ~4 days.
 7. Maps can carry designed AIs (replaces `ai-switching.md` phase 7: the map editor's AI block can pick a designed AI
    and the map file stores a copy). ~1.5 days.
@@ -166,6 +166,7 @@ The lookahead AI (`ai-switching.md` phase 6) can later become a block ("think ah
 - **T.** First set of new behaviour blocks. Candidates: keep N armies home (guard the capital), gather before
   attacking (wait until N armies stand together), rush the nearest enemy capital, keep N gold in reserve, prefer
   leader type X, raid with thieves, patrol own cities. Recommendation: the first four, as one phase.
+- ~~**T.** First behaviour blocks~~ -> keep N armies home, gather N before attacking, rush the nearest enemy capital, keep N gold in reserve (phase 5, the recommended set).
 - ~~**V.** Stage-change message~~ -> no message in the game; the designer's Test shows the share of turns per stage (phase 4, as recommended).
 - ~~**U.** Stage switching~~ -> first true stage only (phase 1). Old text: Stage switching: only the first true stage plays, or can several be active (later cards adding to earlier
   ones)? Recommendation: first true stage only; easier to read.
@@ -222,3 +223,25 @@ Commit b554bf3d, merged in a1cc1331.
 
 ### Open question added
 - **Y.** Default Test map: the first in the list, or the biggest skirmish with at least 2 races and 6+ cities, remembered per AI? Recommendation: the last map used, remembered in the AI's file (no format change needed: an optional field).
+
+## Phase 5 — done
+
+Commit 20380e61, merged in 526c1427.
+
+- Engine: `WorldAiProfile.KeepArmiesHome`, `GatherArmies`, `RushEnemyCapital`, `GoldReserve` (0/false = off, so Classic and the personalities are unchanged; the S099 Classic CSV is identical). `WorldAiPlanner.Behaviours.cs` acts after Classic has chosen an army's action:
+  - **Keep N armies home**: the N fighting armies nearest the capital entrance (ties by ID) can't take a move ending more than `HomeRadius` = 4 tiles from it, and walk back when they are further.
+  - **Gather N before attacking**: an army's attack is vetoed unless N fighting armies (itself included) stand within `GatherRadius` = 4 tiles; an idle or vetoed army walks towards the nearest other one.
+  - **Rush the enemy capital**: an army with only a move/explore (or nothing) to do marches on the nearest hostile capital whose entrance the player has explored (the attack itself still needs the wanted advantage, so Classic's Attack action does it).
+  - **Keep a gold reserve**: economy actions are planned and checked on a copy of the state with that much gold taken away.
+  - "Fighting armies" = not rod planters, thieves, summons or illusions. Marches use Classic's own "move toward" step (`FindMoveTowardCell`, which never walks into a battle).
+- File/designer: `DesignedWorldRules` + JSON (`keepArmiesHome`, `gatherArmies`, `rushEnemyCapital`, `goldReserve`); an orange **New behaviour** palette group; the blocks go in the rules area, once each per stage; clicking one that's already there only shows a hint. 18 new strings in all 7 catalogs.
+- Tests: `CustomMapTests` `KeepArmiesHomeTest` (without the block the capital leader walks further than 4 tiles by turn 6, with it never), `GatherBeforeAttackingTest` (with one army and "gather 2" no battle is started by that player in 6 turns; the same AI without the block attacks), `RushEnemyCapitalTest` (map explored: closest approach to the elven capital by turn 5 = 13 tiles with the block, 34 without), `GoldReserveTest` (lowest treasury in 6 turns 400 with a 400 reserve, 0 without); `DesignedWorldAiTests` round trip and profile mapping with the new rules; `AiDesignerTests.BehaviourBlocksTest`; visual `AiDesignerRussianTest` shows the group and blocks (no clipping). Suite 5370.
+- Tournament (Classic+ with one block each vs Classic; S100 2 races 12 games x 60 turns / S099 4 races 12 games x 60 turns), wins and cities at the end, Classic's in brackets:
+  - none (Classic+ itself): S100 4 / 2.8 (2 / 2.2); S099 0 / 3.6 (0 / 3.5).
+  - keep 1 home: S100 0 / 1.1 (11 / 3.9); S099 0 / 2.6 (0 / 3.8). Much weaker: early on the AI has one army, so it all stays home (now said in the block's help).
+  - gather 2: S100 0 / 2.0 (5 / 3.0); S099 0 / 3.0 (0 / 3.7). Weaker, for the same reason.
+  - rush: S100 4 / 2.5 (6 / 2.0), first capture turn 9.6 (13.9); S099 0 / 3.6 (0 / 3.5). Earlier captures, about even.
+  - reserve 300: S100 4 / 2.8 (2 / 2.2); S099 0 / 3.7 (0 / 3.7). About even.
+  - These are building blocks for stages (e.g. keep armies home only "when an enemy is near my capital", gather only "from turn 20"), not stand-alone improvements.
+- Real client (AOT, Debian 12 image): designer -> "Rusher" -> clicked "Rush the enemy capital" and "Keep a gold reserve" in the New behaviour group -> Save (`rushEnemyCapital: true`, `goldReserve: 300` in the file) -> Map AI = Rusher -> 5th Column: 3 turns, the Elves attacked, the battle resolved; no errors in the log.
+- Known limits: home and gather radii are fixed at 4 tiles; "fighting army" excludes rod planters and thieves but counts weak leaders too.
