@@ -1,6 +1,6 @@
 # Switchable AI (world AI and battle AI)
 
-gallean-upgrade only. Status: phases 1-2 done (interfaces, registry, global Map AI / Battle AI settings; Classic only).
+gallean-upgrade only. Status: phases 1-3 done (interfaces, registry, global Map AI / Battle AI settings, own AI per computer player; Classic only).
 
 ## Decisions
 
@@ -17,6 +17,9 @@ gallean-upgrade only. Status: phases 1-2 done (interfaces, registry, global Map 
 - **Battle AI applies to AI-controlled sides only.** The player's own side (Auto-play, Instant resolve, Heal and defend, Refuse to flee) keeps Classic; in AI-vs-AI battles both sides use the setting. (Phase 2.)
 - **Settings layout:** the two drop-downs sit right of Battle speed / Movement speed, labelled "Map AI" (shorter than "World AI") and "Battle AI"; the panel grew from 520 to 660 px wide because it has no free height. Descriptions are tooltips. (Phase 2.)
 - **Classic is stored as "no choice"** (null, not written to settings.json), and an unknown ID in the file shows and plays as Classic. (Phase 2.)
+- **One "AI players" panel for both places** (race screen button between Back and Next; game-menu button under Settings). Rows are computer players with Map AI / Battle AI drop-downs whose first entry is "Settings choice"; a player with an own AI has a bold name. The panel applies on Close. (Phase 3.)
+- **Neutral players aren't listed** in the panel: they always follow the settings. **The panel is disabled during battles** (the game menu button greys out). (Phase 3.)
+- **The settings question is asked per part:** changing Map AI only asks about players with an own Map AI, Battle AI only about own Battle AIs. "Switch everyone" clears only that part. Closing the question keeps the own AIs. Not asked outside a game or during a battle. (Phase 3.)
 - **The AI estimator's battle simulations stay Classic** (how the world AI predicts a fight); only real battles use the chosen battle AI. (Phase 2.)
 
 ## The problem today
@@ -71,7 +74,7 @@ Later, only if the tournament shows it's worth it: a different algorithm (e.g. l
 
 1. ~~Interfaces + registry + Classic wired through (no behaviour change; full suite identical). ~0.5 day.~~ Done.
 2. ~~Global settings (both drop-downs) + engine context plumbing + mid-game switch. ~1 day.~~ Done.
-3. Per-player overrides: save field, command, new-game and in-game panels, confirm prompt. ~1.5 days.
+3. ~~Per-player overrides: save field, command, new-game and in-game panels, confirm prompt. ~1.5 days.~~ Done.
 4. Tournament bench. ~1 day.
 5. Personalities: Classic+, Aggressive, Builder, Expansionist; battle Cautious, Ruthless. ~1 day each, each measured on the bench.
 6. (Optional) Lookahead AI.
@@ -104,3 +107,13 @@ Commit b3f8dbfa, merged in a4b512e9.
 - Tests: `AiSelectionTests` (5: session uses the chosen world AI and a switch mid-turn applies to the next action; unknown ID plays exactly like Classic; battle AI action uses the chosen brain; auto-resolve uses each side's brain; an unset side keeps Classic), `GameSettingsStoreTests.LoadAiChoiceTest`, `SettingsScreenViewModelTests.AiChoiceTest`. Suite 5310 on the branch, 5313 after merging into gallean-upgrade (with the spell-cast branch's tests). Visual `SettingsTest`/`SettingsRussianTest` reviewed: everything fits in both languages.
 - Real client (AOT, Debian 12 image, 5th Column): settings.json with `"worldAi": "removed-ai"` showed Classic in both drop-downs; the drop-down opens with its one entry; changing the sound rewrote the file without the AI keys; started the quest, the AI turn ran and attacked, a battle resolved with Instant resolve and another ran 4 rounds of Auto-play against the AI with no errors in the log.
 - Known limits: with only Classic registered, the drop-downs have one entry until phase 5. A test brain proves the plumbing; the real client can't show a different AI playing yet.
+
+## Phase 3 — done
+
+Commits c18a184d + 6a1250ac, merged in 437d920e.
+
+- Engine: `WorldAiOverride(WorldAi, BattleAi)` (Contracts) and `WorldPlayer.AiOverride` (init prop, in Equals/hash, saved; old saves load as null). `WorldSetAiOverrideCommand` -> `WorldAiOverrideChangedEvent` (any time, not only on that player's turn; empty override = null; same value = no event; human/unknown player -> new error `AiPlayerRequired`). `ScenarioConfiguration.AiOverrides` (race -> override) applied by `ScenarioLoader` to computer players. `BattleSession.AttackerOwnerId/DefenderOwnerId`; `GameSession.GetWorldAiId(player)`, `GetBattleAiOverride(side)`, `GetBattleAiId(side)` = own AI, else settings. The battle screen uses `GetBattleAiOverride ?? Settings.BattleAi` for AI sides.
+- Client: `Screens/AiPlayers/` (`AiPlayersScreenViewModel` + view, `AiPlayerRowViewModel`, `AiPlayersPanel` for in-game rows/commands, `AiChoiceConverter`, `AiOwnAiWeightConverter`). Race screen: third button "AI players" (enabled when a race is Computer; races switched back to Human drop their own AI). Game menu: "AI players" under Settings. Settings: `AskAboutOwnAis` confirm prompt. 10 new strings in all 7 catalogs (ru "Игроки ИИ" so the race-screen button fits).
+- Tests: `AiOverrideTests` (6: set/clear/no-op, human refused, own world AI beats settings, own battle AI follows the battle side in a real AI attack, no battle -> settings, save round trip without `isEmpty`), `AiPlayersTests` (2: race screen -> configuration -> started game has the override; game menu panel -> command -> reopen shows it -> settings question: Battle AI change asks nothing, Map AI change asks, close keeps, confirm clears), visual `AiPlayersTest` (race screen + panel) and `GameMenuTest` reviewed. Suite 5321.
+- Real client (AOT, 5th Column, Undead human vs Elven computer): race screen AI players -> Elven Battle AI = Classic -> started; the game menu panel showed it (bold name); set Map AI = Classic too, saved: the save has `"aiOverride":{"worldAi":"classic","battleAi":"classic"}` for the Elves only; ended the turn, the Elves attacked twice, one battle played out with Auto-play to victory; no errors in the log. Found there: the save also wrote `"isEmpty":false`, fixed in 6a1250ac with `[JsonIgnore]` (checked by the round-trip test, not by a second real-client run).
+- Not checked in the real client: the settings question (needs a second AI to switch to; covered by `AiPlayersTests`) and loading the save back (covered by the round-trip test).
