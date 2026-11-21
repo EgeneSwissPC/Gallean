@@ -20,6 +20,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- SA (user, 2026-11-21): the sandbox is its own main-menu entry "Battle sandbox", below "AI editor".
 
 ## 1. The problem today
 
@@ -59,7 +60,8 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 ## 3a. Battle sandbox (visual mode)
 
 ### What the user would see
-- **Entry**: a main-menu entry "Battle sandbox" (question SA).
+- **Entry**: a main-menu entry "Battle sandbox" below "AI editor" (decided, SA). The menu must still fit at
+  1366x768; tighten the spacing if it doesn't. The designer's Test button opens the same screen later.
 - **Setup screen**: two army panels side by side (Attacker | Defender). Each is the game's 2x3 army grid: click a
   slot to pick any unit (search, race filter), set its level with the level bar, drag to move, large units take a
   whole row like in the game. A leadership line ("4 / 6") warns when the army breaks the game's rules (question SB).
@@ -100,8 +102,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   "spectator" (both sides AI, brain per side, back to the sandbox at the end).
 
 ### Questions for the sandbox
-- **SA. Entry**: (a) its own main-menu entry; (b) inside the battle AI editor. Recommended (a): you'll use it to
-  test the built-in AIs long before any designed AI exists.
+- ~~**SA. Entry**~~: answered — (a) its own main-menu entry "Battle sandbox", below AI editor (user, 2026-11-21).
 - **SB. Rules**: (a) only armies the game allows (leadership limit, large units, a leader in every army) with a
   red line when broken; (b) an "anything goes" switch (e.g. 6 dragons without a leader) for stress tests.
   Recommended (a) by default plus (b) as a checkbox, since you asked for "any combination possible in game".
