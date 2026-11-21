@@ -574,7 +574,17 @@ internal sealed partial class WorldRenderComposer(
             return false;
         }
 
-        const int isometricPadding = 7;
+        if (visibility.Fog is not null)
+        {
+            FogWindowMask mask = FogWindowMask.For(visibility.Fog);
+
+            if (mask.Contains(footprint))
+            {
+                return mask.IsAnyExploredAround(footprint);
+            }
+        }
+
+        const int isometricPadding = FogWindowMask.Padding;
 
         for (int y = topLeft.Y - isometricPadding; y < topLeft.Y + footprint.Height; y++)
         {

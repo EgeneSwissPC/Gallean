@@ -42,7 +42,10 @@ internal sealed record WorldRenderContent(
 
     public sealed record WaterLayer(SKVertices Mesh, WaterShaderProgram ShaderProgram, IReadOnlyList<SKShader> Albedo);
 
-    public sealed record FogLayer(SKVertices Mesh, SKVertices? MapEdgeMesh, SKShader Shader);
+    // The fog's alpha mask in square chunks; MapEdgeMesh is the part of the band outside the map a chunk on the edge covers.
+    public sealed record FogLayer(IReadOnlyList<FogChunk> Chunks);
+
+    public sealed record FogChunk(SKVertices Mesh, SKVertices? MapEdgeMesh, SKShader Shader);
 
     public sealed record ReachLayer(SKVertices? InteriorMesh, SKVertices EdgeMesh, SKShader Tiles);
 

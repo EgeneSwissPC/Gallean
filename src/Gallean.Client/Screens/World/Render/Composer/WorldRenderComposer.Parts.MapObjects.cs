@@ -31,7 +31,20 @@ internal sealed partial class WorldRenderComposer
             objects.AddRange(input.Bags);
             objects.AddRange(input.Fortifications);
 
-            return [.. objects.OrderBy(item => item.Depth)];
+            // A stable sort by depth (equal depths keep the order above), on keys instead of LINQ: 120k objects on a
+            // well explored 1024x1024 map.
+            MapObject[] sorted = new MapObject[objects.Count];
+            objects.CopyTo(sorted);
+            long[] keys = new long[sorted.Length];
+
+            for (int index = 0; index < sorted.Length; index++)
+            {
+                keys[index] = ((long)sorted[index].Depth << 32) | (uint)index;
+            }
+
+            Array.Sort(keys, sorted);
+
+            return sorted;
         }
     }
 }

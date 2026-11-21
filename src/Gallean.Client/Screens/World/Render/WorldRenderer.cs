@@ -534,20 +534,32 @@ internal sealed partial class WorldRenderer
     {
         if (content.Fog is not null)
         {
+            // The mask is alpha only: SrcIn paints the colour with the mask's alpha.
+            Color hidden = Theme.World.Tile.HiddenColor;
+            using SKColorFilter hiddenFilter = SKColorFilter.CreateBlendMode(new SKColor(hidden.R, hidden.G, hidden.B), SKBlendMode.SrcIn);
+            using SKColorFilter backdropFilter = SKColorFilter.CreateBlendMode(
+                Theme.World.BackdropColor.ToSKColor(),
+                SKBlendMode.SrcIn);
             using SKPaint fogPaint = SkiaHelpers.MakeImagePaint();
-            fogPaint.Shader = content.Fog.Shader;
 
-            canvas.DrawVertices(content.Fog.Mesh, SKBlendMode.Modulate, fogPaint);
+            // Skia skips chunks outside the clip by their vertex bounds.
+            fogPaint.ColorFilter = hiddenFilter;
 
-            if (content.Fog.MapEdgeMesh is not null)
+            foreach (FogChunk chunk in content.Fog.Chunks)
             {
-                using SKColorFilter backdropFilter = SKColorFilter.CreateBlendMode(
-                    Theme.World.BackdropColor.ToSKColor(),
-                    SKBlendMode.SrcIn);
+                fogPaint.Shader = chunk.Shader;
+                canvas.DrawVertices(chunk.Mesh, SKBlendMode.Modulate, fogPaint);
+            }
 
-                fogPaint.ColorFilter = backdropFilter;
+            fogPaint.ColorFilter = backdropFilter;
 
-                canvas.DrawVertices(content.Fog.MapEdgeMesh, SKBlendMode.Modulate, fogPaint);
+            foreach (FogChunk chunk in content.Fog.Chunks)
+            {
+                if (chunk.MapEdgeMesh is not null)
+                {
+                    fogPaint.Shader = chunk.Shader;
+                    canvas.DrawVertices(chunk.MapEdgeMesh, SKBlendMode.Modulate, fogPaint);
+                }
             }
         }
     }
