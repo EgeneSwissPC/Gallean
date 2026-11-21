@@ -39,21 +39,25 @@ public sealed class AiPlayersTests
         scenarioSelect.StartCommand.Execute(null);
         RaceSelectScreenViewModel raceSelect = Assert.IsOfType<RaceSelectScreenViewModel>(gameViewModel.TopScreen);
 
-        // Both races human: nobody to give an AI to.
+        // Both races human: only the neutrals are listed.
         raceSelect.Races[0].PlayerType = PlayerType.Human;
         raceSelect.Races[1].PlayerType = PlayerType.Human;
-        Assert.That(raceSelect.OpenAiPlayersCommand.CanExecute(null), Is.False);
+        raceSelect.OpenAiPlayersCommand.Execute(null);
+        AiPlayersScreenViewModel neutralsOnly = Assert.IsOfType<AiPlayersScreenViewModel>(gameViewModel.TopScreen);
+        Assert.That(neutralsOnly.Players.Select(row => row.Name), Is.EqualTo(new[] { "Neutrals" }));
+        neutralsOnly.CloseCommand.Execute(null);
 
         raceSelect.Races[0].PlayerType = PlayerType.Computer;
         raceSelect.Races[1].PlayerType = PlayerType.Human;
         raceSelect.OpenAiPlayersCommand.Execute(null);
 
         AiPlayersScreenViewModel panel = Assert.IsOfType<AiPlayersScreenViewModel>(gameViewModel.TopScreen);
-        Assert.That(panel.Players.Select(row => row.Name), Is.EqualTo(new[] { raceSelect.Races[0].Name }));
+        Assert.That(panel.Players.Select(row => row.Name), Is.EqualTo(new[] { raceSelect.Races[0].Name, "Neutrals" }));
         Assert.That(panel.Players[0].WorldAi, Is.EqualTo(AiPlayerRowViewModel.SettingsChoice));
         Assert.That(panel.WorldAis, Is.EqualTo(new[] { AiPlayerRowViewModel.SettingsChoice, AiBrainRegistry.ClassicId }));
 
         panel.Players[0].BattleAi = AiBrainRegistry.ClassicId;
+        panel.Players[1].WorldAi = AiBrainRegistry.ClassicId;
         Assert.That(panel.Players[0].HasOwnAi, Is.True);
         panel.CloseCommand.Execute(null);
         Assert.That(gameViewModel.TopScreen, Is.SameAs(raceSelect));
@@ -64,13 +68,21 @@ public sealed class AiPlayersTests
 
         Assert.That(
             configuration.GameConfiguration.Configuration!.AiOverrides,
-            Is.EquivalentTo(new Dictionary<WorldRace, WorldAiOverride> { [computerRace] = new(null, AiBrainRegistry.ClassicId) }));
+            Is.EquivalentTo(new Dictionary<WorldRace, WorldAiOverride>
+            {
+                [computerRace] = new(null, AiBrainRegistry.ClassicId),
+                [WorldRace.Neutral] = new(AiBrainRegistry.ClassicId, null)
+            }));
 
         await gameViewModel.StartGameCommand.ExecuteAsync(configuration.GameConfiguration);
         WorldScreenViewModel world = await PassBriefingAsync(gameViewModel);
         WorldPlayer computer = world.GameModel.Snapshot.WorldState.Players.Values.Single(player => player.Race == computerRace);
 
         Assert.That(computer.AiOverride, Is.EqualTo(new WorldAiOverride(null, AiBrainRegistry.ClassicId)));
+
+        List<WorldPlayer> neutrals = [.. world.GameModel.Snapshot.WorldState.Players.Values.Where(player => player.Race == WorldRace.Neutral)];
+        Assert.That(neutrals, Is.Not.Empty);
+        Assert.That(neutrals.Select(player => player.AiOverride), Is.All.EqualTo(new WorldAiOverride(AiBrainRegistry.ClassicId, null)));
     }
 
     [Test]
@@ -89,8 +101,11 @@ public sealed class AiPlayersTests
         menu.OpenAiPlayersCommand.Execute(null);
 
         AiPlayersScreenViewModel panel = Assert.IsOfType<AiPlayersScreenViewModel>(gameViewModel.TopScreen);
-        List<WorldPlayer> computers = [.. gameModel.Snapshot.WorldState.Players.Values.Where(player => player.IsAi && player.Race != WorldRace.Neutral)];
-        Assert.That(panel.Players, Has.Count.EqualTo(computers.Count).And.Count.GreaterThan(0));
+        List<WorldPlayer> computers = [.. gameModel.Snapshot.WorldState.Players.Values.Where(player => player.IsAi)];
+        Assert.That(panel.Players, Has.Count.EqualTo(computers.Count));
+        Assert.That(computers.Any(player => player.Race == WorldRace.Neutral), Is.True);
+        Assert.That(panel.Players.Select(row => row.Name), Is.All.Not.Empty);
+        Assert.That(panel.Players.Select(row => row.Name), Does.Contain("Neutrals"));
 
         panel.Players[0].WorldAi = AiBrainRegistry.ClassicId;
         panel.CloseCommand.Execute(null);
