@@ -12,7 +12,8 @@ public sealed record BattleAiActionCommand(bool CanUseItems, bool CanRetreat = t
             return BattleCommandResult.Fail(BattleCommandError.ActionNotAvailable);
         }
 
-        BattleAiActionPlan plan = new BattleAiPlanner(context, canUseItems: CanUseItems, canRetreat: CanRetreat).DecideAction(state);
+        // Gallean Upgrade: the battle AI algorithm is switchable (docs/ai-switching.md).
+        BattleAiActionPlan plan = AiBrainRegistry.ResolveBattle(null).DecideAction(context, state, CanUseItems, CanRetreat);
 
         return plan.Command.Execute(state, context);
     }
