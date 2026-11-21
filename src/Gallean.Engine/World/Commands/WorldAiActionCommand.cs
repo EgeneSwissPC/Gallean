@@ -23,8 +23,8 @@ internal sealed record WorldAiActionCommand : IWorldCommand<Empty>
 
         WorldAiMemory memory = state.AiMemories.GetValueOrDefault(playerId, WorldAiMemory.Empty);
 
-        WorldAiController controller = new(context);
-        WorldAiActionPlan plan = controller.DecideAction(state, memory);
+        // Gallean Upgrade: the AI algorithm is switchable (docs/ai-switching.md).
+        WorldAiActionPlan plan = AiBrainRegistry.ResolveWorld(null).DecideAction(context, state, memory);
 
         WorldCommandResult commandResult = plan.Command.Execute(state, context);
         if (commandResult.Failed)
