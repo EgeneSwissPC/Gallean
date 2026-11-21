@@ -117,6 +117,15 @@ public sealed class DesignedWorldAiStore(string directory)
                     writer.WriteBoolean("waitForFreeCapital", wait);
                 }
 
+                WriteOptional(writer, "keepArmiesHome", stage.Rules.KeepArmiesHome);
+                WriteOptional(writer, "gatherArmies", stage.Rules.GatherArmies);
+                if (stage.Rules.RushEnemyCapital is { } rush)
+                {
+                    writer.WriteBoolean("rushEnemyCapital", rush);
+                }
+
+                WriteOptional(writer, "goldReserve", stage.Rules.GoldReserve);
+
                 writer.WriteEndObject();
                 writer.WriteEndObject();
             }
@@ -182,7 +191,11 @@ public sealed class DesignedWorldAiStore(string directory)
                 ReadOptional(rulesElement, "reinforcePercent"),
                 ReadOptional(rulesElement, "attackPowerPercent"),
                 ReadOptional(rulesElement, "leaderSavingsGold"),
-                rulesElement.TryGetProperty("waitForFreeCapital", out JsonElement wait) ? wait.GetBoolean() : null);
+                rulesElement.TryGetProperty("waitForFreeCapital", out JsonElement wait) ? wait.GetBoolean() : null,
+                ReadOptional(rulesElement, "keepArmiesHome"),
+                ReadOptional(rulesElement, "gatherArmies"),
+                rulesElement.TryGetProperty("rushEnemyCapital", out JsonElement rush) ? rush.GetBoolean() : null,
+                ReadOptional(rulesElement, "goldReserve"));
         }
 
         return new DesignedWorldStage(name, when.ToImmutable(), ReadTiers(element, "economy"), ReadTiers(element, "army"), rules);

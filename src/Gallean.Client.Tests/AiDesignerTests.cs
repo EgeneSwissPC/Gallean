@@ -152,6 +152,32 @@ public sealed class AiDesignerTests
     }
 
     [Test]
+    public async Task BehaviourBlocksTest()
+    {
+        (_, AiDesignerScreenViewModel designer) = await OpenAsync(DesignedWorldAi.FromClassic("plain", "Plain"));
+        AiDesignerStageViewModel stage = designer.Stages.Single();
+
+        foreach (AiDesignerRule rule in new[] { AiDesignerRule.KeepArmiesHome, AiDesignerRule.GatherArmies, AiDesignerRule.RushEnemyCapital, AiDesignerRule.GoldReserve })
+        {
+            designer.AddBlockCommand.Execute(Palette(designer, item => item.Rule == rule));
+        }
+
+        ((MapEditorBlockNumber)stage.Rules.Single(block => block.Item.Rule == AiDesignerRule.GatherArmies).Parts[1]).Text = "3";
+
+        Assert.That(designer.ToDesign().Stages[0].Rules, Is.EqualTo(new DesignedWorldRules(KeepArmiesHome: 1, GatherArmies: 3, RushEnemyCapital: true, GoldReserve: 300)));
+        Assert.That(stage.Rules.Select(block => block.Item.Category), Is.All.EqualTo(AiDesignerCategory.Behaviour));
+
+        // A second "Keep a gold reserve" isn't added.
+        designer.AddBlockCommand.Execute(Palette(designer, item => item.Rule == AiDesignerRule.GoldReserve));
+        Assert.That(stage.Rules, Has.Count.EqualTo(4));
+
+        // Saved and opened again, the blocks come back.
+        designer.SaveCommand.Execute(null);
+        AiDesignerScreenViewModel reopened = new(designer.Game, DesignedAiLibrary.Store.LoadAll().Single());
+        Assert.That(reopened.ToDesign(), Is.EqualTo(designer.ToDesign()));
+    }
+
+    [Test]
     public async Task ProblemsTest()
     {
         (_, AiDesignerScreenViewModel designer) = await OpenAsync(TwoStages);

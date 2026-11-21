@@ -162,7 +162,8 @@ public sealed partial class VisualTests
                 {
                     Name = "Вернуть город",
                     When = [[new DesignedStageCondition.LostCity(), new DesignedStageCondition.EnemyNearCapital(6)]],
-                    Rules = new DesignedWorldRules(HurtPercent: 60, HealedPercent: 85, ReinforcePercent: 50, AttackPowerPercent: 70, LeaderSavingsGold: 200, WaitForFreeCapital: true)
+                    Rules = new DesignedWorldRules(HurtPercent: 60, HealedPercent: 85, ReinforcePercent: 50, AttackPowerPercent: 70, LeaderSavingsGold: 200, WaitForFreeCapital: true,
+                        KeepArmiesHome: 1, GatherArmies: 2, RushEnemyCapital: true, GoldReserve: 300)
                 },
                 DesignedWorldStage.Classic with { Name = "Развитие" }
             ]);
@@ -173,7 +174,7 @@ public sealed partial class VisualTests
 
             AiDesignerScreenView view = window.GetVisualDescendants().OfType<AiDesignerScreenView>().Single();
             view.GetVisualDescendants().OfType<Border>().First(border => border.Tag is "rules").BringIntoView();
-            view.GetVisualDescendants().OfType<Border>().Last(border => border.Classes.Contains("palette-block")).BringIntoView();
+            view.GetVisualDescendants().OfType<Border>().Last(border => border.Classes.Contains("palette-block") && border.DataContext is AiDesignerPaletteItem).BringIntoView();
             await SkipFramesAsync(4);
             await CaptureAsync(window, "2-rules");
 

@@ -31,4 +31,18 @@ internal sealed record WorldAiProfile
     // AI designer: when set, every action's priority comes from here and actions missing from it are never
     // done (change order always runs, at 0). Null = the priorities above and Classic's constants.
     public System.Collections.Immutable.ImmutableDictionary<WorldAiActionKind, int>? Priorities { get; init; }
+
+    // New behaviours (AI designer, docs/ai-designer.md phase 5); 0/false = off, as in Classic.
+    // The N fighting armies nearest the capital stay within HomeRadius tiles of its entrance.
+    public int KeepArmiesHome { get; init; }
+
+    // An army only attacks when at least N of the player's fighting armies (itself included) stand within
+    // GatherRadius tiles of it; otherwise it walks towards the nearest other one.
+    public int GatherArmies { get; init; }
+
+    // Armies with nothing better to do march on the nearest enemy capital the player has seen.
+    public bool RushEnemyCapital { get; init; }
+
+    // Economy actions may not spend the treasury below this much gold.
+    public int GoldReserve { get; init; }
 }

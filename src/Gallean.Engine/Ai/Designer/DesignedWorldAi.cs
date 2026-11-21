@@ -93,7 +93,11 @@ public sealed record DesignedWorldRules(
     int? ReinforcePercent = null,
     int? AttackPowerPercent = null,
     int? LeaderSavingsGold = null,
-    bool? WaitForFreeCapital = null)
+    bool? WaitForFreeCapital = null,
+    int? KeepArmiesHome = null,
+    int? GatherArmies = null,
+    bool? RushEnemyCapital = null,
+    int? GoldReserve = null)
 {
     public static DesignedWorldRules Classic { get; } = new();
 }

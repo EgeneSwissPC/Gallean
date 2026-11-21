@@ -1617,6 +1617,159 @@ public sealed class CustomMapTests
         Assert.That(left, Is.EqualTo(leaves));
     }
 
+    // Gallean Upgrade (AI designer, phase 5): an AI-only game on CreateMap's map where the Human player uses a
+    // designed AI with these rules (every other player Classic+). Optional: the whole map explored.
+    private (GameSession Session, WorldPlayerId Human, WorldPosition HumanEntrance, WorldPosition ElfEntrance) DesignedGame(DesignedWorldRules rules, bool reveal = false)
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        Gallean.Common.ImmutableBitmap explored = Gallean.Common.ImmutableBitmap.Create(scenario.State.Map.Width, scenario.State.Map.Height, initialValue: true);
+
+        WorldState state = scenario.State with
+        {
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with
+            {
+                IsAi = true,
+                FogOfWar = reveal ? explored : pair.Value.FogOfWar,
+                AiOverride = pair.Value.Race == WorldRace.Human ? new WorldAiOverride("custom:behaviour-test", null) : null
+            })))
+        };
+
+        AiBrainRegistry.SetDesignedWorldAis([new DesignedWorldAi("custom:behaviour-test", "Behaviour test", [DesignedWorldStage.Classic with { Rules = rules }])]);
+        GameSession session = new(context, state) { AllowAiOnly = true, Ai = new AiSelection(AiPersonalities.ClassicPlusId, null) };
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        WorldPlayerId human = session.World.State.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldPlayerId elf = session.World.State.Players.Values.Single(player => player.Race == WorldRace.Elf).Id;
+        WorldPlan plan = WorldPlan.For(session.World.State);
+
+        return (session, human, plan.GetCapital(human)!.Entrance, plan.GetCapital(elf)!.Entrance);
+    }
+
+    private static void PlayUntilTurn(GameSession session, int turn, Action? afterEachAction = null)
+    {
+        while (session.World.State.TurnInfo.TurnNumber <= turn && !session.World.State.ScenarioState.IsEnded)
+        {
+            session.ExecuteAiAction();
+            afterEachAction?.Invoke();
+        }
+    }
+
+    [Test]
+    [NonParallelizable]
+    public void KeepArmiesHomeTest()
+    {
+        try
+        {
+            int Furthest(DesignedWorldRules rules)
+            {
+                (GameSession session, WorldPlayerId human, WorldPosition home, _) = DesignedGame(rules);
+                int furthest = 0;
+                PlayUntilTurn(session, 6, () => furthest = Math.Max(furthest,
+                    session.World.State.Stacks.Values.Where(stack => stack.OwnerId == human).Select(stack => stack.Position.GetDistance(home)).DefaultIfEmpty(0).Max()));
+
+                return furthest;
+            }
+
+            // Without the block the capital leader leaves on turn 3 (CapitalLeaderLeavesWithClassicPlusTest).
+            Assert.That(Furthest(new DesignedWorldRules(WaitForFreeCapital: true)), Is.GreaterThan(WorldAiPlanner.HomeRadius));
+            Assert.That(Furthest(new DesignedWorldRules(WaitForFreeCapital: true, KeepArmiesHome: 1)), Is.LessThanOrEqualTo(WorldAiPlanner.HomeRadius));
+        }
+        finally
+        {
+            AiBrainRegistry.SetDesignedWorldAis([]);
+        }
+    }
+
+    [Test]
+    [NonParallelizable]
+    public void GatherBeforeAttackingTest()
+    {
+        try
+        {
+            // With one army and "gather 2" it never attacks (Classic+ attacks on turn 3-4 on this map).
+            (GameSession session, WorldPlayerId human, _, _) = DesignedGame(new DesignedWorldRules(WaitForFreeCapital: true, GatherArmies: 2));
+            List<WorldPlayerId?> attackers = [];
+            using IDisposable subscription = session.BattleStarted.Subscribe(battle => attackers.Add(battle.AttackerOwnerId));
+
+            PlayUntilTurn(session, 6);
+
+            Assert.That(attackers, Does.Not.Contain(human));
+
+            (GameSession classic, WorldPlayerId classicHuman, _, _) = DesignedGame(new DesignedWorldRules(WaitForFreeCapital: true));
+            List<WorldPlayerId?> classicAttackers = [];
+            using IDisposable classicSubscription = classic.BattleStarted.Subscribe(battle => classicAttackers.Add(battle.AttackerOwnerId));
+            PlayUntilTurn(classic, 6);
+            Assert.That(classicAttackers, Does.Contain(classicHuman), "the same AI without the block attacks on this map");
+        }
+        finally
+        {
+            AiBrainRegistry.SetDesignedWorldAis([]);
+        }
+    }
+
+    [Test]
+    [NonParallelizable]
+    public void RushEnemyCapitalTest()
+    {
+        try
+        {
+            int ClosestAfter(DesignedWorldRules rules)
+            {
+                (GameSession session, WorldPlayerId human, _, WorldPosition enemy) = DesignedGame(rules, reveal: true);
+                int closest = int.MaxValue;
+                PlayUntilTurn(session, 5, () => closest = Math.Min(closest,
+                    session.World.State.Stacks.Values.Where(stack => stack.OwnerId == human).Select(stack => stack.Position.GetDistance(enemy)).DefaultIfEmpty(int.MaxValue).Min()));
+
+                return closest;
+            }
+
+            int plain = ClosestAfter(new DesignedWorldRules(WaitForFreeCapital: true));
+            int rush = ClosestAfter(new DesignedWorldRules(WaitForFreeCapital: true, RushEnemyCapital: true));
+            TestContext.Out.WriteLine($"closest to the elven capital by turn 5: plain {plain}, rush {rush}");
+
+            Assert.That(rush, Is.LessThan(plain));
+        }
+        finally
+        {
+            AiBrainRegistry.SetDesignedWorldAis([]);
+        }
+    }
+
+    [Test]
+    [NonParallelizable]
+    public void GoldReserveTest()
+    {
+        try
+        {
+            int LowestGold(DesignedWorldRules rules, out WorldPlayerId humanId)
+            {
+                (GameSession session, WorldPlayerId human, _, _) = DesignedGame(rules);
+                humanId = human;
+                int lowest = int.MaxValue;
+                PlayUntilTurn(session, 6, () => lowest = Math.Min(lowest, session.World.State.Players[human].Resources.Gold));
+
+                return lowest;
+            }
+
+            int plain = LowestGold(new DesignedWorldRules(WaitForFreeCapital: true), out _);
+            int reserve = LowestGold(new DesignedWorldRules(WaitForFreeCapital: true, GoldReserve: 400), out _);
+            TestContext.Out.WriteLine($"lowest treasury in 6 turns: plain {plain}, reserve 400 -> {reserve}");
+
+            Assert.That(plain, Is.LessThan(400), "the same AI without the block spends below 400");
+            Assert.That(reserve, Is.GreaterThanOrEqualTo(400));
+        }
+        finally
+        {
+            AiBrainRegistry.SetDesignedWorldAis([]);
+        }
+    }
+
     // Gallean Upgrade (AI designer, phase 4): the shared tournament runner counts a designed AI's stages and
     // replays a seed exactly.
     [Test]

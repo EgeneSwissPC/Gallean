@@ -50,7 +50,18 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             }
         }
 
-        if (best is not null && CanExecutePlan(state, best.Value.Plan))
+        if (best is not null && !CanExecutePlan(state, best.Value.Plan))
+        {
+            best = null;
+        }
+
+        // Gallean Upgrade (AI designer): new behaviours may veto or replace the choice (Classic: none).
+        if (HasStackBehaviours)
+        {
+            return ApplyBehaviours(state, stack, best, memory);
+        }
+
+        if (best is not null)
         {
             context.Trace.SelectStackAction(stack, best.Value.Action, best.Value.Plan);
 
@@ -77,6 +88,9 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
 
     public WorldAiActionPlan? DecideEconomyAction(WorldState state, WorldPlayerId playerId, WorldAiMemory memory)
     {
+        // Gallean Upgrade (AI designer): a gold reserve is kept out of the economy's reach (Classic: none).
+        state = WithoutReserve(state, playerId);
+
         (AbstractEconomyAction Action, WorldAiActionPlan Plan)? best = null;
 
         foreach (AbstractEconomyAction action in economyActions)
