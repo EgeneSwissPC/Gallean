@@ -1,6 +1,6 @@
 # AI designer: a mode for building your own AIs
 
-gallean-upgrade only. Status: phases 1-3 done (engine; AI editor mode and list; the designer screen). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
+gallean-upgrade only. Status: phases 1-4 done (engine; AI editor mode and list; the designer screen; the Test panel). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
 done) and the world AI diagram in `docs/ai/`.
 
 ## Decisions
@@ -148,7 +148,7 @@ way.
 2. ~~Client: AI editor mode, main-menu button, AI list screen. ~1 day.~~ Done.
 3. ~~Client: map AI designer screen (palette, stage cards, drag and drop, fields, save/undo, broken-block marks).
    ~4 days.~~ Done.
-4. Test panel in the designer (shared tournament runner). ~1.5 days.
+4. ~~Test panel in the designer (shared tournament runner). ~1.5 days.~~ Done.
 5. New behaviour blocks, first set (open question T), each with tests and a tournament check. ~0.5–1 day each.
 6. Battle AI designer: engine (document, conditions, rules, target choice) + screen. ~4 days.
 7. Maps can carry designed AIs (replaces `ai-switching.md` phase 7: the map editor's AI block can pick a designed AI
@@ -166,6 +166,7 @@ The lookahead AI (`ai-switching.md` phase 6) can later become a block ("think ah
 - **T.** First set of new behaviour blocks. Candidates: keep N armies home (guard the capital), gather before
   attacking (wait until N armies stand together), rush the nearest enemy capital, keep N gold in reserve, prefer
   leader type X, raid with thieves, patrol own cities. Recommendation: the first four, as one phase.
+- ~~**V.** Stage-change message~~ -> no message in the game; the designer's Test shows the share of turns per stage (phase 4, as recommended).
 - ~~**U.** Stage switching~~ -> first true stage only (phase 1). Old text: Stage switching: only the first true stage plays, or can several be active (later cards adding to earlier
   ones)? Recommendation: first true stage only; easier to read.
 - **V.** Should the AI see a stage change (e.g. a message "the Undead change their strategy")? Recommendation: no
@@ -208,3 +209,16 @@ Commits b713c723 + 5c06a48d, merged in a04f8a02.
 - Real client (AOT, Debian 12 image): AI editor -> Create "Rusher" from Classic -> the designer opened; dragged "Buy units" from row 5 into row 1 with the real mouse (ghost followed, rows renumbered, `rusher.json` economy starts `[["CastSpell","PurchaseUnit"], ...`); + Stage, clicked "I lost a city" in the palette -> the new stage has `fromTurn` + `lostCity`; Save, Back -> the list shows "2 stages"; Settings -> Map AI lists Rusher, picked it; 5th Column: the Elves attacked on turn 3 and the battle resolved; no errors in the log.
 - Found in the real client and fixed (5c06a48d): after + Stage the new card was out of sight (inserted above the last card while the view stayed at the bottom); it now scrolls to the new card. Checked by the visual test, not re-run in the real client.
 - Known limits: stages and rows reorder with buttons, not by dragging their headers; no keyboard way to move blocks; the designer's Test panel is phase 4.
+
+## Phase 4 — done
+
+Commit b554bf3d, merged in a1cc1331.
+
+- Engine: the tournament loop moved from `tools/AiTournament` into `Engine/Ai/Tournament/AiTournamentRunner.cs` (`AiContender`, `AiGameResult`, `AiPlayerResult` with `StageTurns`, `AiContenderSummary.Summarize`, `Plan` for the seat rotation, `Play(..., CancellationToken)`). A designed AI's stage is counted once per own turn at its first action, through `DesignedWorldAiBrain.FindStage` (the same lost-city detection the brain uses). The tool now uses it and prints `Stages of custom:...` lines; Classic's S099 CSV is identical before and after the move.
+- Client: `GameLoader.ListAiTestMaps` (skirmish quests and custom maps with at least two playable races) and `CreateAiTournament`; `AiDesignerScreenViewModel.Test.cs`: Map, Against (every other AI), Games (2-20, total), Turns (5-100), Run test / Cancel, progress "Game N of M…", results per side ("wins, draws (ahead), times out; cities at the end; first city taken on turn N; ms per turn") and "Time in each stage". It tests the AI **as it is on screen**, saved or not: the registry gets the on-screen design under the AI's ID for the run and is reloaded from the files afterwards. Games run in parallel on up to 4 threads (processors − 1). Leaving the designer cancels a running test.
+- Tests: `CustomMapTests.TournamentRunnerCountsStagesTest` (seat rotation and seeds, stage turns counted for the designed AI only, same seed = same game, summary), `AiDesignerTestPanelTests` (2: an unsaved second stage plays in the test and shows in the stage line while the file and registry keep the saved version; cancel), visual `AiDesignerTestPanelTest` reviewed (no clipping). Suite 5365.
+- Real client (AOT, Debian 12 image): AI editor -> Create "Tested" -> designer -> Run test with the defaults (5th Column, against Classic, 4 games, 30 turns): finished in under a second, "4 games of up to 30 turns: Tested: 0 wins, 4 draws (0 ahead), 0 times out; 1.0 cities at the end; no city taken; 3 ms per turn."; no errors in the log.
+- Known limits: the default map is the first in the list (5th Column, a small quest whose events keep everyone at 1 city, so it shows little); pick a bigger skirmish for meaningful numbers (open question Y). Both sides use the Classic battle AI in the test.
+
+### Open question added
+- **Y.** Default Test map: the first in the list, or the biggest skirmish with at least 2 races and 6+ cities, remembered per AI? Recommendation: the last map used, remembered in the AI's file (no format change needed: an optional field).
