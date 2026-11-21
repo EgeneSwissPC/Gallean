@@ -237,6 +237,17 @@ public sealed class WorldRenderContentProviderTests
         CheckSameState(first, second);
     }
 
+    [TestCase(144, 144, 870)]
+    [TestCase(320, 320, 1926)]
+    [TestCase(340, 340, 2046)]
+    [TestCase(512, 512, 2048)]
+    [TestCase(1024, 1024, 2048)]
+    public void MinimapNativeWidthTest(int mapWidth, int mapHeight, double expected)
+    {
+        // Original and Middle-earth sized maps keep 3 px per half tile; larger maps are capped so the image stays small.
+        Assert.That(WorldRenderContentProvider.GetMinimapNativeWidth(mapWidth, mapHeight), Is.EqualTo(expected));
+    }
+
     [Test]
     public void MinimapMarkerMoveTest()
     {

@@ -38,6 +38,11 @@ internal sealed partial class WorldRenderContentProvider
     private readonly record struct TerrainTexture(SKImage Image, int Scale);
 
     private const double MinimapNativeHalfWidth = 3;
+
+    // The minimap image is shown in a box a few hundred pixels wide. At 3 px per half tile a 1024x1024 map made a
+    // 6150x3075 image (75 MB, redrawn on every step that reveals fog). Above this width the tiles get smaller instead;
+    // maps up to 340 tiles across keep their exact image.
+    private const double MinimapMaxNativeWidth = 2048;
     private const double MinimapTileOverlap = 1;
     private const float MinimapBlurStrength = 0.6f;
     private const double MinimapCullMargin = 512;
@@ -1003,9 +1008,14 @@ internal sealed partial class WorldRenderContentProvider
 
     private static MinimapLayout GetMinimapLayout(int mapWidth, int mapHeight)
     {
-        double width = Math.Max(2, (mapWidth + mapHeight + 2) * MinimapNativeHalfWidth);
+        double width = GetMinimapNativeWidth(mapWidth, mapHeight);
 
         return MinimapLayout.Create(mapWidth, mapHeight, new Rect(0, 0, width, width / 2.0));
+    }
+
+    internal static double GetMinimapNativeWidth(int mapWidth, int mapHeight)
+    {
+        return Math.Max(2, Math.Min((mapWidth + mapHeight + 2) * MinimapNativeHalfWidth, MinimapMaxNativeWidth));
     }
 
     private static Rect GetMinimapBounds(int mapWidth, int mapHeight)
@@ -1028,8 +1038,10 @@ internal sealed partial class WorldRenderContentProvider
 
     private static void DrawMinimapHiddenTiles(SKCanvas canvas, MinimapState minimap, MinimapLayout layout)
     {
-        float halfWidth = (float)(layout.HalfWidth + MinimapTileOverlap);
-        float halfHeight = (float)(layout.HalfHeight + (MinimapTileOverlap / 2.0));
+        // The overlap shrinks with the tiles on maps that hit the size cap, so the fog edge stays where it was.
+        double overlap = MinimapTileOverlap * Math.Min(1.0, layout.HalfWidth / MinimapNativeHalfWidth);
+        float halfWidth = (float)(layout.HalfWidth + overlap);
+        float halfHeight = (float)(layout.HalfHeight + (overlap / 2.0));
         using SKPathBuilder builder = new();
         IReadOnlyList<WorldPosition> hidden = minimap.HiddenPositions;
         int index = 0;
