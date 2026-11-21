@@ -20,6 +20,12 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- Phase 6 decision (2026-11-21): Watch plays the battle with the auto-resolve rules, one unit action at a time
+  (`BattleAutoResolveCommand { SingleStep = true, StartRoundNumber }`), not with the player-style AI that uses
+  potions and orbs. Reason: then a watched seed is exactly the battle Run fought with that seed (proved by test),
+  so "Watch a win / a loss" from the results shows that very battle, and AI-vs-AI battles in the game are
+  auto-resolved without items too. Battle items therefore do nothing in Watch either (spec said "battle items
+  used"); a "use items" option would need its own rules and break the seed match.
 - Phase 3 decisions (2026-11-21): the owner row uses the races' round lord portraits from the diplomacy screen
   (and a neutral leader's face for the neutrals): the game's race select screen has no race banners, so "banners"
   in SC2 became portraits. The difficulty picker (user, before phase 3) sits in the battlefield panel and travels
@@ -184,7 +190,7 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
    picker (red when the leader can't use them), Upgrades list like the level-up popup.
 5. ~~**Run N + results**~~ (done, see "Phase 5 — done"; ~1 day): run-count box (default 1000, ±100/±1000), progress/Cancel, results panel with
    margins of error, per-unit survival, "Alternate sides" checkbox.
-6. **Watch battle** (~1.5 days): spectator battle screen (both sides AI with their brains, battle items used),
+6. ~~**Watch battle**~~ (done, see "Phase 6 — done"; ~1.5 days): spectator battle screen (both sides AI with their brains, battle items used),
    back to the setup afterwards, "Watch seed N" from the results.
 7. **Engine knobs + designed battle AI** (~2 days): profile knobs, document, store, brain, registry (after BB, BC).
 8. **Battle AI editor mode and list** (~1 day, after BA).
@@ -464,3 +470,48 @@ Merged in 9381df4b.
 ### Known limits
 - No seed box to repeat a run; the summary shows the first seed, replay comes with Watch battle (phase 6).
 - Results are not saved or exportable (the command-line tool has `--csv`).
+
+## Phase 6 — done (Watch battle)
+
+Merged in 2d5bb2fe (+ 2b0333ff removing a test-run file the merge carried).
+
+### What was built
+- **Watch** button next to Run (new random seed, army A attacks), and **Watch a win** / **Watch a loss** in the
+  results popup: the first battle of that run army A won / lost, with its seed and sides.
+- The real battle screen opens over the sandbox (or the results): both sides are computer-controlled, each with
+  its chosen battle AI, playing one unit action at a time with the auto-resolve rules; the battle screen's own
+  controls work (speed, Instant resolve finishes the same battle at once, battle log). Continue goes back to where
+  Watch was pressed.
+- Engine: `BattleAutoResolveCommand.SingleStep` / `StartRoundNumber` (+ `BattleAutoResolveStepEvent.SingleStep`):
+  one step of the auto-resolve; `AiBattleBench.CreateWatchSession` (a game session on the host map with the battle
+  prepared, a human viewer player so the game screens work, both battle sides AI) and `StartWatch`.
+- Client: `BattleScreenViewModel.SandboxWatch` (`BattleSandboxWatch` record: both AI IDs and the start round) used by
+  the AI step loop and Instant resolve; `GameViewModel.WatchSandboxBattleAsync`.
+- 6 new UI strings in all 7 catalogs (ru translated).
+
+### Tests
+- `AiBattleBenchTests.WatchStepsFightTheRunBattleTest` (2 cases: open field with B attacking, level 3 city with A
+  attacking; 12 seeds each, Classic vs Ruthless, items on one side): stepping ends with the same winner, rounds and
+  hit points as `RunOne`.
+- Visual `BattleSandboxWatchTest` (real asset pack): Run 200, Watch a loss → battle screen with both AIs, not the
+  player's turn; Instant resolve in the middle of the battle → same winner and rounds as that run; Continue → back
+  to the results popup.
+- Full non-visual suite: 5411 passed (5409 + 2). `BattleSandboxTest` (13 states) still passes.
+- Real client (AOT, Debian 12 image): Watch from the setup played the battle to "Battle over" (units fighting,
+  hit points changing), Continue → setup; Run → Watch a win → battle → Continue → results popup; no crash.
+
+### Findings
+- The headless visual test host crashed with SIGSEGV (exit 139) when the watch steps ran inside the long
+  `BattleSandboxTest` (crash right after later captures, in native rendering). Moving Watch into its own visual
+  test removed it; the real AOT client showed no crash in several watch/close cycles. Not root-caused; worth
+  remembering if headless tests that open and close battle screens start crashing.
+
+### Known limits
+- Battle items are not used (see the decision above).
+- The watched battle's world (`GameModel`) isn't disposed after Continue (small leak per watch until the sandbox
+  closes).
+- No "watch seed N" box; the results' Win/Loss buttons and the random Watch cover it for now.
+
+### Sandbox complete
+Phases 2–6 are done. Next on the roadmap: the battle AI designer itself (phases 7–9, open questions BA–BD), whose
+Test button will open this sandbox with the designed AI selected.
