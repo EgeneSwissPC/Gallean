@@ -52,19 +52,34 @@ round 15, hard stop at round 45). The loop lives in the engine (`AiBattleBench`)
 ```
 DOTNET_ROOT=~/.dotnet ./AiTournament --battle ../../../examples/armies/empire.json ../../../examples/armies/undead.json --runs 20 --swap --parallel 8
 DOTNET_ROOT=~/.dotnet ./AiTournament --battle empire undead --armies ../../../examples/armies --ai-a ruthless --ai-b cautious
+DOTNET_ROOT=~/.dotnet ./AiTournament --battle undead garrison --armies ../../../examples/armies --defender-in city --city-level 3 --garrison
+DOTNET_ROOT=~/.dotnet ./AiTournament --battle empire-geared deathlords --armies ../../../examples/armies --neutral-b
 DOTNET_ROOT=~/.dotnet ./AiTournament --export-armies S099SC0000 /tmp/armies
 ```
 
 - `<army A> <army B>`: preset files, or preset names in `--armies <dir>`. A preset is a JSON file (`BattleArmyStore`):
   `{ "format": 1, "name": "...", "units": [ { "unit": "g000uu0019", "level": 1, "line": 0|1, "flank": 0-2 } ] }`
   (line 0 = front; a large unit sits on its front slot and takes the back slot behind it). Unit IDs: `Globals/Gunits.json`.
-  The army must follow the game's rules (one leader at most, leadership not exceeded, no guardians, level not below the
-  unit's own); `"allowAnyArmy": true` skips the rules for stress tests. Leader items are not supported yet.
+  Optional: `"equipment": [ { "slot": "Banner", "item": "G000IG1003" } ]` (slots Banner, Tome, Battle1, Battle2,
+  Artifact1, Artifact2, Boots; item IDs from `Globals/GItem.json`) and `"leaderUpgrades": [ "g000um4003" ]` (leader
+  level-up upgrades, unit modifier IDs from `Globals/GleaUpg.json`, e.g. Banner Bearer g000um4003, Artifact Lore
+  g000um4001). The army must follow the game's rules: one leader at most, leadership not exceeded, no guardians, level
+  not below the unit's own, items in fitting slots and allowed by the leader's abilities (a banner needs Banner Bearer),
+  at most min(level, 4) - 1 upgrades, each at its minimum level. `"allowAnyArmy": true` skips the rules for stress tests
+  (unknown units and items are still refused).
 - `--ai-a`, `--ai-b` (classic): battle AIs (`--list`). `--runs n` (20), `--seed n` (1; run k uses seed + k, same seed =
   same battle), `--swap` (army A attacks in even runs and defends in odd runs; default: A always attacks),
   `--parallel n`, `--map id` (host map for players and world modifiers, `S099SC0000`), `--csv file` (one row per run),
   `--verbose` (one line per run).
-- `--export-armies <map id> <dir>`: writes every army that starts on a built-in map as a preset.
+- `--race-a`, `--race-b` (empire, undead, legions, clans, elves, neutral): which player of the host map owns the army
+  (default: the map's first two playable races). `--neutral-a` / `--neutral-b` = neutral: neutral leaders never flee.
+- `--defender-in open|city|capital` (open), `--city-level n` (1-5): the defender stands in a city of that level (a copy
+  of the host map's first city, owned by the defender) or in its race's capital, with the place's protection (armor) and
+  without the right to flee, like in the game. `--garrison`: the defender fights as the place's garrison instead of an
+  army in it: no leader, no leadership limit, guardians allowed (add the capital's guardian yourself, e.g. Myzrael
+  g000uu3001). Neutrals have no capital.
+- `--export-armies <map id> <dir>`: writes every army that starts on a built-in map as a preset (with its leader's
+  items and upgrades).
 
 Per side it prints wins (attacking / defending), runs where the side fled, units alive, hit points left, and per unit how
 often it survived. Measured: 20 runs of 4 vs 4 units take ~0.1 s.

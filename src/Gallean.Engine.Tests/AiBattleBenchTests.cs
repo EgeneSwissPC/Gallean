@@ -290,6 +290,23 @@ public sealed class AiBattleBenchTests
     }
 
     [Test]
+    public void ItemAttacksAndBattleItemsReachTheBattleTest()
+    {
+        // An artifact with an attack gives the leader that attack; an orb in a battle slot is a battle item.
+        BattleArmy army = GearedEmpire() with
+        {
+            Equipment = [new BattleArmyItem(LeaderEquipmentSlot.Artifact1, new ItemDefinitionId("G000IG3018")), new BattleArmyItem(LeaderEquipmentSlot.Battle1, new ItemDefinitionId("G000IG9022"))],
+            AllowAnyArmy = true
+        };
+        BattleState state = bench.CreateBattle(army, Undead());
+        BattleUnit leader = state.AttackerGrid.GetUnits().Single(pair => pair.Item1.DefinitionId == PegasusKnight).Item1;
+
+        Assert.That(leader.EquipmentAttackIds, Is.Not.Empty);
+        Assert.That(state.Items.Where(item => item.Side == BattleSide.Attacker).Select(item => item.Slot), Is.EqualTo(new[] { LeaderEquipmentSlot.Battle1 }));
+        Assert.That(bench.CreateBattle(GearedEmpire() with { Equipment = [] }, Undead()).Items, Is.Empty);
+    }
+
+    [Test]
     public void LeaderUpgradesAreLeaderModifiersTest()
     {
         BattleState state = bench.CreateBattle(GearedEmpire(), Undead());

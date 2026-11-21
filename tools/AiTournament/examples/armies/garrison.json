@@ -1,0 +1,42 @@
+{
+  "format": 1,
+  "name": "garrison",
+  "units": [
+    {
+      "unit": "g000uu0001",
+      "level": 2,
+      "line": 0,
+      "flank": 0
+    },
+    {
+      "unit": "g000uu0001",
+      "level": 2,
+      "line": 0,
+      "flank": 1
+    },
+    {
+      "unit": "g000uu0001",
+      "level": 2,
+      "line": 0,
+      "flank": 2
+    },
+    {
+      "unit": "g000uu0006",
+      "level": 2,
+      "line": 1,
+      "flank": 0
+    },
+    {
+      "unit": "g000uu0006",
+      "level": 2,
+      "line": 1,
+      "flank": 1
+    },
+    {
+      "unit": "g000uu0011",
+      "level": 2,
+      "line": 1,
+      "flank": 2
+    }
+  ]
+}
