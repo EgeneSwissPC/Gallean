@@ -17,6 +17,7 @@ int seed = 1;
 string? csvPath = null;
 bool verbose = false;
 int parallel = 1;
+string? aisDirectory = null;
 
 for (int i = 0; i < args.Length; i++)
 {
@@ -32,7 +33,21 @@ for (int i = 0; i < args.Length; i++)
         case "--csv": csvPath = Next(); break;
         case "--verbose": verbose = true; break;
         case "--parallel": parallel = Math.Max(1, int.Parse(Next(), CultureInfo.InvariantCulture)); break;
+        case "--ais": aisDirectory = Next(); break;
+        case "--new-ai":
+        {
+            // Writes a designed map AI that plays like Classic, to edit by hand until the AI editor exists.
+            string directory = Next();
+            string fileName = Next();
+            new DesignedWorldAiStore(directory).Save(DesignedWorldAi.FromClassic(fileName, fileName));
+            Console.WriteLine($"Wrote {Path.Combine(directory, fileName + ".json")} (id custom:{fileName})");
+            return 0;
+        }
+        case "--list" when aisDirectory is not null:
+            AiBrainRegistry.SetDesignedWorldAis(new DesignedWorldAiStore(aisDirectory).LoadAll());
+            goto case "--list-all";
         case "--list":
+        case "--list-all":
             Console.WriteLine("World AIs:  " + string.Join(", ", AiBrainRegistry.WorldBrains.Select(brain => brain.Id)));
             Console.WriteLine("Battle AIs: " + string.Join(", ", AiBrainRegistry.BattleBrains.Select(brain => brain.Id)));
             return 0;
@@ -48,9 +63,16 @@ for (int i = 0; i < args.Length; i++)
     }
 }
 
+if (aisDirectory is not null)
+{
+    IReadOnlyList<DesignedWorldAi> designs = new DesignedWorldAiStore(aisDirectory).LoadAll();
+    AiBrainRegistry.SetDesignedWorldAis(designs);
+    Console.WriteLine($"Designed AIs from {aisDirectory}: {(designs.Count == 0 ? "none" : string.Join(", ", designs.Select(design => design.Id)))}");
+}
+
 if (mapId is null)
 {
-    Console.Error.WriteLine("Usage: AiTournament <map id> [--maps <custom maps dir>] [--ai world/battle]... [--games n] [--turns n] [--seed n] [--csv file] [--parallel n] [--verbose] | --list");
+    Console.Error.WriteLine("Usage: AiTournament <map id> [--maps <custom maps dir>] [--ai world/battle]... [--games n] [--turns n] [--seed n] [--csv file] [--parallel n] [--ais <dir>] [--verbose] | --list | --new-ai <dir> <name>");
     return 2;
 }
 

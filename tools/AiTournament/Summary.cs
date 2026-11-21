@@ -8,7 +8,8 @@ internal static class Summary
     public static string Format(IReadOnlyList<Contender> contenders, IReadOnlyList<GameResult> results)
     {
         StringBuilder text = new();
-        text.AppendLine("Contender            seats  wins  draws  leads  out   win%  win turn  1st capture  cities end  AI ms/turn  max ms");
+        int width = Math.Max(20, contenders.Max(contender => contender.ToString().Length));
+        text.AppendLine("Contender".PadRight(width) + " seats  wins  draws  leads  out   win%  win turn  1st capture  cities end  AI ms/turn  max ms");
 
         foreach (Contender contender in contenders.Distinct())
         {
@@ -24,7 +25,7 @@ internal static class Summary
             double max = seats.Select(seat => seat.Player.MaxTurnMs).DefaultIfEmpty(double.NaN).Max();
 
             text.AppendLine(string.Create(CultureInfo.InvariantCulture,
-                $"{contender,-20} {seats.Count,5} {wins,5} {draws,6} {leads,6} {outs,4} {(seats.Count == 0 ? 0 : 100.0 * wins / seats.Count),5:F0}% {winTurn,9:F1} {firstCapture,12:F1} {cities,11:F1} {ms,11:F0} {max,7:F0}"));
+                $"{contender.ToString().PadRight(width)} {seats.Count,5} {wins,5} {draws,6} {leads,6} {outs,4} {(seats.Count == 0 ? 0 : 100.0 * wins / seats.Count),5:F0}% {winTurn,9:F1} {firstCapture,12:F1} {cities,11:F1} {ms,11:F0} {max,7:F0}"));
         }
 
         text.AppendLine("leads = draws (turn limit) that this contender ended with strictly the most cities.");

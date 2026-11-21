@@ -13,7 +13,15 @@ public static class AiBrainRegistry
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IWorldAiBrain> testWorldBrains = new();
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, IBattleAiBrain> testBattleBrains = new();
 
-    public static IReadOnlyList<AiBrainInfo> WorldBrains { get; } = [.. worldBrains.Select(brain => brain.Info)];
+    // Gallean Upgrade (AI designer): designed map AIs, replaced as a whole when the files change.
+    private static volatile IWorldAiBrain[] designedWorldBrains = [];
+
+    public static IReadOnlyList<AiBrainInfo> WorldBrains => [.. worldBrains.Select(brain => brain.Info), .. designedWorldBrains.Select(brain => brain.Info)];
+
+    public static void SetDesignedWorldAis(IEnumerable<DesignedWorldAi> designs)
+    {
+        designedWorldBrains = [.. designs.Select(design => (IWorldAiBrain)new DesignedWorldAiBrain(design))];
+    }
 
     public static IReadOnlyList<AiBrainInfo> BattleBrains { get; } = [.. battleBrains.Select(brain => brain.Info)];
 
@@ -22,6 +30,13 @@ public static class AiBrainRegistry
         if (id is not null && testWorldBrains.TryGetValue(id, out IWorldAiBrain? testBrain))
         {
             return testBrain;
+        }
+
+        if (id is not null && id.StartsWith(DesignedWorldAi.IdPrefix, StringComparison.Ordinal))
+        {
+            // A designed AI that isn't installed here (deleted, or from another player's save) plays Classic+.
+            return designedWorldBrains.FirstOrDefault(brain => brain.Info.Id == id)
+                ?? worldBrains.First(brain => brain.Info.Id == AiPersonalities.ClassicPlusId);
         }
 
         return worldBrains.FirstOrDefault(brain => brain.Info.Id == id) ?? ClassicWorldAiBrain.Instance;

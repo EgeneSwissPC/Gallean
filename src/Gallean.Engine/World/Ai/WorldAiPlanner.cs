@@ -121,6 +121,36 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
 
     private static IReadOnlyList<AbstractStackAction> CreateStackActions(WorldAiContext context)
     {
+        // Gallean Upgrade (AI designer): a profile with Priorities orders and switches off actions.
+        System.Collections.Immutable.ImmutableDictionary<WorldAiActionKind, int>? priorities = context.Profile.Priorities;
+
+        if (priorities is not null)
+        {
+            List<AbstractStackAction> designed = [];
+
+            void Add(WorldAiActionKind kind, Func<int, AbstractStackAction> create)
+            {
+                if (priorities.TryGetValue(kind, out int priority))
+                {
+                    designed.Add(create(priority));
+                }
+            }
+
+            Add(WorldAiActionKind.UseItem, p => new UseItemAction(context, Priority: p));
+            Add(WorldAiActionKind.Resurrect, p => new ResurrectAction(context, Priority: p));
+            Add(WorldAiActionKind.Heal, p => new HealAction(context, Priority: p));
+            Add(WorldAiActionKind.AutoFit, p => new AutoFitAction(context, Priority: p));
+            Add(WorldAiActionKind.Attack, p => new AttackAction(context, Priority: p));
+            Add(WorldAiActionKind.Thief, p => new ThiefAction(context, Priority: p));
+            Add(WorldAiActionKind.Rod, p => new RodAction(context, Priority: p));
+            Add(WorldAiActionKind.EnterCity, p => new EnterCityAction(context, Priority: p));
+            Add(WorldAiActionKind.TakeBag, p => new TakeBagAction(context, Priority: p));
+            Add(WorldAiActionKind.Move, p => new MoveAction(context, Priority: p));
+            designed.Add(new ChangeOrderAction(context, Priority: 0));
+
+            return designed;
+        }
+
         return
         [
             new UseItemAction(context, Priority: 6),
@@ -139,6 +169,29 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
 
     private static IReadOnlyList<AbstractEconomyAction> CreateEconomyActions(WorldAiContext context)
     {
+        System.Collections.Immutable.ImmutableDictionary<WorldAiActionKind, int>? priorities = context.Profile.Priorities;
+
+        if (priorities is not null)
+        {
+            List<AbstractEconomyAction> designed = [];
+
+            void Add(WorldAiActionKind kind, Func<int, AbstractEconomyAction> create)
+            {
+                if (priorities.TryGetValue(kind, out int priority))
+                {
+                    designed.Add(create(priority));
+                }
+            }
+
+            Add(WorldAiActionKind.CastSpell, p => new CastSpellAction(context, Priority: p));
+            Add(WorldAiActionKind.ResearchSpell, p => new ResearchSpellAction(context, Priority: p));
+            Add(WorldAiActionKind.HireLeader, p => new PurchaseLeaderAction(context, Priority: p));
+            Add(WorldAiActionKind.ConstructBuilding, p => new ConstructBuildingAction(context, Priority: p));
+            Add(WorldAiActionKind.PurchaseUnit, p => new PurchaseUnitAction(context, Priority: p));
+
+            return designed;
+        }
+
         return
         [
             new CastSpellAction(context, Priority: 4),
