@@ -20,6 +20,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- SD (user, 2026-11-21): default 1000 runs, ±100/±1000 buttons, results with margin of error.
 - SC2 (user, 2026-11-21): battlefield panel + owner picker with race banners; hidden generated host map with
   every race.
 - SC (user, 2026-11-21): reuse the original game's screens as closely as possible (army tab equipment slots,
@@ -75,7 +76,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   is unchanged). The checkbox covers garrisons too.
   Under each army: the **AI** drop-down (every built-in battle AI, later designed ones too) and the preset row:
   **Save preset**, **Load preset**, **Delete**. Between the panels: **Swap sides**, **Watch battle**, and
-  **Run 10 / 20 / 30** (question SD).
+  **Run** with a run-count box (default 1000; −1000 / −100 / +100 / +1000 buttons) (decided, SD).
 - **Watch battle**: opens the real battle screen with both sides played by their AIs at battle speed (pause,
   speed and Instant resolve still work). Afterwards it returns to the setup screen with both armies unchanged.
 - **Run N**: N headless battles with the attacker/defender swapped every other run (or fixed sides, question SE),
@@ -128,8 +129,10 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   all five races and the neutrals (map editor code), because no built-in map has all of them (best: five of six;
   S099 has no Elves). Capital greys out for a neutral defender (user, 2026-11-21). Engine work: an
   `AiBattleBench` constructor from a generated `CustomMap` (~0.5 day), also usable by `tools/AiTournament`.
-- **SD. Run counts**: fixed buttons 10 / 20 / 30, or a number box (1–1000) with those three as quick picks.
-  Recommended the number box plus quick picks.
+- ~~**SD. Run counts**~~: answered — (c) with the user's changes: default **1000 runs**; a number box with buttons
+  −1000, −100, +100, +1000; the results show each side's win share with its margin of error, e.g. "A wins 62 % ± 6
+  (300 runs)" (95 % interval). Range: typing allows 1–10,000; the buttons stop at 100 and 10,000 (my choice, so
+  +1000 has room; ~10 s at 10,000 on 8 cores) (user, 2026-11-21).
 - **SE. Sides in Run N**: (a) swap attacker/defender every run (fair AI comparison); (b) keep sides as set up
   (answers "does this army win as the attacker?"). Recommended a checkbox, default (b), because you set the
   sides on purpose.
