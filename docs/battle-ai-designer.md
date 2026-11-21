@@ -20,6 +20,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- SE (user, 2026-11-21): sides as set up, "Alternate sides" checkbox off by default.
 - SD (user, 2026-11-21): default 1000 runs, ±100/±1000 buttons, results with margin of error.
 - SC2 (user, 2026-11-21): battlefield panel + owner picker with race banners; hidden generated host map with
   every race.
@@ -79,7 +80,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   **Run** with a run-count box (default 1000; −1000 / −100 / +100 / +1000 buttons) (decided, SD).
 - **Watch battle**: opens the real battle screen with both sides played by their AIs at battle speed (pause,
   speed and Instant resolve still work). Afterwards it returns to the setup screen with both armies unchanged.
-- **Run N**: N headless battles with the attacker/defender swapped every other run (or fixed sides, question SE),
+- **Run N**: N headless battles with the sides as set up, or alternating when "Alternate sides" is ticked (decided, SE),
   a progress bar and Cancel. Then a results panel per side: wins, losses, draws (round limit), retreats, average
   rounds, units surviving and their average hit points, and per unit how often it survived. "Watch seed 7" replays
   one particular run visually (same seed = same battle).
@@ -133,10 +134,10 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   −1000, −100, +100, +1000; the results show each side's win share with its margin of error, e.g. "A wins 62 % ± 6
   (300 runs)" (95 % interval). Range: typing allows 1–10,000; the buttons stop at 100 and 10,000 (my choice, so
   +1000 has room; ~10 s at 10,000 on 8 cores) (user, 2026-11-21).
-- **SE. Sides in Run N**: (a) swap attacker/defender every run (fair AI comparison); (b) keep sides as set up
-  (answers "does this army win as the attacker?"). Recommended a checkbox, default (b), because you set the
-  sides on purpose.
-- **SF. Neutral armies**: allow "defender is a neutral army" (neutrals never flee)? Recommended yes, one checkbox.
+- ~~**SE. Sides in Run N**~~: answered — (a) keep the sides as set up, plus an "Alternate sides" checkbox, off by
+  default; with it on, whichever army defends in a run stands in the city/capital (user, 2026-11-21).
+- ~~**SF. Neutral armies**~~: covered by SC2 (Neutrals in each army's owner picker; Capital greys out for a neutral
+  defender).
 
 ## 4. Technical approach
 
@@ -164,15 +165,25 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 ## 6. Phases
 
 1. ~~**Battle bench** (~1 day)~~: done, see "Phase 1 — done" below.
-2. **Battle sandbox, setup screen + presets** (~2 days, after SA–SC): main-menu entry, two army panels reusing the
-   map editor's army grid and unit picker, AI per side, save/load presets.
-3. **Battle sandbox, Watch + Run N** (~2 days, after SD–SF): spectator battle screen (both sides AI), Run N with
-   progress/Cancel, results panel, replay one seed.
-4. **Engine knobs + designed battle AI** (~2 days): profile knobs, document, store, brain, registry (after BB, BC).
-5. **Battle AI editor mode and list** (~1 day, after BA).
-6. **Designer screen** (~2–3 days); its Test button opens the sandbox with the designed AI selected (replaces the
+Re-split after the answers (2026-11-21); every sandbox phase copies the original game's screens:
+2. **Sandbox engine: generated host map** (~0.5 day, no screen): `AiBattleBench` from a small generated `CustomMap`
+   with all five races, the neutrals, a city and every capital; `tools/AiTournament --battle` uses it by default
+   (`--map` keeps a built-in host). Margin of error in the results (bench + tool). Pure engine: full suite, no
+   client check.
+3. **Sandbox setup screen** (~2 days): main-menu entry below AI editor; two army panels (map editor army grid and
+   unit picker, "Anything goes" checkbox with a red rule line), owner picker with race banners, battlefield panel
+   (Open / City + level picture / Capital, "as garrison"), AI per side, Swap sides, presets (save, load, delete).
+4. **Leader items and upgrades on screen** (~1.5 days): the army tab's 7 equipment slots with a fitting-items
+   picker (red when the leader can't use them), Upgrades list like the level-up popup.
+5. **Run N + results** (~1 day): run-count box (default 1000, ±100/±1000), progress/Cancel, results panel with
+   margins of error, per-unit survival, "Alternate sides" checkbox.
+6. **Watch battle** (~1.5 days): spectator battle screen (both sides AI with their brains, battle items used),
+   back to the setup afterwards, "Watch seed N" from the results.
+7. **Engine knobs + designed battle AI** (~2 days): profile knobs, document, store, brain, registry (after BB, BC).
+8. **Battle AI editor mode and list** (~1 day, after BA).
+9. **Designer screen** (~2–3 days); its Test button opens the sandbox with the designed AI selected (replaces the
    separate Test panel).
-7. Optional: designed battle AI for the player's own Auto-play / Instant resolve (after BD).
+10. Optional: designed battle AI for the player's own Auto-play / Instant resolve (after BD).
 
 ## 7. Open questions
 
@@ -188,7 +199,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 - **BD. Player's own Auto-play / Instant resolve**: (a) AI sides only, as today; (b) a setting "My auto battles use".
   Recommended (a) now, (b) as phase 6.
 - ~~**BE. Test armies**~~: answered by the user — any units at any level, saved as presets (battle sandbox, 3a).
-- **BF. Size**: ~11–12 days in total with the sandbox, confirmed per phase.
+- **BF. Size**: sandbox phases 2–6 ~6.5 days; designer phases 7–9 ~5–6 days; confirmed per phase.
 
 ## Phase 1 — done
 
