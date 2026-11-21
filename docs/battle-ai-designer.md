@@ -11,6 +11,11 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   Classic's behaviour), never an edit of the Classic code path. A missing `custom-battle:` ID falls back to Classic.
 - Phase 1 (the battle bench) comes first: it doesn't depend on any open question, and every later phase needs it to
   prove "Classic copy = Classic" and to tune designs.
+- **Battle sandbox** (user, 2026-11-21): a visual mode where the player builds two armies from any units at any
+  level, in any combination the game allows, saves them as presets, picks an AI per side, watches the battle on
+  the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
+  It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
+  sandbox with the designed AI selected". See section 3a.
 
 ## 1. The problem today
 
@@ -47,6 +52,65 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 - A Test panel: pick two armies, fight N battles each way round, see wins, survivors, rounds, retreats.
 - The designed AIs appear in Settings → Battle AI and in the AI players panel.
 
+## 3a. Battle sandbox (visual mode)
+
+### What the user would see
+- **Entry**: a main-menu entry "Battle sandbox" (question SA).
+- **Setup screen**: two army panels side by side (Attacker | Defender). Each is the game's 2x3 army grid: click a
+  slot to pick any unit (search, race filter), set its level with the level bar, drag to move, large units take a
+  whole row like in the game. A leadership line ("4 / 6") warns when the army breaks the game's rules (question SB).
+  Under each army: the **AI** drop-down (every built-in battle AI, later designed ones too) and the preset row:
+  **Save preset**, **Load preset**, **Delete**. Between the panels: **Swap sides**, **Watch battle**, and
+  **Run 10 / 20 / 30** (question SD).
+- **Watch battle**: opens the real battle screen with both sides played by their AIs at battle speed (pause,
+  speed and Instant resolve still work). Afterwards it returns to the setup screen with both armies unchanged.
+- **Run N**: N headless battles with the attacker/defender swapped every other run (or fixed sides, question SE),
+  a progress bar and Cancel. Then a results panel per side: wins, losses, draws (round limit), retreats, average
+  rounds, units surviving and their average hit points, and per unit how often it survived. "Watch seed 7" replays
+  one particular run visually (same seed = same battle).
+- **Presets**: saved as files under `~/.local/share/GalleanUpgrade/Battles/armies/<name>.json` (units, levels,
+  positions, leader items), listed alphabetically with search. They also feed the headless bench
+  (`tools/AiTournament --battle --armies <preset> <preset>`), so a battle tried on screen can be run 1000 times
+  from the command line.
+
+### What the engine already offers
+- **Army building**: the map editor's army screen (`MapEditorArmyScreenViewModel` on top of the shared
+  `MapEditorUnitsScreenViewModel`: grid, `MapEditorUnitPickerViewModel`, `MapEditorUnitLevelBar`, leadership via
+  `CustomMapStack.GetLeadership`/`GetOccupiedLeadership`). The sandbox reuses it instead of building a new picker
+  (UI rule: copy the game's own screens).
+- **Battles**: the real battle screen plays any `BattleSession`; AI sides take `BattleAiActionCommand.BrainId`,
+  auto-resolve takes `BattleAutoResolveCommand.AttackerAiId/DefenderAiId`.
+- **Gap**: a battle always starts from a world (two stacks next to each other). The sandbox builds a tiny hidden
+  world in memory (the custom map code already makes one from `CustomMapStack`s): two players, two stacks, one
+  tile apart, then starts the battle. The bench (phase 1) does the same without a screen.
+- **Gap**: the battle screen assumes one side is the human. "Watch" needs a mode where both sides are AI and the
+  screen only shows them (the existing Auto-play loop `PlayAiTurnAsync` does most of it; it needs the chosen brain
+  per side instead of Classic).
+
+### Technical approach
+- Engine: `Ai/Tournament/BattleSandbox` — builds the world from two army descriptions (unit ID, level, slot, items),
+  validates them with the game's rules (leadership, large units, one leader per army), returns a `GameSession`
+  at the start of the battle. `AiBattleBench` (phase 1) calls it N times with seeds.
+- Store: `BattleArmyPresetStore` (Utf8JsonWriter / JsonDocument, AOT-safe).
+- Client: `Screens/BattleSandbox/` (setup screen view model + view, results panel), battle screen flag
+  "spectator" (both sides AI, brain per side, back to the sandbox at the end).
+
+### Questions for the sandbox
+- **SA. Entry**: (a) its own main-menu entry; (b) inside the battle AI editor. Recommended (a): you'll use it to
+  test the built-in AIs long before any designed AI exists.
+- **SB. Rules**: (a) only armies the game allows (leadership limit, large units, a leader in every army) with a
+  red line when broken; (b) an "anything goes" switch (e.g. 6 dragons without a leader) for stress tests.
+  Recommended (a) by default plus (b) as a checkbox, since you asked for "any combination possible in game".
+- **SC. What else counts**: leader items and leader upgrades (Leadership, etc.), defending inside a city
+  (fortification bonus, city guardian), and terrain. Recommended for the first version: leader items yes,
+  city defence as an option "defender is in a city of level N", terrain no (the battle doesn't use it).
+- **SD. Run counts**: fixed buttons 10 / 20 / 30, or a number box (1–1000) with those three as quick picks.
+  Recommended the number box plus quick picks.
+- **SE. Sides in Run N**: (a) swap attacker/defender every run (fair AI comparison); (b) keep sides as set up
+  (answers "does this army win as the attacker?"). Recommended a checkbox, default (b), because you set the
+  sides on purpose.
+- **SF. Neutral armies**: allow "defender is a neutral army" (neutrals never flee)? Recommended yes, one checkbox.
+
 ## 4. Technical approach
 
 - **Engine profile**: `BattleAiProfile` grows the knobs (target-preference multipliers applied inside
@@ -72,14 +136,18 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 
 ## 6. Phases
 
-1. **Battle bench** (~1 day): `AiBattleBench` in the engine, `tools/AiTournament --battle` with armies from a
-   scenario's stacks (two stack IDs) or a JSON list of unit IDs and levels; first numbers for Classic, Cautious,
-   Ruthless. No open question blocks it.
-2. **Engine knobs + designed battle AI** (~2 days): profile knobs, document, store, brain, registry (after BB, BC).
-3. **Editor mode and list** (~1 day, after BA).
-4. **Designer screen** (~2–3 days).
-5. **Test panel** (~1 day, after BE).
-6. Optional: designed battle AI for the player's own Auto-play / Instant resolve (after BD).
+1. **Battle bench** (~1 day): `BattleSandbox` world builder + `AiBattleBench` in the engine, army preset file
+   format, `tools/AiTournament --battle` with armies from presets or a scenario's stacks; first numbers for
+   Classic, Cautious, Ruthless. No open question blocks it.
+2. **Battle sandbox, setup screen + presets** (~2 days, after SA–SC): main-menu entry, two army panels reusing the
+   map editor's army grid and unit picker, AI per side, save/load presets.
+3. **Battle sandbox, Watch + Run N** (~2 days, after SD–SF): spectator battle screen (both sides AI), Run N with
+   progress/Cancel, results panel, replay one seed.
+4. **Engine knobs + designed battle AI** (~2 days): profile knobs, document, store, brain, registry (after BB, BC).
+5. **Battle AI editor mode and list** (~1 day, after BA).
+6. **Designer screen** (~2–3 days); its Test button opens the sandbox with the designed AI selected (replaces the
+   separate Test panel).
+7. Optional: designed battle AI for the player's own Auto-play / Instant resolve (after BD).
 
 ## 7. Open questions
 
@@ -94,6 +162,5 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   first, and the "focus fire" and "protect the leader" blocks.
 - **BD. Player's own Auto-play / Instant resolve**: (a) AI sides only, as today; (b) a setting "My auto battles use".
   Recommended (a) now, (b) as phase 6.
-- **BE. Test armies**: (a) scenario armies; (b) armies from a saved game; (c) a small army editor. Recommended (a)
-  in the bench, (c) for the Test panel (players want to try "my army vs undead").
-- **BF. Size**: ~7–8 days in total, confirmed per phase.
+- ~~**BE. Test armies**~~: answered by the user — any units at any level, saved as presets (battle sandbox, 3a).
+- **BF. Size**: ~11–12 days in total with the sandbox, confirmed per phase.
