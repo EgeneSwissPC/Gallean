@@ -8,6 +8,9 @@ public sealed record ScenarioConfiguration(
     WorldDifficulty Difficulty,
     ScenarioLeader? Leader)
 {
+    // Gallean Upgrade: own AIs for computer-played races, chosen on the race screen.
+    public ImmutableDictionary<WorldRace, WorldAiOverride> AiOverrides { get; init; } = ImmutableDictionary<WorldRace, WorldAiOverride>.Empty;
+
     public bool Equals(ScenarioConfiguration? other)
     {
         if (other is null)
@@ -22,7 +25,9 @@ public sealed record ScenarioConfiguration(
 
         return HumanPlayers.SequenceEqual(other.HumanPlayers) &&
                Difficulty == other.Difficulty &&
-               Equals(Leader, other.Leader);
+               Equals(Leader, other.Leader) &&
+               AiOverrides.Count == other.AiOverrides.Count &&
+               AiOverrides.All(pair => other.AiOverrides.TryGetValue(pair.Key, out WorldAiOverride? value) && Equals(value, pair.Value));
     }
 
     public override int GetHashCode()
@@ -32,6 +37,7 @@ public sealed record ScenarioConfiguration(
         hash.AddSequence(HumanPlayers);
         hash.Add(Difficulty);
         hash.Add(Leader);
+        hash.Add(AiOverrides.Count);
 
         return hash.ToHashCode();
     }

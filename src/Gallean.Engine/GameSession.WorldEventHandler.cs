@@ -31,7 +31,7 @@ public sealed partial class GameSession
                 {
                     throw new WorldCommandException(commandResult.Error.Value);
                 }
-            });
+            }, attackerOwnerId, defenderOwnerId);
 
             return Empty.Value;
         }
@@ -60,7 +60,7 @@ public sealed partial class GameSession
                 {
                     throw new WorldCommandException(commandResult.Error.Value);
                 }
-            });
+            }, attackerOwnerId, defenderOwnerId);
 
             return Empty.Value;
         }
@@ -150,6 +150,7 @@ public sealed partial class GameSession
         public Empty Visit(WorldResourcesGivenEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldResourcesStolenEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldSummonUpkeepPaidEvent ev, Empty context) => Empty.Value;
+        public Empty Visit(WorldAiOverrideChangedEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldGameResumedEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldDiplomacyProposalSentEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldDiplomacyProposalAnsweredEvent ev, Empty context) => Empty.Value;

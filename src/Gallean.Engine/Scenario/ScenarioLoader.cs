@@ -1495,7 +1495,11 @@ public static class ScenarioLoader
                 {
                     BuildingConstructed = player.ConstructTurn == Math.Max(scenarioInfo.CurrentTurn, 1),
                     SpellResearched = player.ResearchTurn == Math.Max(scenarioInfo.CurrentTurn, 1)
-                }));
+                })
+            {
+                // Gallean Upgrade: own AI chosen on the race screen (docs/ai-switching.md).
+                AiOverride = isAi ? configuration?.AiOverrides.GetValueOrDefault(race) : null
+            });
         }
 
         return result.ToImmutable();

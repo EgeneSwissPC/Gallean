@@ -10,7 +10,7 @@ internal sealed partial class GameMenuViewModel : AbstractGameScreenViewModel
     {
         SaveTip = FormatSaveTip(Snapshot);
 
-        RegisterSnapshotGatedCommands(SaveGameCommand);
+        RegisterSnapshotGatedCommands(SaveGameCommand, OpenAiPlayersCommand);
     }
 
     public override bool BlurBackdrop => true;
@@ -39,6 +39,18 @@ internal sealed partial class GameMenuViewModel : AbstractGameScreenViewModel
     private bool CanSaveGame()
     {
         return Snapshot.IsSaveAllowed;
+    }
+
+    // Gallean Upgrade: own AIs for computer players during the game (docs/ai-switching.md).
+    [RelayCommand(CanExecute = nameof(CanOpenAiPlayers))]
+    private void OpenAiPlayers()
+    {
+        Game.OpenScreen(new AiPlayersScreenViewModel(AiPlayersPanel.CreateRows(GameModel), rows => AiPlayersPanel.ApplyAsync(GameModel, rows)));
+    }
+
+    private bool CanOpenAiPlayers()
+    {
+        return Snapshot.BattleState is null;
     }
 
     [RelayCommand]

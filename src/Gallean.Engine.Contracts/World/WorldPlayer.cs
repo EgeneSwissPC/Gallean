@@ -20,6 +20,11 @@ public sealed record WorldPlayer(
     ImmutableArray<WorldDiplomacyProposal> IncomingDiplomacyProposals,
     WorldPlayerTurnActions TurnActions)
 {
+    /// <summary>
+    /// Gallean Upgrade: this AI player's own AI (docs/ai-switching.md). Null follows the Settings choice.
+    /// </summary>
+    public WorldAiOverride? AiOverride { get; init; }
+
     public bool Equals(WorldPlayer? other)
     {
         if (other is null)
@@ -46,7 +51,8 @@ public sealed record WorldPlayer(
                SpiedPlayers.SequenceEqual(other.SpiedPlayers) &&
                SpiedRuins.SequenceEqual(other.SpiedRuins) &&
                IncomingDiplomacyProposals.SequenceEqual(other.IncomingDiplomacyProposals) &&
-               TurnActions.Equals(other.TurnActions);
+               TurnActions.Equals(other.TurnActions) &&
+               Equals(AiOverride, other.AiOverride);
     }
 
     public override int GetHashCode()
@@ -68,6 +74,7 @@ public sealed record WorldPlayer(
         hash.AddSequence(SpiedRuins);
         hash.AddSequence(IncomingDiplomacyProposals);
         hash.Add(TurnActions);
+        hash.Add(AiOverride);
 
         return hash.ToHashCode();
     }

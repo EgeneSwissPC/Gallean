@@ -32,7 +32,7 @@ public sealed partial class GameSession
             throw new InvalidOperationException("Cannot execute an AI action while a battle is active.");
         }
 
-        WorldCommandResult worldResult = World.DispatchCommand(new WorldAiActionCommand { BrainId = Ai.WorldAi });
+        WorldCommandResult worldResult = World.DispatchCommand(new WorldAiActionCommand { BrainId = GetWorldAiId(World.State.TurnInfo.CurrentPlayerId) });
         if (worldResult.Failed)
         {
             throw new WorldCommandException(worldResult.Error.Value);
@@ -40,7 +40,7 @@ public sealed partial class GameSession
 
         while (Battle is not null && Battle.IsAttackerAi && Battle.IsDefenderAi)
         {
-            BattleCommandResult battleResult = Battle.DispatchCommand(new BattleAutoResolveCommand { AttackerAiId = Ai.BattleAi, DefenderAiId = Ai.BattleAi });
+            BattleCommandResult battleResult = Battle.DispatchCommand(new BattleAutoResolveCommand { AttackerAiId = GetBattleAiId(BattleSide.Attacker), DefenderAiId = GetBattleAiId(BattleSide.Defender) });
             if (battleResult.Failed)
             {
                 throw new BattleCommandException(battleResult.Error.Value);
@@ -67,7 +67,9 @@ public sealed partial class GameSession
         bool isDefenderAi,
         bool canAutoResolve,
         WorldPosition position,
-        Action<BattleState> resolveBattle)
+        Action<BattleState> resolveBattle,
+        WorldPlayerId? attackerOwnerId = null,
+        WorldPlayerId? defenderOwnerId = null)
     {
         BattleSession session = new(
             EngineContext,
@@ -81,7 +83,11 @@ public sealed partial class GameSession
             isAttackerAi,
             isDefenderAi,
             canAutoResolve,
-            position);
+            position)
+        {
+            AttackerOwnerId = attackerOwnerId,
+            DefenderOwnerId = defenderOwnerId
+        };
 
         StartBattle(session);
     }

@@ -1384,6 +1384,16 @@
     "Battle AI": "ИИ боя",
     "Classic": "Классический",
     "The original AI: balances economy, armies and exploration.": "Исходный ИИ: развивает экономику, армии и разведку.",
-    "The original battle AI.": "Исходный ИИ сражений."
+    "The original battle AI.": "Исходный ИИ сражений.",
+    "AI players": "Игроки ИИ",
+    "Settings choice": "Как в настройках",
+    "Computer players set to Settings choice use the Map AI and Battle AI from the settings.": "Компьютерные игроки с выбором «Как в настройках» используют ИИ карты и ИИ боя из настроек.",
+    "No computer players": "Нет компьютерных игроков",
+    "Only computer players can have their own AI": "Собственный ИИ может быть только у компьютерных игроков",
+    "Switch everyone": "Переключить всех",
+    "One computer player in this game has its own Map AI and keeps it. Switch it to the new choice too?": "У одного компьютерного игрока в этой игре свой ИИ карты, и он его сохранит. Переключить и его?",
+    "{0} computer players in this game have their own Map AI and keep it. Switch them to the new choice too?": "У компьютерных игроков в этой игре ({0}) свой ИИ карты, и они его сохранят. Переключить и их?",
+    "One computer player in this game has its own Battle AI and keeps it. Switch it to the new choice too?": "У одного компьютерного игрока в этой игре свой ИИ боя, и он его сохранит. Переключить и его?",
+    "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?": "У компьютерных игроков в этой игре ({0}) свой ИИ боя, и они его сохранят. Переключить и их?"
   }
 }

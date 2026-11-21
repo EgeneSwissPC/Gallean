@@ -103,5 +103,8 @@ public enum WorldCommandError
     UnitNotWounded,
     UnitResurrectForbidden,
     UnitTrainingForbidden,
-    UnitTypeLockForbidden
+    UnitTypeLockForbidden,
+
+    // Gallean Upgrade
+    AiPlayerRequired
 }

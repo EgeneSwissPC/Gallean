@@ -33,6 +33,10 @@ public sealed class BattleSession
     public bool CanAutoResolve { get; }
     public WorldPosition Position { get; }
 
+    // Gallean Upgrade: the players of both sides (null = neutral/unowned), for their own battle AI.
+    public WorldPlayerId? AttackerOwnerId { get; init; }
+    public WorldPlayerId? DefenderOwnerId { get; init; }
+
     public bool IsAiTurn => State.Outcome is null && IsAiControlled(State.CurrentUnit.Side);
 
     internal void Start()

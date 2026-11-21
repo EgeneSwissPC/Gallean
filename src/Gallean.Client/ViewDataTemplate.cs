@@ -69,6 +69,7 @@ internal sealed class ViewDataTemplate : IDataTemplate
             ScenarioEventPopupViewModel => new ScenarioEventPopupView(),
             ScenarioSelectScreenViewModel => new ScenarioSelectScreenView(),
             SettingsScreenViewModel => new SettingsScreenView(),
+            AiPlayersScreenViewModel => new AiPlayersScreenView(),
             SpellDetailsViewModel => new SpellDetailsView(),
             SpellbookTabViewModel => new SpellbookTabView(),
             SpellGroupsTabViewModel => new SpellGroupsTabView(),

@@ -24,8 +24,9 @@ internal sealed partial class ScenarioConfigurationScreenViewModel : AbstractScr
         IGameTextProvider texts,
         IGameDefinitionProvider definitions,
         GameScenario scenario,
-        ImmutableArray<ScenarioRace> humanRaces)
-        : this(gameViewModel, texts, definitions, scenario, humanRaces, CreateConfiguration(humanRaces), 0)
+        ImmutableArray<ScenarioRace> humanRaces,
+        ImmutableDictionary<WorldRace, WorldAiOverride>? aiOverrides = null)
+        : this(gameViewModel, texts, definitions, scenario, humanRaces, CreateConfiguration(humanRaces) with { AiOverrides = aiOverrides ?? ImmutableDictionary<WorldRace, WorldAiOverride>.Empty }, 0)
     {
     }
 

@@ -65,6 +65,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
             {
                 OnPropertyChanged(nameof(WorldAiDescription));
                 Apply();
+                AskAboutOwnAis(own => own.WorldAi, own => own with { WorldAi = null }, isMap: true);
             }
         }
     }
@@ -78,6 +79,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
             {
                 OnPropertyChanged(nameof(BattleAiDescription));
                 Apply();
+                AskAboutOwnAis(own => own.BattleAi, own => own with { BattleAi = null }, isMap: false);
             }
         }
     }
@@ -245,6 +247,39 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
             WorldAi = worldAi == AiBrainRegistry.ClassicId ? null : worldAi,
             BattleAi = battleAi == AiBrainRegistry.ClassicId ? null : battleAi
         });
+    }
+
+    // Gallean Upgrade: players with their own AI keep it unless the player confirms switching
+    // everyone (docs/ai-switching.md). Only asked during a game, outside battles.
+    private void AskAboutOwnAis(Func<WorldAiOverride, string?> part, Func<WorldAiOverride, WorldAiOverride> clearPart, bool isMap)
+    {
+        if (gameViewModel.RootScreen is not AbstractGameScreenViewModel gameScreen || gameScreen.GameModel.Snapshot.BattleState is not null)
+        {
+            return;
+        }
+
+        GameModel gameModel = gameScreen.GameModel;
+        int count = AiPlayersPanel.CountOwnAis(gameModel.Snapshot.WorldState, part);
+
+        if (count == 0)
+        {
+            return;
+        }
+
+        TextSpans message = (isMap, count == 1) switch
+        {
+            (true, true) => TrSpans("One computer player in this game has its own Map AI and keeps it. Switch it to the new choice too?"),
+            (true, false) => TrSpans("{0} computer players in this game have their own Map AI and keep it. Switch them to the new choice too?", count),
+            (false, true) => TrSpans("One computer player in this game has its own Battle AI and keeps it. Switch it to the new choice too?"),
+            (false, false) => TrSpans("{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?", count)
+        };
+
+        gameViewModel.OpenScreen(new ConfirmPromptViewModel(
+            Tr("AI players"),
+            message,
+            Tr("Switch everyone"),
+            ConfirmPromptType.Primary,
+            () => AiPlayersPanel.ClearAsync(gameModel, clearPart)));
     }
 
     private static string KnownOrClassic(string? id, IReadOnlyList<string> known)

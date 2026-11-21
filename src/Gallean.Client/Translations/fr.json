@@ -1384,6 +1384,16 @@
     "Battle AI": "Battle AI",
     "Classic": "Classic",
     "The original AI: balances economy, armies and exploration.": "The original AI: balances economy, armies and exploration.",
-    "The original battle AI.": "The original battle AI."
+    "The original battle AI.": "The original battle AI.",
+    "AI players": "AI players",
+    "Settings choice": "Settings choice",
+    "Computer players set to Settings choice use the Map AI and Battle AI from the settings.": "Computer players set to Settings choice use the Map AI and Battle AI from the settings.",
+    "No computer players": "No computer players",
+    "Only computer players can have their own AI": "Only computer players can have their own AI",
+    "Switch everyone": "Switch everyone",
+    "One computer player in this game has its own Map AI and keeps it. Switch it to the new choice too?": "One computer player in this game has its own Map AI and keeps it. Switch it to the new choice too?",
+    "{0} computer players in this game have their own Map AI and keep it. Switch them to the new choice too?": "{0} computer players in this game have their own Map AI and keep it. Switch them to the new choice too?",
+    "One computer player in this game has its own Battle AI and keeps it. Switch it to the new choice too?": "One computer player in this game has its own Battle AI and keeps it. Switch it to the new choice too?",
+    "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?": "{0} computer players in this game have their own Battle AI and keep it. Switch them to the new choice too?"
   }
 }
