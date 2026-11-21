@@ -18,6 +18,16 @@ internal partial class BattleEngine
         private readonly BattleAiPlanner ai = new(context, canUseItems: false);
         private readonly BattleAiPlanner noRetreatAi = new(context, canUseItems: false, canRetreat: false);
 
+        // Gallean Upgrade: each side can use its own battle AI (docs/ai-switching.md).
+        private IBattleCommand<Empty> DecideAiAction(BattleState state, string? brainId)
+        {
+            IBattleAiBrain brain = AiBrainRegistry.ResolveBattle(brainId);
+
+            return brain is ClassicBattleAiBrain
+                ? ai.DecideAction(state).Command
+                : brain.DecideAction(Context, state, canUseItems: false, canRetreat: true).Command;
+        }
+
         public override EventRuleResult<BattleEvent> Visit(BattleAutoResolveStepEvent ev, BattleState state)
         {
             if (state.Outcome is not null)
@@ -28,7 +38,7 @@ internal partial class BattleEngine
             if (state.CurrentRound.Type is not BattleRoundType.Recovery &&
                 BattleOutcomeCalculator.GetOutcome(state) is not null)
             {
-                return EventRuleResult<BattleEvent>.Consume(new BattleAutoResolveStepEvent(ev.StartRoundNumber, ev.NoRetreatSide));
+                return EventRuleResult<BattleEvent>.Consume(ev with { });
             }
 
             int elapsedRounds = state.RoundNumber - ev.StartRoundNumber;
@@ -58,7 +68,7 @@ internal partial class BattleEngine
             }
             else
             {
-                command = ai.DecideAction(state).Command;
+                command = DecideAiAction(state, currentUnit.Side == BattleSide.Attacker ? ev.AttackerAiId : ev.DefenderAiId);
             }
 
             BattleCommandResult commandResult = command.Execute(state, Context);
@@ -76,7 +86,7 @@ internal partial class BattleEngine
             return EventRuleResult<BattleEvent>.Consume(
             [
                 .. newEvents,
-                new BattleAutoResolveStepEvent(ev.StartRoundNumber, ev.NoRetreatSide)
+                ev with { }
             ]);
         }
     }

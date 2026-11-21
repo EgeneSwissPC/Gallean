@@ -456,7 +456,7 @@ internal sealed partial class BattleScreenViewModel : AbstractGameScreenViewMode
             return;
         }
 
-        await battle.DispatchCommandAsync(new BattleAutoResolveCommand());
+        await battle.DispatchCommandAsync(WithBattleAis(new BattleAutoResolveCommand()));
     }
 
     [RelayCommand]

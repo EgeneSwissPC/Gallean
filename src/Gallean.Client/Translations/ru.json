@@ -1379,6 +1379,11 @@
     "None of these spells can be cast now": "Сейчас нельзя сотворить ни одно из этих заклинаний",
     "{0} of {1} spells can be cast now": "Можно сотворить сейчас: {0} из {1}",
     "A group casts its spells one after another, in this order.": "Группа творит свои заклинания одно за другим, в этом порядке.",
-    "No spell groups yet. Make one with Create spell group in the Spellbook.": "Групп заклинаний пока нет. Создайте группу кнопкой «Создать группу заклинаний» в книге заклинаний."
+    "No spell groups yet. Make one with Create spell group in the Spellbook.": "Групп заклинаний пока нет. Создайте группу кнопкой «Создать группу заклинаний» в книге заклинаний.",
+    "Map AI": "ИИ карты",
+    "Battle AI": "ИИ боя",
+    "Classic": "Классический",
+    "The original AI: balances economy, armies and exploration.": "Исходный ИИ: развивает экономику, армии и разведку.",
+    "The original battle AI.": "Исходный ИИ сражений."
   }
 }

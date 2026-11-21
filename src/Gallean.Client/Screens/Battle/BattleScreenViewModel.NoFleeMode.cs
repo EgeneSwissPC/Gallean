@@ -72,7 +72,7 @@ internal sealed partial class BattleScreenViewModel
         isActing = true;
         try
         {
-            await battle.DispatchCommandAsync(new BattleAutoResolveCommand { NoRetreatSide = side });
+            await battle.DispatchCommandAsync(WithBattleAis(new BattleAutoResolveCommand { NoRetreatSide = side }));
         }
         finally
         {

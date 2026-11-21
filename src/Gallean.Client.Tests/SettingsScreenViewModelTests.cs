@@ -1,4 +1,5 @@
 using Gallean.Configuration;
+using Gallean.Engine;
 using Gallean.Tests.Common;
 
 namespace Gallean.Client.Tests;
@@ -198,6 +199,33 @@ public sealed class SettingsScreenViewModelTests
         Assert.That(
             await new GameSettingsStore(sb.GetPath("config")).TryLoadAsync(),
             Is.EqualTo(GameSettings.Create(100, 100, true, 100, 5, 3, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null)));
+    }
+
+    [Test]
+    public async Task AiChoiceTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        using GameViewModel gameViewModel = await CreateGameAsync(new TestAudioPlayer(), sb);
+
+        // A setting naming an AI this build doesn't have shows (and plays) Classic.
+        gameViewModel.UpdateSettings(gameViewModel.Settings with { WorldAi = "removed-ai" });
+        gameViewModel.OpenSettingsCommand.Execute(null);
+
+        SettingsScreenViewModel screen = Assert.IsOfType<SettingsScreenViewModel>(gameViewModel.TopScreen);
+
+        Assert.That(screen.WorldAis[0], Is.EqualTo(AiBrainRegistry.ClassicId));
+        Assert.That(screen.BattleAis[0], Is.EqualTo(AiBrainRegistry.ClassicId));
+        Assert.That(screen.WorldAi, Is.EqualTo(AiBrainRegistry.ClassicId));
+        Assert.That(screen.BattleAi, Is.EqualTo(AiBrainRegistry.ClassicId));
+        Assert.That(screen.WorldAiDescription, Is.Not.Empty);
+        Assert.That(screen.BattleAiDescription, Is.Not.Empty);
+
+        // Classic is stored as "no choice", so the settings file stays as before.
+        screen.SoundVolume = 50;
+
+        Assert.That(gameViewModel.Settings.WorldAi, Is.Null);
+        Assert.That(gameViewModel.Settings.BattleAi, Is.Null);
     }
 
     [Test]

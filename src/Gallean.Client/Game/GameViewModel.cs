@@ -101,7 +101,7 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
                     Settings.UiSize,
                     Settings.LockCursor,
                     Settings.MovementSpeed,
-                    Settings.Language) with { ShowPathOnHover = Settings.ShowPathOnHover });
+                    Settings.Language) with { ShowPathOnHover = Settings.ShowPathOnHover, WorldAi = Settings.WorldAi, BattleAi = Settings.BattleAi });
             }
         }
     }
@@ -215,6 +215,8 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
                 break;
             }
 
+            // Gallean Upgrade: read the AI settings before every action, so a change applies mid-game.
+            gameModel.Session.Ai = new AiSelection(Settings.WorldAi, Settings.BattleAi);
             await gameModel.ExecuteAiActionAsync();
             await WaitForBattleAsync(gameModel);
         }

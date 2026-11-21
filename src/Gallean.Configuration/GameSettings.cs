@@ -16,7 +16,9 @@ public sealed record GameSettings(
     bool LockCursor = true,
     MovementSpeed MovementSpeed = GameSettings.DefaultMovementSpeed,
     Language? Language = null,
-    bool ShowPathOnHover = true)
+    bool ShowPathOnHover = true,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? WorldAi = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? BattleAi = null)
 {
     public const int CurrentFormatVersion = 6;
     public const int MinVolume = 0;

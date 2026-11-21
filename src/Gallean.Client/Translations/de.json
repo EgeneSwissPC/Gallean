@@ -1379,6 +1379,11 @@
     "None of these spells can be cast now": "None of these spells can be cast now",
     "{0} of {1} spells can be cast now": "{0} of {1} spells can be cast now",
     "A group casts its spells one after another, in this order.": "A group casts its spells one after another, in this order.",
-    "No spell groups yet. Make one with Create spell group in the Spellbook.": "No spell groups yet. Make one with Create spell group in the Spellbook."
+    "No spell groups yet. Make one with Create spell group in the Spellbook.": "No spell groups yet. Make one with Create spell group in the Spellbook.",
+    "Map AI": "Map AI",
+    "Battle AI": "Battle AI",
+    "Classic": "Classic",
+    "The original AI: balances economy, armies and exploration.": "The original AI: balances economy, armies and exploration.",
+    "The original battle AI.": "The original battle AI."
   }
 }

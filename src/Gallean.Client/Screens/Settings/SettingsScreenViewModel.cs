@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using Gallean.Configuration;
+using Gallean.Engine;
 
 namespace Gallean.Client;
 
@@ -17,6 +18,8 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
     private bool lockCursor;
     private bool showPathOnHover;
     private Language? language;
+    private string worldAi;
+    private string battleAi;
 
     public SettingsScreenViewModel(GameViewModel gameViewModel)
     {
@@ -33,6 +36,8 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         lockCursor = gameViewModel.Settings.LockCursor;
         showPathOnHover = gameViewModel.Settings.ShowPathOnHover;
         language = gameViewModel.Settings.Language;
+        worldAi = KnownOrClassic(gameViewModel.Settings.WorldAi, WorldAis);
+        battleAi = KnownOrClassic(gameViewModel.Settings.BattleAi, BattleAis);
 
         gameViewModel.PropertyChanged += OnGamePropertyChanged;
     }
@@ -47,6 +52,38 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
     public IReadOnlyList<BattleSpeed> BattleSpeeds => Enum.GetValues<BattleSpeed>();
     public IReadOnlyList<MovementSpeed> MovementSpeeds => Enum.GetValues<MovementSpeed>();
     public IReadOnlyList<Language> Languages { get; } = Enum.GetValues<Language>();
+    public IReadOnlyList<string> WorldAis { get; } = [.. AiBrainRegistry.WorldBrains.Select(brain => brain.Id)];
+    public IReadOnlyList<string> BattleAis { get; } = [.. AiBrainRegistry.BattleBrains.Select(brain => brain.Id)];
+
+    // Gallean Upgrade: the AIs used for AI players (docs/ai-switching.md). Not saved in games.
+    public string WorldAi
+    {
+        get => worldAi;
+        set
+        {
+            if (SetProperty(ref worldAi, value))
+            {
+                OnPropertyChanged(nameof(WorldAiDescription));
+                Apply();
+            }
+        }
+    }
+
+    public string BattleAi
+    {
+        get => battleAi;
+        set
+        {
+            if (SetProperty(ref battleAi, value))
+            {
+                OnPropertyChanged(nameof(BattleAiDescription));
+                Apply();
+            }
+        }
+    }
+
+    public string WorldAiDescription => AiBrainFormatter.FormatWorldDescription(worldAi);
+    public string BattleAiDescription => AiBrainFormatter.FormatBattleDescription(battleAi);
 
     public int SoundVolume
     {
@@ -202,7 +239,17 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
 
     private void Apply()
     {
-        gameViewModel.UpdateSettings(GameSettings.Create(soundVolume, musicVolume, gameViewModel.IsWindowed, renderResolution, autoSaveInterval, autoSaveLimit, battleSpeed, uiSize, lockCursor, movementSpeed, language) with { ShowPathOnHover = showPathOnHover });
+        gameViewModel.UpdateSettings(GameSettings.Create(soundVolume, musicVolume, gameViewModel.IsWindowed, renderResolution, autoSaveInterval, autoSaveLimit, battleSpeed, uiSize, lockCursor, movementSpeed, language) with
+        {
+            ShowPathOnHover = showPathOnHover,
+            WorldAi = worldAi == AiBrainRegistry.ClassicId ? null : worldAi,
+            BattleAi = battleAi == AiBrainRegistry.ClassicId ? null : battleAi
+        });
+    }
+
+    private static string KnownOrClassic(string? id, IReadOnlyList<string> known)
+    {
+        return id is not null && known.Contains(id) ? id : AiBrainRegistry.ClassicId;
     }
 
     private void OnGamePropertyChanged(object? sender, PropertyChangedEventArgs e)
