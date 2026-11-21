@@ -30,6 +30,36 @@ internal sealed partial class AiDesignerScreenView : UserControl
 
     private AiDesignerScreenViewModel? ViewModel => DataContext as AiDesignerScreenViewModel;
 
+    private AiDesignerScreenViewModel? subscribed;
+
+    protected override void OnDataContextChanged(EventArgs e)
+    {
+        base.OnDataContextChanged(e);
+
+        if (subscribed is not null)
+        {
+            subscribed.StageAdded -= OnStageAdded;
+        }
+
+        subscribed = ViewModel;
+
+        if (subscribed is not null)
+        {
+            subscribed.StageAdded += OnStageAdded;
+        }
+    }
+
+    // A new stage is added above the last card, usually out of sight: scroll to its top.
+    private void OnStageAdded(AiDesignerStageViewModel stage)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            Border? card = this.GetVisualDescendants().OfType<Border>()
+                .FirstOrDefault(border => border.Classes.Contains("stage") && ReferenceEquals(border.DataContext, stage));
+            card?.BringIntoView(new Rect(0, 0, card.Bounds.Width, Math.Min(card.Bounds.Height, 120)));
+        }, Avalonia.Threading.DispatcherPriority.Background);
+    }
+
     private void OnPaletteBlockEntered(object? sender, PointerEventArgs e)
     {
         if (sender is Control { DataContext: AiDesignerPaletteItem item } && ViewModel is { } viewModel)

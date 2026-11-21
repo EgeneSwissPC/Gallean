@@ -34,6 +34,9 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
 
     public GameViewModel Game { get; }
     public IReadOnlyList<AiDesignerPaletteGroup> Palette { get; }
+
+    // Raised after + Stage, so the view can scroll the new card into sight.
+    public event Action<AiDesignerStageViewModel>? StageAdded;
     public ObservableCollection<AiDesignerStageViewModel> Stages { get; } = [];
 
     private string name_;
@@ -425,6 +428,7 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
         RefreshStages();
         SelectedStage = viewModel;
         OnChanged();
+        StageAdded?.Invoke(viewModel);
     }
 
     public void MoveStage(AiDesignerStageViewModel stage, int delta)

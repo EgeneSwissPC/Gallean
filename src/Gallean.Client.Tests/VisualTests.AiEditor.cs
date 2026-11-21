@@ -87,6 +87,18 @@ public sealed partial class VisualTests
             await SkipFramesAsync(2);
             Assert.That(designer.HelpTitle, Is.EqualTo(Tr("Attack advantage")));
             await CaptureAsync(window, "3-help");
+
+            // + Stage scrolls the new card into sight.
+            Button addStage = view.FindControl<Button>("AddStageButton")!;
+            addStage.BringIntoView();
+            await SkipFramesAsync(3);
+            addStage.Command!.Execute(null);
+            await SkipFramesAsync(6);
+            Border newCard = view.GetVisualDescendants().OfType<Border>().First(border => border.Classes.Contains("stage") && border.DataContext == designer.Stages[^2]);
+            ScrollViewer stagesView = view.FindControl<ScrollViewer>("StagesView")!;
+            Point top = Assert.NotNull(newCard.TranslatePoint(new Point(0, 0), stagesView));
+            Assert.That(top.Y, Is.InRange(-1, stagesView.Bounds.Height - 40));
+            await CaptureAsync(window, "4-new-stage");
         }
         finally
         {
