@@ -200,16 +200,26 @@
     <Setter Property="Opacity" Value="1" />
   </Style>
 
+  <!-- The right margin keeps the cards clear of the End turn medallion; CenterShift (half of it) keeps a short bar centred on the window. -->
   <Style Selector="ItemsControl.world-stack-bar">
-    <Setter Property="Margin" Value="0,0,0,-64" />
+    <Setter Property="Margin" Value="0,0,196,-64" />
     <Setter Property="ClipToBounds" Value="False" />
+  </Style>
+  <Style Selector="ItemsControl.world-stack-bar local|WorldStackBarPanel">
+    <Setter Property="CenterShift" Value="98" />
+    <Setter Property="CompactStep" Value="48" />
+    <Setter Property="SelectedGap" Value="24" />
   </Style>
   <Style Selector="ItemsControl.world-stack-bar > ContentPresenter" x:DataType="local:WorldStackItemViewModel">
     <Setter Property="ZIndex" Value="{Binding IsSelected}" />
+    <Setter Property="local:WorldStackBarPanel.IsSelected" Value="{Binding IsSelected}" />
   </Style>
   <Style Selector="ItemsControl.world-stack-bar[ItemCount=1], ItemsControl.world-stack-bar[ItemCount=2], ItemsControl.world-stack-bar[ItemCount=3], ItemsControl.world-stack-bar[ItemCount=4]">
-    <Setter Property="Margin" Value="0,0,0,-90" />
+    <Setter Property="Margin" Value="0,0,196,-90" />
     <Style Selector="^ StackPanel">
+      <Setter Property="Spacing" Value="-48" />
+    </Style>
+    <Style Selector="^ local|WorldStackBarPanel">
       <Setter Property="Spacing" Value="-48" />
     </Style>
     <Style Selector="^ Button.world-stack-card">
