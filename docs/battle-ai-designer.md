@@ -182,7 +182,7 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
    (Open / City + level picture / Capital, "as garrison"), AI per side, Swap sides, presets (save, load, delete).
 4. ~~**Leader items and upgrades on screen**~~ (done, see "Phase 4 — done"; ~1.5 days): the army tab's 7 equipment slots with a fitting-items
    picker (red when the leader can't use them), Upgrades list like the level-up popup.
-5. **Run N + results** (~1 day): run-count box (default 1000, ±100/±1000), progress/Cancel, results panel with
+5. ~~**Run N + results**~~ (done, see "Phase 5 — done"; ~1 day): run-count box (default 1000, ±100/±1000), progress/Cancel, results panel with
    margins of error, per-unit survival, "Alternate sides" checkbox.
 6. **Watch battle** (~1.5 days): spectator battle screen (both sides AI with their brains, battle items used),
    back to the setup afterwards, "Watch seed N" from the results.
@@ -430,3 +430,37 @@ Merged in 589925fe (feature 9f06a52c, layout fix after the real-client check).
   lord's list.
 - Battle items (potions, orbs, talismans) do nothing in Run N (auto-resolve never uses items); Watch battle (phase 6)
   will use them.
+
+## Phase 5 — done (Run N and results)
+
+Merged in 9381df4b.
+
+### What was built
+- Battlefield panel, under Swap sides: "Battles to run" box (default 1000) with −1000 / −100 / +100 / +1000 (the
+  buttons stop at 100 and 10,000; typing allows 1–10,000), "Alternate sides" (off by default) and **Run** (enabled
+  only when the setup is valid).
+- `BattleSandboxRunViewModel`/`View`: a modal popup in the game's panel style. While running: progress bar, "n of N
+  battles", Cancel. The battles run in chunks of 100 on a background task with all cores, so the bar moves and Cancel
+  works between chunks; even chunks give exactly the same runs as one big run (seeds and alternating sides line up).
+  After Cancel the battles fought so far are shown; cancelled before the first chunk, the popup closes.
+- Results: summary (battles, sides alternating or as set up, first seed, average rounds, draws if any) and per side:
+  wins in % with the 95 % margin of error, wins as attacker and as defender (when sides alternate), runs where it
+  fled, units alive on average, hit points left, and per unit its face, name and "survived n of N".
+- Every Run uses a new random first seed (shown in the summary, for replaying in phase 6).
+- Engine: `BattleBenchResult.Combine`, `Summarize` (`BattleBenchSideSummary`, `BattleBenchUnitSummary`),
+  `AverageRounds`.
+- 17 new UI strings in all 7 catalogs (ru translated).
+
+### Tests
+- `BattleSandboxTests` 13 (+4): run-count buttons and limits; Run of 250 with alternating sides and a fixed seed
+  gives seeds 42..291, 125 attacks each way, 3 unit rows, and exactly the same winners and rounds as one direct
+  engine run; Cancel after the first chunk shows a whole number of chunks; Cancel at once returns to the setup.
+- `AiBattleBenchTests` 26 (+1): chunked = whole; summary counts add up.
+- Visual `BattleSandboxTest` gained results shots (en + ru). The first run showed the battlefield panel's new rows
+  overlapping the level bar; fixed (smaller place picture, tighter spacing). Full suite 5409 passed (5404 + 5).
+- Real client (AOT): two one-leader armies, Run → 1000 battles in about a second, results popup readable. Fixed after
+  it: the army-name line repeated "Attacker"/"Defender" for unnamed armies (now hidden; tests only).
+
+### Known limits
+- No seed box to repeat a run; the summary shows the first seed, replay comes with Watch battle (phase 6).
+- Results are not saved or exportable (the command-line tool has `--csv`).
