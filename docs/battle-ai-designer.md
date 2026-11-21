@@ -180,7 +180,7 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
 3. ~~**Sandbox setup screen**~~ (done, see "Phase 3 — done"; ~2 days): main-menu entry below AI editor; two army panels (map editor army grid and
    unit picker, "Anything goes" checkbox with a red rule line), owner picker with race banners, battlefield panel
    (Open / City + level picture / Capital, "as garrison"), AI per side, Swap sides, presets (save, load, delete).
-4. **Leader items and upgrades on screen** (~1.5 days): the army tab's 7 equipment slots with a fitting-items
+4. ~~**Leader items and upgrades on screen**~~ (done, see "Phase 4 — done"; ~1.5 days): the army tab's 7 equipment slots with a fitting-items
    picker (red when the leader can't use them), Upgrades list like the level-up popup.
 5. **Run N + results** (~1 day): run-count box (default 1000, ±100/±1000), progress/Cancel, results panel with
    margins of error, per-unit survival, "Alternate sides" checkbox.
@@ -387,3 +387,46 @@ Merged in d50ef2d6 (feature 984b5f7b, layout fix 07eaa303).
 - In Russian the "Saved armies" drop-down is narrow next to the longer Load/Delete labels (long names are cut).
 - Delete removes a preset without asking.
 - Watch battle and Run N come in phases 6 and 5; leader items in phase 4.
+
+## Phase 4 — done (leader items and upgrades on screen)
+
+Merged in 589925fe (feature 9f06a52c, layout fix after the real-client check).
+
+### What was built
+- Under each army's party grid, the army tab's 7 equipment sockets (banner, tome, 2 battle items, 2 artifacts,
+  boots), shown while the army has a leader and isn't a garrison. Clicking a socket opens the map editor's item list
+  (`MapEditorListPickerViewModel`) with only the items that fit that slot (the game's `CanPlace`); items the leader
+  can't use yet carry a red line "The leader needs <ability>" and can still be picked; "No item" empties a filled
+  slot. A filled socket with a problem gets a red frame and a tooltip; the screen's problem line names the side and
+  the item, and Watch/Run stay disabled until fixed or "Anything goes" is ticked.
+- "Upgrades n / max" button next to "Anything goes" opens `BattleSandboxUpgradesViewModel`/`View`, a copy of the
+  game's level-up popup (portrait, title, list with icons and descriptions): several upgrades can be ticked, up to
+  min(level, MaxLeaderAbilities) − 1; rows above the leader's level or past the limit are greyed with the reason.
+  "Anything goes" lifts both limits; the screen reports too many upgrades when it is switched off again.
+- Items and upgrades are saved in presets, swapped with Swap sides, kept when the leader changes, ignored for a
+  garrison.
+- Engine: `AiBattleBench.CheckItem` (`BattleItemCheck`: fits / missing ability, same rules as `Validate`),
+  `LeaderUpgradeChoices`, `GetMaxLeaderUpgrades`.
+- Shared map editor code: `MapEditorListPickerItemViewModel.Warning` (red line under a row; null in the map editor).
+- 14 new UI strings in all 7 catalogs (ru translated).
+
+### Tests
+- `BattleSandboxTests` 9 (+3): banner slot lists banners only and marks Banner of Striking; picking it marks the
+  socket and blocks the battle; level 3 + Banner Bearer from the upgrade list make it legal ("Upgrades 1 / 2");
+  saved/loaded with the preset; "No item" empties; a level 1 leader gets no upgrades (every row says why);
+  "Anything goes" allows any number and switching it off reports it; a garrison has no items.
+- `AiBattleBenchTests` 25 (+1): `CheckItem` agrees with `Validate` for 3 items × 7 slots × 2 armies; upgrade choices
+  unique and complete.
+- Visual `BattleSandboxTest` gained items, item-problem, upgrades and equipped shots (en + ru), reviewed at
+  1366x768. Full non-visual suite: 5404 passed (5400 + 4).
+- Real client (AOT, Debian 12 image): leader → banner socket → banner list with "The leader needs Banner Bearer" in
+  red on every banner → picked Banner of Striking → socket framed red, problem line shown → "Bannermen" saved with
+  `"equipment": [{"slot": "Banner", "item": "G000IG1003"}]`. The same run showed the army panel overflowing at the
+  bottom once the item row appeared; fixed by a smaller party grid (checked by the visual test only).
+
+### Known limits
+- Items are equipped by clicking, not dragged from an inventory (the sandbox has none).
+- The upgrade list offers every lord's upgrades (the bench accepts any); in the game a leader only sees its own
+  lord's list.
+- Battle items (potions, orbs, talismans) do nothing in Run N (auto-resolve never uses items); Watch battle (phase 6)
+  will use them.
