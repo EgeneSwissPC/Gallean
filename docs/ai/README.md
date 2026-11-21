@@ -10,6 +10,7 @@ How the world-map AI plays a turn (`src/Gallean.Engine/World/Ai`).
 | `notes-custom-map-ai.md` | Notes: why AI leaders stay in the capital on custom maps |
 | `../ai-switching.md` | Spec: switchable AIs (settings, own AI per player, tournament, personalities) |
 | `../ai-designer.md` | Spec: AI editor mode, building your own AIs in stages from blocks |
+| `../ai-remaining-work.md` | Handoff: state of the AI work and everything that remains (battle AI designer, maps carrying AIs, lookahead, parked fixes) |
 
 Regenerate after changing `ai_flow.py`:
 

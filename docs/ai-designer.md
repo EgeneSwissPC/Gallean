@@ -1,6 +1,6 @@
 # AI designer: a mode for building your own AIs
 
-gallean-upgrade only. Status: phases 1-5 done (engine; AI editor mode and list; the designer screen; the Test panel; the first new behaviour blocks). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
+gallean-upgrade only. Status: phases 1-5 done; phase 6 moved to its own project; phase 7 remains (see `docs/ai-remaining-work.md`) (engine; AI editor mode and list; the designer screen; the Test panel; the first new behaviour blocks). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
 done) and the world AI diagram in `docs/ai/`.
 
 ## Decisions
@@ -150,7 +150,7 @@ way.
    ~4 days.~~ Done.
 4. ~~Test panel in the designer (shared tournament runner). ~1.5 days.~~ Done.
 5. ~~New behaviour blocks, first set (open question T), each with tests and a tournament check. ~0.5–1 day each.~~ Done (the four recommended ones).
-6. Battle AI designer: engine (document, conditions, rules, target choice) + screen. ~4 days.
+6. ~~Battle AI designer~~ -> moved out: user decision (2026-11-21) that the battle AI designer is a separate project; starting point in `docs/ai-remaining-work.md` section 2.
 7. Maps can carry designed AIs (replaces `ai-switching.md` phase 7: the map editor's AI block can pick a designed AI
    and the map file stores a copy). ~1.5 days.
 
