@@ -1535,6 +1535,22 @@
     "{0} ({1} × {1})": "{0} ({1} × {1})",
     "{0} games of up to {1} turns:": "Игр: {0}, до {1} ходов:",
     "{0} {1} %": "{0} {1} %",
-    "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn.": "{0}: побед {1}, ничьих {2} (впереди {3}), выбыл {4} раз; городов в конце {5}; {6}; {7} мс на ход."
+    "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn.": "{0}: побед {1}, ничьих {2} (впереди {3}), выбыл {4} раз; городов в конце {5}; {6}; {7} мс на ход.",
+    "Armies with nothing better to do march on the nearest enemy capital the AI has seen. Attacking it still needs the wanted advantage.": "Армии, которым нечем заняться, идут к ближайшей замеченной вражеской столице. Для атаки на неё всё равно нужен заданный перевес.",
+    "Attack only when": "Нападать, только когда",
+    "Gather before attacking": "Собраться перед атакой",
+    "Keep": "Держать",
+    "Keep a gold reserve": "Держать запас золота",
+    "Keep armies home": "Держать армии дома",
+    "March on the nearest enemy capital": "Идти на ближайшую вражескую столицу",
+    "Never spend below": "Не тратить ниже",
+    "New behaviour": "Новое поведение",
+    "Rush the enemy capital": "Натиск на столицу врага",
+    "Spells, research, leaders, buildings and units never spend the treasury below that much gold.": "Заклинания, изучение, предводители, здания и воины никогда не тратят казну ниже этой суммы.",
+    "This block is already in the stage.": "Этот блок уже есть в этапе.",
+    "armies near the capital": "армий у столицы",
+    "armies stand together": "армий стоят вместе",
+    "The fighting armies nearest the capital (as many as you set) stay within 4 tiles of it and walk back when they are further away. With only that many armies, all of them stay. Rod planters and thieves don't count.": "Ближайшие к столице боевые армии (сколько задано) держатся не дальше 4 клеток от неё и возвращаются, если ушли дальше. Если армий не больше этого числа, остаются все. Жезлоносцы и воры не считаются.",
+    "An army only attacks when that many fighting armies, itself included, stand within 4 tiles of each other; until then it walks to the nearest other army. With fewer armies than that, nobody attacks.": "Армия нападает, только когда столько боевых армий, включая её саму, стоят не дальше 4 клеток друг от друга; до тех пор она идёт к ближайшей другой армии. Если армий меньше, никто не нападает."
   }
 }

@@ -257,6 +257,13 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
                 break;
 
             default:
+                if (stage.Rules.Any(block => block.Item.Rule == item.Rule))
+                {
+                    StatusText = Tr("This block is already in the stage.");
+                    HelpItem = item;
+                    return;
+                }
+
                 InsertBlock(item, stage, stage.Rules.Count);
                 break;
         }
@@ -361,7 +368,7 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
             AiDesignerGroupViewModel group => item.Category == AiDesignerCategory.Condition && !group.Stage.IsDefault,
             AiDesignerTierViewModel tier => item.Category == tier.Slot.Category,
             AiDesignerSlotViewModel slot => item.Category == slot.Category,
-            AiDesignerStageViewModel => item.Category is AiDesignerCategory.Rule or AiDesignerCategory.Tuning,
+            AiDesignerStageViewModel => item.Category is AiDesignerCategory.Rule or AiDesignerCategory.Tuning or AiDesignerCategory.Behaviour,
             _ => false
         };
     }
@@ -647,6 +654,26 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
             viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(AiDesignerRule.WaitForFreeCapital), OnChanged));
         }
 
+        if (rules.KeepArmiesHome is { } home)
+        {
+            viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(AiDesignerRule.KeepArmiesHome), OnChanged, home));
+        }
+
+        if (rules.GatherArmies is { } gather)
+        {
+            viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(AiDesignerRule.GatherArmies), OnChanged, gather));
+        }
+
+        if (rules.RushEnemyCapital is true)
+        {
+            viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(AiDesignerRule.RushEnemyCapital), OnChanged));
+        }
+
+        if (rules.GoldReserve is { } reserve)
+        {
+            viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(AiDesignerRule.GoldReserve), OnChanged, reserve));
+        }
+
         viewModel.RefreshState();
         loading = wasLoading;
 
@@ -703,7 +730,11 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
             reinforce?.Number(0),
             attack?.Number(0),
             savings?.Number(0),
-            Rule(AiDesignerRule.WaitForFreeCapital) is null ? null : true);
+            Rule(AiDesignerRule.WaitForFreeCapital) is null ? null : true,
+            Rule(AiDesignerRule.KeepArmiesHome)?.Number(0),
+            Rule(AiDesignerRule.GatherArmies)?.Number(0),
+            Rule(AiDesignerRule.RushEnemyCapital) is null ? null : true,
+            Rule(AiDesignerRule.GoldReserve)?.Number(0));
 
         return new DesignedWorldStage(stage.Name.Trim(), when, ToTiers(stage.Economy), ToTiers(stage.Army), rules);
     }

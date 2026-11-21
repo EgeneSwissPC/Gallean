@@ -106,7 +106,11 @@ internal static class DesignedStageEvaluator
             ReinforceThreshold = rules.ReinforcePercent is { } reinforce ? reinforce * 10 : classic.ReinforceThreshold,
             AttackPowerPercent = rules.AttackPowerPercent ?? classic.AttackPowerPercent,
             LeaderOvercommitGold = rules.LeaderSavingsGold ?? classic.LeaderOvercommitGold,
-            WaitForFreeCapital = rules.WaitForFreeCapital ?? classic.WaitForFreeCapital
+            WaitForFreeCapital = rules.WaitForFreeCapital ?? classic.WaitForFreeCapital,
+            KeepArmiesHome = rules.KeepArmiesHome ?? 0,
+            GatherArmies = rules.GatherArmies ?? 0,
+            RushEnemyCapital = rules.RushEnemyCapital ?? false,
+            GoldReserve = rules.GoldReserve ?? 0
         };
     }
 
@@ -151,7 +155,11 @@ internal static class DesignedStageEvaluator
                 profile.ReinforceThreshold == classic.ReinforceThreshold ? null : profile.ReinforceThreshold / 10,
                 profile.AttackPowerPercent == classic.AttackPowerPercent ? null : profile.AttackPowerPercent,
                 profile.LeaderOvercommitGold == classic.LeaderOvercommitGold ? null : profile.LeaderOvercommitGold,
-                profile.WaitForFreeCapital == classic.WaitForFreeCapital ? null : profile.WaitForFreeCapital));
+                profile.WaitForFreeCapital == classic.WaitForFreeCapital ? null : profile.WaitForFreeCapital,
+                profile.KeepArmiesHome == 0 ? null : profile.KeepArmiesHome,
+                profile.GatherArmies == 0 ? null : profile.GatherArmies,
+                profile.RushEnemyCapital ? true : null,
+                profile.GoldReserve == 0 ? null : profile.GoldReserve));
     }
 
     // Actions grouped by priority, highest first; within a tier in enum order (Classic's own order).

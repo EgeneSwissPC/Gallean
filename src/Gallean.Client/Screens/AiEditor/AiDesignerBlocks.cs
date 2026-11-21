@@ -13,7 +13,8 @@ internal enum AiDesignerCategory
     Economy,
     Army,
     Rule,
-    Tuning
+    Tuning,
+    Behaviour
 }
 
 // Rule and tuning blocks (one of each per stage).
@@ -23,7 +24,11 @@ internal enum AiDesignerRule
     Reinforce,
     AttackPower,
     LeaderSavings,
-    WaitForFreeCapital
+    WaitForFreeCapital,
+    KeepArmiesHome,
+    GatherArmies,
+    RushEnemyCapital,
+    GoldReserve
 }
 
 internal enum AiDesignerCondition
@@ -135,6 +140,7 @@ internal static class AiDesignerBlocks
             AiDesignerCategory.Economy => new SolidColorBrush(Color.FromRgb(0x8A, 0x67, 0x1E)),
             AiDesignerCategory.Army => new SolidColorBrush(Color.FromRgb(0x8C, 0x2F, 0x2F)),
             AiDesignerCategory.Rule => new SolidColorBrush(Color.FromRgb(0x2F, 0x6E, 0x3E)),
+            AiDesignerCategory.Behaviour => new SolidColorBrush(Color.FromRgb(0xA0, 0x55, 0x1E)),
             _ => new SolidColorBrush(Color.FromRgb(0x5E, 0x3A, 0x84))
         };
     }
@@ -180,6 +186,14 @@ internal static class AiDesignerBlocks
         new(AiDesignerCategory.Tuning, Tr("Wait for a free capital"), Tr("Doesn't save up for a leader while an army stands on the capital entrance, so that army leaves first."), Rule: AiDesignerRule.WaitForFreeCapital)
     ];
 
+    public static IReadOnlyList<AiDesignerPaletteItem> Behaviours =>
+    [
+        new(AiDesignerCategory.Behaviour, Tr("Keep armies home"), Tr("The fighting armies nearest the capital (as many as you set) stay within 4 tiles of it and walk back when they are further away. With only that many armies, all of them stay. Rod planters and thieves don't count."), Rule: AiDesignerRule.KeepArmiesHome),
+        new(AiDesignerCategory.Behaviour, Tr("Gather before attacking"), Tr("An army only attacks when that many fighting armies, itself included, stand within 4 tiles of each other; until then it walks to the nearest other army. With fewer armies than that, nobody attacks."), Rule: AiDesignerRule.GatherArmies),
+        new(AiDesignerCategory.Behaviour, Tr("Rush the enemy capital"), Tr("Armies with nothing better to do march on the nearest enemy capital the AI has seen. Attacking it still needs the wanted advantage."), Rule: AiDesignerRule.RushEnemyCapital),
+        new(AiDesignerCategory.Behaviour, Tr("Keep a gold reserve"), Tr("Spells, research, leaders, buildings and units never spend the treasury below that much gold."), Rule: AiDesignerRule.GoldReserve)
+    ];
+
     public static IReadOnlyList<AiDesignerPaletteItem> Actions(AiDesignerCategory category)
     {
         return category == AiDesignerCategory.Economy ? EconomyActions : ArmyActions;
@@ -197,7 +211,7 @@ internal static class AiDesignerBlocks
 
     public static AiDesignerPaletteItem ItemFor(AiDesignerRule rule)
     {
-        return Rules.First(item => item.Rule == rule);
+        return Rules.Concat(Behaviours).First(item => item.Rule == rule);
     }
 
     public static IReadOnlyList<AiDesignerPaletteGroup> CreatePalette()
@@ -207,7 +221,8 @@ internal static class AiDesignerBlocks
             new(Tr("When"), Conditions),
             new(Tr("Economy, in priority order"), EconomyActions),
             new(Tr("Armies, in priority order"), ArmyActions),
-            new(Tr("Rules and tuning"), Rules)
+            new(Tr("Rules and tuning"), Rules),
+            new(Tr("New behaviour"), Behaviours)
         ];
     }
 
@@ -228,6 +243,10 @@ internal static class AiDesignerBlocks
             { Rule: AiDesignerRule.AttackPower } => [new MapEditorBlockText(Tr("Attack with")), Number(first ?? 100, 10, 500), new MapEditorBlockText(Tr("% of the usual advantage"))],
             { Rule: AiDesignerRule.LeaderSavings } => [new MapEditorBlockText(Tr("Save for a leader while short by up to")), Number(first ?? 400, 0, 9999), new MapEditorBlockText(Tr("gold"))],
             { Rule: AiDesignerRule.WaitForFreeCapital } => [new MapEditorBlockText(Tr("Don't save for a leader while the capital entrance is taken"))],
+            { Rule: AiDesignerRule.KeepArmiesHome } => [new MapEditorBlockText(Tr("Keep")), Number(first ?? 1, 1, 20), new MapEditorBlockText(Tr("armies near the capital"))],
+            { Rule: AiDesignerRule.GatherArmies } => [new MapEditorBlockText(Tr("Attack only when")), Number(first ?? 2, 2, 20), new MapEditorBlockText(Tr("armies stand together"))],
+            { Rule: AiDesignerRule.RushEnemyCapital } => [new MapEditorBlockText(Tr("March on the nearest enemy capital"))],
+            { Rule: AiDesignerRule.GoldReserve } => [new MapEditorBlockText(Tr("Never spend below")), Number(first ?? 300, 0, 9999), new MapEditorBlockText(Tr("gold"))],
             _ => [new MapEditorBlockText(item.Label)]
         };
 

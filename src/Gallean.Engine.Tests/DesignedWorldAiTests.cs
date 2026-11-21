@@ -67,7 +67,8 @@ public sealed class DesignedWorldAiTests
                 Name = "Defend",
                 When = [[new DesignedStageCondition.EnemyNearCapital(5)], [new DesignedStageCondition.LostCity(), new DesignedStageCondition.CitiesBelow(3)]],
                 Army = [[WorldAiActionKind.Attack], [WorldAiActionKind.Heal, WorldAiActionKind.AutoFit]],
-                Rules = new DesignedWorldRules(HurtPercent: 50, HealedPercent: 70, ReinforcePercent: 40, AttackPowerPercent: 90, LeaderSavingsGold: 0, WaitForFreeCapital: true)
+                Rules = new DesignedWorldRules(HurtPercent: 50, HealedPercent: 70, ReinforcePercent: 40, AttackPowerPercent: 90, LeaderSavingsGold: 0, WaitForFreeCapital: true,
+                    KeepArmiesHome: 2, GatherArmies: 3, RushEnemyCapital: true, GoldReserve: 250)
             },
             Stage("Rich", [[new DesignedStageCondition.FromTurn(10), new DesignedStageCondition.GoldAbove(1000)]]),
             DesignedWorldStage.Classic
@@ -158,6 +159,7 @@ public sealed class DesignedWorldAiTests
 
         Assert.That((profile.HurtThreshold, profile.HealedThreshold, profile.ReinforceThreshold), Is.EqualTo((500, 700, 400)));
         Assert.That((profile.AttackPowerPercent, profile.LeaderOvercommitGold, profile.WaitForFreeCapital), Is.EqualTo((90, 0, true)));
+        Assert.That((profile.KeepArmiesHome, profile.GatherArmies, profile.RushEnemyCapital, profile.GoldReserve), Is.EqualTo((2, 3, true, 250)));
         Assert.That(profile.Priorities!.Keys, Is.EquivalentTo(new[]
         {
             WorldAiActionKind.CastSpell, WorldAiActionKind.ResearchSpell, WorldAiActionKind.HireLeader, WorldAiActionKind.ConstructBuilding,

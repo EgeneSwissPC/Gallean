@@ -1535,6 +1535,22 @@
     "{0} ({1} × {1})": "{0} ({1} × {1})",
     "{0} games of up to {1} turns:": "{0} games of up to {1} turns:",
     "{0} {1} %": "{0} {1} %",
-    "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn.": "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn."
+    "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn.": "{0}: {1} wins, {2} draws ({3} ahead), {4} times out; {5} cities at the end; {6}; {7} ms per turn.",
+    "Armies with nothing better to do march on the nearest enemy capital the AI has seen. Attacking it still needs the wanted advantage.": "Armies with nothing better to do march on the nearest enemy capital the AI has seen. Attacking it still needs the wanted advantage.",
+    "Attack only when": "Attack only when",
+    "Gather before attacking": "Gather before attacking",
+    "Keep": "Keep",
+    "Keep a gold reserve": "Keep a gold reserve",
+    "Keep armies home": "Keep armies home",
+    "March on the nearest enemy capital": "March on the nearest enemy capital",
+    "Never spend below": "Never spend below",
+    "New behaviour": "New behaviour",
+    "Rush the enemy capital": "Rush the enemy capital",
+    "Spells, research, leaders, buildings and units never spend the treasury below that much gold.": "Spells, research, leaders, buildings and units never spend the treasury below that much gold.",
+    "This block is already in the stage.": "This block is already in the stage.",
+    "armies near the capital": "armies near the capital",
+    "armies stand together": "armies stand together",
+    "The fighting armies nearest the capital (as many as you set) stay within 4 tiles of it and walk back when they are further away. With only that many armies, all of them stay. Rod planters and thieves don't count.": "The fighting armies nearest the capital (as many as you set) stay within 4 tiles of it and walk back when they are further away. With only that many armies, all of them stay. Rod planters and thieves don't count.",
+    "An army only attacks when that many fighting armies, itself included, stand within 4 tiles of each other; until then it walks to the nearest other army. With fewer armies than that, nobody attacks.": "An army only attacks when that many fighting armies, itself included, stand within 4 tiles of each other; until then it walks to the nearest other army. With fewer armies than that, nobody attacks."
   }
 }
