@@ -211,6 +211,21 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
 - **BD. Player's own Auto-play / Instant resolve**: (a) AI sides only, as today; (b) a setting "My auto battles use".
   Recommended (a) now, (b) as phase 6.
 - ~~**BE. Test armies**~~: answered by the user — any units at any level, saved as presets (battle sandbox, 3a).
+- **BG. Battle items in AI battles** (user, 2026-11-22: "must be implemented at some point"): Classic only drinks
+  healing potions (`HealItemAction`, `PotionHeal`, only in live battles with `CanUseItems`); it never uses orbs,
+  talismans, boost/revive potions, scrolls or wands, and auto-resolve (instant resolve, AI vs AI, sandbox Run and
+  Watch) uses no items at all. To decide: (a) an "use battle items" behaviour block for designed AIs (which items,
+  when: orbs/talismans on the strongest target, boost potions round 1, revive on a fallen leader); (b) allow items
+  in auto-resolve too (changes AI-vs-AI results in the whole game, so a setting or designed-AI-only); (c) the
+  sandbox Run/Watch with items, keeping Watch = Run for a seed (both must use the same rules).
+- **BH. Cargo-aware tactics** (user, 2026-11-22): the battle AI only sees the battle (`BattleState`: units, the two
+  battle-slot items, modifiers); it does not know what the army carries (stack inventory, valuables, quest items),
+  so a leader hauling stolen treasure fights exactly like an empty one. Losing the battle loses the cargo; fleeing
+  keeps it. Needs: (a) the battle to know the cargo (e.g. `BattleInfo` per side: inventory value in gold and
+  "carries a quest item"), filled from the stack when the battle starts; (b) a stage condition "we carry items
+  worth over N gold / a quest item", so a designed AI can flee earlier or protect the leader; (c) optionally the
+  map AI weighing cargo when choosing to attack or avoid a fight (separate from the battle AI). Classic stays
+  unchanged.
 - **BF. Size**: sandbox phases 2–6 ~6.5 days; designer phases 7–9 ~5–6 days; confirmed per phase.
 
 ## Phase 1 — done
