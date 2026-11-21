@@ -157,3 +157,50 @@ Commit 8cb5f5f0, merged in 29cdd5a9.
   - Samples are small (24 seats each); treat differences under ~3 wins as noise. On S099 (4 races, 50 turns) nobody wins with any of them; Aggressive captures first there too (turn 24 vs 29).
 - Real client (AOT, Debian 12 image): Settings lists Classic, Classic+, Aggressive, Builder, Expansionist / Classic, Cautious, Ruthless; picked Aggressive + Ruthless (settings.json has both); started 5th Column; on turn 4 the Elves attacked the player's city and, with Auto-play on the player's side, both Elven units fought to the death without fleeing; no errors in the log.
 - Known limits: a personality is still the Classic engine: it changes how far it goes, not how it thinks. Aggressive and Builder are flavours, weaker than Classic on these maps; Classic+, Cautious and Ruthless are the stronger picks.
+
+## Phase 6 — lookahead AI (planned, not started)
+
+User decision (after phase 5): build both the lookahead AI and the map-editor per-race AI.
+
+### The problem today
+Classic and every personality score one action at a time from the current state (utility AI, `WorldAiController.DecideAction`). They never ask "what does the map look like after this, and what does the enemy do next?". The tournament shows the result: on S099 no AI wins in 50 turns; armies trade cities back and forth.
+
+### What the engine already gives us
+- `WorldState` is immutable, so a "what if" copy is free; `AbstractEngine.DryRunCommand` runs a command on a state without touching the game.
+- `WorldAiEstimator` already predicts a battle's outcome (fixed-random auto-resolve).
+- AI time today: S099 51 ms per turn on average, max ~430 ms; S100 ~20 ms. A lookahead multiplies that, so it needs a time budget.
+
+### Options (sizes are rough)
+- **A. Re-rank Classic's best moves (1-ply).** Take Classic's top K candidate actions per decision, apply each to a copy, score the resulting state with a new position evaluator (cities and capitals held, army power and how exposed it is, income, threatened own cities), pick the best. ~1 week. Cheap to run (K dry runs per action).
+- **B. Plan the whole own turn.** Search over sequences of own actions for the turn (beam search or MCTS seeded by Classic's candidates), evaluate the end-of-turn state. ~2–3 weeks. Cost grows with armies; needs the time budget.
+- **C. B plus the enemy's reply.** After the own turn, simulate each enemy's likely turn with Classic (the opponent model) and evaluate after that. ~4–6 weeks. The strongest and the slowest; on a 1024 map with 13 players it needs a hard budget and probably only the nearest enemies.
+
+Recommendation: **A first, as its own brain "Lookahead"**, measured on the tournament against Classic+; go to B only if A wins clearly and stays within budget. Every option reuses Classic's candidates, so it inherits Classic's knowledge of the rules.
+
+### Open questions
+- **H.** Which option to build first? Recommendation: A.
+- **I.** Time budget per AI turn on your desktop? Recommendation: 1 s per player turn, with the search cut off when it runs out (it then plays Classic+'s choice), measured on S099 and on the 1024 War of the Ring map.
+- **J.** Battle side: does Lookahead also get its own battle AI, or does it pair with the existing ones? Recommendation: pair with the existing ones for now (Cautious/Ruthless already beat Classic); a battle lookahead is a separate later phase.
+- **K.** May it "cheat" with information Classic doesn't use (fogged enemy armies)? Recommendation: no, same fog as Classic.
+
+## Phase 7 — map editor: per-race AI (planned, not started)
+
+### What the user would see
+In the economy panel (where the starting bank and the neutrals switch live), a new **AI** block: a race picker (every race of the map plus **Neutrals**), then **Map AI** and **Battle AI** drop-downs with "Settings choice" first (same entries and names as the AI players panel). A race with its own AI shows it in the picker label, like the bank.
+
+### Behaviour in the game
+- When a game starts from the map, each computer-played race (and every neutral player) gets the map's choice as its own AI (`WorldPlayer.AiOverride`), exactly like choosing it in the AI players panel. Human-played races ignore it.
+- The race screen's AI players panel opens with the map's choices already filled in, so the player sees them and can change them before starting; whatever the panel shows is what the game gets.
+- Mid-game the usual rules apply: the game menu panel can change them; the settings question counts them as own AIs.
+
+### Technical approach
+- New per-scenario table `SAi.json` (`Db.ScenarioAi`: NO_SCEN, AI_ID, RACE, WORLD_AI, BATTLE_AI), registered like `SRules.json` (`DbJsonSerializerContext`, `DatabaseTests` lists it as empty for original scenarios). Original scenarios have none, so nothing changes for them.
+- `CustomMap.AiChoices` (race -> world/battle IDs), `CustomMapWriter` writes the table, `CustomMapStore` reads it back.
+- `ScenarioLoader`: a computer player's `AiOverride` = race-screen choice if the player set one there, else the map's.
+- The client's `GameScenario` gets the map's choices so the race screen can prefill the panel.
+- Tests: editor round trip (save, reopen, same choices), loader agreement (map choice reaches the started game, race-screen change wins, human race ignored, neutrals get it), visual test of the AI block (en + ru), real-client check: set Aggressive for a race in the editor, Save and play, open the AI players panel in game.
+- Size: ~1 day.
+
+### Open questions
+- **L.** Should the race screen's panel mark map-set choices (e.g. "(map)" after the name), or just prefill them? Recommendation: just prefill; the bold name already shows "has its own AI".
+- **M.** MapFromPlan: add an `ai` section to plans (race -> map/battle AI)? Recommendation: yes, small, same phase.
