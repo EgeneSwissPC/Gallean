@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Gallean.Common;
 
 namespace Gallean.Engine;
@@ -11,6 +12,10 @@ namespace Gallean.Engine;
 internal static class OwnLandVisionCalculator
 {
     public const int MinMapSize = 256;
+
+    // The cells of each terrain, per map (the map object changes when land spreads): scanning a million cells on every
+    // army step was the biggest part of a fog update on a 1024x1024 map.
+    private static readonly ConditionalWeakTable<WorldMap, Dictionary<WorldMapTerrain, ImmutableBitmap>> TerrainCells = [];
 
     public static bool AppliesTo(WorldMap map)
     {
@@ -43,16 +48,33 @@ internal static class OwnLandVisionCalculator
             return;
         }
 
-        WorldMapTerrain nativeTerrain = WorldHelpers.GetNativeTerrain(player.Race);
-        ReadOnlySpan<WorldMapCell> cells = map.Cells.AsSpan();
-        int width = map.Width;
+        builder.UnionWith(GetTerrainCells(map, WorldHelpers.GetNativeTerrain(player.Race)));
+    }
 
-        for (int index = 0; index < cells.Length; index++)
+    private static ImmutableBitmap GetTerrainCells(WorldMap map, WorldMapTerrain terrain)
+    {
+        Dictionary<WorldMapTerrain, ImmutableBitmap> byTerrain = TerrainCells.GetValue(map, static _ => []);
+
+        lock (byTerrain)
         {
-            if (cells[index].Terrain == nativeTerrain)
+            if (!byTerrain.TryGetValue(terrain, out ImmutableBitmap? cells))
             {
-                builder.Set(index % width, index / width);
+                ImmutableBitmap.Builder builder = ImmutableBitmap.Create(map.Width, map.Height).ToBuilder();
+                ReadOnlySpan<WorldMapCell> mapCells = map.Cells.AsSpan();
+
+                for (int index = 0; index < mapCells.Length; index++)
+                {
+                    if (mapCells[index].Terrain == terrain)
+                    {
+                        builder.Set(index % map.Width, index / map.Width);
+                    }
+                }
+
+                cells = builder.ToImmutable();
+                byTerrain.Add(terrain, cells);
             }
+
+            return cells;
         }
     }
 }

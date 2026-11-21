@@ -23,25 +23,12 @@ internal sealed partial class WorldRenderComposer
         // Row by row, left to right: DrawMinimapHiddenTiles merges consecutive tiles of a row.
         public static IReadOnlyList<WorldPosition> BuildHiddenPositions(WorldVisibility visibility, bool fogEnabled)
         {
-            List<WorldPosition> hiddenPositions = [];
-
-            if (fogEnabled)
+            if (fogEnabled && visibility.Fog is not null)
             {
-                for (int y = 0; y < visibility.Height; y++)
-                {
-                    for (int x = 0; x < visibility.Width; x++)
-                    {
-                        WorldPosition position = new(x, y);
-
-                        if (!visibility.IsRevealed(position))
-                        {
-                            hiddenPositions.Add(position);
-                        }
-                    }
-                }
+                return new HiddenPositionList(visibility.Fog);
             }
 
-            return hiddenPositions;
+            return [];
         }
 
         private static IEnumerable<MinimapState.Marker> EnumerateMarkers(

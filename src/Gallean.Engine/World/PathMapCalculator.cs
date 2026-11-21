@@ -1,4 +1,3 @@
-using System.Buffers;
 using Gallean.Common;
 
 namespace Gallean.Engine;
@@ -22,24 +21,37 @@ internal static class PathMapCalculator
             return null;
         }
 
+        Scratch scratch = Scratch.Take(map.Width * map.Height);
+
+        try
+        {
+            return Search(map, start, fogOfWar, blockedCells, terminalCells, stepCost, maxCost, scratch);
+        }
+        finally
+        {
+            scratch.Release();
+        }
+    }
+
+    private static WorldPathMap Search(
+        WorldMap map,
+        WorldPosition start,
+        ImmutableBitmap? fogOfWar,
+        ImmutableBitmap blockedCells,
+        ImmutableBitmap terminalCells,
+        Func<WorldPosition, WorldPosition, int> stepCost,
+        int maxCost,
+        Scratch scratch)
+    {
         Span<WorldPosition> neighbors = stackalloc WorldPosition[8];
 
         int cellCount = map.Width * map.Height;
         int startIndex = GetIndex(map, start);
+        List<int> reached = [];
 
-        int[] predecessors = new int[cellCount];
-        Array.Fill(predecessors, -1);
-
-        int[] distanceScore = new int[cellCount];
-        Array.Fill(distanceScore, int.MaxValue);
-        distanceScore[startIndex] = 0;
-
-        int[] diagonalScore = ArrayPool<int>.Shared.Rent(cellCount);
-        Array.Fill(diagonalScore, int.MaxValue, 0, cellCount);
-        diagonalScore[startIndex] = 0;
-
-        bool[] closedSet = ArrayPool<bool>.Shared.Rent(cellCount);
-        Array.Clear(closedSet, 0, cellCount);
+        scratch.Touch(startIndex, reached);
+        scratch.Distance[startIndex] = 0;
+        scratch.Diagonals[startIndex] = 0;
 
         PriorityQueue<WorldPosition, long> openSet = new();
         openSet.Enqueue(start, GetPriority(0, startIndex));
@@ -53,12 +65,12 @@ internal static class PathMapCalculator
 
             int currentIndex = GetIndex(map, current);
 
-            if (closedSet[currentIndex])
+            if (scratch.IsClosed(currentIndex))
             {
                 continue;
             }
 
-            closedSet[currentIndex] = true;
+            scratch.Close(currentIndex);
 
             if (current != start && terminalCells.Get(current.X, current.Y))
             {
@@ -71,7 +83,7 @@ internal static class PathMapCalculator
                 WorldPosition neighbor = neighbors[i];
                 int neighborIndex = GetIndex(map, neighbor);
 
-                if (closedSet[neighborIndex])
+                if (scratch.IsClosed(neighborIndex))
                 {
                     continue;
                 }
@@ -82,44 +94,71 @@ internal static class PathMapCalculator
                     continue;
                 }
 
-                int tentativeDistance = distanceScore[currentIndex] + moveCost;
-                int tentativeDiagonals = diagonalScore[currentIndex] + (IsDiagonal(current, neighbor) ? 1 : 0);
+                scratch.Touch(neighborIndex, reached);
 
-                if (tentativeDistance > distanceScore[neighborIndex])
+                int tentativeDistance = scratch.Distance[currentIndex] + moveCost;
+                int tentativeDiagonals = scratch.Diagonals[currentIndex] + (IsDiagonal(current, neighbor) ? 1 : 0);
+
+                if (tentativeDistance > scratch.Distance[neighborIndex])
                 {
                     continue;
                 }
 
-                if (tentativeDistance == distanceScore[neighborIndex] &&
-                    tentativeDiagonals >= diagonalScore[neighborIndex])
+                if (tentativeDistance == scratch.Distance[neighborIndex] &&
+                    tentativeDiagonals >= scratch.Diagonals[neighborIndex])
                 {
                     continue;
                 }
 
-                predecessors[neighborIndex] = currentIndex;
-                distanceScore[neighborIndex] = tentativeDistance;
-                diagonalScore[neighborIndex] = tentativeDiagonals;
+                scratch.Predecessors[neighborIndex] = currentIndex;
+                scratch.Distance[neighborIndex] = tentativeDistance;
+                scratch.Diagonals[neighborIndex] = tentativeDiagonals;
                 openSet.Enqueue(neighbor, GetPriority(tentativeDistance, neighborIndex));
             }
         }
 
-        ArrayPool<int>.Shared.Return(diagonalScore);
-        ArrayPool<bool>.Shared.Return(closedSet);
+        return maxCost < int.MaxValue
+            ? BuildBounded(map, start, scratch, reached, maxCost)
+            : BuildUnbounded(map, start, scratch, reached, cellCount);
+    }
 
-        if (maxCost < int.MaxValue)
+    // Only the cells settled within maxCost: cells reached but not settled may not have their final cost.
+    private static WorldPathMap BuildBounded(WorldMap map, WorldPosition start, Scratch scratch, List<int> reached, int maxCost)
+    {
+        reached.Sort();
+
+        List<int> indexes = new(reached.Count);
+        List<int> costs = new(reached.Count);
+        List<int> predecessors = new(reached.Count);
+
+        foreach (int index in reached)
         {
-            // Drop the cells that were reached but not settled: their cost may not be final.
-            for (int index = 0; index < cellCount; index++)
+            if (scratch.Distance[index] <= maxCost)
             {
-                if (distanceScore[index] > maxCost)
-                {
-                    distanceScore[index] = int.MaxValue;
-                    predecessors[index] = -1;
-                }
+                indexes.Add(index);
+                costs.Add(scratch.Distance[index]);
+                predecessors.Add(scratch.Predecessors[index]);
             }
         }
 
-        return new WorldPathMap(map, start, distanceScore, predecessors, maxCost);
+        return new WorldPathMap(map, start, [.. indexes], [.. costs], [.. predecessors], maxCost);
+    }
+
+    private static WorldPathMap BuildUnbounded(WorldMap map, WorldPosition start, Scratch scratch, List<int> reached, int cellCount)
+    {
+        int[] costs = new int[cellCount];
+        int[] predecessors = new int[cellCount];
+
+        Array.Fill(costs, int.MaxValue);
+        Array.Fill(predecessors, -1);
+
+        foreach (int index in reached)
+        {
+            costs[index] = scratch.Distance[index];
+            predecessors[index] = scratch.Predecessors[index];
+        }
+
+        return new WorldPathMap(map, start, costs, predecessors);
     }
 
     private static int GetNeighbors(
@@ -184,5 +223,86 @@ internal static class PathMapCalculator
     private static int GetIndex(WorldMap map, WorldPosition position)
     {
         return position.Y * map.Width + position.X;
+    }
+
+    // Map-sized search arrays kept per thread and reset by generation instead of filled: a search that reaches a few
+    // thousand cells used to allocate and fill four arrays over the whole map (a million cells at 1024x1024).
+    private sealed class Scratch
+    {
+        [ThreadStatic]
+        private static Scratch? cached;
+
+        private readonly int[] marks;
+        private int generation;
+        private bool inUse;
+
+        private Scratch(int cellCount)
+        {
+            marks = new int[cellCount];
+            Distance = new int[cellCount];
+            Diagonals = new int[cellCount];
+            Predecessors = new int[cellCount];
+        }
+
+        public int[] Distance { get; }
+        public int[] Diagonals { get; }
+        public int[] Predecessors { get; }
+
+        public static Scratch Take(int cellCount)
+        {
+            Scratch? scratch = cached;
+
+            // A search inside a search (should a step cost ever need one) gets its own arrays.
+            if (scratch is null || scratch.inUse || scratch.marks.Length != cellCount)
+            {
+                scratch = new Scratch(cellCount);
+
+                if (cached is null || !cached.inUse)
+                {
+                    cached = scratch;
+                }
+            }
+
+            scratch.inUse = true;
+
+            // marks[i] is 2 * generation once cell i is reached in this search, 2 * generation + 1 once it is closed.
+            if (scratch.generation >= (int.MaxValue / 2) - 1)
+            {
+                Array.Clear(scratch.marks);
+                scratch.generation = 0;
+            }
+
+            scratch.generation++;
+
+            return scratch;
+        }
+
+        public void Release()
+        {
+            inUse = false;
+        }
+
+        // First touch in this search: unreached (infinite cost, no predecessor).
+        public void Touch(int index, List<int> reached)
+        {
+            if (marks[index] >> 1 != generation)
+            {
+                marks[index] = generation << 1;
+                Distance[index] = int.MaxValue;
+                Diagonals[index] = int.MaxValue;
+                Predecessors[index] = -1;
+                reached.Add(index);
+            }
+        }
+
+        public bool IsClosed(int index)
+        {
+            return marks[index] == (generation << 1) + 1;
+        }
+
+        public void Close(int index)
+        {
+            marks[index] = (generation << 1) + 1;
+        }
     }
 }

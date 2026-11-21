@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 using Avalonia.Media;
+using Gallean.Common;
 using SkiaSharp;
 using static Gallean.Client.WorldRenderState;
 
@@ -238,13 +239,13 @@ public sealed class WorldRenderContentProviderTests
     }
 
     [TestCase(144, 144, 870)]
-    [TestCase(320, 320, 1926)]
-    [TestCase(340, 340, 2046)]
-    [TestCase(512, 512, 2048)]
-    [TestCase(1024, 1024, 2048)]
+    [TestCase(168, 168, 1014)]
+    [TestCase(171, 171, 1024)]
+    [TestCase(320, 320, 1024)]
+    [TestCase(1024, 1024, 1024)]
     public void MinimapNativeWidthTest(int mapWidth, int mapHeight, double expected)
     {
-        // Original and Middle-earth sized maps keep 3 px per half tile; larger maps are capped so the image stays small.
+        // Original quest sizes keep 3 px per half tile; larger maps are capped so the image stays small.
         Assert.That(WorldRenderContentProvider.GetMinimapNativeWidth(mapWidth, mapHeight), Is.EqualTo(expected));
     }
 
@@ -296,6 +297,60 @@ public sealed class WorldRenderContentProviderTests
 
             Assert.That(updated, Is.EqualTo(fresh), $"{step.Count} explored tiles");
         }
+    }
+
+    [Test]
+    public void FogChunkSeamsTest()
+    {
+        using TestAssetProvider assets = CreateAssets();
+        WorldRenderer renderer = new();
+        WorldRenderState state = BuildState();
+        WorldRenderContentProvider chunked = new(fogChunkTiles: 2);
+        WorldPosition[] all = [.. state.FogTiles.Select(tile => tile.Position)];
+
+        // 2x2-tile chunks on a 6x6 map: every fog edge below crosses a chunk seam, and chunks on the map edge draw the
+        // band outside it. Each chunk image carries its neighbours' edge samples, so the result must match one chunk.
+        HashSet<WorldPosition>[] explored =
+        [
+            [new WorldPosition(1, 1)],
+            [.. all.Where(position => position.X >= 1 && position.X <= 3 && position.Y >= 2 && position.Y <= 4)],
+            [.. all.Where(position => (position.X + position.Y) % 3 == 0)],
+            [.. all.Where(position => position.X == 5 || position.Y == 0)]
+        ];
+
+        foreach (HashSet<WorldPosition> step in explored)
+        {
+            WorldRenderState fogged = state with { FogTiles = [.. all.Where(position => !step.Contains(position)).Select(position => new FogTile(position))] };
+
+            SKColor[] updated = Render(renderer, chunked.Get(fogged, assets), fogged, assets);
+            SKColor[] fresh = Render(renderer, new WorldRenderContentProvider(fogChunkTiles: 2).Get(fogged, assets), fogged, assets);
+            SKColor[] single = Render(renderer, new WorldRenderContentProvider().Get(fogged, assets), fogged, assets);
+
+            Assert.That(updated, Is.EqualTo(fresh), $"{step.Count} explored tiles, updated");
+            Assert.That(fresh, Is.EqualTo(single), $"{step.Count} explored tiles, chunks");
+        }
+    }
+
+    [Test]
+    public void FogTileListMatchesListTest()
+    {
+        using TestAssetProvider assets = CreateAssets();
+        WorldRenderer renderer = new();
+        WorldRenderState state = BuildState();
+        ImmutableBitmap.Builder builder = ImmutableBitmap.Create(6, 6).ToBuilder();
+
+        builder.Set(2, 2);
+        builder.Set(3, 2);
+        builder.Set(0, 5);
+        FogTileList fogTiles = new(builder.ToImmutable());
+        WorldRenderState fromBitmap = state with { FogTiles = fogTiles };
+        WorldRenderState fromList = state with { FogTiles = [.. fogTiles] };
+
+        // The fog layer reads a FogTileList's words directly; it must draw exactly what the same tiles as a list draw.
+        Assert.That(fogTiles, Has.Count.EqualTo(33));
+        Assert.That(
+            Render(renderer, new WorldRenderContentProvider().Get(fromBitmap, assets), fromBitmap, assets),
+            Is.EqualTo(Render(renderer, new WorldRenderContentProvider().Get(fromList, assets), fromList, assets)));
     }
 
     private static SKColor[] Render(WorldRenderer renderer, WorldRenderContent content, WorldRenderState state, TestAssetProvider assets)

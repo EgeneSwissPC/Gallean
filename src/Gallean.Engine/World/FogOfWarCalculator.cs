@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Numerics;
 using Gallean.Common;
 
 namespace Gallean.Engine;
@@ -9,14 +10,24 @@ internal static class FogOfWarCalculator
     {
         ImmutableArray<WorldPosition>.Builder revealed = ImmutableArray.CreateBuilder<WorldPosition>();
 
-        for (int y = 0; y < after.Height; y++)
+        if (ReferenceEquals(before, after))
         {
-            for (int x = 0; x < after.Width; x++)
+            return revealed.ToImmutable();
+        }
+
+        // Word by word: on a 1024x1024 map this runs on every army step, and almost every word is unchanged.
+        ReadOnlySpan<ulong> beforeWords = before.GetWords();
+        ReadOnlySpan<ulong> afterWords = after.GetWords();
+
+        for (int wordIndex = 0; wordIndex < afterWords.Length; wordIndex++)
+        {
+            ulong added = afterWords[wordIndex] & ~beforeWords[wordIndex];
+
+            while (added != 0)
             {
-                if (after.Get(x, y) && !before.Get(x, y))
-                {
-                    revealed.Add(new WorldPosition(x, y));
-                }
+                int index = (wordIndex * 64) + BitOperations.TrailingZeroCount(added);
+                revealed.Add(new WorldPosition(index % after.Width, index / after.Width));
+                added &= added - 1;
             }
         }
 

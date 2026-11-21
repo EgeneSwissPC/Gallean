@@ -1,3 +1,4 @@
+using System.Numerics;
 using Avalonia.Media;
 using Avalonia.Skia;
 using SkiaSharp;
@@ -8,14 +9,17 @@ namespace Gallean.Client;
 
 internal sealed partial class WorldRenderContentProvider
 {
-    // Builds the fog layer. The mask holds the fog's opacity (SamplesPerTile x SamplesPerTile samples per tile, zero
-    // on explored tiles), so the layer is drawn as one quad over the map plus a ring for the map edge band, and the
-    // shader's clamp mode carries the edge samples out into the band. Both meshes depend only on the map size.
+    // Builds the fog layer. The mask holds the fog's opacity (SamplesPerTile x SamplesPerTile alpha samples per tile,
+    // zero on explored tiles); the renderer tints it with the hidden colour. The mask is cut into square chunks of
+    // ChunkTiles x ChunkTiles tiles, each its own image and quad, and each chunk image carries a one-sample margin of its
+    // neighbours' samples (or the repeated edge sample at the map edge), so linear sampling across a chunk seam reads
+    // the same samples as one big image would. Chunks on the map edge also draw the edge band outside the map, where
+    // the shader's clamp mode carries the edge samples outwards.
     //
     // A tile's samples depend only on which tiles in its 3x3 neighbourhood are explored, so when the fog changes only
-    // the tiles around the changed ones are rewritten; the rest of the mask is kept from the previous build. On a
-    // large map this keeps a step that reveals a few tiles from redrawing the whole mask (100k tiles at 320x320).
-    private sealed class Fog
+    // the tiles around the changed ones are rewritten, and only the chunks holding those samples get a new image. On a
+    // 1024x1024 map one big mask was 64 MB, copied and uploaded again on every step that revealed a tile.
+    private sealed class Fog(int chunkTiles)
     {
         private const int MapEdgeBand = 8;
         private const int SamplesPerTile = 4;
@@ -25,12 +29,15 @@ internal sealed partial class WorldRenderContentProvider
 
         private int width;
         private int height;
-        private bool[] explored = [];
-        private bool[] nextExplored = [];
+        private int chunksX;
+        private int chunksY;
+        private ulong[] explored = [];
+        private ulong[] nextExplored = [];
         private bool[] dirty = [];
-        private byte[] pixels = [];
-        private SKVertices? mapMesh;
-        private SKVertices? mapEdgeMesh;
+        private byte[] mask = [];
+        private byte[] chunkPixels = [];
+        private FogChunk?[] chunks = [];
+        private bool[] dirtyChunks = [];
 
         public FogContent Build(IReadOnlyList<FogTile> fogTiles, WorldMap map)
         {
@@ -44,45 +51,70 @@ internal sealed partial class WorldRenderContentProvider
                 Reset(map);
             }
 
-            UpdateMask(fogTiles, map);
+            LoadExplored(fogTiles);
+            UpdateMask(map);
 
-            return new FogContent(new FogLayer(mapMesh!, mapEdgeMesh, BuildShader()));
+            return new FogContent(new FogLayer(BuildChunks()));
         }
 
         private void Reset(WorldMap map)
         {
             width = map.Width;
             height = map.Height;
-            explored = new bool[width * height];
-            Array.Fill(explored, true);
-            nextExplored = new bool[width * height];
+            int words = ((width * height) + 63) / 64;
+            explored = new ulong[words];
+            FillExplored(explored);
+            nextExplored = new ulong[words];
             dirty = new bool[width * height];
-            pixels = new byte[width * SamplesPerTile * height * SamplesPerTile * 4];
-            mapMesh = BuildRectanglesMesh([(0, 0, width, height)]);
-            mapEdgeMesh = BuildRectanglesMesh([
-                (-MapEdgeBand, -MapEdgeBand, width + MapEdgeBand, 0),
-                (-MapEdgeBand, height, width + MapEdgeBand, height + MapEdgeBand),
-                (-MapEdgeBand, 0, 0, height),
-                (width, 0, width + MapEdgeBand, height)
-            ]);
+            mask = new byte[width * SamplesPerTile * height * SamplesPerTile];
+            chunksX = (width + chunkTiles - 1) / chunkTiles;
+            chunksY = (height + chunkTiles - 1) / chunkTiles;
+            chunks = new FogChunk?[chunksX * chunksY];
+            dirtyChunks = new bool[chunksX * chunksY];
         }
 
-        private void UpdateMask(IReadOnlyList<FogTile> fogTiles, WorldMap map)
+        private void FillExplored(ulong[] words)
         {
-            Array.Fill(nextExplored, true);
+            Array.Fill(words, ulong.MaxValue);
+
+            int used = (width * height) & 63;
+
+            if (used != 0)
+            {
+                words[^1] = (1UL << used) - 1;
+            }
+        }
+
+        private void LoadExplored(IReadOnlyList<FogTile> fogTiles)
+        {
+            if (fogTiles is FogTileList list && list.Explored.Width == width && list.Explored.Height == height)
+            {
+                list.Explored.GetWords().CopyTo(nextExplored);
+                return;
+            }
+
+            FillExplored(nextExplored);
 
             foreach (FogTile tile in fogTiles)
             {
-                nextExplored[(tile.Position.Y * width) + tile.Position.X] = false;
+                int index = (tile.Position.Y * width) + tile.Position.X;
+                nextExplored[index >> 6] &= ~(1UL << index);
             }
+        }
 
+        private void UpdateMask(WorldMap map)
+        {
             List<int> dirtyTiles = [];
 
-            for (int index = 0; index < explored.Length; index++)
+            for (int wordIndex = 0; wordIndex < explored.Length; wordIndex++)
             {
-                if (explored[index] != nextExplored[index])
+                ulong changed = explored[wordIndex] ^ nextExplored[wordIndex];
+
+                while (changed != 0)
                 {
+                    int index = (wordIndex * 64) + BitOperations.TrailingZeroCount(changed);
                     MarkNeighborhood(index % width, index / width, dirtyTiles);
+                    changed &= changed - 1;
                 }
             }
 
@@ -90,7 +122,7 @@ internal sealed partial class WorldRenderContentProvider
             {
                 WorldPosition position = new(index % width, index / width);
 
-                if (nextExplored[index])
+                if (IsExplored(nextExplored, index))
                 {
                     ClearTile(position);
                 }
@@ -99,6 +131,7 @@ internal sealed partial class WorldRenderContentProvider
                     WriteTile(map, nextExplored, position);
                 }
 
+                MarkChunks(position);
                 dirty[index] = false;
             }
 
@@ -120,6 +153,93 @@ internal sealed partial class WorldRenderContentProvider
                     }
                 }
             }
+        }
+
+        // A tile's samples sit in its own chunk, and a tile on a chunk's border also in the neighbour's margin.
+        private void MarkChunks(WorldPosition position)
+        {
+            int firstX = Math.Max(0, ((position.X + chunkTiles - 1) / chunkTiles) - 1);
+            int lastX = Math.Min(chunksX - 1, (position.X + 1) / chunkTiles);
+            int firstY = Math.Max(0, ((position.Y + chunkTiles - 1) / chunkTiles) - 1);
+            int lastY = Math.Min(chunksY - 1, (position.Y + 1) / chunkTiles);
+
+            for (int chunkY = firstY; chunkY <= lastY; chunkY++)
+            {
+                for (int chunkX = firstX; chunkX <= lastX; chunkX++)
+                {
+                    dirtyChunks[(chunkY * chunksX) + chunkX] = true;
+                }
+            }
+        }
+
+        private FogChunk[] BuildChunks()
+        {
+            FogChunk[] result = new FogChunk[chunks.Length];
+
+            for (int chunkY = 0; chunkY < chunksY; chunkY++)
+            {
+                for (int chunkX = 0; chunkX < chunksX; chunkX++)
+                {
+                    int index = (chunkY * chunksX) + chunkX;
+                    FogChunk? chunk = chunks[index];
+
+                    if (chunk is null || dirtyChunks[index])
+                    {
+                        chunk = BuildChunk(chunkX, chunkY, chunk);
+                        chunks[index] = chunk;
+                        dirtyChunks[index] = false;
+                    }
+
+                    result[index] = chunk;
+                }
+            }
+
+            return result;
+        }
+
+        private FogChunk BuildChunk(int chunkX, int chunkY, FogChunk? previous)
+        {
+            int left = chunkX * chunkTiles;
+            int top = chunkY * chunkTiles;
+            int right = Math.Min(width, left + chunkTiles);
+            int bottom = Math.Min(height, top + chunkTiles);
+
+            return new FogChunk(
+                previous?.Mesh ?? BuildRectanglesMesh([(left, top, right, bottom)]),
+                previous is not null ? previous.MapEdgeMesh : BuildEdgeMesh(left, top, right, bottom),
+                BuildShader(left, top, right, bottom));
+        }
+
+        // The part of the edge band outside the map that this chunk's samples cover (null inside the map).
+        private SKVertices? BuildEdgeMesh(int left, int top, int right, int bottom)
+        {
+            int outerLeft = left == 0 ? -MapEdgeBand : left;
+            int outerTop = top == 0 ? -MapEdgeBand : top;
+            int outerRight = right == width ? width + MapEdgeBand : right;
+            int outerBottom = bottom == height ? height + MapEdgeBand : bottom;
+            List<(int Left, int Top, int Right, int Bottom)> rectangles = [];
+
+            if (outerTop < top)
+            {
+                rectangles.Add((outerLeft, outerTop, outerRight, top));
+            }
+
+            if (outerBottom > bottom)
+            {
+                rectangles.Add((outerLeft, bottom, outerRight, outerBottom));
+            }
+
+            if (outerLeft < left)
+            {
+                rectangles.Add((outerLeft, top, left, bottom));
+            }
+
+            if (outerRight > right)
+            {
+                rectangles.Add((right, top, outerRight, bottom));
+            }
+
+            return rectangles.Count > 0 ? BuildRectanglesMesh(rectangles) : null;
         }
 
         private static SKVertices BuildRectanglesMesh(IReadOnlyList<(int Left, int Top, int Right, int Bottom)> rectangles)
@@ -147,11 +267,45 @@ internal sealed partial class WorldRenderContentProvider
             }
         }
 
-        private SKShader BuildShader()
+        private SKShader BuildShader(int left, int top, int right, int bottom)
         {
-            SKImageInfo info = new(width * SamplesPerTile, height * SamplesPerTile, SKColorType.Bgra8888, SKAlphaType.Premul);
-            SKImage mask = SKImage.FromPixelCopy(info, pixels);
-            SkiaMemoryPressure.TrackImage(mask);
+            // The chunk's samples plus a one-sample margin, clamped to the mask at the map edge.
+            int originX = (left * SamplesPerTile) - 1;
+            int originY = (top * SamplesPerTile) - 1;
+            int imageWidth = ((right - left) * SamplesPerTile) + 2;
+            int imageHeight = ((bottom - top) * SamplesPerTile) + 2;
+            int maskWidth = width * SamplesPerTile;
+            int maskHeight = height * SamplesPerTile;
+
+            if (chunkPixels.Length < imageWidth * imageHeight)
+            {
+                chunkPixels = new byte[imageWidth * imageHeight];
+            }
+
+            for (int row = 0; row < imageHeight; row++)
+            {
+                int maskY = Math.Clamp(originY + row, 0, maskHeight - 1);
+                int source = maskY * maskWidth;
+                int target = row * imageWidth;
+                int firstX = Math.Max(0, originX);
+                int lastX = Math.Min(maskWidth - 1, originX + imageWidth - 1);
+
+                Array.Copy(mask, source + firstX, chunkPixels, target + (firstX - originX), lastX - firstX + 1);
+
+                if (originX < 0)
+                {
+                    chunkPixels[target] = mask[source];
+                }
+
+                if (originX + imageWidth - 1 > maskWidth - 1)
+                {
+                    chunkPixels[target + imageWidth - 1] = mask[source + maskWidth - 1];
+                }
+            }
+
+            SKImageInfo info = new(imageWidth, imageHeight, SKColorType.Alpha8, SKAlphaType.Premul);
+            SKImage image = SKImage.FromPixelCopy(info, chunkPixels.AsSpan(0, imageWidth * imageHeight), imageWidth);
+            SkiaMemoryPressure.TrackImage(image);
 
             float halfWidth = (float)WorldTransform.TileHalfWidth / SamplesPerTile;
             float halfHeight = (float)WorldTransform.TileHalfHeight / SamplesPerTile;
@@ -161,7 +315,9 @@ internal sealed partial class WorldRenderContentProvider
                 halfHeight, halfHeight, -WorldTransform.TileHalfHeight,
                 0, 0, 1);
 
-            return mask.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, RenderSamplingOptions.Linear, matrix);
+            matrix = matrix.PreConcat(SKMatrix.CreateTranslation(originX, originY));
+
+            return image.ToShader(SKShaderTileMode.Clamp, SKShaderTileMode.Clamp, RenderSamplingOptions.Linear, matrix);
         }
 
         private void ClearTile(WorldPosition position)
@@ -171,13 +327,13 @@ internal sealed partial class WorldRenderContentProvider
             for (int sampleY = 0; sampleY < SamplesPerTile; sampleY++)
             {
                 int pixelY = (position.Y * SamplesPerTile) + sampleY;
-                int offset = ((pixelY * rowWidth) + (position.X * SamplesPerTile)) * 4;
+                int offset = (pixelY * rowWidth) + (position.X * SamplesPerTile);
 
-                Array.Clear(pixels, offset, SamplesPerTile * 4);
+                Array.Clear(mask, offset, SamplesPerTile);
             }
         }
 
-        private void WriteTile(WorldMap map, bool[] tiles, WorldPosition position)
+        private void WriteTile(WorldMap map, ulong[] tiles, WorldPosition position)
         {
             Color color = Theme.World.Tile.HiddenColor;
             int rowWidth = width * SamplesPerTile;
@@ -192,18 +348,17 @@ internal sealed partial class WorldRenderContentProvider
                     int pixelX = (position.X * SamplesPerTile) + sampleX;
                     double x = ((pixelX + 0.5) / SamplesPerTile) - 0.5;
 
-                    byte alpha = (byte)Math.Round(color.A * GetOpacity(map, tiles, position, x, y));
-                    int offset = ((pixelY * rowWidth) + pixelX) * 4;
-
-                    pixels[offset + 0] = (byte)(color.B * alpha / 255);
-                    pixels[offset + 1] = (byte)(color.G * alpha / 255);
-                    pixels[offset + 2] = (byte)(color.R * alpha / 255);
-                    pixels[offset + 3] = alpha;
+                    mask[(pixelY * rowWidth) + pixelX] = (byte)Math.Round(color.A * GetOpacity(map, tiles, position, x, y));
                 }
             }
         }
 
-        private static double GetOpacity(WorldMap map, bool[] explored, WorldPosition position, double x, double y)
+        private static bool IsExplored(ulong[] tiles, int index)
+        {
+            return (tiles[index >> 6] & (1UL << index)) != 0;
+        }
+
+        private static double GetOpacity(WorldMap map, ulong[] explored, WorldPosition position, double x, double y)
         {
             double distance = double.MaxValue;
 
@@ -213,7 +368,7 @@ internal sealed partial class WorldRenderContentProvider
                 {
                     WorldPosition neighbor = new(position.X + offsetX, position.Y + offsetY);
 
-                    if (map.IsValidPosition(neighbor) && explored[(neighbor.Y * map.Width) + neighbor.X])
+                    if (map.IsValidPosition(neighbor) && IsExplored(explored, (neighbor.Y * map.Width) + neighbor.X))
                     {
                         double deltaX = x - neighbor.X;
                         double deltaY = y - neighbor.Y;

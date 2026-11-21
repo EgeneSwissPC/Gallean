@@ -35,7 +35,7 @@ internal sealed record MinimapState(
 
         return MapWidth == other.MapWidth &&
                MapHeight == other.MapHeight &&
-               (ReferenceEquals(HiddenPositions, other.HiddenPositions) || HiddenPositions.SequenceEqual(other.HiddenPositions)) &&
+               HiddenEquals(HiddenPositions, other.HiddenPositions) &&
                Markers.SequenceEqual(other.Markers);
     }
 
@@ -45,9 +45,26 @@ internal sealed record MinimapState(
 
         hash.Add(MapWidth);
         hash.Add(MapHeight);
-        hash.AddSequence(HiddenPositions);
+        // Only the count: hashing every hidden position costs a million steps on a 1024 map.
+        hash.Add(HiddenPositions.Count);
         hash.AddSequence(Markers);
 
         return hash.ToHashCode();
+    }
+
+    private static bool HiddenEquals(IReadOnlyList<WorldPosition> left, IReadOnlyList<WorldPosition> right)
+    {
+        if (ReferenceEquals(left, right))
+        {
+            return true;
+        }
+
+        // A million hidden tiles on a 1024 map: compare the bitmaps' words, not the positions.
+        if (left is HiddenPositionList leftList && right is HiddenPositionList rightList)
+        {
+            return leftList.Explored.Equals(rightList.Explored);
+        }
+
+        return left.SequenceEqual(right);
     }
 }

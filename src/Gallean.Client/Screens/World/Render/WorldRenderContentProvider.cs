@@ -38,11 +38,12 @@ internal sealed partial class WorldRenderContentProvider
     private readonly record struct TerrainTexture(SKImage Image, int Scale);
 
     private const double MinimapNativeHalfWidth = 3;
+    private const int DefaultFogChunkTiles = 128;
 
-    // The minimap image is shown in a box a few hundred pixels wide. At 3 px per half tile a 1024x1024 map made a
-    // 6150x3075 image (75 MB, redrawn on every step that reveals fog). Above this width the tiles get smaller instead;
-    // maps up to 340 tiles across keep their exact image.
-    private const double MinimapMaxNativeWidth = 2048;
+    // The minimap image is shown in a box about 205 px wide (times the UI scale). At 3 px per half tile a 1024x1024 map
+    // made a 6150x3075 image (75 MB, redrawn on every step that reveals fog). Above this width the tiles get smaller
+    // instead; maps up to 168 tiles across (every original quest) keep their exact image.
+    private const double MinimapMaxNativeWidth = 1024;
     private const double MinimapTileOverlap = 1;
     private const float MinimapBlurStrength = 0.6f;
     private const double MinimapCullMargin = 512;
@@ -54,7 +55,7 @@ internal sealed partial class WorldRenderContentProvider
     private readonly Part<MapTerrain, SpriteAtlas> coastAtlasPart = new();
     private readonly TexturePart coastAtlasTexturePart = new();
     private readonly Part<DirectSpriteContent, DirectSpriteContent, IReadOnlyList<DirectSprite>> directSpritesPart = new(static content => content);
-    private readonly Fog fogBuilder = new();
+    private readonly Fog fogBuilder;
     private readonly Part<IReadOnlyList<FogTile>, FogContent> fogPart = new();
     private readonly Part<MapTerrain, IReadOnlyList<GroundLayer>> groundLayersPart = new();
     private readonly Part<IReadOnlyList<MapObject>, IReadOnlyList<HitTarget>> hitTargetsPart = new();
@@ -86,6 +87,17 @@ internal sealed partial class WorldRenderContentProvider
     private readonly WorldBattleTransitionShaderProgram battleTransitionShaderProgram = new();
     private readonly Lock buildLock = new();
     private readonly AtlasTextureTracker textureTracker = new();
+
+    public WorldRenderContentProvider()
+        : this(DefaultFogChunkTiles)
+    {
+    }
+
+    // Tests pass a small chunk size so a few-tile map crosses chunk seams.
+    internal WorldRenderContentProvider(int fogChunkTiles)
+    {
+        fogBuilder = new Fog(fogChunkTiles);
+    }
 
     public WorldRenderContent Get(WorldRenderState state, IAssetProvider assets)
     {
@@ -1046,6 +1058,17 @@ internal sealed partial class WorldRenderContentProvider
         IReadOnlyList<WorldPosition> hidden = minimap.HiddenPositions;
         int index = 0;
 
+        if (hidden is HiddenPositionList list)
+        {
+            // Straight from the fog bitmap's words: walking a million hidden positions one by one cost ~9 ms on a 1024 map.
+            foreach ((int y, int firstX, int lastX) in list.EnumerateRuns())
+            {
+                AddRun(new WorldPosition(firstX, y), new WorldPosition(lastX, y));
+            }
+
+            index = hidden.Count;
+        }
+
         // One shape per run of hidden tiles along a row instead of one diamond per tile (a large map has 100k).
         // The layout is 2:1 isometric and so is the enlarged diamond, so stepping along X moves parallel to two of its
         // edges and the diamonds of a run join into a parallelogram: the first tile's top and left corners and the
@@ -1061,7 +1084,15 @@ internal sealed partial class WorldRenderContentProvider
             }
 
             index++;
+            AddRun(first, last);
+        }
 
+        using SKPath path = builder.Detach();
+        using SKPaint paint = new() { Color = SKColors.Black, BlendMode = SKBlendMode.DstOut };
+        canvas.DrawPath(path, paint);
+
+        void AddRun(WorldPosition first, WorldPosition last)
+        {
             Point start = layout.CellToScreen(first.X, first.Y);
             Point end = layout.CellToScreen(last.X, last.Y);
 
@@ -1071,9 +1102,5 @@ internal sealed partial class WorldRenderContentProvider
             builder.LineTo((float)start.X - halfWidth, (float)start.Y);
             builder.Close();
         }
-
-        using SKPath path = builder.Detach();
-        using SKPaint paint = new() { Color = SKColors.Black, BlendMode = SKBlendMode.DstOut };
-        canvas.DrawPath(path, paint);
     }
 }
