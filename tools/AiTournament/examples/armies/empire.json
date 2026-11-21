@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "name": "empire",
+  "units": [
+    {
+      "unit": "g000uu0019",
+      "level": 1,
+      "line": 1,
+      "flank": 1
+    },
+    {
+      "unit": "g000uu0001",
+      "level": 1,
+      "line": 0,
+      "flank": 0
+    },
+    {
+      "unit": "g000uu0001",
+      "level": 1,
+      "line": 0,
+      "flank": 1
+    },
+    {
+      "unit": "g000uu0011",
+      "level": 1,
+      "line": 1,
+      "flank": 2
+    }
+  ]
+}
