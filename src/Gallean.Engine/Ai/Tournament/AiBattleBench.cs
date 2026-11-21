@@ -7,7 +7,8 @@ namespace Gallean.Engine;
 // Gallean Upgrade (docs/battle-ai-designer.md phase 1): fights the same battle many times, headless.
 // Army A (with its battle AI) against army B (with its own). Each run builds the battle exactly like the
 // game does when one army attacks another in the open (WorldCommandHelpers.CreateStackBattleState, on a
-// tile without a city, owners = two players of the host map so world battle modifiers apply), then
+// tile without a city, owners = two players of the host map, both computer players so world battle modifiers
+// such as the difficulty's accuracy bonus apply to both alike), then
 // resolves it like an AI-vs-AI battle in the game (BattleAutoResolveCommand with both AI IDs: the attacker
 // retreats after round 15, hard stop at round 45). Every run has its own seed: same seed = same battle.
 // With swapSides, army A attacks in even runs and defends in odd runs.
@@ -26,6 +27,15 @@ public sealed class AiBattleBench
         definitions = new GameDefinitionProvider(globalDb);
         globals = new GlobalVariables();
         scenario = ScenarioLoader.Load(globalDb, scenarioDb, campaignDb, new ScenarioId(hostMapId), definitions, globals);
+
+        // Both sides are computer players, so the difficulty bonuses (accuracy, experience) are the same for both.
+        scenario = scenario with
+        {
+            State = scenario.State with
+            {
+                Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = true })))
+            }
+        };
 
         WorldState state = scenario.State;
         template = state.Stacks.Values.FirstOrDefault() ?? throw new InvalidOperationException($"{hostMapId} has no army to copy.");
