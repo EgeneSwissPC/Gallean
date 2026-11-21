@@ -20,6 +20,8 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- SC2 (user, 2026-11-21): battlefield panel + owner picker with race banners; hidden generated host map with
+  every race.
 - SC (user, 2026-11-21): reuse the original game's screens as closely as possible (army tab equipment slots,
   level-up popup for upgrades), so players already know the interface. This is the rule for every sandbox screen.
 - SB (user, 2026-11-21): game rules by default, "Anything goes" checkbox per army.
@@ -119,7 +121,13 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   yet marked red), and an Upgrades button opening a list like the level-up popup (tick abilities up to the leader's
   limit). Valuables and special items (40 of the 336) are left out. Garrisons hide slots and upgrades; "anything
   goes" allows red items (user, 2026-11-21).
-- **SC2. Where the defender stands and who owns the armies on screen**: asked next (split out of SC).
+- ~~**SC2. Where the defender stands and who owns the armies**~~: answered — (a) copy the game's screens: a
+  battlefield panel between the armies (Open / City / Capital; city level picker with the city picture from the
+  game's city screen; "as garrison" checkbox) and an owner picker above each army with the race banners of the race
+  select screen (Empire, Undead, Legions, Clans, Elves, Neutrals). The sandbox builds a small hidden host map with
+  all five races and the neutrals (map editor code), because no built-in map has all of them (best: five of six;
+  S099 has no Elves). Capital greys out for a neutral defender (user, 2026-11-21). Engine work: an
+  `AiBattleBench` constructor from a generated `CustomMap` (~0.5 day), also usable by `tools/AiTournament`.
 - **SD. Run counts**: fixed buttons 10 / 20 / 30, or a number box (1–1000) with those three as quick picks.
   Recommended the number box plus quick picks.
 - **SE. Sides in Run N**: (a) swap attacker/defender every run (fair AI comparison); (b) keep sides as set up
