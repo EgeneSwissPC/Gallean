@@ -172,6 +172,9 @@ public sealed class BattleSandboxTests
         screen.Defender.Owners.Single(owner => owner.Race == WorldRace.Neutral).SelectCommand.Execute(null);
         Assert.That(screen.IsValid, Is.False);
         Assert.That(screen.Problem, Does.Contain("capital"));
+        screen.AsGarrison = true;
+        Assert.That(screen.Problem, Does.Contain("capital"), "the capital problem comes before the garrison's own");
+        screen.AsGarrison = false;
 
         // Elves are owners too (the generated host map has every race).
         screen.Defender.Owners.Single(owner => owner.Race == WorldRace.Elf).SelectCommand.Execute(null);

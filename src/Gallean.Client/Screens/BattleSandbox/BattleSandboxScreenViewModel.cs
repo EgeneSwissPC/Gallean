@@ -223,6 +223,14 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
     // Says which side a grid problem belongs to (the base screen reports the first problem without its side).
     protected override void OnRefreshed()
     {
+        // A neutral defender in a capital is the setup's fault, not the army's: say that first.
+        if (Place == BattleBenchPlace.Capital && Defender?.Owner == WorldRace.Neutral)
+        {
+            Problem = Tr("Neutrals have no capital: choose another owner for the defender.");
+            IsValid = false;
+            return;
+        }
+
         foreach (BattleSandboxSideViewModel side in new[] { Attacker, Defender })
         {
             if (side?.Group.Problem is { } problem && Problem == problem)

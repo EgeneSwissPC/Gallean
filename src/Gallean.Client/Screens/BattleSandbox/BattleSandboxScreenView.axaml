@@ -42,7 +42,7 @@
   <UserControl.Resources>
     <DataTemplate x:Key="SandboxSideTemplate" x:DataType="local:BattleSandboxSideViewModel">
       <ContentControl Classes="ornament-panel" Background="{StaticResource CapitalScenePanelBodyGradientBrush}">
-        <StackPanel Width="400" Margin="18,10" Spacing="6">
+        <StackPanel Width="440" Margin="18,10" Spacing="6">
           <local:OutlinedTextBlock Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" />
 
           <ItemsControl ItemsSource="{Binding Owners}" HorizontalAlignment="Center">
