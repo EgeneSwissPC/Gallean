@@ -1,22 +1,29 @@
-using System.Collections;
+using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace Gallean.Common;
 
 public sealed partial record ImmutableBitmap
 {
-    private readonly Lazy<int> hashCode;
+    // Bits are stored 64 to a word, bit i of the bitmap in bit (i % 64) of word i / 64, which is the same order as the
+    // packed bytes (bit i in bit i % 8 of byte i / 8) on little-endian machines. Bits past Width * Height stay zero, so
+    // whole words can be compared, counted and diffed.
+    private readonly ulong[] words;
+    private int hashCode;
+    private bool hashCodeComputed;
 
-    private ImmutableBitmap(int width, int height, BitArray data)
+    private ImmutableBitmap(int width, int height, ulong[] words)
     {
-        hashCode = new Lazy<int>(ComputeHashCode);
         Width = width;
         Height = height;
-        Data = new BitArray(data);
+        this.words = words;
     }
 
     public int Width { get; }
     public int Height { get; }
-    private BitArray Data { get; }
+
+    /// <summary>The bits, 64 per word (bit i in bit i % 64 of word i / 64); bits past Width * Height are zero.</summary>
+    public ReadOnlySpan<ulong> GetWords() => words;
 
     public bool Equals(ImmutableBitmap? other)
     {
@@ -30,25 +37,19 @@ public sealed partial record ImmutableBitmap
             return true;
         }
 
-        if (Width != other.Width || Height != other.Height)
-        {
-            return false;
-        }
-
-        for (int index = 0; index < Data.Length; index++)
-        {
-            if (Data[index] != other.Data[index])
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return Width == other.Width && Height == other.Height && words.AsSpan().SequenceEqual(other.words);
     }
 
     public static ImmutableBitmap Create(int width, int height, bool initialValue = false)
     {
-        BitArray data = new(GetBitCount(width, height), initialValue);
+        int bitCount = GetBitCount(width, height);
+        ulong[] data = new ulong[GetWordCount(bitCount)];
+
+        if (initialValue)
+        {
+            Array.Fill(data, ulong.MaxValue);
+            ClearPadding(data, bitCount);
+        }
 
         return new ImmutableBitmap(width, height, data);
     }
@@ -57,14 +58,32 @@ public sealed partial record ImmutableBitmap
     {
         int index = y * Width + x;
 
-        return Data[index];
+        if ((uint)index >= (uint)(Width * Height))
+        {
+            throw new ArgumentOutOfRangeException(nameof(x));
+        }
+
+        return (words[index >> 6] & (1UL << index)) != 0;
+    }
+
+    /// <summary>Number of set bits.</summary>
+    public int CountSet()
+    {
+        int count = 0;
+
+        foreach (ulong word in words)
+        {
+            count += BitOperations.PopCount(word);
+        }
+
+        return count;
     }
 
     public byte[] ToBits()
     {
-        byte[] bits = new byte[GetByteCount(Data.Length)];
+        byte[] bits = new byte[GetByteCount(GetBitCount(Width, Height))];
 
-        Data.CopyTo(bits, 0);
+        MemoryMarshal.AsBytes(words.AsSpan())[..bits.Length].CopyTo(bits);
 
         return bits;
     }
@@ -76,7 +95,18 @@ public sealed partial record ImmutableBitmap
 
     public override int GetHashCode()
     {
-        return hashCode.Value;
+        if (!hashCodeComputed)
+        {
+            HashCode hash = new();
+
+            hash.Add(Width);
+            hash.Add(Height);
+            hash.AddBytes(MemoryMarshal.AsBytes(words.AsSpan()));
+            hashCode = hash.ToHashCode();
+            hashCodeComputed = true;
+        }
+
+        return hashCode;
     }
 
     private static int GetBitCount(int width, int height)
@@ -89,18 +119,18 @@ public sealed partial record ImmutableBitmap
         return (bitCount + 7) / 8;
     }
 
-    private int ComputeHashCode()
+    private static int GetWordCount(int bitCount)
     {
-        HashCode hash = new();
+        return (bitCount + 63) / 64;
+    }
 
-        hash.Add(Width);
-        hash.Add(Height);
+    private static void ClearPadding(ulong[] data, int bitCount)
+    {
+        int used = bitCount & 63;
 
-        for (int index = 0; index < Data.Length; index++)
+        if (used != 0)
         {
-            hash.Add(Data[index]);
+            data[^1] &= (1UL << used) - 1;
         }
-
-        return hash.ToHashCode();
     }
 }
