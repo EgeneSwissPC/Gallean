@@ -1,0 +1,36 @@
+{
+  "format": 1,
+  "name": "orcs",
+  "units": [
+    {
+      "unit": "g000uu5113",
+      "level": 1,
+      "line": 0,
+      "flank": 0
+    },
+    {
+      "unit": "g000uu5013",
+      "level": 1,
+      "line": 0,
+      "flank": 1
+    },
+    {
+      "unit": "g000uu5015",
+      "level": 1,
+      "line": 0,
+      "flank": 2
+    },
+    {
+      "unit": "g000uu5018",
+      "level": 1,
+      "line": 1,
+      "flank": 0
+    },
+    {
+      "unit": "g000uu5018",
+      "level": 1,
+      "line": 1,
+      "flank": 1
+    }
+  ]
+}

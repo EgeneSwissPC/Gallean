@@ -19,6 +19,17 @@ bool verbose = false;
 int parallel = 1;
 string? aisDirectory = null;
 
+// Gallean Upgrade (docs/battle-ai-designer.md phase 1): the battle bench.
+if (args.Length > 0 && args[0] == "--battle")
+{
+    return BattleMode.Run(args);
+}
+
+if (args.Length > 0 && args[0] == "--export-armies")
+{
+    return BattleMode.ExportArmies(args);
+}
+
 for (int i = 0; i < args.Length; i++)
 {
     string Next() => i + 1 < args.Length ? args[++i] : throw new ArgumentException($"{args[i]} needs a value");

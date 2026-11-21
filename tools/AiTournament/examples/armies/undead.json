@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "name": "undead",
+  "units": [
+    {
+      "unit": "g000uu0096",
+      "level": 1,
+      "line": 1,
+      "flank": 1
+    },
+    {
+      "unit": "g000uu0086",
+      "level": 1,
+      "line": 0,
+      "flank": 0
+    },
+    {
+      "unit": "g000uu0086",
+      "level": 1,
+      "line": 0,
+      "flank": 1
+    },
+    {
+      "unit": "g000uu0080",
+      "level": 1,
+      "line": 1,
+      "flank": 2
+    }
+  ]
+}
