@@ -1,6 +1,6 @@
 # AI designer: a mode for building your own AIs
 
-gallean-upgrade only. Status: phase 1 done (engine: designed map AIs). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
+gallean-upgrade only. Status: phases 1-2 done (engine: designed map AIs; AI editor mode with the AI list). Builds on `docs/ai-switching.md` (switchable AI, phases 1-5
 done) and the world AI diagram in `docs/ai/`.
 
 ## Decisions
@@ -19,6 +19,7 @@ done) and the world AI diagram in `docs/ai/`.
   game menu) and the tournament tool.
 - **Stage switching: only the first true stage plays** (open question U, taken as recommended because phase 1 needs it; reversible later by letting stages add up).
 - **Priority tiers instead of a strict order** (phase 1): the economy and army slots are lists of *tiers*; blocks in one tier share a priority and compare scores, like Classic's attack / thief / rod / enter city / take bag. Without tiers a copy of Classic couldn't play like Classic. The designer screen will show a tier as blocks side by side in one row.
+- **Phase 2 list screen** (taken while building, reversible): one list of the player's map AIs (no Battle AIs tab until battle designs exist, phase 6); built-in AIs aren't rows but the **Start from** choices of New (Classic, Classic+, the personalities and the player's own AIs); **Rename** moves to the designer's top bar (phase 3); **Copy** instead of "Duplicate" (the longer label was cut off in the 4-button row); **Edit** is shown but disabled with a tooltip until the designer exists. Export/import (question W) is not in this phase.
 - A save or setting that names a designed AI you don't have plays Classic+ (the designed AI's file is not part of the
   save; see open question W for sharing).
 
@@ -143,7 +144,7 @@ way.
 
 1. ~~Engine: designed map AI document + files, stage conditions (the five), complete profile (all priorities, switch
    off), `DesignedWorldAiBrain`, registry source, tournament `--ais`. ~2–3 days.~~ Done.
-2. Client: AI editor mode, main-menu button, AI list screen. ~1 day.
+2. ~~Client: AI editor mode, main-menu button, AI list screen. ~1 day.~~ Done.
 3. Client: map AI designer screen (palette, stage cards, drag and drop, fields, save/undo, broken-block marks).
    ~4 days.
 4. Test panel in the designer (shared tournament runner). ~1.5 days.
@@ -184,3 +185,13 @@ Commit f9a1bff8, merged in 7bbcb0bb.
 - Tests: `DesignedWorldAiTests` (12: file round trip, unknown kinds skipped, store save/list/delete with a broken file, Classic stage = Classic's priorities, rules -> profile, Classic copy chooses the same commands and scores as Classic for 5 actions, a left-out action is never done, each condition, first true stage wins / no stage -> null, lost city noticed at turn start, memory survives a save, registry incl. missing -> Classic+). Suite 5341.
 - Tournament checks: S099, 8 games x 50 turns: Classic before phase 1, Classic after, and `custom:classic-copy` give the same results (CSV identical apart from the AI name columns). `turtle-then-strike` vs Classic: S100 12 games 3 wins / 2.4 cities (Classic 5 / 2.6); S099 6 games first capture turn 26 (28.6). It plays and differs; it isn't tuned.
 - Not done here (by plan): no client yet (phase 2: AI editor mode and list), so designed AIs are only reachable through the tournament tool for now; no real-client run in this phase.
+
+## Phase 2 — done
+
+Commit 80f0a303, merged in e6fbd393.
+
+- Engine: `DesignedWorldAi.FromBuiltIn(sourceId, fileName, name)` starts a design from any AI: Classic -> the Classic stage; a personality -> one stage from its profile (`DesignedStageEvaluator.FromProfile`: priorities grouped into tiers, rules only where they differ from Classic); a designed AI -> its stages. `GetEffectivePriorities(profile)`.
+- Client: `AppDirectories.MapAis` (`~/.local/share/GalleanUpgrade/AIs/map`); `DesignedAiLibrary` (folder, `Reload()` into the registry, `MakeFileName`: lower-case letters/digits/dashes, unique, "ai" for names with no Latin letters); designed AIs are loaded at app start, so settings and saves that name one find it. `GameViewModel.ShowAiEditorCommand`; main-menu button **AI editor** under Map editor (the menu still fits at 1366x768). `AiEditorMenuScreenViewModel` + view (copy of the map editor's menu layout): list with name and "N stages · date", Back / Delete (confirm) / Copy / Edit (disabled, tooltip), New map AI: Name, Start from, Create AI. `AiBrainFormatter` shows a designed AI's own name and "Designed in the AI editor." 21 new strings in all 7 catalogs.
+- Tests: `DesignedWorldAiStartTests` (7: starting from each built-in keeps its priorities and rules; Classic start = Classic stage; starting from a designed AI copies its stages), `AiEditorMenuTests` (7: create from Aggressive -> file, list row, registry, formatter, Settings drop-down, Start from list; copy has the same stages; delete via the prompt -> gone, the ID now plays Classic+; Back -> main menu; 5 file-name cases), visual `AiEditorMenuTest` (list + empty) and `MainMenuTest` reviewed. Fixtures that read or change the designed AIs in the static registry are `[NonParallelizable]`. Suite 5355.
+- Real client (AOT, Debian 12 image): main menu -> AI editor -> Name "Raider", Start from Aggressive -> Create AI: `AIs/map/raider.json` written (attack power 80), the row shows "1 stage · 2026-11-21"; Settings -> Map AI lists Raider after the personalities, picked it (settings.json `"worldAi": "custom:raider"`); started 5th Column, ended 3 turns: the Elves (Raider) attacked, the battle resolved to a victory; no errors in the log.
+- Found while building: the first label "Duplicate" was cut off ("Duplic…") in the 4-button row; renamed to "Copy" (checked in the visual test). The add-translations script overwrote the existing ru "Duplicate" (used by the map editor's events list); restored to "Копия".
