@@ -1,6 +1,6 @@
 # Switchable AI (world AI and battle AI)
 
-gallean-upgrade only. Status: phase 1 done (interfaces + registry, Classic only).
+gallean-upgrade only. Status: phases 1-2 done (interfaces, registry, global Map AI / Battle AI settings; Classic only).
 
 ## Decisions
 
@@ -14,6 +14,10 @@ gallean-upgrade only. Status: phase 1 done (interfaces + registry, Classic only)
 - **Map creators** can give a race its own AI in the map editor; it becomes that player's override in games started from the map (later phase, after 3).
 - **Neutral armies** in battle use the global battle AI.
 - **The AI's name** is shown only in the per-player panel, not on the world screen.
+- **Battle AI applies to AI-controlled sides only.** The player's own side (Auto-play, Instant resolve, Heal and defend, Refuse to flee) keeps Classic; in AI-vs-AI battles both sides use the setting. (Phase 2.)
+- **Settings layout:** the two drop-downs sit right of Battle speed / Movement speed, labelled "Map AI" (shorter than "World AI") and "Battle AI"; the panel grew from 520 to 660 px wide because it has no free height. Descriptions are tooltips. (Phase 2.)
+- **Classic is stored as "no choice"** (null, not written to settings.json), and an unknown ID in the file shows and plays as Classic. (Phase 2.)
+- **The AI estimator's battle simulations stay Classic** (how the world AI predicts a fight); only real battles use the chosen battle AI. (Phase 2.)
 
 ## The problem today
 
@@ -66,7 +70,7 @@ Later, only if the tournament shows it's worth it: a different algorithm (e.g. l
 ## Phases
 
 1. ~~Interfaces + registry + Classic wired through (no behaviour change; full suite identical). ~0.5 day.~~ Done.
-2. Global settings (both drop-downs) + engine context plumbing + mid-game switch. ~1 day.
+2. ~~Global settings (both drop-downs) + engine context plumbing + mid-game switch. ~1 day.~~ Done.
 3. Per-player overrides: save field, command, new-game and in-game panels, confirm prompt. ~1.5 days.
 4. Tournament bench. ~1 day.
 5. Personalities: Classic+, Aggressive, Builder, Expansionist; battle Cautious, Ruthless. ~1 day each, each measured on the bench.
@@ -89,3 +93,14 @@ Commit ed7bf4e3, merged in 0072b613.
 - ~~E. Map editor per-race AI~~ -> yes, later phase (see Decisions).
 - ~~F. Neutral armies' battle AI~~ -> global.
 - ~~G. Show the AI's name~~ -> only in the per-player panel.
+
+## Phase 2 — done
+
+Commit b3f8dbfa, merged in a4b512e9.
+
+- Engine: `AiSelection(WorldAi, BattleAi)` and `GameSession.Ai` (not saved). `WorldAiActionCommand.BrainId`, `BattleAiActionCommand.BrainId`, `BattleAutoResolveCommand.AttackerAiId/DefenderAiId` (carried on `BattleAutoResolveStepEvent`; the auto-resolve rule picks per unit side, keeping its cached Classic planner when the side is Classic). `GameSession.ExecuteAiAction` passes `Ai` to both. Test hook `AiBrainRegistry.RegisterForTests` (never listed).
+- Instead of the planned engine-context plumbing, the client sets `Session.Ai` from the settings before every AI action (`GameViewModel.ExecuteAiTurnsAsync`), and the battle screen reads `Game.Settings.BattleAi` per command (`BattleScreenViewModel.AiBrains.cs`). That gives the mid-game switch with no change to `IEngineContext`/`EngineContext`.
+- Settings: `GameSettings.WorldAi/BattleAi` (nullable, `JsonIgnore WhenWritingNull`, no format bump). Settings screen: two drop-downs + tooltips, `AiBrainFormatter`/`AiBrainNameConverter`, 5 new strings in all 7 catalogs (ru: ИИ карты, ИИ боя, Классический).
+- Tests: `AiSelectionTests` (5: session uses the chosen world AI and a switch mid-turn applies to the next action; unknown ID plays exactly like Classic; battle AI action uses the chosen brain; auto-resolve uses each side's brain; an unset side keeps Classic), `GameSettingsStoreTests.LoadAiChoiceTest`, `SettingsScreenViewModelTests.AiChoiceTest`. Suite 5310 on the branch, 5313 after merging into gallean-upgrade (with the spell-cast branch's tests). Visual `SettingsTest`/`SettingsRussianTest` reviewed: everything fits in both languages.
+- Real client (AOT, Debian 12 image, 5th Column): settings.json with `"worldAi": "removed-ai"` showed Classic in both drop-downs; the drop-down opens with its one entry; changing the sound rewrote the file without the AI keys; started the quest, the AI turn ran and attacked, a battle resolved with Instant resolve and another ran 4 rounds of Auto-play against the AI with no errors in the log.
+- Known limits: with only Classic registered, the drop-downs have one entry until phase 5. A test brain proves the plumbing; the real client can't show a different AI playing yet.
