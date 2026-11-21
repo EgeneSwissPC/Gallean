@@ -66,7 +66,7 @@
   <UserControl.Resources>
     <DataTemplate x:Key="SandboxSideTemplate" x:DataType="local:BattleSandboxSideViewModel">
       <ContentControl Classes="ornament-panel" Background="{StaticResource CapitalScenePanelBodyGradientBrush}">
-        <StackPanel Width="390" Margin="16,10" Spacing="6">
+        <StackPanel Width="390" Margin="16,8" Spacing="5">
           <local:OutlinedTextBlock Text="{Binding Title}" Classes="object-name title" HorizontalAlignment="Center" />
 
           <ItemsControl ItemsSource="{Binding Owners}" HorizontalAlignment="Center">
@@ -95,7 +95,7 @@
             <local:OutlinedTextBlock Text="{Binding Group.CapacityText}" Classes="object-name row" Foreground="{StaticResource SecondaryTextBrush}" />
             <local:IconVisual Moniker="Leadership" Width="18" Height="18" Foreground="{StaticResource SecondaryTextBrush}" />
           </StackPanel>
-          <Viewbox Classes="unit-grid-container" Height="196" HorizontalAlignment="Center">
+          <Viewbox Classes="unit-grid-container" Height="164" HorizontalAlignment="Center">
             <ItemsControl Classes="unit-grid focus-group"
                           ItemsSource="{Binding UnitGrid.Slots}"
                           ItemTemplate="{StaticResource UnitGridSlotTemplate}"
