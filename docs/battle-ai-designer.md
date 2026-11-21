@@ -33,6 +33,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 - Phase 2 decision: the bench fixes the game difficulty (default Average) instead of taking it from the host map,
   because it sets the computer players' accuracy and experience bonuses (S099 is Very hard, generated maps
   Average). The sandbox screen can offer a difficulty picker later; the tool has `--difficulty`.
+- BB (user, 2026-11-22): battle AIs have stages; condition blocks: round, power share, leader hit points, cargo value.
 - BA (user, 2026-11-22): battle AIs get a "Battle AIs" tab in the AI editor.
 - SE (user, 2026-11-21): sides as set up, "Alternate sides" checkbox off by default.
 - SD (user, 2026-11-21): default 1000 runs, ±100/±1000 buttons, results with margin of error.
@@ -202,10 +203,10 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
 ## 7. Open questions
 
 - ~~**BA. Mode**~~: answered — (a) a second tab "Battle AIs" in the existing AI editor ("Map AIs" | "Battle AIs"), reusing the list screen; no new main-menu entry (user, 2026-11-22).
-- **BB. Stages**: (a) one card with rules at first, stages later; (b) stages from the start with battle conditions
-  (from round N, power share below/above N %, leader below N % HP, fewer than N units, enemy has a healer/mage/
-  paralyser, attacker/defender, neutral/player). Recommended (b) with only round, power share and leader HP as the
-  first conditions: the stage engine already exists for map AIs.
+- ~~**BB. Stages**~~: answered — stages from the start (a), with four condition blocks: from round N; our power
+  share below/above N %; our leader below N % hit points; and (user, 2026-11-22) **"we carry items worth over N
+  gold / a quest item"** as a battle-designer block (bag only by default, "count equipped items" option; combine it
+  with the power-share block for "rich and losing"). The cargo block needs the battle to know the cargo (BH a).
 - **BC. First preferences and behaviours**: recommended weakest first, can-kill-now first, healers first, the leader
   first, and the "focus fire" and "protect the leader" blocks.
 - **BD. Player's own Auto-play / Instant resolve**: (a) AI sides only, as today; (b) a setting "My auto battles use".
