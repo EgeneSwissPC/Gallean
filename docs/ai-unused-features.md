@@ -1,6 +1,6 @@
 # AI: the parts of the game it never uses
 
-Status: questions A-F answered (2026-11-22); phase 1 done, phase 2 next.
+Status: questions A-F answered (2026-11-22); phases 1-2 done, phase 3 (area spells) next.
 
 ## Decisions
 
@@ -45,7 +45,7 @@ War of the Ring has 23 sites: 8 merchants, 6 mage towers, 6 mercenary camps, 3 t
 ## Phases (proposal)
 
 1. ~~A: summon upkeep awareness (~0.5 day).~~ Done, see "Phase 1 — done".
-2. B: "not for the AI" spells (~0.5-1 day).
+2. ~~B: "not for the AI" spells (~0.5-1 day).~~ Done, see "Phase 2 — done".
 3. C: area spells (~1 day).
 4. D: site visits: mercenaries, trainers, mage towers, potions (~3-4 days).
 5. E: equipment, then equipment at merchants (~2 days).
@@ -61,6 +61,19 @@ Merged 96aa9792 (feature commit 32b1c99d on `upgrade/ai-summon-upkeep`).
   - no limit (before): 343 summons, 7 summons dismissed for unpaid upkeep, 51,200 mana paid as upkeep, mana lost at the cap 6.9 %;
   - 50 % always: 268 summons, 0 dismissed, 20,500 upkeep, lost 9.5 % (Elf grove loss 1,051 -> 8,901: the upkeep had been a mana sink);
   - 50 %, 100 % when rich (merged): 272 summons, 0 dismissed, 47,900 upkeep, lost 6.8 %.
+- No real-client run (no client change).
+
+## Phase 2 — done ("not for the AI" spells)
+
+Merged b91aeafa (feature commit 8973ba9b on `upgrade/ai-all-spells`).
+
+- `WorldAiProfile.UseAllSpells` (false = Classic; true for every personality and designed AI). `ResearchSpellAction` then also takes spells marked `AI_CAT` None, but only of the effect types it already loops over (summon, attack, heal, weaken, restore movement; boost and invisibility only in spending mode, as before). Fog, unfog, remove rod and change terrain have no AI effect type and stay out (answer E). Casting never filtered on `AI_CAT`, so learned spells are cast by the existing code.
+- `WorldAiSpending.GetNeededMana` (phase 2b of the overflow spec) counts these spells too, and only spells with a castable effect.
+- Test: `WorldAiOverflowSpendingTests.ResearchNotForAiSpellTest` (turn 5, 2000 mana: Classic skips an attack spell marked None, Classic+ researches it). Mutation check: rule removed -> the test fails. Suite 5455. S099 Classic CSV identical apart from timings.
+- Measured, War of the Ring (new map), 60 turns, seed 1, compared with phase 1's final run:
+  - spells known at turn 60: 45 -> 61 (Elf 7 -> 16, Human 8 -> 11, Heretic 9 -> 12, Dwarf 9 -> 10, Undead 12 -> 12); "not for the AI" spells researched 16, cast 209 times (Elf 114, Human 68, Heretic 21, Dwarf 3, Undead 3);
+  - mana lost at the cap 6.8 % -> 5.9 % (Elf 13 % -> 9 %);
+  - total casts 877 -> 769 and summons 272 -> 177: the games went differently (the Heretics cast 231 -> 109 and lost 7 % -> 8 %), so read single-race numbers as one sample.
 - No real-client run (no client change).
 
 ## Open questions
