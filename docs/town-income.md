@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5a built on branch `upgrade/neutral-armies` (8bcb4422, not merged): armies never left in the measurement; fix options X1-X3 below wait for the user. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phases 1-5 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5, ff0f9676). H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -257,6 +257,8 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 - U (user): U1, no switch for placed armies. Only armies the neutral economy bought follow these rules; armies placed on the map and the map's scripted ones (patrols, spawns) keep their own orders.
 - V (user): V2. The engine rule that keeps plain-neutral armies from the SecureCity order (`StackOrderCalculator`) gets one exception: armies bought by the neutral economy, while the map rule is on. Original campaigns and placed armies are unchanged; without it, maps with neutral kinds off would have no conquest at all.
 - W (user): W1. Every side hostile to the army's side counts, other neutral kinds included (they are hostile by design).
+- X (user, after the 5a measurement): X1. A neutral village fills the army waiting at its entrance until it is full whatever the unit target; the target only decides between a new leader and a village upgrade.
+- Taken while building phase 5: only villages (`WorldCity`) are town targets, never capitals; armies that aren't full walk home with `MoveToLocation` (radius 1, so a new leader at the entrance doesn't block them).
 
 ### Phase 5 questions
 
@@ -288,4 +290,20 @@ Measurement (War of the Ring, 20 turns, seed 1): identical to phase 4, no army e
 
 Experiment (reverted): a waiting army is filled whatever the target, the target only decides between a new leader and an upgrade. Result after 20 turns: 5 Free Men armies out (one with SecureCity, others hunting or returning), the Free Men took an Empire village (Free Men 16 -> 17 villages, Empire 8 -> 7), neutral turns 1392 ms vs 1376 ms. The other kinds stayed above their unit targets the whole time, so they never hired leaders and sent nothing out.
 
-X1: the experiment: waiting armies are filled before upgrades whatever the target; the target only gates new leaders. X2: armies leave at half their leadership instead of full (changes P1). X3: keep it as built; armies leave only while a side is below its target. Recommendation: X1.
+~~X. Fix options.~~ Answered: X1 (Decisions).
+
+## Phase 5 - done
+
+Commits 8bcb4422 (armies, settings, tests), 463d0b17 (decision X1), e9953414 (editor text); merged as ff0f9676.
+
+What was built (on top of the 5a list above): decision X1 in `NeutralEconomyPlanner` (fill the waiting army before anything but the garrison; new leaders only below the unit target; upgrades last); the editor explanation updated (one string replaced in all 7 catalogs).
+
+Tests: `CustomMapTests.NeutralArmiesTest` (settings, clamping, clone, save and reopen; a full plain-neutral army sent to a weak Empire village 8 tiles away; hunting first when a weak Empire army stands 5 tiles from home; an army that isn't full staying or walking home; a captured town becoming home; the home surviving a save; a 1000 % margin refusing a guarded village; in play, the plain-neutral army taking the village while a placed army never moves). `NeutralEconomyTest` now checks X1 (a waiting army above the target is filled first; with none, the village grows). Mutation checks, each built and run: margin ignored, hunting skipped, full check removed, captured home ignored, rule hook removed, X1 removed -> a test fails every time. `MapEditorEconomyTest` visual run passed; the Neutrals section with the three new boxes reviewed (no truncation).
+
+Suite 5506, rerun on the merged tree.
+
+Headless War of the Ring, 20 turns, seed 1 (final code): 14 Free Men armies bought, 5 out at turn 21 (one on a capture order), the Free Men took an Empire village (17 villages vs 16, Empire 7 vs 8), neutral turns 1425 ms vs 1376 ms without armies going out. The other kinds stay above their unit targets (Greenskins 504 units vs 105), so they never hire leaders and send nothing out: on this map phase 5 shows mostly through the Free Men.
+
+Real-client check: none in this phase (no client screen changed apart from three editor boxes and a text, checked in the visual test); the behaviour shows in the headless run and the engine test plays it. Check it in a real game next time the War of the Ring is played.
+
+Known limits: hunting uses the DefendLocation order, which picks its own targets inside the radius with the ordered scoring, so the margin only gates whether the army goes out, not which army it then fights; capitals are never targets; sides above their unit target (most War of the Ring kinds, thanks to the placed armies) don't hire new leaders.
