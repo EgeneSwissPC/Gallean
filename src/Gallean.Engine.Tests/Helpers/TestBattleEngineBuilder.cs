@@ -112,6 +112,9 @@ internal sealed class TestBattleEngineBuilder
         return this;
     }
 
+    // The context of the last built engine (Gallean Upgrade: battle AI designer tests).
+    public IEngineContext? Context { get; private set; }
+
     public BattleEngine Build()
     {
         IGameDefinitionProvider definitions = definitionsBuilder.Build();
@@ -134,8 +137,10 @@ internal sealed class TestBattleEngineBuilder
 
         BattleState state = stateBuilder.Build(modifiers, info) with { CurrentRound = BattleRound.Normal(roundNumber) };
         ScenarioDefinition scenarioDefinition = GameScenarioProvider.Empty.Definition with { MaxLeaderLevel = maxLeaderLevel };
+        EngineContext context = new(random, definitions, new UnitStatsProvider(definitions, globals, scenarioDefinition), new GameScenarioProvider([], [], [], [], scenarioDefinition), globals);
+        Context = context;
         BattleEngine engine = new(
-            new EngineContext(random, definitions, new UnitStatsProvider(definitions, globals, scenarioDefinition), new GameScenarioProvider([], [], [], [], scenarioDefinition), globals),
+            context,
             state,
             upgradeResolver);
 

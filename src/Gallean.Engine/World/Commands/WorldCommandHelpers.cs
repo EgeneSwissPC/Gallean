@@ -343,8 +343,8 @@ internal static class WorldCommandHelpers
             WorldBattleModifierCalculator.GetModifiers(state, attackerStack.OwnerId, canRetreat: true, context),
             WorldBattleModifierCalculator.GetModifiers(state, defenderStack.OwnerId, defenderFortification is null, context));
         BattleInfo info = new(
-            WorldBattleSideInfoCalculator.GetInfo(state, attackerStack.OwnerId),
-            WorldBattleSideInfoCalculator.GetInfo(state, defenderStack.OwnerId));
+            WorldBattleSideInfoCalculator.GetInfo(state, attackerStack.OwnerId, attackerStack, context.Definitions),
+            WorldBattleSideInfoCalculator.GetInfo(state, defenderStack.OwnerId, defenderStack, context.Definitions));
 
         int fortificationArmor;
         if (defenderFortification is not null)
@@ -422,8 +422,8 @@ internal static class WorldCommandHelpers
             WorldBattleModifierCalculator.GetModifiers(state, attackerStack.OwnerId, canRetreat: true, context),
             WorldBattleModifierCalculator.GetModifiers(state, defenderStack.OwnerId, defenderFortification is null, context));
         BattleInfo info = new(
-            WorldBattleSideInfoCalculator.GetInfo(state, attackerStack.OwnerId),
-            WorldBattleSideInfoCalculator.GetInfo(state, defenderStack.OwnerId));
+            WorldBattleSideInfoCalculator.GetInfo(state, attackerStack.OwnerId, attackerStack, context.Definitions),
+            WorldBattleSideInfoCalculator.GetInfo(state, defenderStack.OwnerId, defenderStack, context.Definitions));
         WorldStack unfortifiedAttackerStack = attackerStack with
         {
             Units = FortificationCalculator.RemoveUnitModifiers(attackerStack.Units)
@@ -486,7 +486,7 @@ internal static class WorldCommandHelpers
             WorldBattleModifierCalculator.GetModifiers(state, attackerStack.OwnerId, canRetreat: true, context),
             WorldBattleModifierCalculator.GetModifiers(state, defenderOwnerId, canRetreat: false, context));
         BattleInfo info = new(
-            WorldBattleSideInfoCalculator.GetInfo(state, attackerStack.OwnerId),
+            WorldBattleSideInfoCalculator.GetInfo(state, attackerStack.OwnerId, attackerStack, context.Definitions),
             WorldBattleSideInfoCalculator.GetInfo(state, defenderOwnerId));
         BattleStateBuilder builder = new(context.Definitions);
         int index = 0;

@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "name": "Hardest hitter",
+  "stages": [
+    {
+      "name": "Default",
+      "when": [],
+      "tactics": {
+        "healersFirst": 0,
+        "castersFirst": 0,
+        "leaderFirst": 0,
+        "hardestHitterFirst": 100,
+        "woundedFirst": 0,
+        "focusFire": 0,
+        "protectLeader": false,
+        "neverFlee": false,
+        "fleeBelowPercent": 25,
+        "canDefend": true,
+        "leaderDefendsBelowPercent": 0
+      }
+    }
+  ]
+}

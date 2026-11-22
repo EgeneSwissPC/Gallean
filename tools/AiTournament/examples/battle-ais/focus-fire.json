@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "name": "Focus fire",
+  "stages": [
+    {
+      "name": "Default",
+      "when": [],
+      "tactics": {
+        "healersFirst": 0,
+        "castersFirst": 0,
+        "leaderFirst": 0,
+        "hardestHitterFirst": 0,
+        "woundedFirst": 0,
+        "focusFire": 100,
+        "protectLeader": false,
+        "neverFlee": false,
+        "fleeBelowPercent": 25,
+        "canDefend": true,
+        "leaderDefendsBelowPercent": 0
+      }
+    }
+  ]
+}

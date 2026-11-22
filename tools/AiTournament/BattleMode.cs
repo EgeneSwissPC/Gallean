@@ -50,6 +50,13 @@ internal static class BattleMode
                 case "--map": hostMap = Next(); break;
                 case "--csv": csvPath = Next(); break;
                 case "--armies": armiesDirectory = Next(); break;
+                case "--battle-ais":
+                {
+                    IReadOnlyList<DesignedBattleAi> designs = new DesignedBattleAiStore(Next()).LoadAll();
+                    AiBrainRegistry.SetDesignedBattleAis(designs);
+                    Console.WriteLine($"Designed battle AIs: {(designs.Count == 0 ? "none" : string.Join(", ", designs.Select(design => design.Id)))}");
+                    break;
+                }
                 case "--verbose": verbose = true; break;
                 case "--race-a": raceA = ParseRace(Next()); break;
                 case "--race-b": raceB = ParseRace(Next()); break;
@@ -138,6 +145,21 @@ internal static class BattleMode
             Console.WriteLine($"CSV: {csvPath}");
         }
 
+        return 0;
+    }
+
+    // --new-battle-ai <dir> <name> [source]: a designed battle AI copied from Classic (or a built-in), to edit by hand.
+    public static int NewBattleAi(string[] args)
+    {
+        if (args.Length is < 3 or > 4)
+        {
+            Console.Error.WriteLine("Usage: AiTournament --new-battle-ai <dir> <name> [source AI]");
+            return 2;
+        }
+
+        DesignedBattleAi design = DesignedBattleAi.FromBuiltIn(args.Length == 4 ? args[3] : AiBrainRegistry.ClassicId, args[2], args[2]);
+        new DesignedBattleAiStore(args[1]).Save(design);
+        Console.WriteLine($"Wrote {Path.Combine(args[1], args[2] + ".json")} (id {design.Id})");
         return 0;
     }
 

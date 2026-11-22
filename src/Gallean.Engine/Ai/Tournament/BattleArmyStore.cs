@@ -120,6 +120,18 @@ public sealed class BattleArmyStore(string directory)
                 writer.WriteEndArray();
             }
 
+            if (!army.Cargo.IsEmpty)
+            {
+                writer.WriteStartArray("cargo");
+
+                foreach (ItemDefinitionId item in army.Cargo)
+                {
+                    writer.WriteStringValue(item.Value);
+                }
+
+                writer.WriteEndArray();
+            }
+
             if (!army.LeaderUpgrades.IsEmpty)
             {
                 writer.WriteStartArray("leaderUpgrades");
@@ -185,8 +197,19 @@ public sealed class BattleArmyStore(string directory)
             }
         }
 
+        ImmutableArray<ItemDefinitionId>.Builder cargo = ImmutableArray.CreateBuilder<ItemDefinitionId>();
+
+        if (root.TryGetProperty("cargo", out JsonElement cargoElement) && cargoElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (JsonElement element in cargoElement.EnumerateArray())
+            {
+                cargo.Add(new ItemDefinitionId(element.GetString() ?? throw new FormatException("cargo")));
+            }
+        }
+
         return new BattleArmy(name, units.ToImmutable())
         {
+            Cargo = cargo.ToImmutable(),
             AllowAnyArmy = allowAny,
             Equipment = equipment.ToImmutable(),
             LeaderUpgrades = upgrades.ToImmutable()
