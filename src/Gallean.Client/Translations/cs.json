@@ -1697,6 +1697,8 @@
     "{0} stopped with {1} move points left.": "{0} stopped with {1} move points left.",
     "An army with an order needs you": "An army with an order needs you",
     "{0} armies with orders need you": "{0} armies with orders need you",
-    "End the turn again to continue.": "End the turn again to continue."
+    "End the turn again to continue.": "End the turn again to continue.",
+    "Starting gold of each neutral side": "Starting gold of each neutral side",
+    "Neutral towns bring {0} gold a turn in all.": "Neutral towns bring {0} gold a turn in all."
   }
 }

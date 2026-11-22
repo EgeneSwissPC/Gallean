@@ -235,6 +235,25 @@ public sealed partial class CustomMap
 
     public const int MaxTownIncome = 9999;
 
+    // Gold every neutral side starts with (Splayer BANK of each neutral player; town income phase 3). Neutrals spend
+    // it from phase 4 on; 0 by default.
+    public int NeutralStartingGold { get; private set; }
+
+    // Sets the neutral sides' starting gold (0-9999). Returns false when nothing changed.
+    public bool SetNeutralStartingGold(int gold)
+    {
+        int clamped = Math.Clamp(gold, 0, CustomMapPlayer.MaxStartingAmount);
+
+        if (clamped == NeutralStartingGold)
+        {
+            return false;
+        }
+
+        NeutralStartingGold = clamped;
+
+        return true;
+    }
+
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
         List<CustomMapPlayer> players = [];
@@ -270,7 +289,8 @@ public sealed partial class CustomMap
         {
             ForeignSpellMarkup = ForeignSpellMarkup,
             NeutralKinds = NeutralKinds,
-            TownIncome = TownIncome
+            TownIncome = TownIncome,
+            NeutralStartingGold = NeutralStartingGold
         };
     }
 

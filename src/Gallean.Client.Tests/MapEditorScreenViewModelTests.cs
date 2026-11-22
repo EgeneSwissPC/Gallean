@@ -1519,6 +1519,37 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).TownIncome, Is.Empty);
     }
 
+    // Town income phase 3: the neutral sides' starting gold box (one undo step while typing, saved with the map) and
+    // the neutral towns' total while the map has town income.
+    [Test]
+    public async Task NeutralStartingGoldTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        editor.ToggleEconomyCommand.Execute(null);
+        Assert.That((editor.NeutralGoldText, editor.NeutralIncomeText), Is.EqualTo(("0", "Neutral towns bring 0 gold a turn in all.")));
+
+        editor.NeutralGoldText = "2";
+        editor.NeutralGoldText = "25";
+        editor.NeutralGoldText = "25x";
+        editor.NeutralGoldText = "250";
+        Assert.That((editor.Map.NeutralStartingGold, editor.IsDirty), Is.EqualTo((250, true)));
+        editor.NeutralGoldText = "99999";
+        Assert.That(editor.Map.NeutralStartingGold, Is.EqualTo(CustomMapPlayer.MaxStartingAmount));
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.NeutralStartingGold, editor.NeutralGoldText), Is.EqualTo((0, "0")), "One undo step for the typing.");
+
+        editor.TownIncomeOn = false;
+        Assert.That(editor.NeutralIncomeText, Is.Empty, "No total without town income.");
+
+        editor.NeutralGoldText = "400";
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).NeutralStartingGold, Is.EqualTo(400));
+    }
+
     [Test]
     public async Task SpreadPreviewTest()
     {
