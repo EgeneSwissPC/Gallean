@@ -244,6 +244,36 @@ public sealed partial class CustomMap
 
     public const int MaxNeutralUnitFactor = 20;
 
+    // Neutral armies (phase 5): hunt radius and town radius in tiles around an army's home, and the strength margin in
+    // percent a bought army needs over a target.
+    public int NeutralArmyRadius { get; private set; } = ScenarioDefinition.DefaultNeutralArmyRadius;
+
+    public int NeutralTownRadius { get; private set; } = ScenarioDefinition.DefaultNeutralTownRadius;
+
+    public int NeutralAttackMargin { get; private set; } = ScenarioDefinition.DefaultNeutralAttackMargin;
+
+    public const int MaxNeutralRadius = 300;
+    public const int MinNeutralAttackMargin = 50;
+    public const int MaxNeutralAttackMargin = 1000;
+
+    public bool SetNeutralArmyRadius(int tiles) => Change(Math.Clamp(tiles, 1, MaxNeutralRadius), NeutralArmyRadius, value => NeutralArmyRadius = value);
+
+    public bool SetNeutralTownRadius(int tiles) => Change(Math.Clamp(tiles, 1, MaxNeutralRadius), NeutralTownRadius, value => NeutralTownRadius = value);
+
+    public bool SetNeutralAttackMargin(int percent) => Change(Math.Clamp(percent, MinNeutralAttackMargin, MaxNeutralAttackMargin), NeutralAttackMargin, value => NeutralAttackMargin = value);
+
+    private static bool Change(int value, int current, Action<int> set)
+    {
+        if (value == current)
+        {
+            return false;
+        }
+
+        set(value);
+
+        return true;
+    }
+
     public bool SetNeutralUnitFactor(int factor)
     {
         int clamped = Math.Clamp(factor, 1, MaxNeutralUnitFactor);
@@ -315,7 +345,10 @@ public sealed partial class CustomMap
             TownIncome = TownIncome,
             NeutralStartingGold = NeutralStartingGold,
             NeutralBuying = NeutralBuying,
-            NeutralUnitFactor = NeutralUnitFactor
+            NeutralUnitFactor = NeutralUnitFactor,
+            NeutralArmyRadius = NeutralArmyRadius,
+            NeutralTownRadius = NeutralTownRadius,
+            NeutralAttackMargin = NeutralAttackMargin
         };
     }
 

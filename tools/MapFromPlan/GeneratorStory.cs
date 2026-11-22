@@ -73,6 +73,9 @@ internal sealed partial class Generator
         map.SetNeutralStartingGold(Plan.Integer(plan["rules"]?["neutralGold"], 0));
         map.NeutralBuying = plan["rules"]?["neutralBuying"] is not { } buying || buying.GetValue<bool>();
         map.SetNeutralUnitFactor(Plan.Integer(plan["rules"]?["neutralUnitFactor"], ScenarioDefinition.DefaultNeutralUnitFactor));
+        map.SetNeutralArmyRadius(Plan.Integer(plan["rules"]?["neutralArmyRadius"], ScenarioDefinition.DefaultNeutralArmyRadius));
+        map.SetNeutralTownRadius(Plan.Integer(plan["rules"]?["neutralTownRadius"], ScenarioDefinition.DefaultNeutralTownRadius));
+        map.SetNeutralAttackMargin(Plan.Integer(plan["rules"]?["neutralAttackMargin"], ScenarioDefinition.DefaultNeutralAttackMargin));
 
         JsonNode? townIncome = plan["rules"]?["townIncome"];
         map.SetTownIncome(townIncome switch

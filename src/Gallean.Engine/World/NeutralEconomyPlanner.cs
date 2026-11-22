@@ -7,9 +7,10 @@ namespace Gallean.Engine;
 // after its income, it spends its gold village by village (random order). Each village makes one purchase per turn,
 // any number while the side's gold is above the spending line:
 //   1. its garrison, while it has room: one of the kind's soldiers;
-//   2. while the side owns fewer units than factor x (sum of its villages' levels): a unit for its army waiting at the
-//      village entrance, or, with the entrance free, a new leader there (the army waits with the Stand order);
-//   3. otherwise, with the garrison full: a village upgrade.
+//   2. a unit for its army waiting at the village entrance until that army is full (decision X1);
+//   3. while the side owns fewer units than factor x (sum of its villages' levels): a new leader at a free entrance
+//      (the army waits with the Stand order until NeutralArmyPlanner sends it out);
+//   4. otherwise, with the garrison full: a village upgrade.
 // A level-N village sells the cheapest N/5 (rounded up, at least one) of its kind's soldiers and leaders, and the pick
 // among those that are affordable and fit is random, weighted by price ^ t with t = clamp(gold / 2000 - 1, -1, 1):
 // cheap units are likelier while the side is poor, dear ones while it is rich.
@@ -182,18 +183,20 @@ internal static class NeutralEconomyPlanner
                 return BuyForGarrison(city, level, garrison, soldiers);
             }
 
-            // 2. Below the unit target: the army at the entrance, or a new leader there.
-            if (unitCount < Target)
+            // 2. The army waiting at the entrance is filled until it is full, whatever the unit target (decision X1:
+            //    armies leave home only once full, phase 5).
+            if (entranceStacks.TryGetValue(city.Entrance, out WorldStack? waiting) && waiting.OwnerId == player.Id && BuyForArmy(waiting, soldiers))
             {
-                if (entranceStacks.TryGetValue(city.Entrance, out WorldStack? waiting))
-                {
-                    return waiting.OwnerId == player.Id && BuyForArmy(waiting, soldiers);
-                }
-
-                return HireLeader(city, level);
+                return true;
             }
 
-            // 3. A full garrison and enough units: grow the village.
+            // 3. Below the unit target: a new leader at a free entrance.
+            if (unitCount < Target)
+            {
+                return !entranceStacks.ContainsKey(city.Entrance) && HireLeader(city, level);
+            }
+
+            // 4. A full garrison, no army to fill and enough units: grow the village.
             return Upgrade(city, level);
         }
 
@@ -295,7 +298,10 @@ internal static class NeutralEconomyPlanner
                 ExpirationTurn: null,
                 PendingLeaderUpgrades: 0,
                 BattlesWon: 0,
-                SourceTemplateId: null);
+                SourceTemplateId: null)
+            {
+                NeutralHomeId = city.Id
+            };
 
             entranceStacks[city.Entrance] = stack;
             Pay(definition.PurchaseCost.Gold);

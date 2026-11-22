@@ -103,6 +103,9 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         map.SetTownIncome(scenario.Provider.Definition.TownIncome);
         map.NeutralBuying = scenario.Provider.Definition.NeutralBuying;
         map.SetNeutralUnitFactor(scenario.Provider.Definition.NeutralUnitFactor);
+        map.SetNeutralArmyRadius(scenario.Provider.Definition.NeutralArmyRadius);
+        map.SetNeutralTownRadius(scenario.Provider.Definition.NeutralTownRadius);
+        map.SetNeutralAttackMargin(scenario.Provider.Definition.NeutralAttackMargin);
         map.SetNeutralStartingGold(scenario.State.Players[WorldCommandHelpers.GetNeutralPlayerId(scenario.State)].Resources.Gold);
 
         return map;

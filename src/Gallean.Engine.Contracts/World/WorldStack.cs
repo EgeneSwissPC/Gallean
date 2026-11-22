@@ -26,4 +26,10 @@ public sealed record WorldStack(
     /// owner's turns instead of expiring. Null for every other army.
     /// </summary>
     public WorldResourceSet? SummonUpkeep { get; init; }
+
+    /// <summary>
+    /// Gallean Upgrade (neutral economy, docs/town-income.md phase 5): the village an army bought by a neutral side
+    /// calls home; such armies get their orders from <c>NeutralArmyPlanner</c>. Null for every other army.
+    /// </summary>
+    public WorldFortificationId? NeutralHomeId { get; init; }
 }

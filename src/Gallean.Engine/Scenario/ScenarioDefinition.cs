@@ -41,4 +41,17 @@ public sealed record ScenarioDefinition(
     public int NeutralUnitFactor { get; init; } = DefaultNeutralUnitFactor;
 
     public const int DefaultNeutralUnitFactor = 3;
+
+    // Neutral armies (phase 5, NeutralArmyPlanner): a full bought army hunts hostile armies within NeutralArmyRadius
+    // tiles of its home village, else goes for a hostile town within NeutralTownRadius, and only when the AI's
+    // strength estimate gives it at least NeutralAttackMargin percent of the target's.
+    public int NeutralArmyRadius { get; init; } = DefaultNeutralArmyRadius;
+
+    public int NeutralTownRadius { get; init; } = DefaultNeutralTownRadius;
+
+    public int NeutralAttackMargin { get; init; } = DefaultNeutralAttackMargin;
+
+    public const int DefaultNeutralArmyRadius = 10;
+    public const int DefaultNeutralTownRadius = 60;
+    public const int DefaultNeutralAttackMargin = 140;
 }
