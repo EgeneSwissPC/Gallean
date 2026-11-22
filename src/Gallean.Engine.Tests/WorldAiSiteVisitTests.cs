@@ -42,10 +42,10 @@ public sealed class WorldAiSiteVisitTests
     private static WorldSite Trainer() => new WorldTrainerSite(new WorldSiteId("site"), SiteFootprint, new WorldObjectVariant(0),
         new ScenarioTextId("Title"), new ScenarioTextId("Greeting"), [], 3);
 
-    private static WorldAiActionPlan FirstPlan(string brainId, WorldSite site, WorldPosition position, int gold, int mapSize = 14)
+    private static WorldAiActionPlan FirstPlan(string brainId, WorldSite site, WorldPosition position, int gold, int mapSize = 14, WorldRace race = WorldRace.Undead)
     {
         WorldMap map = TestHelpers.SimpleMap(mapSize, mapSize);
-        WorldPlayer ai = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with
+        WorldPlayer ai = TestHelpers.SimplePlayer(new WorldPlayerId(1), race, map) with
         {
             IsAi = true,
             Resources = new WorldResourceSet(gold, 0, 0, 0, 0, 0)
@@ -123,6 +123,13 @@ public sealed class WorldAiSiteVisitTests
         bool towards = plan.Command is WorldAiMoveStackCommand move && move.TargetPosition.GetDistance(Entrance) < start.GetDistance(Entrance);
 
         Assert.That(towards, Is.EqualTo(walks), plan.Command.ToString());
+    }
+
+    // Neutral sides spend gold only through the "neutrals buy units" map rule (docs/town-income.md phase 4).
+    [Test]
+    public void NeutralArmiesDontShopTest()
+    {
+        Assert.That(FirstPlan(AiPersonalities.ClassicPlusId, Mercenaries(), Entrance, 2000, race: WorldRace.Neutral).Command, Is.Not.InstanceOf<WorldPurchaseMercenaryCommand>());
     }
 
     [Test]
