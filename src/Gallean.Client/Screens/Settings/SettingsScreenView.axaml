@@ -216,6 +216,17 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
 
+          <!-- Gallean Upgrade: move orders (docs/move-orders.md) -->
+          <CheckBox Grid.Row="2"
+                    Grid.Column="2"
+                    Grid.ColumnSpan="2"
+                    HorizontalAlignment="Left"
+                    VerticalAlignment="Center"
+                    IsChecked="{Binding TabSkipsOrders}"
+                    ToolTip.Tip="{local:Text 'When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.'}">
+            <TextBlock Text="{local:Text 'Tab skips armies with orders'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+          </CheckBox>
+
           <TextBlock Grid.Row="3"
                      Grid.Column="0"
                      Text="{local:Text 'Battle speed'}"

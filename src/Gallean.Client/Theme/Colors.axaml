@@ -996,6 +996,7 @@
   <SolidColorBrush x:Key="WorldStackBarTextOutlineBrush" Color="{x:Static local:Theme+World+StackBar.TextOutlineColor}" />
   <SolidColorBrush x:Key="WorldStackBarMovesBrush" Color="{x:Static local:Theme+World+StackBar.MovesColor}" />
   <SolidColorBrush x:Key="WorldStackBarNoMovesBrush" Color="{x:Static local:Theme+World+StackBar.NoMovesColor}" />
+  <SolidColorBrush x:Key="WorldStackBarOrderedMovesBrush" Color="{x:Static local:Theme+World+StackBar.OrderedMovesColor}" />
 
   <SolidColorBrush x:Key="MedallionGoldBrush" Color="{x:Static local:Theme+Medallion.GoldColor}" />
   <SolidColorBrush x:Key="MedallionGoldLightBrush" Color="{x:Static local:Theme+Medallion.GoldLightColor}" />

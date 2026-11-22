@@ -70,6 +70,9 @@ internal sealed partial class WorldScreenViewModel :
             FinishStackCommand,
             SelectPreviousStackCommand,
             SelectNextStackCommand,
+            CancelMoveOrderCommand,
+            SelectNextOrderedStackCommand,
+            SelectPreviousOrderedStackCommand,
             OpenCapitalCommand,
             OpenSpellbookCommand,
             OpenQuestCommand,
@@ -362,6 +365,11 @@ internal sealed partial class WorldScreenViewModel :
             return false;
         }
 
+        if (TryEnterReplan(selected))
+        {
+            return true;
+        }
+
         if (TryMoveAlongHoverPath(selected, position))
         {
             return true;
@@ -624,7 +632,7 @@ internal sealed partial class WorldScreenViewModel :
     [RelayCommand(CanExecute = nameof(CanSelectPreviousStack))]
     private void SelectPreviousStack()
     {
-        WorldStackItemViewModel? previous = FindNextAvailableStackItem([.. StackItems.Reverse()], cursor.StackId);
+        WorldStackItemViewModel? previous = FindNextAvailableStackItem([.. StackItems.Reverse()], cursor.StackId, Game.Settings.TabSkipsOrders);
 
         if (previous is not null)
         {
@@ -639,13 +647,13 @@ internal sealed partial class WorldScreenViewModel :
             return false;
         }
 
-        return FindNextAvailableStackItem([.. StackItems.Reverse()], cursor.StackId) is not null;
+        return FindNextAvailableStackItem([.. StackItems.Reverse()], cursor.StackId, Game.Settings.TabSkipsOrders) is not null;
     }
 
     [RelayCommand(CanExecute = nameof(CanSelectNextStack))]
     private void SelectNextStack()
     {
-        WorldStackItemViewModel? next = FindNextAvailableStackItem(StackItems, cursor.StackId);
+        WorldStackItemViewModel? next = FindNextAvailableStackItem(StackItems, cursor.StackId, Game.Settings.TabSkipsOrders);
 
         if (next is not null)
         {
@@ -660,7 +668,7 @@ internal sealed partial class WorldScreenViewModel :
             return false;
         }
 
-        return FindNextAvailableStackItem(StackItems, cursor.StackId) is not null;
+        return FindNextAvailableStackItem(StackItems, cursor.StackId, Game.Settings.TabSkipsOrders) is not null;
     }
 
     private static int FindStackItemIndex(IReadOnlyList<WorldStackItemViewModel> items, WorldStackId? stackId)
@@ -713,7 +721,7 @@ internal sealed partial class WorldScreenViewModel :
         UpdateStackActions();
         UpdateEndTurnHighlighted();
 
-        WorldStackItemViewModel? nextStack = FindNextAvailableStackItem(StackItems, stack.Id);
+        WorldStackItemViewModel? nextStack = FindNextAvailableStackItem(StackItems, stack.Id, Game.Settings.TabSkipsOrders);
 
         if (nextStack is not null)
         {
@@ -761,7 +769,7 @@ internal sealed partial class WorldScreenViewModel :
         return stack is not null && stack.MovementPoints > 0 && cursor.Path is not null;
     }
 
-    private static WorldStackItemViewModel? FindNextAvailableStackItem(IReadOnlyList<WorldStackItemViewModel> items, WorldStackId? stackId)
+    private static WorldStackItemViewModel? FindNextAvailableStackItem(IReadOnlyList<WorldStackItemViewModel> items, WorldStackId? stackId, bool skipOrdered)
     {
         int index = FindStackItemIndex(items, stackId);
 
@@ -769,7 +777,7 @@ internal sealed partial class WorldScreenViewModel :
         {
             WorldStackItemViewModel item = items[(index + offset).Mod(items.Count)];
 
-            if (item is { MovementPoints: > 0, IsFinished: false })
+            if (item is { MovementPoints: > 0, IsFinished: false } && !(skipOrdered && item.HasMoveOrder))
             {
                 return item;
             }
@@ -970,6 +978,11 @@ internal sealed partial class WorldScreenViewModel :
 
     private void SelectStack(WorldStackId? stackId)
     {
+        if (stackId != replanStackId)
+        {
+            replanStackId = null;
+        }
+
         SetCursor(cursor.SelectStack(stackId));
         UpdateReachable();
         UpdateSelectedPath();
@@ -985,6 +998,21 @@ internal sealed partial class WorldScreenViewModel :
 
     private void SetSelectedPath(WorldStack stack, WorldPathSelection? path)
     {
+        bool hadOrder = HasMoveOrder(stack);
+
+        // Re-planning an ordered army keeps it an order while it walks the new path, so its card
+        // doesn't jump to the front of the bar and back.
+        bool replanning = path is not null && IsReplanning(stack);
+
+        if (!replanning && (!stackDestinations.TryGetValue(stack.Id, out WorldPosition oldDestination) || path is null || oldDestination != path.Destination))
+        {
+            ForgetMoveOrder(stack.Id);
+        }
+        else if (replanning)
+        {
+            orderTurnsState = null;
+        }
+
         if (path is not null)
         {
             stackDestinations = stackDestinations.SetItem(stack.Id, path.Destination);
@@ -992,6 +1020,13 @@ internal sealed partial class WorldScreenViewModel :
         else
         {
             stackDestinations = stackDestinations.Remove(stack.Id);
+        }
+
+        if (hadOrder != HasMoveOrder(stack))
+        {
+            NotifyMoveOrderCommandsChanged();
+            UpdateStackActions();
+            UpdateEndTurnHighlighted();
         }
 
         SetCursor(cursor with { Path = path });
@@ -1005,6 +1040,8 @@ internal sealed partial class WorldScreenViewModel :
 
     private async Task MoveSelectedStackAsync(WorldStack stack, WorldPathSelection path)
     {
+        ConfirmMoveOrder(stack, path);
+
         if (path.Encounter is null)
         {
             await MoveStackAsync(stack.Id, path.Destination);
@@ -1092,6 +1129,12 @@ internal sealed partial class WorldScreenViewModel :
         if (ReferenceEquals(activeMove, current))
         {
             activeMove = null;
+
+            if (!arrived)
+            {
+                TryConfirmMoveOrder(current.StackId, current.Destination);
+            }
+
             ProcessEventQueue();
             current.Completion.SetResult(arrived);
         }
@@ -1421,6 +1464,7 @@ internal sealed partial class WorldScreenViewModel :
         ContinuePathCommand.NotifyCanExecuteChanged();
         FinishStackCommand.NotifyCanExecuteChanged();
         OpenStackCommand.NotifyCanExecuteChanged();
+        NotifyMoveOrderCommandsChanged();
     }
 
     protected override void OnSnapshotChanged(GameSnapshot current)
@@ -1492,7 +1536,7 @@ internal sealed partial class WorldScreenViewModel :
     {
         foreach (WorldStack stack in WorldState.Stacks.Values)
         {
-            if (stack.OwnerId == ViewPlayerId && stack.MovementPoints > 0 && !IsFinished(stack))
+            if (stack.OwnerId == ViewPlayerId && stack.MovementPoints > 0 && !IsFinished(stack) && !HasMoveOrder(stack))
             {
                 return true;
             }
@@ -1508,13 +1552,13 @@ internal sealed partial class WorldScreenViewModel :
         foreach (WorldStack stack in stacks)
         {
             WorldStackItemViewModel newItem = new(stack.Id);
-            newItem.Update(stack, stack.Id == cursor.StackId, IsFinished(stack), GameModel.Definitions, GameModel.Texts, GameModel.Stats);
+            newItem.Update(stack, stack.Id == cursor.StackId, IsFinished(stack), HasMoveOrder(stack), GetOrderTurns(stack), GameModel.Definitions, GameModel.Texts, GameModel.Stats);
             newItems.Add(newItem);
         }
 
         int index = 0;
 
-        foreach (CollectionJoin.Item<WorldStackItemViewModel> item in CollectionJoin.Make(StackItems, newItems, item => (-item.Level, item.StackId)))
+        foreach (CollectionJoin.Item<WorldStackItemViewModel> item in CollectionJoin.Make(StackItems, newItems, item => (item.HasMoveOrder, -item.Level, item.StackId)))
         {
             if (item.Right is null)
             {
@@ -1528,7 +1572,7 @@ internal sealed partial class WorldScreenViewModel :
             else
             {
                 WorldStack stack = WorldState.Stacks[item.Left.StackId];
-                item.Left.Update(stack, stack.Id == cursor.StackId, IsFinished(stack), GameModel.Definitions, GameModel.Texts, GameModel.Stats);
+                item.Left.Update(stack, stack.Id == cursor.StackId, IsFinished(stack), HasMoveOrder(stack), GetOrderTurns(stack), GameModel.Definitions, GameModel.Texts, GameModel.Stats);
                 index++;
             }
         }
@@ -1894,6 +1938,8 @@ internal sealed partial class WorldScreenViewModel :
                 stackDestinations = stackDestinations.Remove(stackId);
             }
         }
+
+        ForgetMissingMoveOrders();
 
         WorldStack? selected = ResolveSelectedStack();
 
