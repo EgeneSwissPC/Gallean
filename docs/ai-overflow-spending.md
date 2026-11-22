@@ -1,12 +1,15 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec, nothing built yet.
+Status: spec answered (all four recommendations taken, 2026-11-22); phase 1 in progress.
 
 ## Decisions
 
 - **User rule (2026-11-22):** every one of our world AIs, however different, must never reach 9999 mana or gold. When an amount gets close to the cap, the AI starts spending, and keeps spending until it is back below.
 - It applies to every personality (Classic+, Aggressive, Builder, Expansionist) and to every designed AI (AI designer), as a shared rule on top of their own knobs, not as a separate personality.
-- Classic stays identical to upstream (standing rule: Standard/Classic AI = upstream's AI). See open question A.
+- Classic stays identical to upstream (answer A): Classic+ gets the rule, so Classic+ is the original AI that spends.
+- Spending starts at 80 % of the cap = 8000 (answer B), editable per designed AI.
+- Only useful casts (answer C); a summon next to its own armies counts as useful. Mana that nothing useful can use is still lost.
+- Gold sinks are units, buildings and leaders (answer D); merchant items and mage tower spells only if the bench still shows gold at the cap after phase 3.
 
 ## The problem today (measured)
 
@@ -68,7 +71,7 @@ Gold, in spending mode:
 
 ## Open questions
 
-- **A.** Classic too? Recommendation: no. Classic stays upstream's AI; Classic+ is "Classic with our fixes" and gets the spending rule, so picking Classic+ gives the original AI that spends.
-- **B.** Threshold: 80 % of the cap (8000)? Recommendation: 80 %, editable per designed AI.
-- **C.** When nothing useful can be cast (no enemy in sight, nobody wounded): accept the loss, or cast anything castable? Recommendation: useful casts only; a summon next to its own armies counts as useful.
-- **D.** Gold sinks beyond units, buildings and leaders (merchant items, mage tower spells)? Recommendation: later, only if the bench still shows gold at the cap after phase 3.
+- ~~**A.** Classic too? Recommendation: no. Classic stays upstream's AI; Classic+ is "Classic with our fixes" and gets the spending rule, so picking Classic+ gives the original AI that spends.~~ Answered: recommendation taken.
+- ~~**B.** Threshold: 80 % of the cap (8000)? Recommendation: 80 %, editable per designed AI.~~ Answered: recommendation taken.
+- ~~**C.** When nothing useful can be cast (no enemy in sight, nobody wounded): accept the loss, or cast anything castable? Recommendation: useful casts only; a summon next to its own armies counts as useful.~~ Answered: recommendation taken.
+- ~~**D.** Gold sinks beyond units, buildings and leaders (merchant items, mage tower spells)? Recommendation: later, only if the bench still shows gold at the cap after phase 3.~~ Answered: recommendation taken.
