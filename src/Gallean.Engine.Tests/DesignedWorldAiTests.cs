@@ -149,7 +149,8 @@ public sealed class DesignedWorldAiTests
             [WorldAiActionKind.TakeBag] = 2,
             [WorldAiActionKind.Move] = 1
         }));
-        Assert.That(profile with { Priorities = null }, Is.EqualTo(WorldAiProfile.Classic));
+        // Plus overflow spending, which every designed AI has (docs/ai-overflow-spending.md).
+        Assert.That(profile with { Priorities = null }, Is.EqualTo(WorldAiProfile.Classic with { SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent }));
     }
 
     [Test]

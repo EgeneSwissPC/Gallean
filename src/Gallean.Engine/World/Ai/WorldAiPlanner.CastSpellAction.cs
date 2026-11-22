@@ -40,6 +40,12 @@ internal sealed partial class WorldAiPlanner
                 command = FindGlobalCast(state, playerId, globalSpells);
             }
 
+            // Gallean Upgrade, overflow spending: only when Classic found nothing to cast.
+            if (command is null && WorldAiSpending.IsManaSpending(Context.Profile, player, Context.Engine.Globals))
+            {
+                command = FindSpendingCast(state, playerId, targetedSpells, globalSpells);
+            }
+
             if (command is null)
             {
                 return null;
@@ -193,6 +199,115 @@ internal sealed partial class WorldAiPlanner
             }
 
             return null;
+        }
+
+        // Gallean Upgrade, overflow spending (docs/ai-overflow-spending.md): spells that pay with an overflowing
+        // mana, without Classic's one-offensive-spell-per-turn and near-a-city limits. Each spell can still be
+        // cast only as often per turn as the lord allows; only useful casts are made.
+        private WorldCastSpellCommand? FindSpendingCast(
+            WorldState state,
+            WorldPlayerId playerId,
+            List<WorldSpellDefinition> targetedSpells,
+            List<WorldSpellDefinition> globalSpells)
+        {
+            WorldPlayer player = state.Players[playerId];
+            GlobalVariables globals = Context.Engine.Globals;
+            List<WorldSpellDefinition> offensive = [];
+            List<WorldSpellDefinition> weaken = [];
+            List<WorldSpellDefinition> boost = [];
+            List<WorldSpellDefinition> heal = [];
+            List<WorldSpellDefinition> restoreMovement = [];
+
+            foreach (WorldSpellDefinition spell in targetedSpells)
+            {
+                if (!WorldAiSpending.UsesOverflowingMana(Context.Profile, player, spell.CastingCost, globals))
+                {
+                    continue;
+                }
+
+                List<WorldSpellDefinition>? group = GetSpellEffectType(spell) switch
+                {
+                    WorldAiSpellEffectType.Attack => offensive,
+                    WorldAiSpellEffectType.Summon => offensive,
+                    WorldAiSpellEffectType.Weaken => weaken,
+                    WorldAiSpellEffectType.Boost => boost,
+                    WorldAiSpellEffectType.Invisibility => boost,
+                    WorldAiSpellEffectType.Heal => heal,
+                    WorldAiSpellEffectType.RestoreMovement => restoreMovement,
+                    null => null
+                };
+
+                group?.Add(spell);
+            }
+
+            List<WorldStack> ownStacks = [.. state.Stacks.Values.Where(stack => stack.OwnerId == playerId)];
+            List<WorldStack> enemies = [.. EnumerateVisibleEnemies(state, player, ownStacks)];
+
+            WorldCastSpellCommand? command = FindCast(state, offensive, enemies);
+            command ??= FindCast(state, weaken, enemies);
+            command ??= FindCast(state, boost, EnumerateStacksNearEnemies(state, playerId, enemies));
+            command ??= FindCast(state, heal, ownStacks.Where(HasDamagedUnit));
+            command ??= FindCast(state, restoreMovement, EnumerateStacksOutOfMovement(state, playerId));
+
+            if (command is null)
+            {
+                List<WorldStack> outside = [.. EnumerateOutsideStacks(state, playerId)];
+                int outOfMovement = outside.Count(stack => stack.MovementPoints <= 0);
+
+                foreach (WorldSpellDefinition spell in globalSpells)
+                {
+                    if (!WorldAiSpending.UsesOverflowingMana(Context.Profile, player, spell.CastingCost, globals))
+                    {
+                        continue;
+                    }
+
+                    bool useful = GetSpellEffectType(spell) switch
+                    {
+                        WorldAiSpellEffectType.Heal => ownStacks.Any(HasDamagedUnit),
+                        WorldAiSpellEffectType.Boost => outside.Count >= globals.AiGlobalSpellMinStacks,
+                        WorldAiSpellEffectType.Invisibility => outside.Count >= globals.AiGlobalSpellMinStacks,
+                        WorldAiSpellEffectType.RestoreMovement => outOfMovement >= globals.AiGlobalSpellMinStacks,
+                        _ => false
+                    };
+
+                    if (useful)
+                    {
+                        WorldCastSpellCommand global = new(spell.Id, Target: null);
+
+                        if (!global.Execute(state, Context.Engine).Failed)
+                        {
+                            return global;
+                        }
+                    }
+                }
+            }
+
+            return command;
+        }
+
+        // Hostile armies on explored tiles, nearest to one of the player's own armies first (at most 30).
+        private static IEnumerable<WorldStack> EnumerateVisibleEnemies(WorldState state, WorldPlayer player, List<WorldStack> ownStacks)
+        {
+            const int MaxTargets = 30;
+
+            return state.Stacks.Values
+                .Where(stack => DiplomacyCalculator.IsHostile(state, player.Id, stack.OwnerId) &&
+                                player.FogOfWar.Get(stack.Position.X, stack.Position.Y))
+                .OrderBy(stack => ownStacks.Count == 0 ? 0 : ownStacks.Min(own => own.Position.GetDistance(stack.Position)))
+                .ThenBy(stack => stack.Id.Value, StringComparer.Ordinal)
+                .Take(MaxTargets);
+        }
+
+        // Own armies outside cities, with movement left, within NearRange of a visible enemy: about to fight.
+        private static IEnumerable<WorldStack> EnumerateStacksNearEnemies(WorldState state, WorldPlayerId playerId, List<WorldStack> enemies)
+        {
+            foreach (WorldStack stack in EnumerateOutsideStacks(state, playerId))
+            {
+                if (stack.MovementPoints > 0 && enemies.Any(enemy => stack.Position.GetDistance(enemy.Position) <= NearRange))
+                {
+                    yield return stack;
+                }
+            }
         }
 
         private static WorldAiSpellEffectType? GetSpellEffectType(WorldSpellDefinition spell)

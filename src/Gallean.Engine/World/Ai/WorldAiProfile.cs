@@ -45,4 +45,7 @@ internal sealed record WorldAiProfile
 
     // Economy actions may not spend the treasury below this much gold.
     public int GoldReserve { get; init; }
+    // Gallean Upgrade, overflow spending (docs/ai-overflow-spending.md): at or above this share of the
+    // resource cap the AI lifts its spending limits. 0 = off, as in Classic.
+    public int SpendAbovePercent { get; init; }
 }

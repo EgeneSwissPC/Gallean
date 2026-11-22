@@ -9,6 +9,7 @@ internal sealed partial class WorldAiPlanner
         private const int ResearchTurnInterval = 5;
         private const int MaxResearchLevel = 4;
         private const int MaxKnownSpells = 12;
+        private const int SpendingMaxResearchLevel = 5;
 
         private static readonly WorldAiSpellEffectType[] ResearchTypes =
         [
@@ -19,23 +20,41 @@ internal sealed partial class WorldAiPlanner
             WorldAiSpellEffectType.RestoreMovement
         ];
 
+        private static readonly WorldAiSpellEffectType[] SpendingResearchTypes =
+        [
+            WorldAiSpellEffectType.Summon,
+            WorldAiSpellEffectType.Attack,
+            WorldAiSpellEffectType.Heal,
+            WorldAiSpellEffectType.Weaken,
+            WorldAiSpellEffectType.Boost,
+            WorldAiSpellEffectType.RestoreMovement,
+            WorldAiSpellEffectType.Invisibility
+        ];
+
         public override WorldAiActionPlan? Plan(WorldState state, WorldPlayerId playerId, WorldAiMemory memory)
         {
-            if (state.TurnInfo.TurnNumber % ResearchTurnInterval != 0)
-            {
-                return null;
-            }
-
             WorldPlayer player = state.Players[playerId];
 
-            if (player.Spellbook.Acquired.Count >= MaxKnownSpells)
+            // Gallean Upgrade, overflow spending: research every turn, without the spell count and level caps
+            // (the lord's own level limit still applies), boosts and invisibility included.
+            bool spending = WorldAiSpending.IsManaSpending(Context.Profile, player, Context.Engine.Globals);
+
+            if (!spending && state.TurnInfo.TurnNumber % ResearchTurnInterval != 0)
             {
                 return null;
             }
 
-            for (int level = 1; level <= MaxResearchLevel; level++)
+            if (!spending && player.Spellbook.Acquired.Count >= MaxKnownSpells)
             {
-                foreach (WorldAiSpellEffectType type in ResearchTypes)
+                return null;
+            }
+
+            int maxLevel = spending ? SpendingMaxResearchLevel : MaxResearchLevel;
+            WorldAiSpellEffectType[] types = spending ? SpendingResearchTypes : ResearchTypes;
+
+            for (int level = 1; level <= maxLevel; level++)
+            {
+                foreach (WorldAiSpellEffectType type in types)
                 {
                     foreach (WorldSpellDefinitionId spellId in player.Spellbook.Available)
                     {
