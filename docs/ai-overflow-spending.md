@@ -1,6 +1,6 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks); answers E-H taken (all recommendations); 3b-A city upgrades and 2b foreign mana done; 3b-B site shopping parked (not needed on War of the Ring); 4 (designer block) left.
+Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks); answers E-H taken (all recommendations); all phases done (1, 2, 2b, 3, 3b-A, 4); 3b-B site shopping parked (not needed on War of the Ring).
 
 ## Decisions
 
@@ -73,7 +73,7 @@ Gold, in spending mode:
 2b. ~~Foreign mana: rod planters prefer the mana sources the race needs (~1 day)~~ Done, see "Phase 2b — done".
 3. ~~Gold spending (~1 day), same checks.~~ Done, see "Phase 3 — done".
 3b. More gold sinks: ~~city upgrades first (~0.5 day)~~ done, see "Phase 3b-A — done"; then shopping at sites (~2 days), see "Phase 3b — more gold sinks".
-4. AI designer block "Spend resources above N %" (~0.5 day), the visible part in the AI editor.
+4. ~~AI designer block "Spend resources above N %" (~0.5 day), the visible part in the AI editor.~~ Done, see "Phase 4 — done".
 
 ## Phase 1 — done (why research stalls)
 
@@ -190,6 +190,15 @@ Measured on the new map, 60 turns, seed 1, both runs with spending at 70 % (curr
 - The Elves' remaining loss is rune mana (11,001), which no Elf spell the AI researches uses.
 - The two runs ran in parallel, so the AI times (27.2 and 20.8 min) are not comparable.
 - No real-client run (no client change); moves to phase 4.
+
+## Phase 4 — done (designer block "Spend when rich")
+
+Merged 09b2d7fb (feature commit df2a7297 on `upgrade/ai-spend-block`).
+
+- Engine: `DesignedWorldRules.SpendAbovePercent` (null = 70 %), saved as `spendAbovePercent` by `DesignedWorldAiStore`; `DesignedStageEvaluator.ToProfile` uses it, so each stage can have its own line.
+- Client: tuning block "Spend when rich" (purple, under Rules and tuning) with the sentence "Spend more above [70] % of the cap" (50-100), help text naming what it unlocks and that Classic never does it; one per stage like the other rule blocks. Strings in all 7 catalogs (ru translated: "Тратить при избытке" / "Тратить больше, когда запас выше [N] % от лимита"; the first, shorter Russian sentence read wrongly and was reworded after the screenshot review).
+- Tests: `AiDesignerTests.SpendWhenRichBlockTest` (category, default 70, edited to 90, saved and reopened, profile 90), `DesignedWorldAiTests` round trip and `RulesBecomeProfileTest` (85 from the block, 70 without it). Visual: `AiDesignerTest` gained the shot `3b-help-spend` (palette block + help), `AiDesignerRussianTest` shows the block in the rules list. Suite 5450.
+- Real client (AOT, Debian 12 image, 1366x768): AI editor -> Create AI -> clicked "Spend when rich" -> Save: `AIs/map/my-ai.json` has `"spendAbovePercent": 70`; back, Edit: the block is there; typed 85 and saved: the file has 85. Only the expected ALSA error in the log.
 
 ## Open questions
 
