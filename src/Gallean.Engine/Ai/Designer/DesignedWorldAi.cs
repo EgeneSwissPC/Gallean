@@ -97,7 +97,9 @@ public sealed record DesignedWorldRules(
     int? KeepArmiesHome = null,
     int? GatherArmies = null,
     bool? RushEnemyCapital = null,
-    int? GoldReserve = null)
+    int? GoldReserve = null,
+    // Overflow spending (docs/ai-overflow-spending.md, phase 4): null = the default 70 %.
+    int? SpendAbovePercent = null)
 {
     public static DesignedWorldRules Classic { get; } = new();
 }

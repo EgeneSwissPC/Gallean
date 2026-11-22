@@ -1677,6 +1677,10 @@
     "We hold more than": "У нас больше",
     "Winning: power above N %": "Побеждаем: сила выше N %",
     "Target preferences": "Предпочтения целей",
-    "Battle AI for your Auto-play and Instant resolve in this battle": "Боевой ИИ для автоуправления и быстрого поединка в этом бою"
+    "Battle AI for your Auto-play and Instant resolve in this battle": "Боевой ИИ для автоуправления и быстрого поединка в этом бою",
+    "Spend when rich": "Тратить при избытке",
+    "When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this.": "Когда золото или мана доходят до этой доли от лимита 9999, ИИ тратит больше: больше заклинаний и исследований, воины без ограничения «один за ход», дополнительные предводители, улучшение городов. Без этого блока: 70 %. Classic так никогда не делает.",
+    "Spend more above": "Тратить больше, когда запас выше",
+    "% of the cap": "% от лимита"
   }
 }

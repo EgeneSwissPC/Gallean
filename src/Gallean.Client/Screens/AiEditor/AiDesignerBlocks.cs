@@ -32,6 +32,7 @@ internal enum AiDesignerRule
     GatherArmies,
     RushEnemyCapital,
     GoldReserve,
+    SpendAbove,
 
     // Battle AI designer: tactics of a battle stage (one of each per stage).
     HealersFirst,
@@ -209,7 +210,8 @@ internal static class AiDesignerBlocks
         new(AiDesignerCategory.Rule, Tr("Fetch units below N %"), Tr("An army goes back for more units while its leadership is filled below that share. Classic: 80 %."), Rule: AiDesignerRule.Reinforce),
         new(AiDesignerCategory.Tuning, Tr("Attack advantage"), Tr("How much of the usual power advantage it wants before it attacks: under 100 % attacks more, over 100 % attacks less. Classic: 100 %."), Rule: AiDesignerRule.AttackPower),
         new(AiDesignerCategory.Tuning, Tr("Savings for a leader"), Tr("How much gold it may still be missing while it saves up for a new leader (it buys nothing else meanwhile). Classic: 400."), Rule: AiDesignerRule.LeaderSavings),
-        new(AiDesignerCategory.Tuning, Tr("Wait for a free capital"), Tr("Doesn't save up for a leader while an army stands on the capital entrance, so that army leaves first."), Rule: AiDesignerRule.WaitForFreeCapital)
+        new(AiDesignerCategory.Tuning, Tr("Wait for a free capital"), Tr("Doesn't save up for a leader while an army stands on the capital entrance, so that army leaves first."), Rule: AiDesignerRule.WaitForFreeCapital),
+        new(AiDesignerCategory.Tuning, Tr("Spend when rich"), Tr("When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this."), Rule: AiDesignerRule.SpendAbove)
     ];
 
     public static IReadOnlyList<AiDesignerPaletteItem> Behaviours =>
@@ -315,6 +317,7 @@ internal static class AiDesignerBlocks
             { Rule: AiDesignerRule.GatherArmies } => [new MapEditorBlockText(Tr("Attack only when")), Number(first ?? 2, 2, 20), new MapEditorBlockText(Tr("armies stand together"))],
             { Rule: AiDesignerRule.RushEnemyCapital } => [new MapEditorBlockText(Tr("March on the nearest enemy capital"))],
             { Rule: AiDesignerRule.GoldReserve } => [new MapEditorBlockText(Tr("Never spend below")), Number(first ?? 300, 0, 9999), new MapEditorBlockText(Tr("gold"))],
+            { Rule: AiDesignerRule.SpendAbove } => [new MapEditorBlockText(Tr("Spend more above")), Number(first ?? 70, 50, 100), new MapEditorBlockText(Tr("% of the cap"))],
             { Condition: AiDesignerCondition.FromRound } => [new MapEditorBlockText(Tr("From round")), Number(first ?? 3, 1, 99)],
             { Condition: AiDesignerCondition.PowerShareBelow } => [new MapEditorBlockText(Tr("We hold less than")), Number(first ?? 40, 0, 100), new MapEditorBlockText(Tr("% of the power"))],
             { Condition: AiDesignerCondition.PowerShareAbove } => [new MapEditorBlockText(Tr("We hold more than")), Number(first ?? 60, 0, 100), new MapEditorBlockText(Tr("% of the power"))],

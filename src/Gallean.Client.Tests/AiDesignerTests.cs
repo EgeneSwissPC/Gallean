@@ -177,6 +177,27 @@ public sealed class AiDesignerTests
         Assert.That(reopened.ToDesign(), Is.EqualTo(designer.ToDesign()));
     }
 
+    // Overflow spending phase 4 (docs/ai-overflow-spending.md): the "Spend when rich" tuning block.
+    [Test]
+    public async Task SpendWhenRichBlockTest()
+    {
+        (_, AiDesignerScreenViewModel designer) = await OpenAsync(DesignedWorldAi.FromClassic("plain", "Plain"));
+        AiDesignerStageViewModel stage = designer.Stages.Single();
+
+        designer.AddBlockCommand.Execute(Palette(designer, item => item.Rule == AiDesignerRule.SpendAbove));
+        AiDesignerBlockViewModel block = stage.Rules.Single(block => block.Item.Rule == AiDesignerRule.SpendAbove);
+        Assert.That(block.Item.Category, Is.EqualTo(AiDesignerCategory.Tuning));
+        Assert.That(designer.ToDesign().Stages[0].Rules.SpendAbovePercent, Is.EqualTo(70), "default");
+
+        ((MapEditorBlockNumber)block.Parts[1]).Text = "90";
+        Assert.That(designer.ToDesign().Stages[0].Rules, Is.EqualTo(new DesignedWorldRules(SpendAbovePercent: 90)));
+
+        designer.SaveCommand.Execute(null);
+        AiDesignerScreenViewModel reopened = new(designer.Game, DesignedAiLibrary.Store.LoadAll().Single());
+        Assert.That(reopened.ToDesign().Stages[0].Rules.SpendAbovePercent, Is.EqualTo(90));
+        Assert.That(DesignedStageEvaluator.ToProfile(reopened.ToDesign().Stages[0]).SpendAbovePercent, Is.EqualTo(90));
+    }
+
     [Test]
     public async Task ProblemsTest()
     {
