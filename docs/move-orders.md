@@ -1,6 +1,6 @@
 # Move orders (armies that keep walking on their own)
 
-Status: proposal, open questions below. Nothing built yet.
+Status: all open questions answered (A-K); ready to build phase 1. Nothing built yet.
 
 Gallean Upgrade only. Human players only; the AI is not touched.
 
@@ -19,6 +19,7 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **Other encounters on the way (question H, user's own variant).** Bags: the army picks the bag up, the game's own "Treasure" loot popup (`LootScreenViewModel`, Continue button) shows what was found, and Continue resumes the walk. Sites (merchant, mage, trainer, mercenaries) reached as the destination and thief actions: asked this turn, after the walks and before the turn ends, in the same queue as the F1 surprises: the camera goes to the army and the site screen or the thief action window opens as it does for a manual move. Closing it carries on with the queue.
 - **Saving (question I: I2).** Orders are not saved: they live in the world screen like today's stored destinations and are gone after loading a save. No engine or save-format change; the feature stays client-only. Phase 4 is dropped.
 - **Cancel and wait (question J: J1).** X or a Stop button next to Continue on the selected card deletes the order (army stays, becomes a normal army). A new path replaces the order. Finish (Enter) = wait this turn: the army does not walk on E this turn but keeps its order for the next turn (covers the wait button the prompt doesn't have).
+- **Arrival with moves left (question K: K2).** User: move points are valuable, never waste them silently. After the walks, every army that arrived with move points left joins the end-of-turn queue: the camera goes to it, it is selected, and a short message says it arrived with N moves left. The turn stays open; pressing E again ends it (those armies are not asked again this turn unless they get a new order).
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -44,7 +45,8 @@ On big maps (512, 1024) a player ends up with many armies that spend most turns 
 3. Selecting it shows its order path, and moving the mouse does not redraw it. To give a new order, click anywhere on the map: from then on the path follows the mouse like for any other army, and the next click sets the new path (decision A).
 4. Press E. If any order would start a battle this turn, the game stops before moving anyone: the camera goes to the first such army, its path is shown, and an attack prompt in the game's own style asks **Attack** / **Plan another path** (/ **Cancel order**, question G). Plan another path selects the army and leaves the turn open; the next E starts the check again, and armies already accepted this turn are not asked twice.
 5. When nobody needs confirming, the ordered armies walk one by one in bar order, the camera following each, Space fast-forwards. Then the turn ends as usual.
-6. If an army meets something during its walk that the check couldn't see (an enemy revealed by the fog, an interception), it stops one tile short, keeps its order, and is asked about after the others have walked, before the turn ends (question F).
+6. An army that arrives with move points left stops the turn from ending: the camera selects it so the points can be used, and the next E ends the turn (decision K).
+7. If an army meets something during its walk that the check couldn't see (an enemy revealed by the fog, an interception), it stops one tile short, keeps its order, and is asked about after the others have walked, before the turn ends (question F).
 
 ## Technical approach
 
@@ -60,15 +62,15 @@ Client only (decision I: orders are not saved).
 
 ## Testing
 
-- Client tests (`WorldScreenViewModel`, test world builder): with an order, hovering keeps the order path and a first click only enters re-plan mode, the second click replaces the order; bar order, colour flag and turns left (drops by one after a turn of walking); Tab skips ordered armies with the setting on and visits them last with it off; O cycles only ordered armies; End turn highlight; E walks two ordered armies in bar order and ends the turn; an army blocked by an own army that walks later gets through on the retry pass; an order with an enemy in reach stops End turn and opens the prompt, Attack fights, Plan another path leaves the turn open, the second E doesn't ask again; an enemy revealed during the walk stops the army one tile short; arriving clears the order; X clears the order; a finished army with an order doesn't walk on E and walks again next turn.
+- Client tests (`WorldScreenViewModel`, test world builder): with an order, hovering keeps the order path and a first click only enters re-plan mode, the second click replaces the order; bar order, colour flag and turns left (drops by one after a turn of walking); Tab skips ordered armies with the setting on and visits them last with it off; O cycles only ordered armies; End turn highlight; E walks two ordered armies in bar order and ends the turn; an army blocked by an own army that walks later gets through on the retry pass; an order with an enemy in reach stops End turn and opens the prompt, Attack fights, Plan another path leaves the turn open, the second E doesn't ask again; an enemy revealed during the walk stops the army one tile short; arriving clears the order; X clears the order; an army arriving with moves left keeps the turn open and is selected, the second E ends the turn; a finished army with an order doesn't walk on E and walks again next turn.
 - Visual tests: bar with ordered cards (colour, turns left, position; also in a crowded, overlapping bar), the order path staying drawn with the mouse elsewhere and the hover path after the first click, the attack prompt during End turn.
 - Real client (AOT build) on the 1024 War of the Ring map: give 5 armies far orders, press E for several turns (orders are expected to be gone after a load).
 
 ## Phases (estimates)
 
 1. **Visible orders** (~1.5 days): bar colour, turns-left number and order, Tab skip + setting, O key, End turn highlight, order path stays put while the mouse moves (first click enters re-plan mode), X / Stop. No automatic walking yet; M still walks.
-2. **Orders walk on End turn** (~1-2 days): the guarded walk for orders without any battle this turn; anything unexpected stops the army and blocks End turn with a short message until the player handles it.
-3. **Attack confirmations** (~1-2 days): the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk, treasure popup, sites and thief actions asked this turn.
+2. **Orders walk on End turn** (~1-2 days): the guarded walk for orders without any battle this turn, one by one in bar order with the camera following and Space skipping, the retry pass, Finish = wait this turn; anything unexpected stops the army and blocks End turn with a short message until the player handles it.
+3. **End-of-turn queue** (~2-2.5 days): arrivals with moves left (decision K), the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk, treasure popup, sites and thief actions asked this turn.
 
 ## Open questions
 
@@ -92,4 +94,4 @@ Client only (decision I: orders are not saved).
 
 ~~J. **Cancel and skip.**~~ Answered: J1, X / Stop cancels, Finish waits a turn and keeps the order (see Decisions).
 
-K. **An army arrives with move points left during the End turn walk.** K1: the turn still ends (recommended, the player pressed E). K2: End turn stops so the player can use the remaining points.
+~~K. **An army arrives with move points left during the End turn walk.**~~ Answered: K2, End turn stops and selects the army (see Decisions).
