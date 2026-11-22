@@ -85,7 +85,7 @@ internal sealed partial class BattleScreenViewModel
         }
         else
         {
-            await DispatchBattleActionAsync(new BattleAiActionCommand(CanUseItems: battle.IsAiTurn) { BrainId = battle.IsAiTurn ? GetBattleAiId(State.CurrentUnit.Side) : null }, animate: true);
+            await DispatchBattleActionAsync(new BattleAiActionCommand(CanUseItems: battle.IsAiTurn) { BrainId = GetBattleAiId(State.CurrentUnit.Side) }, animate: true);
         }
     }
 

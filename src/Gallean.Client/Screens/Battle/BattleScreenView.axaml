@@ -365,6 +365,20 @@
                                    Foreground="{StaticResource PrimaryTextBrush}"
                                    VerticalAlignment="Center" />
           <StackPanel Orientation="Horizontal" Spacing="5">
+            <!-- Gallean Upgrade (battle AI designer): the battle AI for the player's own Auto-play and Instant resolve. -->
+            <ComboBox x:Name="PlayerAiBox"
+                      Width="150"
+                      VerticalAlignment="Center"
+                      IsVisible="{Binding ShowPlayerAiPicker}"
+                      ItemsSource="{Binding PlayerAis}"
+                      SelectedItem="{Binding SelectedPlayerAi}"
+                      ToolTip.Tip="{local:Text 'Battle AI for your Auto-play and Instant resolve in this battle'}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate x:DataType="local:MapEditorLabeled">
+                  <TextBlock Text="{Binding Label}" Classes="body" TextTrimming="CharacterEllipsis" />
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
             <Button Classes="pill"
                     Classes.selected="{Binding IsAutoBattle}"
                     local:PlateChrome.TextureSeed="1"

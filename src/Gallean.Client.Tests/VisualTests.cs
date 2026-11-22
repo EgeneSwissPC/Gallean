@@ -5860,6 +5860,13 @@ public sealed partial class VisualTests
         await WaitForBattleAsync(window);
 
         await CaptureAsync(window);
+
+        // Gallean Upgrade (battle AI designer phase 10): the battle AI picker in the top bar fits in Russian too.
+        SettingsScreenViewModel settings = new(gameViewModel) { Language = Language.Russian };
+        gameViewModel.ShowScreen(new BattleScreenViewModel(gameModel, battle, gameViewModel, assets, NullAssetPreloader.Instance, new RandomProvider(0)));
+        await WaitForBattleAsync(window);
+        await CaptureAsync(window, "ru");
+        settings.Language = Language.English;
     }
 
     [AvaloniaTest]

@@ -1676,6 +1676,7 @@
     "We hold less than": "У нас меньше",
     "We hold more than": "У нас больше",
     "Winning: power above N %": "Побеждаем: сила выше N %",
-    "Target preferences": "Предпочтения целей"
+    "Target preferences": "Предпочтения целей",
+    "Battle AI for your Auto-play and Instant resolve in this battle": "Боевой ИИ для автоуправления и быстрого поединка в этом бою"
   }
 }
