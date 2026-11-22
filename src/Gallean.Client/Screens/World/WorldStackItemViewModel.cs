@@ -31,10 +31,19 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
     [ObservableProperty]
     public partial bool IsFinished { get; private set; }
 
+    // Gallean Upgrade: move orders (docs/move-orders.md).
+    [ObservableProperty]
+    public partial bool HasMoveOrder { get; private set; }
+
+    [ObservableProperty]
+    public partial int? OrderTurns { get; private set; }
+
     public void Update(
         WorldStack stack,
         bool isSelected,
         bool isFinished,
+        bool hasMoveOrder,
+        int? orderTurns,
         IGameDefinitionProvider definitions,
         IGameTextProvider texts,
         IUnitStatsProvider stats)
@@ -50,5 +59,7 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
         MaxMovementPoints = stackStats.MaxMovementPoints;
         IsSelected = isSelected;
         IsFinished = isFinished;
+        HasMoveOrder = hasMoveOrder;
+        OrderTurns = orderTurns;
     }
 }

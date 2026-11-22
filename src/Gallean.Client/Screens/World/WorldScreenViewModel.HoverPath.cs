@@ -72,6 +72,12 @@ internal sealed partial class WorldScreenViewModel
             return null;
         }
 
+        // Move orders: an ordered army keeps showing its order path until the first map click.
+        if (HasMoveOrder(stack) && !IsReplanning(stack))
+        {
+            return null;
+        }
+
         WorldPosition? target = ResolveHoverPathTarget(stack, cursor.HoverTile.Value, cursor.HoverObject);
 
         if (target is null)

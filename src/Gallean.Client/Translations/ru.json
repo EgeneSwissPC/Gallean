@@ -1681,6 +1681,9 @@
     "Spend when rich": "Тратить при избытке",
     "When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this.": "Когда золото или мана доходят до этой доли от лимита 9999, ИИ тратит больше: больше заклинаний и исследований, воины без ограничения «один за ход», дополнительные предводители, улучшение городов. Без этого блока: 70 %. Classic так никогда не делает.",
     "Spend more above": "Тратить больше, когда запас выше",
-    "% of the cap": "% от лимита"
+    "% of the cap": "% от лимита",
+    "Cancel order": "Отменить приказ",
+    "Tab skips armies with orders": "Tab пропускает армии в пути",
+    "When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.": "Если включено, Tab пропускает армии с приказом на марш, а пройти по ним можно клавишей O. Если выключено, Tab обходит все армии, армии с приказом — последними."
   }
 }
