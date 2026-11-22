@@ -251,6 +251,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 
 - P (user): P1 for now. An army leaves home once it is full (its leader's leadership used up); the village keeps its garrison and the free entrance lets the next leader be hired.
 - Q (user): Q2. Two per-map settings: armies hunt hostile armies within 10 tiles of their home village and go for towns within 60 tiles (SRules, editor Neutrals section, MapFromPlan). On The War of the Ring a 60-tile town radius reaches another side's town from 18 of the 42 neutral villages.
+- R (user): R1 for now. A full army first goes for hostile armies within the army radius of its home; only when none there is a fight it would take (question S) does it go for a town within the town radius.
 
 ### Phase 5 questions
 
@@ -258,7 +259,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 
 ~~Q. How far from home do they go?~~ Answered: Q2 (two radii, map settings).
 
-R. What they go for. R1: enemy armies near home first, towns only when no army is around. R2: towns first. R3: whatever the AI scores best among both inside the radius. Recommendation: R1 (it matches "protect first").
+~~R. What they go for.~~ Answered: R1 for now.
 
 S. Which fights they take. S1: only fights they are clearly stronger in (the roaming filter). S2: any fight the AI scores positively (the ordered scoring, which can lose armies). Recommendation: S1 (needs a small check in the rule, since the orders themselves use the ordered scoring).
 
