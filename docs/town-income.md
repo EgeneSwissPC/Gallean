@@ -250,12 +250,13 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 ### Phase 5 decisions
 
 - P (user): P1 for now. An army leaves home once it is full (its leader's leadership used up); the village keeps its garrison and the free entrance lets the next leader be hired.
+- Q (user): Q2. Two per-map settings: armies hunt hostile armies within 10 tiles of their home village and go for towns within 60 tiles (SRules, editor Neutrals section, MapFromPlan). On The War of the Ring a 60-tile town radius reaches another side's town from 18 of the 42 neutral villages.
 
 ### Phase 5 questions
 
 ~~P. When does an army leave home?~~ Answered: P1 for now (once it is full).
 
-Q. How far from home do they go? Measured on the generated War of the Ring (Chebyshev tiles from each of the 42 neutral villages): the nearest town of another side is 29-192 tiles away (median 63; within 30 tiles for 1 village, 40 for 2, 60 for 18, 80 for 28); the nearest race town 29-211 (median 84); the nearest hostile army 2-71 (median 13, within 10 for 18 villages) and those are almost all other neutral kinds' armies, since the nearest race army starts 39-464 tiles away (median 146). So one small radius means hunting other neutrals only, and towns are out of reach unless the radius is large. Q1: one radius for both, 10 tiles. Q2: two radii, armies within 10 tiles, towns within 60. Q3: radii that scale with the map size (map size / 100 for armies and / 16 for towns: 10 and 64 on 1024, 1 and 9 on 144). Recommendation: Q2, both per-map settings.
+~~Q. How far from home do they go?~~ Answered: Q2 (two radii, map settings).
 
 R. What they go for. R1: enemy armies near home first, towns only when no army is around. R2: towns first. R3: whatever the AI scores best among both inside the radius. Recommendation: R1 (it matches "protect first").
 
