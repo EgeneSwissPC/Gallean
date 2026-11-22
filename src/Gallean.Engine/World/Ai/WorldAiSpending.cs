@@ -5,11 +5,18 @@ namespace Gallean.Engine;
 // SpendAbovePercent 0 and never enters spending mode.
 internal static class WorldAiSpending
 {
-    public const int DefaultSpendAbovePercent = 80;
+    // User decision: start at 70 % of the cap (6999 of 9999), for gold and mana alike.
+    public const int DefaultSpendAbovePercent = 70;
 
     public static int GetThreshold(WorldAiProfile profile, GlobalVariables globals)
     {
         return globals.MaxResourceAmount * profile.SpendAbovePercent / 100;
+    }
+
+    // True when gold is at or above the threshold.
+    public static bool IsGoldSpending(WorldAiProfile profile, WorldPlayer player, GlobalVariables globals)
+    {
+        return profile.SpendAbovePercent > 0 && player.Resources.Gold >= GetThreshold(profile, globals);
     }
 
     // True when any mana is at or above the threshold.

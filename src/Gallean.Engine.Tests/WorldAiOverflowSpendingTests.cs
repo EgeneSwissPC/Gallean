@@ -101,8 +101,8 @@ public sealed class WorldAiOverflowSpendingTests
     [Test]
     public void BelowThresholdNoSpendingTest()
     {
-        // Below 80 % of 9999 (7999): Classic+ plays like Classic.
-        WorldPlayer ai = Ai(7998, new WorldPlayerSpellbook([], [AttackSpellId]));
+        // Below 70 % of 9999 (6999): Classic+ plays like Classic.
+        WorldPlayer ai = Ai(6998, new WorldPlayerSpellbook([], [AttackSpellId]));
 
         Assert.That(FirstAction(Build(ai, spells: AttackSpell()), AiPersonalities.ClassicPlusId).OfType<WorldSpellCastEvent>(), Is.Empty);
     }
@@ -136,10 +136,10 @@ public sealed class WorldAiOverflowSpendingTests
 
         foreach (string id in new[] { AiPersonalities.ClassicPlusId, AiPersonalities.AggressiveId, AiPersonalities.BuilderId, AiPersonalities.ExpansionistId })
         {
-            Assert.That(((ProfileWorldAiBrain)AiBrainRegistry.ResolveWorld(id)).Profile.SpendAbovePercent, Is.EqualTo(80), id);
+            Assert.That(((ProfileWorldAiBrain)AiBrainRegistry.ResolveWorld(id)).Profile.SpendAbovePercent, Is.EqualTo(WorldAiSpending.DefaultSpendAbovePercent), id);
         }
 
         DesignedWorldStage stage = DesignedWorldAi.FromClassic("custom:test", "Test").Stages[0];
-        Assert.That(DesignedStageEvaluator.ToProfile(stage).SpendAbovePercent, Is.EqualTo(80));
+        Assert.That(DesignedStageEvaluator.ToProfile(stage).SpendAbovePercent, Is.EqualTo(WorldAiSpending.DefaultSpendAbovePercent));
     }
 }

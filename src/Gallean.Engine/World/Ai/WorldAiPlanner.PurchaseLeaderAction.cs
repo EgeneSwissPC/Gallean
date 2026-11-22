@@ -85,7 +85,7 @@ internal sealed partial class WorldAiPlanner
                 {
                     int count = stacksByRole.GetValueOrDefault(role.Value);
 
-                    if (count < GetLeaderQuota(state, playerId, role.Value))
+                    if (count < GetLeaderQuota(state, playerId, role.Value) + GetSpendingExtraLeaders(state.Players[playerId], role.Value))
                     {
                         yield return (leader, count);
                     }
@@ -123,6 +123,23 @@ internal sealed partial class WorldAiPlanner
                 UnitLeaderCategory.Rod => LeaderRole.Rod,
                 UnitLeaderCategory.Thief => LeaderRole.Thief,
                 _ => null
+            };
+        }
+
+        // Gallean Upgrade, overflow spending: while gold is near the cap, two more fighting armies and one more
+        // rod planter than Classic's quota.
+        private int GetSpendingExtraLeaders(WorldPlayer player, LeaderRole role)
+        {
+            if (!WorldAiSpending.IsGoldSpending(Context.Profile, player, Context.Engine.Globals))
+            {
+                return 0;
+            }
+
+            return role switch
+            {
+                LeaderRole.Fighter => 2,
+                LeaderRole.Rod => 1,
+                _ => 0
             };
         }
 
