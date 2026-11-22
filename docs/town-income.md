@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 next. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 waits for questions H2 and J-M (asked when the user started it). H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -104,6 +104,24 @@ Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 next. H's
 ~~H. Which units.~~ Answered: own kind only, village level caps the price. The ceiling table per level is still open (asked when phase 4 starts).
 
 ~~I. The War of the Ring's neutral life.~~ Answered: out of scope, reworked separately later.
+
+### Phase 4 questions (asked when the user started phase 4)
+
+Facts they build on (counted from the data and a generated War of the Ring):
+- A village's garrison holds as many slots as its level (`GarrisonCalculator.GetTotalCapacity`: level 1 = 1 slot ... level 5 = 5; a large unit takes 2), so a level-1 village can never hold a large unit.
+- Soldiers per kind and their price range (gold at level 1): plain neutrals 40 (40-9950), Wild Elves 11 (40-9950), Greenskins 9 (50-2800), Dragons 5 (4500-5500, all large), Barbarians 4 (850-1800), Sea Creatures 4 (300-3500), Free Men 3 (30-300), Marsh Folk 2 (850-1310), Wolves 1 (300).
+- The War of the Ring as generated: every neutral village garrison is already full except the Dragons' (2 free slots of 4). So garrison buying there only starts once garrisons lose units in battles; the race villages all start empty.
+- The race AI's own garrison buying (`WorldAiPlanner.PurchaseUnitAction`): any owned fortification, scored per unit, at most 1 unit per turn per player (Classic; our AIs lift the limit above the spending line).
+
+H2. The price cap per village level. H2a: one fixed gold ceiling for all kinds (e.g. 50 / 300 / 900 / 1800 / 5600, close to the race tiers); then Barbarians, Marsh Folk, Dragons and Wolves can't buy anything in level-1 villages and Free Men are never limited. H2b: per kind, by price rank: a level-N village sells the cheapest N/5 of that kind's soldiers (at least one), so every kind can buy in every village (Wolves always the Wolf; Greenskins goblins at level 1, up to trolls at level 5; Dragons only where 2 slots are free). H2c: H2a, but a kind with nothing under the ceiling may buy its cheapest soldier. Recommendation: H2b.
+
+J. How many units per turn. J1: 1 unit per turn per neutral side (like Classic), no limit while its gold is above the spending line (70 % of the cap, like our AIs). J2: 1 per village per turn. J3: as many as the gold allows. Recommendation: J1.
+
+K. Which village first. K1: the one with an enemy army closest to it (threatened first), then the emptiest. K2: the emptiest first. K3: the highest level first. Recommendation: K1.
+
+L. Which unit. L1: the most expensive soldier that is allowed, affordable and fits. L2: random among those. L3: the best value (hit points per gold). Recommendation: L1.
+
+M. When it applies. M1: whenever a neutral side has gold (original campaigns give neutrals none, so they stay as they are; no extra switch). M2: a separate map rule "neutrals buy units". Recommendation: M1.
 
 ## Phase 1 - done
 
