@@ -87,6 +87,8 @@ internal sealed partial class MapEditorScreenViewModel
             SpellMarkupText = map.ForeignSpellMarkup.ToString(System.Globalization.CultureInfo.InvariantCulture);
             NeutralKinds = map.NeutralKinds;
             NeutralGoldText = map.NeutralStartingGold.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            NeutralBuying = map.NeutralBuying;
+            NeutralFactorText = map.NeutralUnitFactor.ToString(System.Globalization.CultureInfo.InvariantCulture);
             ShowTownIncome();
         }
         finally
@@ -130,6 +132,55 @@ internal sealed partial class MapEditorScreenViewModel
         }
 
         neutralGoldUndoCount = undoSteps.Count;
+        CanUndo = true;
+        IsDirty = true;
+    }
+
+    // Neutrals buy units (map rule, town income phase 4): a checkbox, one undo step.
+    [ObservableProperty]
+    public partial bool NeutralBuying { get; set; }
+
+    partial void OnNeutralBuyingChanged(bool value)
+    {
+        if (showingSpellMarkup || map.NeutralBuying == value)
+        {
+            return;
+        }
+
+        undoSteps.Push(map.Clone());
+        TrimUndo();
+        map.NeutralBuying = value;
+        CanUndo = true;
+        IsDirty = true;
+    }
+
+    // Units per village level before neutrals upgrade villages (1-20). Typing keeps one undo step.
+    [ObservableProperty]
+    public partial string NeutralFactorText { get; set; } = "3";
+
+    private int neutralFactorUndoCount = -1;
+
+    partial void OnNeutralFactorTextChanged(string value)
+    {
+        if (showingSpellMarkup || !int.TryParse(value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int factor))
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+
+        if (!map.SetNeutralUnitFactor(factor))
+        {
+            return;
+        }
+
+        if (neutralFactorUndoCount != undoSteps.Count)
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+        }
+
+        neutralFactorUndoCount = undoSteps.Count;
         CanUndo = true;
         IsDirty = true;
     }

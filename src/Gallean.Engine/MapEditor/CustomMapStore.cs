@@ -101,6 +101,8 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
         map.SetForeignSpellMarkup(scenario.Provider.Definition.ForeignSpellMarkup);
         map.NeutralKinds = database.ScenarioRulesByScenario[info.ScenarioId].FirstOrDefault()?.NeutralKinds ?? false;
         map.SetTownIncome(scenario.Provider.Definition.TownIncome);
+        map.NeutralBuying = scenario.Provider.Definition.NeutralBuying;
+        map.SetNeutralUnitFactor(scenario.Provider.Definition.NeutralUnitFactor);
         map.SetNeutralStartingGold(scenario.State.Players[WorldCommandHelpers.GetNeutralPlayerId(scenario.State)].Resources.Gold);
 
         return map;

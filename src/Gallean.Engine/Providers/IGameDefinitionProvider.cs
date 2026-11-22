@@ -21,4 +21,8 @@ public interface IGameDefinitionProvider
     WorldSpellDefinition GetSpell(WorldSpellDefinitionId id);
     WorldThiefActionDefinition GetThiefAction(WorldThiefActionType type);
     IReadOnlyDictionary<WorldSpellDefinitionId, WorldResourceSet> GetSpellResearchCosts(WorldRace race);
+
+    // Gallean Upgrade (neutral economy): every unit of the neutral race, in data order. Providers without the data
+    // (test providers) offer none.
+    ImmutableArray<UnitDefinition> GetNeutralUnits() => [];
 }

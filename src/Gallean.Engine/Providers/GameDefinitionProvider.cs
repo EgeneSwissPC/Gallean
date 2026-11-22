@@ -50,6 +50,14 @@ public sealed class GameDefinitionProvider : IGameDefinitionProvider
         units = LoadUnits(globalDb).ToFrozenDictionary(unit => unit.Id);
     }
 
+    // Gallean Upgrade (neutral economy): the neutral race's units in data order (unit ID).
+    public ImmutableArray<UnitDefinition> GetNeutralUnits()
+    {
+        return neutralUnits ??= [.. units.Values.Where(unit => unit.Race == WorldRace.Neutral).OrderBy(unit => unit.Id.Value, StringComparer.OrdinalIgnoreCase)];
+    }
+
+    private ImmutableArray<UnitDefinition>? neutralUnits;
+
     public UnitDefinition GetUnit(UnitDefinitionId id)
     {
         if (units.TryGetValue(id, out UnitDefinition? definition))

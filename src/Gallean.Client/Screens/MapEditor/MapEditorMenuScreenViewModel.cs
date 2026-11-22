@@ -128,6 +128,7 @@ internal sealed partial class MapEditorMenuScreenViewModel : AbstractScreenViewM
 
             // Gallean Upgrade: new maps start with town income on (docs/town-income.md, decision A).
             map.SetTownIncome(CustomMap.DefaultTownIncome);
+            map.NeutralBuying = true;
 
             return map;
         });

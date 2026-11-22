@@ -2660,6 +2660,124 @@ public sealed class CustomMapTests
         Assert.That(plain.State.Players.Values.Where(player => player.Race == WorldRace.Neutral).Sum(player => PlayerIncomeCalculator.GetIncomeInfo(player, plain.State, plainContext).Total.Gold), Is.Zero);
     }
 
+    // Map rule "neutrals buy units" (town income phase 4): kind pools and the price rank per village level, the
+    // gold-weighted pick, and the buying order per village: garrison, then (below factor x levels units) the army at
+    // the entrance or a new leader, then upgrades of full villages; one purchase per village unless above the spending line.
+    [Test]
+    public void NeutralEconomyTest()
+    {
+        CustomMapUnit Kind(Db.SubraceType kind) => CustomMapUnit.From(Units
+            .Where(unit => unit.Race == WorldRace.Neutral && !unit.IsLarge && unit.Category != UnitCategory.Leader)
+            .Where(unit => globalDb.Units[new Db.Id(unit.Id.Value)].SubraceType == kind)
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First());
+
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Assert.That((map.NeutralBuying, map.NeutralUnitFactor), Is.EqualTo((false, 3)), "Off in maps made in code.");
+        CustomMapVillage orcs = map.PlaceVillage(new WorldPosition(4, 16), 3, WorldRace.Neutral, "Orc town").Village!;
+        Assert.That(map.UpdateVillage(orcs.Id, 3, WorldRace.Neutral, "Orc town", Slots((GridPosition.FrontCenter, Kind(Db.SubraceType.NeutralGreenSkin)))), Is.Null);
+        CustomMapVillage huts = map.PlaceVillage(new WorldPosition(14, 36), 1, WorldRace.Neutral, "Wolf huts").Village!;
+        Assert.That(map.UpdateVillage(huts.Id, 1, WorldRace.Neutral, "Wolf huts", Slots((GridPosition.FrontCenter, Kind(Db.SubraceType.NeutralWolf)))), Is.Null);
+        map.NeutralKinds = true;
+        map.NeutralBuying = true;
+        map.SetTownIncome(CustomMap.DefaultTownIncome);
+        Assert.That((map.SetNeutralUnitFactor(0), map.NeutralUnitFactor, map.SetNeutralUnitFactor(99), map.NeutralUnitFactor), Is.EqualTo((true, 1, true, CustomMap.MaxNeutralUnitFactor)));
+        Assert.That(map.SetNeutralUnitFactor(3), Is.True);
+        Assert.That(map.Clone().NeutralBuying, Is.True);
+        store.Save(map);
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That((reopened.NeutralBuying, reopened.NeutralUnitFactor), Is.EqualTo((true, 3)));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        Assert.That((scenario.Provider.Definition.NeutralBuying, scenario.Provider.Definition.NeutralUnitFactor), Is.EqualTo((true, 3)));
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State;
+        WorldFortificationId orcTownId = new(CustomMapWriter.GetVillageId(map.Id, orcs.Id));
+        WorldFortificationId hutsId = new(CustomMapWriter.GetVillageId(map.Id, huts.Id));
+        WorldCity orcTown = (WorldCity)state.Fortifications[orcTownId];
+        WorldCity wolfHuts = (WorldCity)state.Fortifications[hutsId];
+        WorldPlayer greenskins = state.Players[orcTown.OwnerId];
+        WorldPlayer wolves = state.Players[wolfHuts.OwnerId];
+
+        // Pools: the kind's soldiers and leaders by price (water-only leaders never); a level-N village sells the
+        // cheapest N/5, rounded up, at least one.
+        NeutralEconomyPlanner.Pools greenskinPools = NeutralEconomyPlanner.GetPools(WorldSubraceType.NeutralGreenSkin, definitions);
+        Assert.That((greenskinPools.Soldiers.Length, greenskinPools.Leaders.Length), Is.EqualTo((9, 6)));
+        Assert.That(greenskinPools.Soldiers.Select(unit => unit.PurchaseCost.Gold), Is.Ordered);
+        Assert.That(new[] { 1, 2, 3, 4, 5 }.Select(level => NeutralEconomyPlanner.GetAllowed(greenskinPools.Soldiers, level).Count()), Is.EqualTo(new[] { 2, 4, 6, 8, 9 }));
+        Assert.That(NeutralEconomyPlanner.GetAllowed(NeutralEconomyPlanner.GetPools(WorldSubraceType.NeutralWolf, definitions).Soldiers, 1).Count(), Is.EqualTo(1));
+        Assert.That(NeutralEconomyPlanner.GetPools(WorldSubraceType.NeutralWater, definitions).Leaders, Is.Empty, "All sea creature leaders are water-only.");
+
+        // The weight: 1 for everything at 2000 gold, 1/price when poor, price when rich.
+        Assert.That((NeutralEconomyPlanner.GetWeight(850, 2000), NeutralEconomyPlanner.GetWeight(1000, 0), NeutralEconomyPlanner.GetWeight(1000, 4000), NeutralEconomyPlanner.GetWeight(1000, 9000)), Is.EqualTo((1.0, 0.001, 1000.0, 1000.0)));
+
+        WorldState With(WorldState world, WorldPlayer player, int gold) => world with { Players = world.Players.SetItem(player.Id, world.Players[player.Id] with { Resources = new WorldResourceSet(gold, 0, 0, 0, 0, 0) }) };
+        ImmutableArray<WorldEvent> Plan(WorldState world, WorldPlayer player) => NeutralEconomyPlanner.Plan(world, world.Players[player.Id], context);
+
+        // Greenskins (level 3, 1 of 3 slots taken): one soldier for the garrison, drawn from the allowed six. With 1000
+        // gold the weights are 1/sqrt(price), so the test random's draw of 0.5 lands on the second goblin type.
+        ImmutableArray<WorldEvent> orcBuy = Plan(With(state, greenskins, 1000), greenskins);
+        WorldUnitPurchasedEvent garrisonBuy = (WorldUnitPurchasedEvent)orcBuy.Single();
+        Assert.That((garrisonBuy.FortificationId, garrisonBuy.Unit.DefinitionId, garrisonBuy.Cost.Gold), Is.EqualTo((orcTownId, greenskinPools.Soldiers[1].Id, greenskinPools.Soldiers[1].PurchaseCost.Gold)));
+        Assert.That(Plan(With(state, greenskins, 10), greenskins), Is.Empty, "Too poor: it saves the gold.");
+
+        // Wolves (level 1, full garrison, 1 unit < 3 x 1): a new leader at the entrance, waiting there.
+        WorldStackCreatedEvent hired = (WorldStackCreatedEvent)Plan(With(state, wolves, 1000), wolves).Single();
+        Assert.That((hired.Stack.Position, hired.Stack.OwnerId, hired.Stack.Order is WorldStackOrder.Stand, hired.Stack.Units.GetUnits().Count()), Is.EqualTo((wolfHuts.Entrance, wolves.Id, true, 1)));
+        Assert.That(hired.Cost.Gold, Is.EqualTo(definitions.GetUnit(hired.Stack.Units.GetUnits().Single().Unit.DefinitionId).PurchaseCost.Gold));
+
+        // With that army waiting (and still below 3 units) the next purchase fills it.
+        WorldState waiting = With(state with { Stacks = state.Stacks.Add(hired.Stack.Id, hired.Stack) }, wolves, 1000);
+        Assert.That(Plan(waiting, wolves).Single(), Is.TypeOf<WorldNeutralUnitHiredEvent>());
+
+        // Enough units (3 x 1): the full village grows instead (150 gold for level 2).
+        WorldStack army = hired.Stack;
+        WorldUnit soldier = new(new WorldUnitId("Extra"), NeutralEconomyPlanner.GetPools(WorldSubraceType.NeutralWolf, definitions).Soldiers[0].Id, 100, 0, 1, [], null, false);
+        army = army with { Units = new WorldStackBuilder(definitions).PlaceUnit(army.Units.GetUnits().Single().Unit, GridPosition.FrontCenter).PlaceUnit(soldier, GridPosition.FrontTop).Build() };
+        WorldState strong = With(state with { Stacks = state.Stacks.Add(army.Id, army) }, wolves, 1000);
+        WorldCityUpgradedEvent grow = (WorldCityUpgradedEvent)Plan(strong, wolves).Single();
+        Assert.That((grow.CityId, grow.DefinitionId.Level, grow.Cost.Gold), Is.EqualTo((hutsId, 2, 150)));
+
+        // Above the spending line (6999) purchases go on in the same turn: garrison, then the upgrade is next.
+        ImmutableArray<WorldEvent> rich = Plan(With(state, greenskins, 9000), greenskins);
+        Assert.That(rich.Length, Is.GreaterThan(1));
+        Assert.That(rich.OfType<WorldUnitPurchasedEvent>().Count(), Is.EqualTo(2), "The two free garrison slots.");
+
+        // A whole round in the game: the rule runs at each neutral side's turn start and the state follows.
+        WorldState game = With(With(state, greenskins, 1000), wolves, 1000);
+        game = game with { Players = game.Players.SetItems(game.Players.Values.Where(player => player.Race != WorldRace.Neutral).Select(player => KeyValuePair.Create(player.Id, player with { IsAi = false }))) };
+        GameSession session = new(context, game);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        int round = session.World.State.TurnInfo.TurnNumber;
+        TestWorldAiRunner runner = new(session, context);
+
+        while (session.World.State.TurnInfo.TurnNumber == round)
+        {
+            if (session.World.State.CurrentPlayer.IsAi)
+            {
+                runner.PlayTurn();
+            }
+            else
+            {
+                Assert.That(session.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+            }
+        }
+
+        WorldState after = session.World.State;
+        Assert.That(after.Fortifications[orcTownId].Garrison.GetUnits().Count(), Is.EqualTo(2), "The greenskins bought one garrison unit.");
+        WorldStack wolfArmy = after.Stacks.Values.Single(stack => stack.OwnerId == wolves.Id);
+        Assert.That((wolfArmy.Position, wolfArmy.Order is WorldStackOrder.Stand), Is.EqualTo((wolfHuts.Entrance, true)), "The wolves' new army waits at its village.");
+        Assert.That(after.Players[wolves.Id].Resources.Gold, Is.EqualTo(1000 + 10 - hired.Cost.Gold), "Start + income (level 1 = 10) - the leader.");
+
+        // Rule off: nothing is bought.
+        map.NeutralBuying = false;
+        store.Save(map);
+        Scenario plain = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        Assert.That(plain.Provider.Definition.NeutralBuying, Is.False);
+    }
+
     // Map rule "neutral kinds": each neutral subrace type gets its own neutral player (only one kind per side, kinds
     // hostile to each other); plain neutrals stay with player 0; off = one neutral player. Survives save and reopen.
     [Test]
