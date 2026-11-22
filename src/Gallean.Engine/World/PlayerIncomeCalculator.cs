@@ -45,6 +45,14 @@ internal static class PlayerIncomeCalculator
 
             return new IncomeInfo(income, paidRaceIncome, paidNodesIncome) { Towns = paidTownsIncome };
         }
+        else if (player.Race == WorldRace.Neutral && !townIncome.IsDefaultOrEmpty)
+        {
+            // Gallean Upgrade, town income phase 3: a neutral side earns from its own towns only (no base income, and
+            // no land, so no resources), scaled like all other income.
+            WorldResourceSet townsIncome = Scale(WorldResourceSet.Empty with { Gold = TownIncomeCalculator.GetGold(player, state, townIncome, context.Definitions) }, player, state, context);
+
+            return new IncomeInfo(townsIncome, WorldResourceSet.Empty, WorldResourceSet.Empty) { Towns = townsIncome };
+        }
         else
         {
             return new IncomeInfo(WorldResourceSet.Empty, WorldResourceSet.Empty, WorldResourceSet.Empty);

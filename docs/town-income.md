@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-2 done (merges ee232a30, 9f1a4423); phase 3 next. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 next. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -20,6 +20,7 @@ Status: phases 1-2 done (merges ee232a30, 9f1a4423); phase 3 next. H's price cei
 - H (user): a neutral side buys only its own kind's soldiers, and the village level caps the price.
 - I (user): The War of the Ring's scripted neutral life is out of scope here; the user will rework it separately later.
 - Taken while building phase 1: `CustomMap.Create` starts with the rule off. The editor's new-map path turns it on with `CustomMap.DefaultTownIncome` (phase 2), and MapFromPlan sets it for The War of the Ring (phase 2). Maps built in code (tests, the battle bench, AI designer test maps) keep their economy, so no existing measurement changes.
+- Taken while building phase 3: neutral income follows the town income rule (no separate switch): with town income on, every neutral side earns from its own towns. Their starting gold is one value for all neutral sides (`CustomMap.NeutralStartingGold`, gold only, 0 by default); per-side banks would need the writer's kind split in the editor. The War of the Ring keeps 0 for now (its neutral life gets reworked later, decision I).
 - Taken while building phase 2: the world screen's income table is laid out in columns per source (Capital, Sources, Total), so towns became a "Towns" column instead of a line; it only appears when towns pay (the same in the editor's economy panel).
 - Taken while building phase 2: MapFromPlan plans get town income like new editor maps unless `rules.townIncome` is `false`; a five-value array sets the table. The War of the Ring sets it explicitly.
 - Taken while building phase 1: the table is one SRules column, `TOWN_INCOME` = `"10,25,50,75,100"` (null = off), so SRules files written before keep loading.
@@ -80,7 +81,7 @@ Status: phases 1-2 done (merges ee232a30, 9f1a4423); phase 3 next. H's price cei
 
 1. ~~Town income in the engine: SRules table, `PlayerIncomeCalculator`, `IncomeInfo.Towns`, tests. ~1 day.~~ Done, see below.
 2. ~~Town income on screen: income table line, city screen line, editor economy box and column, MapFromPlan `rules.townIncome`, War of the Ring setting. ~1-1.5 days.~~ Done, see below.
-3. Neutral treasury: neutral sides earn from their towns, neutral starting bank in the editor. ~0.5-1 day.
+3. ~~Neutral treasury: neutral sides earn from their towns, neutral starting bank in the editor. ~0.5-1 day.~~ Done, see below.
 4. Neutral garrison buying: kind unit pools, neutral purchase command, neutral planner action, headless War of the Ring measurement. ~2 days.
 5. Neutral armies: leaders hired at villages once the garrisons are full and gold is left, attacking enemy armies near home towns or conquering nearby towns, measurement. ~2-3 days, specced after phase 4's numbers.
 
@@ -142,3 +143,23 @@ Suite 5475 (5473 on gallean-upgrade after AI unused features phase 3 + these 2 t
 Real-client check (AOT build, mapgen map with town income on, Average): the editor's economy panel predicted Empire gold +275 (100 capital, 50 resources, 125 towns = capital 100 + Ford level 2 25) and Undead +300; in the game the turn-1 treasury was 775 = 500 bank + 275, the income tooltip showed the Towns column (Gold 100 / 50 / 125 / +275), the capital screen "Gold per turn +100", Ford "+25 (next level +50)". After upgrading Ford to level 3 (250 gold) it showed "+50 (next level +75)", and the turn-2 treasury was 825 = 525 + 300.
 
 Known limits: the game's upgrade prompt ("This will increase garrison capacity, regeneration and armor bonus") doesn't mention the extra gold; the city screen row shows it instead.
+
+## Phase 3 - done
+
+Commit 44852d2b, merged as 1d6c92ce.
+
+What was built:
+- `PlayerIncomeCalculator`: with town income on, a neutral player gets `Towns` (its own towns by level, scaled like all other income; neutrals are computer players, so the AI attitude percent applies) and nothing else. With the rule off neutrals still earn nothing.
+- `CustomMap.NeutralStartingGold` + `SetNeutralStartingGold` (0-9999), cloned, written as the Splayer `BANK` of every neutral player (player 0 and each kind's side), read back from the primary neutral player.
+- `CustomMapEconomy.NeutralTownsIncome`: what all neutral towns bring together.
+- Map editor economy panel, Neutrals section: "Starting gold of each neutral side" box (one undo step while typing) and "Neutral towns bring N gold a turn in all." while the map has town income.
+- MapFromPlan: `rules.neutralGold` (README updated).
+- 2 new strings in all 7 catalogs.
+
+Not visible in the game yet: neutral gold is kept but not spent until phase 4, and no screen shows it (the Classic economy code never runs for neutral players, so it piles up to the 9999 cap on long maps until phase 4's buyer spends it).
+
+Tests: `CustomMapTests.TownIncomeTest` now expects the neutral level-4 town's 75 (total 75, nothing else; 0 with the rule off). New `CustomMapTests.NeutralTreasuryTest`: setter, clamping, clone, save and reopen; with neutral kinds on, the greenskin, wolf and plain neutral sides all start with 300; each earns its own towns (50 / 10 / 25) and after a full round each treasury grew by exactly that; the editor total is 85; no income with the rule off. New `MapEditorScreenViewModelTests.NeutralStartingGoldTest` (box, clamping, one undo step, total line, save and reopen). Mutation checks, each built and run: neutral income branch dropped, writer bank dropped, store read dropped -> a test fails every time. `MapEditorEconomyTest` visual run passed; its last shot shows the Neutrals section (reviewed).
+
+Suite 5484 (5482 on gallean-upgrade after move orders phase 2 + these 2 tests), rerun on the merged tree.
+
+Real-client check (AOT build, mapgen map with town income on and 300 neutral gold, one neutral side owning villages of level 1, 3 and 4): the editor showed 300 and "Neutral towns bring 135 gold a turn in all."; the turn-1 save had the neutral player at 300 gold, the turn-2 save at 435 (300 + 135); the Empire went from 775 to 1050 (+275, as in phase 2).
