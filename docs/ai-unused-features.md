@@ -1,10 +1,16 @@
 # AI: the parts of the game it never uses
 
-Status: spec, nothing built yet. Open questions A-F at the end.
+Status: questions A-F answered (2026-11-22); phase 1 in progress.
 
 ## Decisions
 
 - **User priority (2026-11-22):** this comes before lookahead, objectives and maps carrying AIs: "the whole parts of the game go unused ... real players have a huge advantage over them".
+- Who (answer A): all our AIs (Classic+, Aggressive, Builder, Expansionist, every designed AI); Classic untouched. Designer blocks may follow later.
+- Site visits (answer B): whenever the army can afford something useful there and the site is reachable; the richer the player, the further the AI is willing to walk (no fixed this-turn-or-next limit).
+- Merchants (answer C): only items the AI can use; more item kinds as the AI learns to use them (equipment after phase 5).
+- Summon upkeep (answer D): a tunable profile knob, the share of a mana's income per turn that running summon upkeep may take; default 50 % for our AIs (not raised in spending mode).
+- Fog, unfog, remove rod and change terrain spells (answer E): later, once their goals are designed.
+- Order (answer F): phases 1-5 as listed.
 - Same rule as every AI change: Classic stays identical to upstream. The new behaviour belongs to our AIs (Classic+, Aggressive, Builder, Expansionist, every designed AI), gated by a profile knob, and is proven with the S099 Classic CSV diff.
 
 ## The problem today (from the code)
@@ -46,9 +52,9 @@ War of the Ring has 23 sites: 8 merchants, 6 mage towers, 6 mercenary camps, 3 t
 
 ## Open questions
 
-- **A.** All our AIs, Classic untouched, without a designer block at first? Recommendation: yes; designer blocks ("visit sites", "use area spells") can follow once the behaviour is measured.
-- **B.** Site visits always, or only while rich? Recommendation: always when the army can afford something useful there, with the same detour limit as overflow spending (sites reached this turn or next, only armies on a Normal order), and further away while gold spending.
-- **C.** Merchants: which items? Recommendation: only items the AI can use: potions now, equipment after phase 5; never quest items or items it can't equip.
-- **D.** Summon upkeep limit? Recommendation: running upkeep at most 50 % of that mana's income per turn, up to 100 % in spending mode.
-- **E.** Fog, unfog, remove rod and change terrain spells (single, area and "not for the AI")? Recommendation: later, they need new goals (hide armies, scout, break enemy land), not just targeting.
-- **F.** Order? Recommendation: the phases above: the three spell phases are small and use what the AI already has; site visits are the big step; equipment last, together with buying equipment.
+- ~~**A.** All our AIs, Classic untouched, without a designer block at first? Recommendation: yes; designer blocks ("visit sites", "use area spells") can follow once the behaviour is measured.~~ Answered, see Decisions.
+- ~~**B.** Site visits always, or only while rich? Recommendation: always when the army can afford something useful there, with the same detour limit as overflow spending (sites reached this turn or next, only armies on a Normal order), and further away while gold spending.~~ Answered, see Decisions.
+- ~~**C.** Merchants: which items? Recommendation: only items the AI can use: potions now, equipment after phase 5; never quest items or items it can't equip.~~ Answered, see Decisions.
+- ~~**D.** Summon upkeep limit? Recommendation: running upkeep at most 50 % of that mana's income per turn, up to 100 % in spending mode.~~ Answered, see Decisions.
+- ~~**E.** Fog, unfog, remove rod and change terrain spells (single, area and "not for the AI")? Recommendation: later, they need new goals (hide armies, scout, break enemy land), not just targeting.~~ Answered, see Decisions.
+- ~~**F.** Order? Recommendation: the phases above: the three spell phases are small and use what the AI already has; site visits are the big step; equipment last, together with buying equipment.~~ Answered, see Decisions.
