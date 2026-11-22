@@ -12,6 +12,7 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - An order that would start a battle this turn never fights on its own: End turn stops and asks, army by army, in bar order: attack, or plan a different path (user's wish).
 - **Order path display (question A: A3, with the user's refinement).** A selected army with an order shows only its order path; the path does not follow the mouse. The first click anywhere on the map switches that army into the hover path mode (the path follows the mouse as for armies without orders); the next click accepts the new path and replaces the order. Armies without an order keep the one-click hover path. No second path in the renderer is needed.
 - **Bar look (question B: B3).** Cards with an order show their move points in soft green (not blue: the selected card already glows light blue) plus the number of turns the army still needs to arrive. User: spec it now so it isn't forgotten.
+- **How orders run (question D: D1).** On E, ordered armies walk one by one in bar order, animated, the camera jumping to each like during the AI turn. Space skips the current walk; holding it skips the rest. Then the turn ends. A setting for instant walks (D2) may come later.
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -76,7 +77,7 @@ Phase 4 can move first if saving matters more than the rest.
 
 ~~C. **Tab and ordered armies.**~~ Answered: Tab skips them by default, O reviews them, a Settings checkbox switches Tab back to visiting all (see Decisions).
 
-D. **When orders run.** D1: on E, before the turn ends, one by one, camera follows, Space fast-forwards (recommended, the user's wish). D2: on E, all at once without animation. D3: at the start of the next turn.
+~~D. **When orders run.**~~ Answered: D1, one by one, animated, camera follows, Space skips (see Decisions).
 
 E. **Walking order.** E1: bar order, left to right (recommended). E2: nearest to the capital first.
 
