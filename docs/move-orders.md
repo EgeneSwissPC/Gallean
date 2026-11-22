@@ -16,6 +16,7 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **Walking order (question E: E1).** Bar order, left to right (leader level high first, then ID). Retry pass (recommended add-on, taken unless the user objects): an army blocked by one of the player's own armies tries once more after all others have walked; if still stuck it keeps its order and stays put.
 - **Surprises during the walk (question F: F1).** An enemy revealed by the fog or an interception stops the army one tile before the battle; it keeps its order, the others carry on, and after all walks (before the turn ends) each stopped army is asked with the question G prompt.
 - **Attack prompt during End turn (question G: G1).** The game's `AttackPromptViewModel` window, camera on the asking army with its path drawn, text naming both armies ("<own leader>'s army: the path leads into battle with <enemy>"). Buttons: **Attack** (accepted for this turn, fights when its walk comes), **Plan another path** (closes, selects the army in re-plan mode, turn stays open; Esc does the same), **Cancel order** (order deleted, army stays, next army is asked).
+- **Other encounters on the way (question H, user's own variant).** Bags: the army picks the bag up, the game's own "Treasure" loot popup (`LootScreenViewModel`, Continue button) shows what was found, and Continue resumes the walk. Sites (merchant, mage, trainer, mercenaries) reached as the destination and thief actions: asked this turn, after the walks and before the turn ends, in the same queue as the F1 surprises: the camera goes to the army and the site screen or the thief action window opens as it does for a manual move. Closing it carries on with the queue.
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -88,7 +89,7 @@ Phase 4 can move first if saving matters more than the rest.
 
 ~~G. **Prompt buttons.**~~ Answered: G1, Attack / Plan another path / Cancel order (see Decisions).
 
-H. **Other encounters on the way.** H1: bags are picked up and the walk continues; arriving at a site (merchant, mage, trainer, mercenaries) ends the order without opening the site screen; thief actions are asked like attacks (recommended). H2: stop at every encounter.
+~~H. **Other encounters on the way.**~~ Answered: bags picked up with the Treasure popup, then the walk continues; sites and thief actions open this turn, before the turn ends (see Decisions).
 
 I. **Save orders?** I1: yes, as a saved army field (recommended; on long games a load would otherwise wipe every order). I2: no, keep today's client-only memory.
 
