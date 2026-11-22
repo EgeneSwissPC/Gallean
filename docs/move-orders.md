@@ -10,6 +10,7 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - Orders run when the player presses End turn (E), before the turn ends, one army at a time (user's wish).
 - Armies with an order look different in the army bar (move points in another colour) and sit at the end of the bar (user's wish).
 - An order that would start a battle this turn never fights on its own: End turn stops and asks, army by army, in bar order: attack, or plan a different path (user's wish).
+- **Order path display (question A: A3, with the user's refinement).** A selected army with an order shows only its order path; the path does not follow the mouse. The first click anywhere on the map switches that army into the hover path mode (the path follows the mouse as for armies without orders); the next click accepts the new path and replaces the order. Armies without an order keep the one-click hover path. No second path in the renderer is needed.
 
 ## The problem today
 
@@ -31,7 +32,7 @@ On big maps (512, 1024) a player ends up with many armies that spend most turns 
 
 1. Give an army a far destination as today (one click with the hover path on, or two clicks). The army walks this turn's part and keeps the rest as an order.
 2. Its card moves to the end of the army bar and its move points (e.g. `24/24`) show in the order colour. Tab skips it (question C).
-3. Selecting it shows its order path. Moving the mouse shows the new hover path on top, and the order path stays visible underneath in a fainter style (question A).
+3. Selecting it shows its order path, and moving the mouse does not redraw it. To give a new order, click anywhere on the map: from then on the path follows the mouse like for any other army, and the next click sets the new path (decision A).
 4. Press E. If any order would start a battle this turn, the game stops before moving anyone: the camera goes to the first such army, its path is shown, and an attack prompt in the game's own style asks **Attack** / **Plan another path** (/ **Cancel order**, question G). Plan another path selects the army and leaves the turn open; the next E starts the check again, and armies already accepted this turn are not asked twice.
 5. When nobody needs confirming, the ordered armies walk one by one in bar order, the camera following each, Space fast-forwards. Then the turn ends as usual.
 6. If an army meets something during its walk that the check couldn't see (an enemy revealed by the fog, an interception), it stops one tile short, keeps its order, and is asked about after the others have walked, before the turn ends (question F).
@@ -42,7 +43,7 @@ Client only, except saving orders (question I).
 
 - **Order state.** Keep `stackDestinations` as the source of truth (it already is) and add a read helper `HasMoveOrder(stack)` = destination stored and not reached. If question I picks saving, the destination moves into the save (see below) and `stackDestinations` reads/writes through it.
 - **Army bar.** `WorldStackItemViewModel.HasMoveOrder`; sort key `(HasMoveOrder, -Level, StackId)` in `UpdateStackItems`; a `Classes.ordered` on the card with a new `WorldStackBarOrderedBrush` for the move-points text (Theme colour + brush in `Colors.axaml`). `FindNextAvailableStackItem` and `HasAvailableStack` skip ordered armies (question C), so the End turn medallion lights up when only ordered armies are left.
-- **Order path display.** A second path on the render request (`WorldCursor.OrderPath`), drawn before the hover path with lower opacity, only for the selected army (question A).
+- **Order path display (decision A).** `ResolveHoverPathKey` returns null while the selected army has an order and is not in re-plan mode, so the stored path (`cursor.Path`) stays drawn. A view-model flag `replanStackId` is set by the first map click on such an army (the click does nothing else) and cleared on selection change, Esc, a confirmed move or the end of the turn; while it is set the hover path and its one-click move work as today.
 - **End turn.** `EndTurnAsync` becomes: collect ordered armies with move points > 0 in bar order -> dry-run `WorldGetPathCommand` for each -> armies with a battle (or thief) encounter this turn that aren't accepted yet go into a confirm queue -> if the queue isn't empty, run the prompts and stop -> otherwise walk each army with a guarded step loop -> confirm queue for armies stopped by surprises -> `WorldEndTurnCommand`.
 - **Guarded walk.** Before each `WorldStepStackCommand` of an auto-walk, re-run `WorldGetPathCommand` (0.01-0.2 ms per call on the 512 map, measured for the hover path with movebench `--hover`) and stop if a battle encounter that wasn't accepted appears. Accepted attacks use the existing encounter visitor (same battle flow as a manual attack).
 - **Saving (if I1).** New `WorldStack.MoveOrder` init property (`WorldPosition?`, saved, old saves load with none), set by a new `WorldSetStackMoveOrderCommand` so it goes through the engine and survives save/load and hotseat. Same pattern as `WorldStack.SummonUpkeep`.
@@ -51,14 +52,14 @@ Client only, except saving orders (question I).
 
 ## Testing
 
-- Client tests (`WorldScreenViewModel`, test world builder): bar order and colour flag; Tab skips ordered armies; End turn highlight; E walks two ordered armies in bar order and ends the turn; an order with an enemy in reach stops End turn and opens the prompt, Attack fights, Plan another path leaves the turn open, the second E doesn't ask again; an enemy revealed during the walk stops the army one tile short; arriving clears the order; X clears the order.
+- Client tests (`WorldScreenViewModel`, test world builder): with an order, hovering keeps the order path and a first click only enters re-plan mode, the second click replaces the order; bar order and colour flag; Tab skips ordered armies; End turn highlight; E walks two ordered armies in bar order and ends the turn; an order with an enemy in reach stops End turn and opens the prompt, Attack fights, Plan another path leaves the turn open, the second E doesn't ask again; an enemy revealed during the walk stops the army one tile short; arriving clears the order; X clears the order.
 - If saved (I1): save round-trip test with `Does.Not.Contain` for helper fields; an old save loads with no orders.
-- Visual tests: bar with ordered cards (colour, position), order path under the hover path, the attack prompt during End turn.
+- Visual tests: bar with ordered cards (colour, position), the order path staying drawn with the mouse elsewhere and the hover path after the first click, the attack prompt during End turn.
 - Real client (AOT build) on the 1024 War of the Ring map: give 5 armies far orders, press E for several turns, save/load in between.
 
 ## Phases (estimates)
 
-1. **Visible orders** (~1 day): bar colour and order, Tab skip, End turn highlight, order path under the hover path, X / Stop. No automatic walking yet; M still walks.
+1. **Visible orders** (~1 day): bar colour and order, Tab skip, End turn highlight, order path stays put while the mouse moves (first click enters re-plan mode), X / Stop. No automatic walking yet; M still walks.
 2. **Orders walk on End turn** (~1-2 days): the guarded walk for orders without any battle this turn; anything unexpected stops the army and blocks End turn with a short message until the player handles it.
 3. **Attack confirmations** (~1-2 days): the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk.
 4. **Orders in the save** (~1 day, if I1): engine field + command, client reads through it.
@@ -67,7 +68,7 @@ Phase 4 can move first if saving matters more than the rest.
 
 ## Open questions
 
-A. **Order path while the mouse moves.** A1: the order path stays drawn (fainter) under the hover path (recommended; you always see both). A2: the order path shows only while the mouse is over the army or its card. A3: no hover path for an army with an order until you click somewhere.
+~~A. **Order path while the mouse moves.**~~ Answered: A3 with the user's refinement (see Decisions): no hover path for an army with an order; the first map click enters the hover path mode, the next click sets the new path.
 
 B. **Bar look.** B1: move points in a distinct colour, card at the end of the bar (recommended: a soft green; today the text is off-white with moves left and orange with none, and the selected card glows light blue, so blue would read as "selected"). B2: B1 plus a small chevrons icon (the Continue icon) on the card.
 
