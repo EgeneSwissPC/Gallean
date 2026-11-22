@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5 (what neutral armies do) next, to be specced from the phase 4 numbers. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5 specced below (questions P-W open), nothing built. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -220,3 +220,49 @@ Headless War of the Ring, 20 turns, seed 1, every player AI, buying on vs off (`
 Real-client check (AOT build, mapgen map, town income on, neutral gold 300, buying on, one neutral side): turn 1 save: 300 gold, Gallymar (level 1) and Vinusi (level 4) empty, Errgok (level 3) full. Turn 2 save: Gallymar bought an Air Elemental (50), Vinusi a large 300-gold unit, Errgok (full) hired a 40-gold leader waiting at its entrance with the Stand order; gold 45 = 300 + 135 income - 50 - 300 - 40.
 
 Known limits: waiting armies never leave (phase 5); a village with an allowed soldier it can't afford yet saves rather than buying something else.
+
+## Phase 5 - what neutral armies do (spec, questions open)
+
+The user's wish (from the answers to G and N): neutrals protect their villages first; once they have more money they send units out, and those armies attack enemy armies near their home towns or conquer nearby towns.
+
+### What phase 4 leaves
+
+- Armies bought by the neutral economy wait at their village entrance with the Stand order. A waiting army blocks new leaders at that village; once it is full (its leader's leadership), the village buys nothing more for it.
+- In the 20-turn War of the Ring run the Free Men alone hired 33 armies; with phase 5 they would start moving.
+
+### What the engine already offers (no AI change needed)
+
+- Orders the AI already plays for any army (`WorldAiPlanner.AttackAction` / `MoveAction`):
+  - `DefendLocation(zone, centre, radius)`: attacks enemy armies inside the square around the centre and walks back into it when outside. That is "hunt near home" if the centre is the home village.
+  - `SecureCity(town)`: walks to a town and attacks or takes it (`CustomMapEventTests.SecureCityPlayTest` shows a neutral template taking an Empire village).
+  - `Roam`: attacks anything hostile anywhere, but only fights it is clearly stronger in (`PowerFilter`, `RoamingPowerPercent`), scored by interest and distance; it never stays home.
+  - `Guard`: only attacks moving enemies within 2 tiles (`AiStackGuardRange` 5 / 2).
+- Ordered fights (`DefendLocation`, `SecureCity`) use the ordered scoring (power ratio and survival, no hard "only if stronger" filter); roaming fights use the filter.
+- Engine rule: plain neutrals (subrace Neutral, player 0) can't take the SecureCity order (`StackOrderCalculator`); the kinds' sides (greenskins, wolves, ...) can.
+- Changing an order is an existing event (`WorldStackOrderChangedEvent`), so the neutral economy rule can hand out orders at the same turn start where it buys.
+
+### Technical approach
+
+- T1 (recommended to start): the neutral economy rule also hands out orders each turn, using only existing orders: a full army that should go out gets `DefendLocation` around its home village (radius from the map setting; a synthetic zone ID per village, nothing is added to the map's zones), or `SecureCity` on a chosen nearby town; when the target is gone it gets its home order back. No AI code changes, Classic untouched; the risk is that ordered fights have no "only if stronger" filter.
+- T2 (only if T1 plays badly): a new order "raid from home" with roaming scoring limited to the area around the home village. Cleaner behaviour, but every order visitor (AI, client order labels, saves, editor order kinds) needs a line.
+- Measured like phase 4: the headless War of the Ring bench, buying with and without phase 5 (neutral turn time, armies out, battles neutrals vs races, towns changing hands, losses), plus a real-client check.
+
+### Phase 5 questions
+
+P. When does an army leave home? P1: once it is full (its leader's leadership used up), so the village always keeps its garrison and the next army can be hired at the free entrance. P2: once the side meets its unit target (factor x levels). P3: as soon as it is hired. Recommendation: P1.
+
+Q. How far from home do they go? A radius in tiles around the home village, as a map setting next to the unit factor. Q1: 10 tiles. Q2: 15. Q3: 5. Recommendation: Q1, tunable per map.
+
+R. What they go for. R1: enemy armies near home first, towns only when no army is around. R2: towns first. R3: whatever the AI scores best among both inside the radius. Recommendation: R1 (it matches "protect first").
+
+S. Which fights they take. S1: only fights they are clearly stronger in (the roaming filter). S2: any fight the AI scores positively (the ordered scoring, which can lose armies). Recommendation: S1 (needs a small check in the rule, since the orders themselves use the ordered scoring).
+
+T. After a win or a captured town. T1: go back home (the village's order again) and wait to be refilled. T2: a captured town keeps the army as its defender and becomes its new home. T3: keep hunting from where they are, with the nearest own village as home. Recommendation: T2 for captured towns, T1 otherwise.
+
+U. Which armies. U1: only armies the neutral economy bought. U2: also the map's own neutral armies (The War of the Ring has 569; that would wake every placed army up). Recommendation: U1; placed armies keep their map orders.
+
+V. Plain neutrals (player 0) can't take towns under the engine's order rule. V1: they only hunt armies near home. V2: lift that rule for this map rule. Recommendation: V1.
+
+W. Who counts as an enemy. W1: everyone hostile to the side, including other neutral kinds (they are separate sides). W2: only the races' armies and towns. Recommendation: W1, since the kinds are hostile to each other by design; W2 if neutral-vs-neutral wars drain them in the measurement.
+
+Phases: 5a orders handed out by the rule (T1) with tests, ~1-1.5 days; 5b War of the Ring measurement and tuning, ~0.5 day; the radius setting in the editor and MapFromPlan with 5a.
