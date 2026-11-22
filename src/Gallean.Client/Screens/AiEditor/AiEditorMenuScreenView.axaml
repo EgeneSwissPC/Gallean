@@ -33,8 +33,8 @@
           Margin="56,32,0,32"
           HorizontalAlignment="Left"
           VerticalAlignment="Center"
-          ColumnDefinitions="440,56,400"
-          RowDefinitions="Auto,Auto,Auto,*,Auto">
+          ColumnDefinitions="510,56,400"
+          RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
 
       <local:OutlinedTextBlock Grid.Row="0" Grid.Column="0" Text="{local:Text 'AI editor'}" Classes="h1" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
 
@@ -46,10 +46,16 @@
               Background="{StaticResource ScenarioSelectDividerBrush}"
               Margin="0,10,0,20" />
 
-      <local:OutlinedTextBlock Grid.Row="2" Grid.Column="0" Text="{local:Text 'Your map AIs'}" Classes="label" Margin="14,0,0,8" />
+      <!-- Gallean Upgrade (battle AI designer): map AIs / battle AIs. -->
+      <Grid Grid.Row="2" Grid.Column="0" Classes="focus-group pill-group" ColumnDefinitions="*,*" Margin="0,0,0,18">
+        <Button x:Name="MapAisTab" Grid.Column="0" Classes="pill" Classes.primary="{Binding IsMap}" local:PlateChrome.TextureSeed="6" Content="{local:Text 'Map AIs'}" Command="{Binding ShowMapAisCommand}" />
+        <Button x:Name="BattleAisTab" Grid.Column="1" Classes="pill" Classes.primary="{Binding IsBattle}" local:PlateChrome.TextureSeed="7" Content="{local:Text 'Battle AIs'}" Command="{Binding ShowBattleAisCommand}" />
+      </Grid>
+
+      <local:OutlinedTextBlock Grid.Row="3" Grid.Column="0" Text="{Binding ListTitle}" Classes="label" Margin="14,0,0,8" />
 
       <ListBox x:Name="AiList"
-               Grid.Row="3"
+               Grid.Row="4"
                Grid.Column="0"
                Classes="select-list"
                ItemsSource="{Binding Ais}"
@@ -74,7 +80,7 @@
         </ListBox.ItemTemplate>
       </ListBox>
 
-      <Grid Grid.Row="4" Grid.Column="0" Classes="focus-group pill-group" ColumnDefinitions="*,*,*,*" Margin="0,20,0,0">
+      <Grid Grid.Row="5" Grid.Column="0" Classes="focus-group pill-group" ColumnDefinitions="*,*,*,*" Margin="0,20,0,0">
         <Button x:Name="BackButton" Grid.Column="0" Classes="pill" local:PlateChrome.TextureSeed="1" Content="{local:Text 'Back'}" Command="{Binding BackCommand}" />
         <Button x:Name="DeleteButton" Grid.Column="1" Classes="pill" local:PlateChrome.TextureSeed="2" Content="{local:Text 'Delete'}" Command="{Binding DeleteCommand}" />
         <Button x:Name="DuplicateButton" Grid.Column="2" Classes="pill" local:PlateChrome.TextureSeed="5" Content="{local:Text 'Copy'}" Command="{Binding DuplicateCommand}" ToolTip.Tip="{local:Text 'Make a copy of the selected AI'}" />
@@ -86,9 +92,9 @@
                 Command="{Binding EditCommand}" />
       </Grid>
 
-      <local:OutlinedTextBlock Grid.Row="2" Grid.Column="2" Text="{local:Text 'New map AI'}" Classes="label" Margin="0,0,0,8" />
+      <local:OutlinedTextBlock Grid.Row="3" Grid.Column="2" Text="{Binding NewTitle}" Classes="label" Margin="0,0,0,8" />
 
-      <StackPanel Grid.Row="3" Grid.Column="2">
+      <StackPanel Grid.Row="4" Grid.Column="2">
         <local:OutlinedTextBlock Text="{local:Text 'Name'}" Classes="caption field-label" Margin="0,0,0,6" />
         <TextBox x:Name="NameBox" Text="{Binding Name}" MaxLength="{Binding NameLength}" />
 
@@ -101,7 +107,7 @@
           </ComboBox.ItemTemplate>
         </ComboBox>
 
-        <TextBlock Text="{local:Text 'A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel. Battle AIs come in a later update.'}"
+        <TextBlock Text="{Binding Hint}"
                    Classes="caption"
                    TextWrapping="Wrap"
                    Foreground="{StaticResource SecondaryTextBrush}"
@@ -109,7 +115,7 @@
       </StackPanel>
 
       <Button x:Name="CreateButton"
-              Grid.Row="4"
+              Grid.Row="5"
               Grid.Column="2"
               Classes="pill primary"
               local:PlateChrome.TextureSeed="4"

@@ -1412,7 +1412,6 @@
     "No AIs of your own yet. Create one on the right.": "Своих ИИ пока нет. Создайте его справа.",
     "New map AI": "Новый ИИ карты",
     "Start from": "На основе",
-    "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel. Battle AIs come in a later update.": "Новый ИИ играет точно так же, как тот, на основе которого он создан, пока вы его не измените. Ваши ИИ появляются в настройках и на панели игроков ИИ. ИИ боя появятся в одном из следующих обновлений.",
     "Create AI": "Создать ИИ",
     "My AI": "Мой ИИ",
     "1 stage": "1 этап",
@@ -1613,6 +1612,13 @@
     "Watch the first battle the attacker of the setup won, as it was fought": "Посмотреть первое сражение, которое нападающий выиграл, точно как оно прошло",
     "Watch the first battle the attacker of the setup lost, as it was fought": "Посмотреть первое сражение, которое нападающий проиграл, точно как оно прошло",
     "Watch": "Смотреть",
-    "Watch one battle on the battle screen, both sides played by their AI": "Посмотреть одно сражение на экране боя: обе стороны ведёт их ИИ"
+    "Watch one battle on the battle screen, both sides played by their AI": "Посмотреть одно сражение на экране боя: обе стороны ведёт их ИИ",
+    "Your battle AIs": "Ваши боевые ИИ",
+    "New battle AI": "Новый боевой ИИ",
+    "Map AIs": "ИИ карты",
+    "Battle AIs": "Боевые ИИ",
+    "A new battle AI plays exactly like the one it starts from until you change it. Battle AIs appear in Settings, in the AI players panel and in the battle sandbox. The battle AI designer screen comes in a later update.": "Новый боевой ИИ играет точно так же, как тот, с которого он начат, пока вы его не измените. Боевые ИИ появляются в настройках, в панели игроков-ИИ и в песочнице сражений. Экран конструктора боевого ИИ появится в одном из следующих обновлений.",
+    "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel.": "Новый ИИ играет точно так же, как тот, с которого он начат, пока вы его не измените. Ваши ИИ появляются в настройках и в панели игроков-ИИ.",
+    "Delete \"{0}\"? Games and settings that use it play Classic instead. This cannot be undone.": "Удалить «{0}»? Игры и настройки, где он выбран, будут играть с ИИ «Классический». Это нельзя отменить."
   }
 }

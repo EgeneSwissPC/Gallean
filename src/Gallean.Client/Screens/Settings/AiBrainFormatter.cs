@@ -16,7 +16,8 @@ internal static class AiBrainFormatter
             "expansionist" => Tr("Expansionist"),
             "cautious" => Tr("Cautious"),
             "ruthless" => Tr("Ruthless"),
-            _ => AiBrainRegistry.WorldBrains.FirstOrDefault(info => info.Id == id)?.Name ?? id
+            _ => AiBrainRegistry.WorldBrains.FirstOrDefault(info => info.Id == id)?.Name ??
+                AiBrainRegistry.BattleBrains.FirstOrDefault(info => info.Id == id)?.Name ?? id
         };
     }
 
@@ -41,6 +42,7 @@ internal static class AiBrainFormatter
             AiBrainRegistry.ClassicId => Tr("The original battle AI."),
             "cautious" => Tr("Leaders flee as soon as the battle turns against them."),
             "ruthless" => Tr("Never flees and never defends: every unit attacks."),
+            _ when id.StartsWith(DesignedBattleAi.IdPrefix, StringComparison.Ordinal) => Tr("Designed in the AI editor."),
             _ => string.Empty
         };
     }

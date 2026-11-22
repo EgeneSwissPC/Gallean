@@ -192,7 +192,9 @@ public sealed partial class VisualTests
     {
         using Sandbox sb = Sandbox.Create();
         string previous = DesignedAiLibrary.Directory;
+        string previousBattle = DesignedBattleAiLibrary.Directory;
         DesignedAiLibrary.Directory = sb.GetPath("AIs/map");
+        DesignedBattleAiLibrary.Directory = sb.GetPath("AIs/battle");
 
         try
         {
@@ -206,6 +208,22 @@ public sealed partial class VisualTests
             gameViewModel.ShowAiEditorCommand.Execute(null);
             await CaptureAsync(window, "list");
 
+            // Gallean Upgrade (battle AI designer phase 8): the Battle AIs tab.
+            DesignedBattleAiLibrary.Store.Save(DesignedBattleAi.FromBuiltIn(AiPersonalities.RuthlessId, "berserker", "Berserker"));
+            DesignedBattleAiLibrary.Store.Save(new DesignedBattleAi("custom-battle:courier", "Careful courier", [
+                new DesignedBattleStage("Rich and losing", [[new DesignedBattleCondition.CargoAbove(1000), new DesignedBattleCondition.PowerShareBelow(50)]], DesignedBattleTactics.Classic with { ProtectLeader = true }),
+                DesignedBattleStage.Classic
+            ]));
+            AiEditorMenuScreenViewModel menu = Assert.IsOfType<AiEditorMenuScreenViewModel>(gameViewModel.RootScreen);
+            menu.ShowBattleAisCommand.Execute(null);
+            await CaptureAsync(window, "battle-list");
+            Assert.That(menu.Ais.Select(item => item.Name), Is.EqualTo(new[] { "Berserker", "Careful courier" }));
+            SettingsScreenViewModel settings = new(gameViewModel) { Language = Language.Russian };
+            gameViewModel.ShowScreen(new AiEditorMenuScreenViewModel(gameViewModel, battle: true));
+            await CaptureAsync(window, "battle-list-ru");
+            settings.Language = Language.English;
+            gameViewModel.ShowAiEditorCommand.Execute(null);
+
             DesignedAiLibrary.Store.Delete("custom:raider");
             DesignedAiLibrary.Store.Delete("custom:turtle");
             gameViewModel.ShowAiEditorCommand.Execute(null);
@@ -214,7 +232,9 @@ public sealed partial class VisualTests
         finally
         {
             DesignedAiLibrary.Directory = previous;
+            DesignedBattleAiLibrary.Directory = previousBattle;
             AiBrainRegistry.SetDesignedWorldAis([]);
+            AiBrainRegistry.SetDesignedBattleAis([]);
         }
     }
 }

@@ -23,6 +23,9 @@ public static class AppDirectories
     // Gallean Upgrade (AI editor): designed map AIs, one JSON file each.
     public static string MapAis { get; } = Path.Combine(Root, "AIs", "map");
 
+    // Gallean Upgrade (battle AI designer): designed battle AIs, one JSON file each.
+    public static string BattleAis { get; } = Path.Combine(Root, "AIs", "battle");
+
     // Gallean Upgrade (battle sandbox): army presets, one JSON file each.
     public static string BattleArmies { get; } = Path.Combine(Root, "Battles", "armies");
 }
