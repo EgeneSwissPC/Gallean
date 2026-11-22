@@ -76,7 +76,7 @@ Headless diagnosis, no code change: `ResearchTest` in `~/work/gallean-tools/mana
 Findings:
 - **Level 3 and 4 spells need two or three mana types** (`GspellR.json`: levels 1-2 cost one type, 100-400; level 3 two types, 300-680 each; level 4 two or three types up to 1600). Every race earns essentially its own mana only (Human life, Heretic infernal, Undead death; Elf and Dwarf rune + grove). From turn 20 on, every level 3 and 4 spell of every race was refused with InsufficientResources while its own mana sat at 9999.
 - **Level 5 is refused by the lord:** Warrior and Guildmaster lords research up to level 4, only Mage lords reach 5 (`GlobalVariables.Lord*SpellResearchLevelLimit`).
-- **The level 1-2 spells left over are ones Classic never wants:** boosts (Classic never researches them) and spells whose data says the AI shouldn't use them (`AI_CAT` None). The Elves have the most of these: 9 of their 24 spells at turn 10 were marked None.
+- **The level 1-2 spells left over are ones Classic never wants:** boosts (Classic never researches them) and spells whose data says the AI shouldn't use them (`AI_CAT` None). The Elves have the most of these: 11 of their 24 spells are marked None.
 - Research itself works: the AI took one spell on almost every 5th turn (25 researches in 40 turns), always the cheapest level first.
 - Spell research needs a building (`SpellBuildingRequired` until the capital has it, turn 10-20 here).
 
