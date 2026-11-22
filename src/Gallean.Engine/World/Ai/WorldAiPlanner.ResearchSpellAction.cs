@@ -61,7 +61,7 @@ internal sealed partial class WorldAiPlanner
                         WorldSpellDefinition spell = Context.Engine.Definitions.GetSpell(spellId);
                         WorldAiSpellEffectType? spellType = spell.Effect.Accept(WorldAiSpellEffectTypeVisitor.Instance, Empty.Value);
 
-                        if (IsResearchable(spell.AiType) && spell.Level == level && spellType == type)
+                        if ((IsResearchable(spell.AiType) || Context.Profile.UseAllSpells) && spell.Level == level && spellType == type)
                         {
                             WorldResearchSpellCommand command = new(playerId, spellId);
                             WorldCommandResult result = command.Execute(state, Context.Engine);

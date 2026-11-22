@@ -15,7 +15,7 @@ internal sealed class DesignedWorldAiBrain(DesignedWorldAi design) : IWorldAiBra
         (DesignedWorldStage? stage, WorldAiMemory updated, ImmutableSortedSet<WorldFortificationId> owned) = FindStage(state, memory);
         // No stage = Classic, plus overflow spending (every designed AI spends, docs/ai-overflow-spending.md).
         WorldAiProfile profile = stage is null
-            ? WorldAiProfile.Classic with { SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent, SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent }
+            ? WorldAiProfile.Classic with { SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent, SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent, UseAllSpells = true }
             : DesignedStageEvaluator.ToProfile(stage);
 
         WorldAiActionPlan plan = new WorldAiController(context, profile).DecideAction(state, updated, trace);

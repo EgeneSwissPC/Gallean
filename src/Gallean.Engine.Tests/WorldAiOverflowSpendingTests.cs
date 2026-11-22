@@ -59,6 +59,30 @@ public sealed class WorldAiOverflowSpendingTests
         return builder.Build();
     }
 
+    private static WorldEngine BuildOnTurn(WorldPlayer ai, int turn, params WorldSpellDefinition[] spells)
+    {
+        WorldMap map = TestHelpers.SimpleMap(12, 12);
+        UnitDefinition leader = Leader();
+        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithTurnInfo(new WorldTurnInfo(turn, ai.Id))
+            .WithDefinition(leader)
+            .WithDefinition(TestHelpers.SimpleLord(ai.LordId, ai.Race, LordCategory.Warrior))
+            .WithPlayer(ai)
+            .WithDefinition(TestHelpers.SimpleLord(new LordDefinitionId("Lord2"), WorldRace.Heretic, LordCategory.Warrior))
+            .WithPlayer(TestHelpers.SimplePlayer(new WorldPlayerId(2), WorldRace.Heretic, map))
+            .WithDefinition(TestHelpers.SimpleBuildingDefinition(MageGuildId, WorldPlayerBuildingCategory.Spell))
+            .WithResearchableSpell(new WorldSpellResearchCost(WorldRace.Undead, AttackSpellId, Death(200)))
+            .WithStack(Stack("Own", ai.Id, leader, new WorldPosition(0, 0)));
+
+        foreach (WorldSpellDefinition spell in spells)
+        {
+            builder = builder.WithDefinition(spell);
+        }
+
+        return builder.Build();
+    }
+
     private static WorldSpellDefinition AttackSpell() =>
         TestHelpers.SimpleSpellDefinition(AttackSpellId, new WorldAttackSpellEffect(UnitAttackSource.Fire, 20)) with { CastingCost = Death(100) };
 
@@ -300,5 +324,23 @@ public sealed class WorldAiOverflowSpendingTests
             WorldAiActionPlan plan = AiBrainRegistry.ResolveWorld(AiPersonalities.ClassicPlusId).DecideAction(context, state, WorldAiMemory.Empty);
             Assert.That(plan.Command is WorldCastSpellCommand, Is.EqualTo(summons), plan.Command.ToString());
         }
+    }
+
+    // docs/ai-unused-features.md phase 2: an attack spell marked "not for the AI" (AI_CAT None) on a research turn
+    // (turn 5) without spending mode: Classic skips it, our AIs research it.
+    [Test]
+    public void ResearchNotForAiSpellTest()
+    {
+        WorldPlayer ai = Ai(2000, new WorldPlayerSpellbook([AttackSpellId], []));
+        WorldSpellDefinition notForAi = AttackSpell() with { AiType = WorldAiSpellType.None };
+
+        IReadOnlyList<WorldEvent> Research(string brainId)
+        {
+            WorldEngine engine = BuildOnTurn(ai, 5, notForAi);
+            return FirstAction(engine, brainId);
+        }
+
+        Assert.That(Research(AiBrainRegistry.ClassicId).OfType<WorldSpellResearchedEvent>(), Is.Empty, "Classic skips AI_CAT None");
+        Assert.That(Research(AiPersonalities.ClassicPlusId).OfType<WorldSpellResearchedEvent>().Select(ev => ev.SpellId), Is.EqualTo(new[] { AttackSpellId }));
     }
 }

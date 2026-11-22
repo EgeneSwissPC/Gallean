@@ -51,4 +51,7 @@ internal sealed record WorldAiProfile
     // Gallean Upgrade, unused features phase 1 (docs/ai-unused-features.md): on large maps, the share of a mana's
     // income per turn that running summon upkeep may take before the AI stops summoning. 0 = no check (Classic).
     public int SummonUpkeepPercent { get; init; }
+    // Gallean Upgrade, unused features phase 2: also research spells the game data marks "not for the AI"
+    // (AI_CAT None) when their effect is one the AI knows how to cast. False = Classic.
+    public bool UseAllSpells { get; init; }
 }

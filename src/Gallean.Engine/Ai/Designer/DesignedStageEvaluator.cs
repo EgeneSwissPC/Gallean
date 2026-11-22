@@ -112,7 +112,8 @@ internal static class DesignedStageEvaluator
             RushEnemyCapital = rules.RushEnemyCapital ?? false,
             GoldReserve = rules.GoldReserve ?? 0,
             SpendAbovePercent = rules.SpendAbovePercent ?? WorldAiSpending.DefaultSpendAbovePercent,
-            SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent
+            SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent,
+            UseAllSpells = true
         };
     }
 
