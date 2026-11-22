@@ -343,4 +343,65 @@ public sealed class WorldAiOverflowSpendingTests
         Assert.That(Research(AiBrainRegistry.ClassicId).OfType<WorldSpellResearchedEvent>(), Is.Empty, "Classic skips AI_CAT None");
         Assert.That(Research(AiPersonalities.ClassicPlusId).OfType<WorldSpellResearchedEvent>().Select(ev => ev.SpellId), Is.EqualTo(new[] { AttackSpellId }));
     }
+
+    // docs/ai-unused-features.md phase 3: area spells (radius 1), 2000 mana so only the two-army rule applies.
+    private static IReadOnlyList<WorldEvent> AreaFirstAction(string brainId, WorldSpellDefinition spell, params (string Id, int Owner, WorldPosition Position, int Hitpoints)[] stacks)
+    {
+        WorldMap map = TestHelpers.SimpleMap(12, 12);
+        UnitDefinition leader = Leader();
+        WorldPlayer ai = Ai(2000, new WorldPlayerSpellbook([], [spell.Id]));
+        WorldPlayer human = TestHelpers.SimplePlayer(new WorldPlayerId(2), WorldRace.Heretic, map);
+        WorldPlayer neutral = TestHelpers.SimplePlayer(new WorldPlayerId(3), WorldRace.Neutral, map) with { IsAi = true };
+
+        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(leader)
+            .WithDefinition(spell)
+            .WithDefinition(TestHelpers.SimpleBuildingDefinition(MageGuildId, WorldPlayerBuildingCategory.Spell))
+            .WithDefinition(TestHelpers.SimpleLord(ai.LordId, ai.Race, LordCategory.Warrior))
+            .WithPlayer(ai)
+            .WithDefinition(TestHelpers.SimpleLord(human.LordId, human.Race, LordCategory.Warrior))
+            .WithPlayer(human)
+            .WithDefinition(TestHelpers.SimpleLord(neutral.LordId, neutral.Race, LordCategory.Warrior))
+            .WithPlayer(neutral);
+
+        foreach ((string id, int owner, WorldPosition position, int hitpoints) in stacks)
+        {
+            builder = builder.WithStack(Stack(id, new WorldPlayerId(owner), leader, position, hitpoints));
+        }
+
+        return FirstAction(builder.Build(), brainId);
+    }
+
+    private static WorldSpellDefinition AreaAttack() => AttackSpell() with { AreaRadius = 1 };
+
+    [Test]
+    public void AreaAttackOnTwoArmiesTest()
+    {
+        (string, int, WorldPosition, int)[] stacks = [("Own", 1, new WorldPosition(0, 0), 100), ("N1", 3, new WorldPosition(10, 10), 100), ("N2", 3, new WorldPosition(11, 10), 100)];
+
+        Assert.That(AreaFirstAction(AiBrainRegistry.ClassicId, AreaAttack(), stacks).OfType<WorldSpellCastEvent>(), Is.Empty, "Classic never casts area spells");
+        WorldSpellCastEvent[] casts = [.. AreaFirstAction(AiPersonalities.ClassicPlusId, AreaAttack(), stacks).OfType<WorldSpellCastEvent>()];
+        Assert.That(casts.Select(cast => cast.Target!.Center), Is.EqualTo(new[] { new WorldPosition(10, 10) }).Or.EqualTo(new[] { new WorldPosition(11, 10) }));
+    }
+
+    [Test]
+    public void AreaAttackSparesOwnArmiesTest()
+    {
+        // The own army next to both neutrals would be hit: no cast. One neutral alone is below the two-army rule.
+        Assert.That(AreaFirstAction(AiPersonalities.ClassicPlusId, AreaAttack(),
+            ("Own", 1, new WorldPosition(10, 11), 100), ("N1", 3, new WorldPosition(10, 10), 100), ("N2", 3, new WorldPosition(11, 10), 100)).OfType<WorldSpellCastEvent>(), Is.Empty);
+        Assert.That(AreaFirstAction(AiPersonalities.ClassicPlusId, AreaAttack(),
+            ("Own", 1, new WorldPosition(0, 0), 100), ("N1", 3, new WorldPosition(10, 10), 100)).OfType<WorldSpellCastEvent>(), Is.Empty);
+    }
+
+    [Test]
+    public void AreaHealOnTwoWoundedArmiesTest()
+    {
+        WorldSpellDefinition areaHeal = HealSpell() with { AreaRadius = 1 };
+        (string, int, WorldPosition, int)[] stacks = [("A", 1, new WorldPosition(5, 5), 80), ("B", 1, new WorldPosition(6, 5), 80), ("N1", 3, new WorldPosition(11, 11), 100)];
+
+        Assert.That(AreaFirstAction(AiBrainRegistry.ClassicId, areaHeal, stacks).OfType<WorldSpellCastEvent>(), Is.Empty);
+        Assert.That(AreaFirstAction(AiPersonalities.ClassicPlusId, areaHeal, stacks).OfType<WorldSpellCastEvent>().Select(cast => cast.SpellId), Is.EqualTo(new[] { HealSpellId }));
+    }
 }

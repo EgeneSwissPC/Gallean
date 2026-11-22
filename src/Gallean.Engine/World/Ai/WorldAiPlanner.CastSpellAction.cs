@@ -14,6 +14,7 @@ internal sealed partial class WorldAiPlanner
             WorldPlayer player = state.Players[playerId];
             List<WorldSpellDefinition> targetedSpells = [];
             List<WorldSpellDefinition> globalSpells = [];
+            List<WorldSpellDefinition> areaSpells = [];
 
             foreach (WorldSpellDefinitionId spellId in player.Spellbook.Acquired)
             {
@@ -27,6 +28,11 @@ internal sealed partial class WorldAiPlanner
                 if (spell.AreaRadius is null)
                 {
                     globalSpells.Add(spell);
+                }
+
+                if (spell.AreaRadius > 0)
+                {
+                    areaSpells.Add(spell);
                 }
             }
 
@@ -42,6 +48,13 @@ internal sealed partial class WorldAiPlanner
             if (command is null && IsGlobalCastAllowed(player, globalSpells))
             {
                 command = FindGlobalCast(state, playerId, globalSpells);
+            }
+
+            // Gallean Upgrade, docs/ai-unused-features.md phase 3: area spells (Classic never casts them).
+            if (command is null && Context.Profile.UseAllSpells && areaSpells.Count > 0)
+            {
+                areaSpells.Sort(CompareSpellLevel);
+                command = FindAreaCast(state, playerId, areaSpells);
             }
 
             // Gallean Upgrade, overflow spending: only when Classic found nothing to cast.
@@ -287,6 +300,101 @@ internal sealed partial class WorldAiPlanner
             }
 
             return command;
+        }
+
+        // Phase 3: an area spell hits every army in its square (own ones too) and nothing inside cities. Attack and
+        // weaken: centred on a visible hostile army so that no own or allied army is in the square; heal, boost and
+        // invisibility: centred on an own army so that no hostile army is in it. Cast when it reaches at least
+        // AreaMinStacks armies, or one while the spell's mana is above the spending line.
+        private const int AreaMinStacks = 2;
+
+        private WorldCastSpellCommand? FindAreaCast(WorldState state, WorldPlayerId playerId, List<WorldSpellDefinition> spells)
+        {
+            WorldPlayer player = state.Players[playerId];
+            WorldPlan plan = WorldPlan.For(state);
+            GlobalVariables globals = Context.Engine.Globals;
+            List<WorldStack> ownStacks = [.. state.Stacks.Values.Where(stack => stack.OwnerId == playerId)];
+            List<WorldStack> enemies = [.. EnumerateVisibleEnemies(state, player, ownStacks)];
+            List<WorldStack> nearEnemies = [.. EnumerateStacksNearEnemies(state, playerId, enemies)];
+
+            foreach (WorldSpellDefinition spell in spells)
+            {
+                int radius = spell.AreaRadius!.Value;
+                int minStacks = WorldAiSpending.UsesOverflowingMana(Context.Profile, player, spell.CastingCost, globals) ? 1 : AreaMinStacks;
+                WorldAiSpellEffectType? type = GetSpellEffectType(spell);
+                bool offensive = type is WorldAiSpellEffectType.Attack or WorldAiSpellEffectType.Weaken;
+                IEnumerable<WorldStack> centres = type switch
+                {
+                    WorldAiSpellEffectType.Attack or WorldAiSpellEffectType.Weaken => enemies,
+                    WorldAiSpellEffectType.Heal => ownStacks.Where(HasDamagedUnit),
+                    WorldAiSpellEffectType.Boost or WorldAiSpellEffectType.Invisibility => nearEnemies,
+                    _ => []
+                };
+
+                WorldPosition? best = null;
+                int bestScore = 0;
+
+                foreach (WorldStack centre in centres)
+                {
+                    if (plan.GetFortificationAt(centre.Position) is not null)
+                    {
+                        continue;
+                    }
+
+                    int count = 0;
+                    int score = 0;
+                    bool spoiled = false;
+
+                    foreach (WorldPosition tile in SpellTargetCalculator.GetArea(state, centre.Position, radius))
+                    {
+                        WorldStack? stack = plan.GetStackAt(tile);
+
+                        if (stack is null || plan.GetFortificationAt(tile) is not null)
+                        {
+                            continue;
+                        }
+
+                        bool hostile = DiplomacyCalculator.IsHostile(state, playerId, stack.OwnerId);
+
+                        if (hostile != offensive)
+                        {
+                            spoiled = true;
+                            break;
+                        }
+
+                        bool wanted = type switch
+                        {
+                            WorldAiSpellEffectType.Heal => HasDamagedUnit(stack),
+                            WorldAiSpellEffectType.Boost or WorldAiSpellEffectType.Invisibility => nearEnemies.Contains(stack),
+                            _ => true
+                        };
+
+                        if (wanted)
+                        {
+                            count++;
+                            score += SpellTargetCalculator.GetPowerPercent(centre.Position, tile, globals);
+                        }
+                    }
+
+                    if (!spoiled && count >= minStacks && score > bestScore)
+                    {
+                        best = centre.Position;
+                        bestScore = score;
+                    }
+                }
+
+                if (best is { } position)
+                {
+                    WorldCastSpellCommand command = new(spell.Id, new WorldSpellTarget(position, Radius: 0));
+
+                    if (!command.Execute(state, Context.Engine).Failed)
+                    {
+                        return command;
+                    }
+                }
+            }
+
+            return null;
         }
 
         // Hostile armies on explored tiles, nearest to one of the player's own armies first (at most 30).

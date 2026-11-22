@@ -1,6 +1,6 @@
 # AI: the parts of the game it never uses
 
-Status: questions A-F answered (2026-11-22); phases 1-2 done, phase 3 (area spells) next.
+Status: questions A-F answered (2026-11-22); phases 1-3 done, phase 4 (site visits) next.
 
 ## Decisions
 
@@ -46,7 +46,7 @@ War of the Ring has 23 sites: 8 merchants, 6 mage towers, 6 mercenary camps, 3 t
 
 1. ~~A: summon upkeep awareness (~0.5 day).~~ Done, see "Phase 1 — done".
 2. ~~B: "not for the AI" spells (~0.5-1 day).~~ Done, see "Phase 2 — done".
-3. C: area spells (~1 day).
+3. ~~C: area spells (~1 day).~~ Done, see "Phase 3 — done".
 4. D: site visits: mercenaries, trainers, mage towers, potions (~3-4 days).
 5. E: equipment, then equipment at merchants (~2 days).
 
@@ -74,6 +74,16 @@ Merged b91aeafa (feature commit 8973ba9b on `upgrade/ai-all-spells`).
   - spells known at turn 60: 45 -> 61 (Elf 7 -> 16, Human 8 -> 11, Heretic 9 -> 12, Dwarf 9 -> 10, Undead 12 -> 12); "not for the AI" spells researched 16, cast 209 times (Elf 114, Human 68, Heretic 21, Dwarf 3, Undead 3);
   - mana lost at the cap 6.8 % -> 5.9 % (Elf 13 % -> 9 %);
   - total casts 877 -> 769 and summons 272 -> 177: the games went differently (the Heretics cast 231 -> 109 and lost 7 % -> 8 %), so read single-race numbers as one sample.
+- No real-client run (no client change).
+
+## Phase 3 — done (area spells)
+
+Merged d73cb5fe (feature commit 7cd2eb8d on `upgrade/ai-area-spells`, then gallean-upgrade merged in twice because another session merged town income and move orders meanwhile).
+
+- Engine fact that shaped it: an area spell hits every army in its square, own and allied ones too (`WorldAbstractUnitSpellResolver` hits the whole footprint, with less power per ring), and nothing inside cities; the centre may not be in a city.
+- `CastSpellAction.FindAreaCast` (our AIs, `UseAllSpells`; runs after Classic's choices and before overflow spending): attack and weaken spells centred on a visible hostile army (the 30 nearest to own armies) whose square holds no own or allied army; heal on an own damaged army, boost and invisibility on an own army about to fight (outside a city, movement left, an enemy within 7 tiles), each with no hostile army in the square. Score = the ring power of every wanted army in the square; cast when it reaches 2 armies (`AreaMinStacks`), or 1 when the spell's mana is above the spending line. Fog, unfog and terrain area spells stay out (answer E).
+- Tests: `AreaAttackOnTwoArmiesTest` (Classic never casts, Classic+ centres on one of two neutrals), `AreaAttackSparesOwnArmiesTest` (an own army in the square -> no cast; one neutral alone -> no cast), `AreaHealOnTwoWoundedArmiesTest`. Mutation checks: own-army check off -> the spare test fails; area casting off -> the other two fail. Suite 5473 after both merges. S099 Classic CSV identical apart from timings (against gallean-upgrade cfe773ef).
+- Measured, War of the Ring (new map), 60 turns, seed 1: 37 area casts (Elf 19, Undead 10, Human 8); the Dwarves and Heretics learned no area spell in 60 turns (only 4 area spells were known in total, all races together). Mana lost 6.0 % (phase 2: 5.9 %, within noise).
 - No real-client run (no client change).
 
 ## Open questions
