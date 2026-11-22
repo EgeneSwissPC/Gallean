@@ -1,6 +1,6 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks), specified below with open questions E-H; 4 left.
+Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks); answers E-H taken (all recommendations); building 3b-A city upgrades first, then 2b, then 3b-B site shopping; 4 left.
 
 ## Decisions
 
@@ -9,7 +9,11 @@ Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 d
 - Classic stays identical to upstream (answer A): Classic+ gets the rule, so Classic+ is the original AI that spends.
 - Spending starts at 70 % of the cap = 6999, for gold and mana alike (user change after phase 2; answer B was 80 %), editable per designed AI in phase 4.
 - Only useful casts (answer C); a summon next to its own armies counts as useful. Mana that nothing useful can use is still lost.
-- Gold sinks are units, buildings and leaders (answer D); merchant items and mage tower spells only if the bench still shows gold at the cap after phase 3.
+- Gold sinks are units, buildings and leaders (answer D); merchant items and mage tower spells only if the bench still shows gold at the cap after phase 3. It did (Dwarves), so phase 3b follows.
+- 3b order (answer E): city upgrades alone first and measured, then site shopping.
+- Site shopping detours (answer F): only sites an army reaches this turn or next, only armies on a Normal order.
+- Need-weighted rods (answer G): always for our AIs, not only in spending mode; Classic untouched.
+- "Needed" mana (answer H): the mana types of the cheapest level 3 spell the race could research.
 
 ## The problem today (measured)
 
@@ -175,7 +179,7 @@ Recommendation: A + B, measured with the War of the Ring bench (research levels 
 - ~~**B.** Threshold: 80 % of the cap (8000)? Recommendation: 80 %, editable per designed AI.~~ Answered: recommendation taken.
 - ~~**C.** When nothing useful can be cast (no enemy in sight, nobody wounded): accept the loss, or cast anything castable? Recommendation: useful casts only; a summon next to its own armies counts as useful.~~ Answered: recommendation taken.
 - ~~**D.** Gold sinks beyond units, buildings and leaders (merchant items, mage tower spells)? Recommendation: later, only if the bench still shows gold at the cap after phase 3.~~ Answered: recommendation taken.
-- **E.** (3b) Start with city upgrades alone and measure before site shopping? Recommendation: yes, A is small and may already be enough on most maps.
-- **F.** (3b) Site shopping detour: how far may an army walk to a site? Recommendation: only sites it reaches this turn or next, and only armies on a Normal order (not healing, reinforcing or on a scenario order).
-- **G.** (2b) Need-weighted rods only in spending mode, or always for our personalities? Recommendation: always, because a race needs the second mana before it is rich, and Classic stays untouched either way; measured against Classic on the bench.
-- **H.** (2b) Which "need" counts: the mana types of the cheapest level 3 spell the race could research, or all types its level 3-4 spells use? Recommendation: the cheapest level 3 spell's types, so the AI unlocks one spell at a time.
+- ~~**E.** (3b) Start with city upgrades alone and measure before site shopping? Recommendation: yes, A is small and may already be enough on most maps.~~ Answered: recommendation taken.
+- ~~**F.** (3b) Site shopping detour: how far may an army walk to a site? Recommendation: only sites it reaches this turn or next, and only armies on a Normal order (not healing, reinforcing or on a scenario order).~~ Answered: recommendation taken.
+- ~~**G.** (2b) Need-weighted rods only in spending mode, or always for our personalities? Recommendation: always, because a race needs the second mana before it is rich, and Classic stays untouched either way; measured against Classic on the bench.~~ Answered: recommendation taken.
+- ~~**H.** (2b) Which "need" counts: the mana types of the cheapest level 3 spell the race could research, or all types its level 3-4 spells use? Recommendation: the cheapest level 3 spell's types, so the AI unlocks one spell at a time.~~ Answered: recommendation taken.
