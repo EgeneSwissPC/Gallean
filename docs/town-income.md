@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5 specced below (questions P-W open), nothing built. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5 specced below, all questions (P-W) answered, nothing built. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -221,7 +221,7 @@ Real-client check (AOT build, mapgen map, town income on, neutral gold 300, buyi
 
 Known limits: waiting armies never leave (phase 5); a village with an allowed soldier it can't afford yet saves rather than buying something else.
 
-## Phase 5 - what neutral armies do (spec, questions open)
+## Phase 5 - what neutral armies do (spec)
 
 The user's wish (from the answers to G and N): neutrals protect their villages first; once they have more money they send units out, and those armies attack enemy armies near their home towns or conquer nearby towns.
 
@@ -256,6 +256,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 - T (user): T2. An army that captures a town makes it its new home (it defends it, refills and leaves from there, and the radii are measured from it); after any other fight it goes back to its home village, where it heals and, being no longer full, waits to be refilled (P1).
 - U (user): U1, no switch for placed armies. Only armies the neutral economy bought follow these rules; armies placed on the map and the map's scripted ones (patrols, spawns) keep their own orders.
 - V (user): V2. The engine rule that keeps plain-neutral armies from the SecureCity order (`StackOrderCalculator`) gets one exception: armies bought by the neutral economy, while the map rule is on. Original campaigns and placed armies are unchanged; without it, maps with neutral kinds off would have no conquest at all.
+- W (user): W1. Every side hostile to the army's side counts, other neutral kinds included (they are hostile by design).
 
 ### Phase 5 questions
 
@@ -273,6 +274,6 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 
 ~~V. Plain neutrals and towns.~~ Answered: V2.
 
-W. Who counts as an enemy. W1: everyone hostile to the side, including other neutral kinds (they are separate sides). W2: only the races' armies and towns. Recommendation: W1, since the kinds are hostile to each other by design; W2 if neutral-vs-neutral wars drain them in the measurement.
+~~W. Who counts as an enemy.~~ Answered: W1.
 
-Phases: 5a orders handed out by the rule (T1) with tests, ~1-1.5 days; 5b War of the Ring measurement and tuning, ~0.5 day; the radius setting in the editor and MapFromPlan with 5a.
+Phases: 5a orders handed out by the rule (T1) with the strength-margin check, the V2 exception, the three map settings (army radius 10, town radius 60, margin 140 %) in SRules, the editor's Neutrals section and MapFromPlan, and tests, ~1.5 days; 5b War of the Ring measurement (neutral turn time, armies out, battles by side, towns changing hands, losses) and tuning, ~0.5 day.
