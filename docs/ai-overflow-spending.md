@@ -1,6 +1,6 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); 2b and 4 left, gold sinks (answer D) open.
+Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks), specified below with open questions E-H; 4 left.
 
 ## Decisions
 
@@ -66,8 +66,9 @@ Gold, in spending mode:
 
 1. ~~Find why research stalls at 3-9 spells (headless diagnosis, no screen; ~0.5 day).~~ Done, see "Phase 1 — done".
 2. ~~Mana spending in the engine for all personalities and designed AIs (~1 day), mana bench + tournament.~~ Done, see "Phase 2 — done".
-2b. In spending mode, foreign mana crystals get extra weight as rod and capture targets (~1 day), so level 3-4 research becomes affordable.
+2b. Foreign mana: rod planters prefer the mana sources the race needs (~1 day), see "Phase 2b — foreign mana".
 3. ~~Gold spending (~1 day), same checks.~~ Done, see "Phase 3 — done".
+3b. More gold sinks: city upgrades first (~0.5 day), then shopping at sites (~2 days), see "Phase 3b — more gold sinks".
 4. AI designer block "Spend resources above N %" (~0.5 day), the visible part in the AI editor.
 
 ## Phase 1 — done (why research stalls)
@@ -138,9 +139,43 @@ What's left for "never at the cap":
 - Gold (answer D was "later, only if gold still hits the cap"): it does, for the Dwarves. Candidate sinks: items at merchants, spells at mage towers, mercenaries, unit training at trainer sites.
 - Mana: phase 2b (foreign mana sources, so level 3-4 research becomes affordable), and for the Elves the spells marked `AI_CAT` None.
 
+## Phase 3b — more gold sinks (spec, not built)
+
+Problem: after phase 3 the Dwarves still sat at 9999 gold from turn 51 on War of the Ring: garrisons full, leader quota full, one building per turn already taken. Gold needs things to buy that don't run out as fast.
+
+What the engine already offers (Classic uses none of it):
+- **City upgrades** (`WorldUpgradeCityCommand`): no army needed; one level per city per turn (`CityAlreadyGrownThisTurn`), up to the scenario's max city level; costs from `GcityInf.json` 150 / 250 / 500 / 750 gold for levels 1->2 ... 4->5 (1650 per city in total; Guildmaster lords get a discount). Higher levels give more protection and regeneration. No AI code calls it today.
+- **Sites** (army must stand at the site): merchants (`WorldPurchaseItemCommand`), mage towers (`WorldPurchaseSpellCommand`), mercenary camps (`WorldPurchaseMercenaryCommand`, units into free slots of the visiting army), trainers (`WorldTrainUnitCommand`, experience for gold). Classic armies never go to sites; only thieves target them (`ThiefAction`), and no AI code calls these purchase commands.
+
+Options:
+- **A.** City upgrades while gold spending: a new economy action, cheapest level first, nearest-to-the-front city first (~0.5 day). Independent of every question below.
+- **B.** Site shopping while gold spending: an army with nothing urgent detours to a site within reach and buys there: mercenaries into free slots, training for its units, then items (~2 days).
+- **C.** Mage towers too: buy spells the race can't research (~1 day on top of B; the spells then also become mana sinks).
+
+Recommendation: A first, then B with mercenaries and training (gold straight into army strength), items last; C after measuring B.
+
+## Phase 2b — foreign mana (spec, not built)
+
+Problem: level 3-4 spells need two or three mana types (phase 1), each race earns only its own, so its research stops at level 2 and its mana piles up.
+
+What the engine already offers:
+- War of the Ring has 247 resource nodes (`SCrys.json`): 115 gold mines and 132 mana sources (28 infernal, 26 life, 16 death, 27 rune, 35 grove).
+- Rod planters (`RodAction`) already target every resource node that is unowned or on hostile land and has no rod next to it, all with the same interest (`CreateRodInterest`); the nearest wins. They also remove hostile rods. Quota: 1 rod planter (+1 while gold spending since phase 3).
+
+Options:
+- **A.** Rod targets weighted by need: mana sources of a type the race's next unaffordable research costs get extra interest (x2), gold mines and already-owned types stay as they are (~0.5-1 day).
+- **B.** A plus one more rod planter while such a mana type is missing (~0.5 day on top).
+- **C.** Armies also go for enemy land with such sources (conquest targets): a much bigger AI change, not proposed now.
+
+Recommendation: A + B, measured with the War of the Ring bench (research levels reached, mana lost).
+
 ## Open questions
 
 - ~~**A.** Classic too? Recommendation: no. Classic stays upstream's AI; Classic+ is "Classic with our fixes" and gets the spending rule, so picking Classic+ gives the original AI that spends.~~ Answered: recommendation taken.
 - ~~**B.** Threshold: 80 % of the cap (8000)? Recommendation: 80 %, editable per designed AI.~~ Answered: recommendation taken.
 - ~~**C.** When nothing useful can be cast (no enemy in sight, nobody wounded): accept the loss, or cast anything castable? Recommendation: useful casts only; a summon next to its own armies counts as useful.~~ Answered: recommendation taken.
 - ~~**D.** Gold sinks beyond units, buildings and leaders (merchant items, mage tower spells)? Recommendation: later, only if the bench still shows gold at the cap after phase 3.~~ Answered: recommendation taken.
+- **E.** (3b) Start with city upgrades alone and measure before site shopping? Recommendation: yes, A is small and may already be enough on most maps.
+- **F.** (3b) Site shopping detour: how far may an army walk to a site? Recommendation: only sites it reaches this turn or next, and only armies on a Normal order (not healing, reinforcing or on a scenario order).
+- **G.** (2b) Need-weighted rods only in spending mode, or always for our personalities? Recommendation: always, because a race needs the second mana before it is rich, and Classic stays untouched either way; measured against Classic on the bench.
+- **H.** (2b) Which "need" counts: the mana types of the cheapest level 3 spell the race could research, or all types its level 3-4 spells use? Recommendation: the cheapest level 3 spell's types, so the AI unlocks one spell at a time.
