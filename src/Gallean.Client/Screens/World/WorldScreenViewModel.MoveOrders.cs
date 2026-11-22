@@ -41,6 +41,8 @@ internal sealed partial class WorldScreenViewModel
     {
         replanStackId = null;
 
+        ForgetOrderReport(stack.Id);
+
         if (stack.MovementPoints == 0)
         {
             TryConfirmMoveOrder(stack.Id, path.Destination);
