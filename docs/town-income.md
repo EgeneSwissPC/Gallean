@@ -24,6 +24,7 @@ Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 waits for
   - New phase split (decision N makes leader hiring part of the buying order): phase 4 = the whole neutral economy (garrisons, leaders with their armies filled, village upgrades, in the user's order), new armies wait at their village; phase 5 = what those armies do (attack enemy armies near their home towns, conquer nearby towns).
 - H2 (user): H2b, to try first and revisit if it plays badly. A level-N village sells the cheapest N/5 (rounded up, at least one) of its kind's soldiers, and of its kind's leaders, by gold price at level 1; ties keep the data order.
 - J (user): J2. Each neutral side makes at most one purchase per village it owns per turn (a soldier, a leader or a village upgrade); while its gold is above the spending line (70 % of the cap, `WorldAiSpending.DefaultSpendAbovePercent`) the limit is lifted, so piled-up gold gets spent.
+- K (user): random for now. When gold doesn't reach every village, the villages take their turn in a random order (the engine's random provider, so a seeded headless run repeats exactly); threatened-first can come later if random plays badly.
 - I (user): The War of the Ring's scripted neutral life is out of scope here; the user will rework it separately later.
 - Taken while building phase 1: `CustomMap.Create` starts with the rule off. The editor's new-map path turns it on with `CustomMap.DefaultTownIncome` (phase 2), and MapFromPlan sets it for The War of the Ring (phase 2). Maps built in code (tests, the battle bench, AI designer test maps) keep their economy, so no existing measurement changes.
 - Taken while building phase 3: neutral income follows the town income rule (no separate switch): with town income on, every neutral side earns from its own towns. Their starting gold is one value for all neutral sides (`CustomMap.NeutralStartingGold`, gold only, 0 by default); per-side banks would need the writer's kind split in the editor. The War of the Ring keeps 0 for now (its neutral life gets reworked later, decision I).
@@ -125,7 +126,7 @@ Facts they build on (counted from the data and a generated War of the Ring):
 
 ~~J. How many units per turn.~~ Answered: J2 (Decisions).
 
-K. Which village first. K1: the one with an enemy army closest to it (threatened first), then the emptiest. K2: the emptiest first. K3: the highest level first. Recommendation: K1.
+~~K. Which village first.~~ Answered: random for now (Decisions).
 
 L. Which unit. L1: the most expensive soldier that is allowed, affordable and fits. L2: random among those. L3: the best value (hit points per gold). Recommendation: L1.
 
