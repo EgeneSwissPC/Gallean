@@ -316,7 +316,7 @@
          "Income per turn" table. Selecting a race outlines its resources and rods on the map. -->
     <Border Grid.Column="0"
             Classes="editor-panel"
-            Width="430"
+            Width="470"
             HorizontalAlignment="Left"
             Margin="0,0,0,40"
             IsVisible="{Binding IsEconomyOpen}">
