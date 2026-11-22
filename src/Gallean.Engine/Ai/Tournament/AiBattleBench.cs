@@ -504,7 +504,7 @@ public sealed class AiBattleBench
             OwnerId = owner,
             Position = position,
             Units = army.Units,
-            Inventory = WorldInventory.Empty,
+            Inventory = army.Inventory,
             Equipment = army.Equipment,
             ExpirationTurn = null,
             SourceTemplateId = null
@@ -636,7 +636,20 @@ public sealed class AiBattleBench
             grid = grid.Replace(unit, unit with { Hitpoints = UnitStatsCalculator.GetStats(definition, unit.Level, unit.Modifiers, definitions, globals).MaxHitpoints });
         }
 
-        built = new BuiltArmy(grid, equipment);
+        ImmutableArray<WorldItem>.Builder cargo = ImmutableArray.CreateBuilder<WorldItem>();
+
+        foreach (ItemDefinitionId itemId in army.Cargo)
+        {
+            if (TryGetItem(itemId) is not { } cargoItem)
+            {
+                error = $"unknown item {itemId.Value}";
+                return false;
+            }
+
+            cargo.Add(WorldItemFactory.Create(new WorldItemId($"{prefix}Cargo{cargo.Count}"), cargoItem, globals));
+        }
+
+        built = new BuiltArmy(grid, equipment) { Inventory = new WorldInventory(cargo.ToImmutable()) };
         error = null;
         return true;
     }
@@ -763,7 +776,10 @@ public sealed class AiBattleBench
         throw new InvalidOperationException("The host map has no tile outside a city.");
     }
 
-    private sealed record BuiltArmy(UnitGrid<WorldUnit> Units, LeaderEquipment Equipment);
+    private sealed record BuiltArmy(UnitGrid<WorldUnit> Units, LeaderEquipment Equipment)
+    {
+        public WorldInventory Inventory { get; init; } = WorldInventory.Empty;
+    }
 }
 
 // Fits = the item can go in that slot at all; MissingAbility = the leader ability it needs that the leader lacks.

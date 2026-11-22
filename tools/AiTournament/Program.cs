@@ -25,6 +25,11 @@ if (args.Length > 0 && args[0] == "--battle")
     return BattleMode.Run(args);
 }
 
+if (args.Length > 0 && args[0] == "--new-battle-ai")
+{
+    return BattleMode.NewBattleAi(args);
+}
+
 if (args.Length > 0 && args[0] == "--export-armies")
 {
     return BattleMode.ExportArmies(args);

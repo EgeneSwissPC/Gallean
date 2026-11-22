@@ -23,7 +23,15 @@ public static class AiBrainRegistry
         designedWorldBrains = [.. designs.Select(design => (IWorldAiBrain)new DesignedWorldAiBrain(design))];
     }
 
-    public static IReadOnlyList<AiBrainInfo> BattleBrains { get; } = [.. battleBrains.Select(brain => brain.Info)];
+    // Gallean Upgrade (battle AI designer): designed battle AIs, replaced as a whole when the files change.
+    private static volatile IBattleAiBrain[] designedBattleBrains = [];
+
+    public static IReadOnlyList<AiBrainInfo> BattleBrains => [.. battleBrains.Select(brain => brain.Info), .. designedBattleBrains.Select(brain => brain.Info)];
+
+    public static void SetDesignedBattleAis(IEnumerable<DesignedBattleAi> designs)
+    {
+        designedBattleBrains = [.. designs.Select(design => (IBattleAiBrain)new DesignedBattleAiBrain(design))];
+    }
 
     internal static IWorldAiBrain ResolveWorld(string? id)
     {
@@ -47,6 +55,12 @@ public static class AiBrainRegistry
         if (id is not null && testBattleBrains.TryGetValue(id, out IBattleAiBrain? testBrain))
         {
             return testBrain;
+        }
+
+        if (id is not null && id.StartsWith(DesignedBattleAi.IdPrefix, StringComparison.Ordinal))
+        {
+            // A designed battle AI that isn't installed here plays Classic.
+            return designedBattleBrains.FirstOrDefault(brain => brain.Info.Id == id) ?? ClassicBattleAiBrain.Instance;
         }
 
         return battleBrains.FirstOrDefault(brain => brain.Info.Id == id) ?? ClassicBattleAiBrain.Instance;

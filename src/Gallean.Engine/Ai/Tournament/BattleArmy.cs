@@ -22,4 +22,7 @@ public sealed record BattleArmy(string Name, ImmutableArray<BattleArmyUnit> Unit
     // Leader upgrades (unit modifier IDs from Gleaupg, e.g. "Leadership", "Banner bearer"), applied to the
     // leader like the ones the game grants on level-up.
     public ImmutableArray<UnitModifierDefinitionId> LeaderUpgrades { get; init; } = [];
+
+    // Items in the army's bag (no effect in battle; a designed battle AI can react to their value, "we carry").
+    public ImmutableArray<ItemDefinitionId> Cargo { get; init; } = [];
 }
