@@ -27,7 +27,8 @@
         "protectLeader": true,
         "neverFlee": false,
         "fleeBelowPercent": 50,
-        "canDefend": true
+        "canDefend": true,
+        "leaderDefendsBelowPercent": 50
       }
     },
     {
@@ -43,7 +44,8 @@
         "protectLeader": false,
         "neverFlee": false,
         "fleeBelowPercent": 25,
-        "canDefend": true
+        "canDefend": true,
+        "leaderDefendsBelowPercent": 0
       }
     }
   ]

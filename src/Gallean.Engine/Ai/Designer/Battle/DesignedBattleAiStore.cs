@@ -113,6 +113,7 @@ public sealed class DesignedBattleAiStore(string directory)
                 writer.WriteBoolean("neverFlee", tactics.NeverFlee);
                 writer.WriteNumber("fleeBelowPercent", tactics.FleeBelowPercent);
                 writer.WriteBoolean("canDefend", tactics.CanDefend);
+                writer.WriteNumber("leaderDefendsBelowPercent", tactics.LeaderDefendsBelowPercent);
                 writer.WriteEndObject();
                 writer.WriteEndObject();
             }
@@ -185,7 +186,8 @@ public sealed class DesignedBattleAiStore(string directory)
                 Flag("protectLeader", false),
                 Flag("neverFlee", false),
                 Number("fleeBelowPercent", 25),
-                Flag("canDefend", true));
+                Flag("canDefend", true),
+                Number("leaderDefendsBelowPercent", 0));
         }
 
         return new DesignedBattleStage(name, when.ToImmutable(), tactics);

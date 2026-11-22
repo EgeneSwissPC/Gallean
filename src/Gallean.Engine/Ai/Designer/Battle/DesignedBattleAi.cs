@@ -60,7 +60,8 @@ public sealed record DesignedBattleStage(string Name, ImmutableArray<ImmutableAr
 
 // What a stage does. Target preferences are bonuses in percent on Classic's score (0 = off; the designer turns
 // one on at 100). FleeBelowPercent = the leader thinks about fleeing below this share of the battle's power
-// (Classic 25); NeverFlee drops fleeing altogether.
+// (Classic 25); NeverFlee drops fleeing altogether. LeaderDefendsBelowPercent: the leader defends while below this
+// share of its hit points (0 = off).
 public sealed record DesignedBattleTactics(
     int HealersFirst = 0,
     int CastersFirst = 0,
@@ -71,7 +72,8 @@ public sealed record DesignedBattleTactics(
     bool ProtectLeader = false,
     bool NeverFlee = false,
     int FleeBelowPercent = 25,
-    bool CanDefend = true)
+    bool CanDefend = true,
+    int LeaderDefendsBelowPercent = 0)
 {
     public static DesignedBattleTactics Classic { get; } = new();
 
@@ -88,7 +90,8 @@ public sealed record DesignedBattleTactics(
             ProtectLeader = ProtectLeader,
             CanRetreat = !NeverFlee,
             RetreatPowerShare = Math.Clamp(FleeBelowPercent, 0, 100) * 10,
-            CanDefend = CanDefend
+            CanDefend = CanDefend,
+            LeaderDefendsBelowPercent = Math.Clamp(LeaderDefendsBelowPercent, 0, 100)
         };
     }
 
@@ -104,6 +107,7 @@ public sealed record DesignedBattleTactics(
             profile.ProtectLeader,
             !profile.CanRetreat,
             profile.RetreatPowerShare / 10,
-            profile.CanDefend);
+            profile.CanDefend,
+            profile.LeaderDefendsBelowPercent);
     }
 }

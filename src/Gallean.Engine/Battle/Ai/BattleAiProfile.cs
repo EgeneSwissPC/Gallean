@@ -23,9 +23,12 @@ internal sealed record BattleAiProfile
     public int WoundedFirst { get; init; }        // the active enemy with the fewest hit points left
     public int FocusFire { get; init; }           // the active enemy that has lost the largest share of its hit points
 
-    // Protect the leader: heals, cures and protections on the own leader count five times, and a leader below half
-    // its hit points defends.
+    // Protect the leader: heals, cures and protections on the own leader count five times.
     public bool ProtectLeader { get; init; }
+
+    // Hurt leader defends: the own leader defends while below this share of its hit points in percent (0 = off).
+    // The sandbox shows it costs a strong leader's attacks; meant for weak caster leaders.
+    public int LeaderDefendsBelowPercent { get; init; }
 
     public bool HasTargetPreferences => HealersFirst != 0 || CastersFirst != 0 || LeaderFirst != 0 || HardestHitterFirst != 0 || WoundedFirst != 0 || FocusFire != 0;
 }

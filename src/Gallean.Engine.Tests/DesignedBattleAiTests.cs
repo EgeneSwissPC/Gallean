@@ -129,21 +129,22 @@ public sealed class DesignedBattleAiTests
     }
 
     [Test]
-    public void ProtectLeaderDefendsWhenHurtTest()
+    public void HurtLeaderDefendsTest()
     {
         UnitDefinition leader = Strong("lead") with { Category = UnitCategory.Leader, LeaderCategory = UnitLeaderCategory.Fighter, Leadership = 2 };
         BattleEngine engine = Battle(leader, 60, new Defender(Unit("foe", 100), 100, GridPosition.FrontBottom));
 
         string id = "custom-battle:protect";
         AiBrainRegistry.SetDesignedBattleAis([
-            new DesignedBattleAi(id, "Protect", [DesignedBattleStage.Classic with { Tactics = DesignedBattleTactics.Classic with { ProtectLeader = true, NeverFlee = true } }]),
-            new DesignedBattleAi("custom-battle:plain", "Plain", [DesignedBattleStage.Classic with { Tactics = DesignedBattleTactics.Classic with { NeverFlee = true } }])
+            new DesignedBattleAi(id, "Defends", [DesignedBattleStage.Classic with { Tactics = DesignedBattleTactics.Classic with { LeaderDefendsBelowPercent = 50, NeverFlee = true } }]),
+            new DesignedBattleAi("custom-battle:plain", "Plain", [DesignedBattleStage.Classic with { Tactics = DesignedBattleTactics.Classic with { ProtectLeader = true, LeaderDefendsBelowPercent = 25, NeverFlee = true } }])
         ]);
 
         IReadOnlyList<BattleEvent> plain = engine.DispatchCommand(new BattleAiActionCommand(false) { BrainId = "custom-battle:plain" }, dryRun: true).Events;
         IReadOnlyList<BattleEvent> protect = engine.DispatchCommand(new BattleAiActionCommand(false) { BrainId = id }, dryRun: true).Events;
 
-        Assert.That(plain.OfType<BattleUnitAttackEvent>(), Is.Not.Empty, "control: a hurt leader attacks");
+        // The leader is at 60 of 200 = 30 %: defends below 50 %, attacks with 25 % (or with "protect" alone).
+        Assert.That(plain.OfType<BattleUnitAttackEvent>(), Is.Not.Empty, "control: a leader above the threshold attacks");
         Assert.That(protect, Does.Contain(new BattleUnitDefendedEvent(Attacker)));
     }
 
@@ -352,7 +353,7 @@ public sealed class DesignedBattleAiTests
                     [[new DesignedBattleCondition.CargoAbove(1000, true), new DesignedBattleCondition.PowerShareBelow(50)], [new DesignedBattleCondition.CarriesQuestItem()]],
                     DesignedBattleTactics.Classic with { ProtectLeader = true, FleeBelowPercent = 60 }),
                 new DesignedBattleStage("Late", [[new DesignedBattleCondition.FromRound(3), new DesignedBattleCondition.LeaderHitpointsBelow(40), new DesignedBattleCondition.PowerShareAbove(65)]],
-                    DesignedBattleTactics.Classic with { WoundedFirst = 100, FocusFire = 50, NeverFlee = true, CanDefend = false }),
+                    DesignedBattleTactics.Classic with { WoundedFirst = 100, FocusFire = 50, NeverFlee = true, CanDefend = false, LeaderDefendsBelowPercent = 35 }),
                 DesignedBattleStage.Classic with { Tactics = DesignedBattleTactics.Classic with { HealersFirst = 100, CastersFirst = 100, LeaderFirst = 100, HardestHitterFirst = 100 } }
             ]);
             DesignedBattleAiStore store = new(directory);
