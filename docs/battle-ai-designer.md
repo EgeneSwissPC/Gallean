@@ -585,3 +585,17 @@ opens the new AI in the designer; Edit enabled.
 Tests `BattleAiDesignerTests` (4), `BattleAisTabTest` updated, visual `BattleAiDesignerTest` (EN edited + RU),
 mutation caught, suite 5433 (LanguageSwitchTest flaky, passes on rerun), AOT client: list -> Edit -> add block ->
 Test -> sandbox with the AI selected -> Back -> designer with the unsaved block.
+
+## Phase 10 done (2026-11-22) — battle AI designer complete
+
+Battle screen: a battle AI picker (ComboBox, 150 px) left of Auto-play when the player has a side (hidden in the
+sandbox's Watch). `BattleScreenViewModel.PlayerAis` / `SelectedPlayerAi` (Classic by default, per battle, not saved);
+`GetBattleAiId` returns it for the player's side, so Auto-play and Instant resolve (also after Heal and defend's
+instant resolve) use it. Heal and defend / Refuse to flee keep their own rules.
+Tests `BattlePlayerAiTests` (5: picker; Auto-play and Instant resolve, each with a Classic control that flees and a
+"never flee" pick that doesn't), mutation caught by 2, visual `BattleTest` + new `BattleRussianTest` (top bar fits
+at 1366x768), suite 5438, AOT client: 5th Column, leader attacks Doraven, picker lists Classic/Cautious/Ruthless/
+Careful courier, Auto-play with Careful courier plays on.
+Pitfall: opening a second BattleScreenViewModel on the same battle in one visual test hangs; use a separate test.
+
+Phases 7-10 complete. Still open (not designed): battle items in AI battles (BG), map AI weighing cargo (BH c).
