@@ -129,7 +129,7 @@
                     VerticalAlignment="Center">
       <Grid RowDefinitions="Auto,*,Auto" Margin="20,12" Width="1240" Height="660">
         <DockPanel Grid.Row="0" Margin="0,0,0,8">
-          <local:OutlinedTextBlock DockPanel.Dock="Left" Text="{local:Text 'AI designer'}" Classes="object-name title" VerticalAlignment="Center" Margin="0,0,16,0" />
+          <local:OutlinedTextBlock DockPanel.Dock="Left" Text="{Binding Title}" Classes="object-name title" VerticalAlignment="Center" Margin="0,0,16,0" />
           <TextBlock DockPanel.Dock="Left" Text="{local:Text 'Name'}" Classes="body" VerticalAlignment="Center" Margin="0,0,8,0" />
           <TextBox x:Name="NameBox" DockPanel.Dock="Left" Text="{Binding Name}" MaxLength="{Binding NameLength}" Width="300" VerticalAlignment="Center" />
           <TextBlock Text="{Binding StatusText}" Classes="body" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" HorizontalAlignment="Right" />
@@ -212,16 +212,18 @@
                                   ToolTip.Tip="{local:Text 'Another set of conditions: the stage plays when all blocks of any one set hold.'}" Command="{Binding AddGroupCommand}" />
                         </StackPanel>
 
-                        <TextBlock Text="{local:Text 'Economy (top row first)'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
-                        <ContentControl Content="{Binding Economy}" ContentTemplate="{StaticResource SlotTemplate}" />
+                        <StackPanel IsVisible="{Binding ShowSlots}" Spacing="2">
+                          <TextBlock Text="{local:Text 'Economy (top row first)'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
+                          <ContentControl Content="{Binding Economy}" ContentTemplate="{StaticResource SlotTemplate}" />
 
-                        <TextBlock Text="{local:Text 'Armies (top row first)'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
-                        <ContentControl Content="{Binding Army}" ContentTemplate="{StaticResource SlotTemplate}" />
+                          <TextBlock Text="{local:Text 'Armies (top row first)'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
+                          <ContentControl Content="{Binding Army}" ContentTemplate="{StaticResource SlotTemplate}" />
+                        </StackPanel>
 
-                        <TextBlock Text="{local:Text 'Rules and tuning'}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding RulesTitle}" Classes="caption" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,4,0,0" />
                         <Border Classes="slot" Tag="rules" Margin="18,2,0,2">
                           <Panel>
-                            <TextBlock Text="{local:Text 'Drop rule blocks here; without them the stage plays by the Classic values'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" IsHitTestVisible="False"
+                            <TextBlock Text="{Binding RulesHint}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" VerticalAlignment="Center" IsHitTestVisible="False"
                                        IsVisible="{Binding HasNoRules}" />
                             <ItemsControl ItemsSource="{Binding Rules}" ItemTemplate="{StaticResource BlockTemplate}" />
                           </Panel>
@@ -245,6 +247,14 @@
 
               <!-- Test: quick AI-only games of this AI (as it is on screen) against another one. -->
               <local:OutlinedTextBlock Text="{local:Text 'Test'}" Classes="h5" Foreground="{StaticResource ScenarioSelectAccentBrush}" Margin="0,12,0,0" />
+
+              <!-- Gallean Upgrade (battle AI designer): battle AIs are tested in the battle sandbox. -->
+              <StackPanel IsVisible="{Binding IsBattle}" Spacing="8">
+                <TextBlock Text="{local:Text 'Opens the battle sandbox with this AI, as it is now, on the attacker side. Build or load two armies, then Run or Watch. Back returns here.'}" Classes="body" TextWrapping="Wrap" />
+                <Button x:Name="TestInSandboxButton" Classes="pill primary" Height="28" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{local:Text 'Test in the battle sandbox'}" Command="{Binding TestInSandboxCommand}" />
+              </StackPanel>
+
+              <StackPanel IsVisible="{Binding IsMap}" Spacing="8">
               <TextBlock Text="{local:Text 'Map'}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
               <ComboBox x:Name="TestMapBox" HorizontalAlignment="Stretch" ItemsSource="{Binding TestMaps}" SelectedItem="{Binding TestMap}" IsEnabled="{Binding !IsTesting}">
                 <ComboBox.ItemTemplate>
@@ -279,6 +289,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
+              </StackPanel>
             </StackPanel>
           </ScrollViewer>
         </Grid>

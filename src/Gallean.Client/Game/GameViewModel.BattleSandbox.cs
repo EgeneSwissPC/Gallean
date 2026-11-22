@@ -7,7 +7,19 @@ namespace Gallean.Client;
 internal sealed partial class GameViewModel
 {
     [RelayCommand]
-    private async Task ShowBattleSandboxAsync()
+    private Task ShowBattleSandboxAsync()
+    {
+        return OpenBattleSandboxAsync(returnTo: null, testAiId: null);
+    }
+
+    // Gallean Upgrade (battle AI designer phase 9): the designer's Test button. The sandbox opens with the AI
+    // under test on the attacker side and closes back to returnTo.
+    public Task OpenBattleSandboxAsync(AbstractScreenViewModel? returnTo, string? testAiId)
+    {
+        return OpenBattleSandboxCoreAsync(returnTo, testAiId);
+    }
+
+    private async Task OpenBattleSandboxCoreAsync(AbstractScreenViewModel? returnTo, string? testAiId)
     {
         CustomMapStore? store = gameLoader.CreateMapStore();
 
@@ -30,12 +42,22 @@ internal sealed partial class GameViewModel
                 return (CreateEditorGame(store, host, definitions), MapEditorLibrary.Load(store, definitions), gameLoader.CreateBattleBench());
             });
 
-            ShowScreen(new BattleSandboxScreenViewModel(this, editorGame, library, bench, new BattleArmyStore(BattleSandboxScreenViewModel.ArmiesDirectory)));
+            BattleSandboxScreenViewModel sandbox = new(this, editorGame, library, bench, new BattleArmyStore(BattleSandboxScreenViewModel.ArmiesDirectory)) { ReturnTo = returnTo };
+            sandbox.SelectTestAi(testAiId);
+            ShowScreen(sandbox);
         }
         catch (Exception ex)
         {
             log.Error("Failed to open the battle sandbox.", ex);
-            ShowMainMenuCommand.Execute(null);
+            if (returnTo is null)
+            {
+                ShowMainMenuCommand.Execute(null);
+            }
+            else
+            {
+                ShowScreen(returnTo);
+            }
+
             ShowError(Tr("Failed to open the battle sandbox: {0}", ex.Message));
         }
     }

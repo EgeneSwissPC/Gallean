@@ -194,8 +194,27 @@ internal sealed partial class BattleSandboxScreenViewModel : MapEditorUnitsScree
             : new AssetSpriteKey.LordFace(race, 0, IsLarge: false);
     }
 
+    // Gallean Upgrade (battle AI designer): opened from the designer's Test button, the sandbox closes back to it.
+    public AbstractScreenViewModel? ReturnTo { get; init; }
+
+    // The designer's AI under test plays the attacker side.
+    public void SelectTestAi(string? aiId)
+    {
+        if (aiId is not null && Attacker.Ais.FirstOrDefault(option => option.Value == aiId) is { } option)
+        {
+            Attacker.SelectedAi = option;
+        }
+    }
+
     protected override bool TryClose()
     {
+        if (ReturnTo is not null)
+        {
+            Game.ShowScreen(ReturnTo);
+
+            return true;
+        }
+
         Game.ShowMainMenuCommand.Execute(null);
 
         return true;

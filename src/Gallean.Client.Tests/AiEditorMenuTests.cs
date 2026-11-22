@@ -101,7 +101,13 @@ public sealed class AiEditorMenuTests
         AiEditorItem bold = menu.Ais.Single();
         Assert.That((bold.Id, bold.Name), Is.EqualTo(("custom-battle:bold", "Bold")));
         Assert.That(File.Exists(Path.Combine(DesignedBattleAiLibrary.Directory, "bold.json")), Is.True);
-        Assert.That(menu.EditCommand.CanExecute(null), Is.False, "the battle designer screen comes in phase 9");
+        // A new battle AI opens straight in the battle designer; Back returns to the battle tab.
+        AiDesignerScreenViewModel designer = Assert.IsOfType<AiDesignerScreenViewModel>(game.RootScreen);
+        Assert.That(designer.IsBattle, Is.True);
+        designer.BackCommand.Execute(null);
+        menu = Assert.IsOfType<AiEditorMenuScreenViewModel>(game.RootScreen);
+        Assert.That(menu.IsBattle, Is.True);
+        Assert.That(menu.EditCommand.CanExecute(null), Is.True);
 
         // A copy of Ruthless keeps its knobs, and it is a real battle AI everywhere.
         DesignedBattleAi saved = DesignedBattleAiLibrary.Store.LoadAll().Single();
