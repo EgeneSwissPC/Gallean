@@ -1697,6 +1697,8 @@
     "{0} stopped with {1} move points left.": "{0}: остановился, осталось очков движения: {1}.",
     "An army with an order needs you": "Армия с приказом ждёт вашего решения",
     "{0} armies with orders need you": "Армий с приказом ждут вашего решения: {0}",
-    "End the turn again to continue.": "Закончите ход ещё раз, чтобы продолжить."
+    "End the turn again to continue.": "Закончите ход ещё раз, чтобы продолжить.",
+    "{0}: the path leads into battle with {1:*}.": "{0}: путь приведёт к битве с противником {1:*}.",
+    "Plan another path": "Проложить другой путь"
   }
 }

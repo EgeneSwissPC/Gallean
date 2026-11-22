@@ -1,5 +1,6 @@
 using Avalonia.Headless.NUnit;
 using Gallean.Common;
+using Gallean.Configuration;
 using Gallean.Engine;
 using Gallean.Tests.Common;
 
@@ -66,6 +67,47 @@ public sealed partial class VisualTests
         await SkipFramesAsync(30);
 
         await CaptureAsync(window, "2-unselected");
+    }
+
+    // Phase 3: the order prompt during End turn, in English and Russian.
+    [AvaloniaTest]
+    public async Task WorldMoveOrderPromptTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        GameModel gameModel = LoadScenario(null);
+
+        (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
+
+        await gameModel.World.DispatchCommandAsync(new WorldStartGameCommand());
+        WorldScreenViewModel viewModel = new(gameModel, gameViewModel, new RandomProvider(0));
+        gameViewModel.ShowScreen(viewModel);
+
+        await WaitForWorldAsync(window);
+
+        WorldStack hero = Assert.NotNull(WorldPlan.For(gameModel.Snapshot.WorldState).GetStackAt(new WorldPosition(10, 14)));
+        (WorldUnit leader, GridPosition _, UnitDefinition _) = hero.GetLeader(gameModel.Definitions);
+        AssetSpriteKey.UnitEventPortrait portrait = new(ScenarioEventPortraitId.Unit(leader.DefinitionId));
+
+        MoveOrderPromptViewModel prompt = new(portrait, "Pegasus Knight", "Orc Warband", isTargetKnown: true);
+        gameViewModel.OpenScreen(prompt);
+        await SkipFramesAsync(30);
+
+        await CaptureAsync(window, "1-english");
+
+        prompt.CloseCommand.Execute(null);
+
+        SettingsScreenViewModel settings = new(gameViewModel);
+        settings.Language = Language.Russian;
+
+        MoveOrderPromptViewModel russian = new(portrait, "Рыцарь на пегасе", "Отряд орков", isTargetKnown: true);
+        gameViewModel.OpenScreen(russian);
+        await SkipFramesAsync(30);
+
+        await CaptureAsync(window, "2-russian");
+
+        russian.CloseCommand.Execute(null);
+        settings.Language = Language.English;
     }
 
     // A revealed tile the hero reaches in two or three turns without any encounter on the way.

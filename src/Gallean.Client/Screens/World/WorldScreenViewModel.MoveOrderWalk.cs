@@ -1,25 +1,38 @@
+using System.Diagnostics.CodeAnalysis;
 using Gallean.Engine;
 
 namespace Gallean.Client;
 
-// Gallean Upgrade: move orders, phase 2 (docs/move-orders.md). On End turn the armies with an order
-// walk one by one in bar order before the turn ends. A walk never starts a battle or acts as a thief
-// on its own: it stops one step before. A bag on the way is picked up (the game shows its treasure
-// popup) and the walk goes on (decision H). Armies that stop with move points left
-// (something in the way, arrived early, reached a site, still blocked after the retry pass) keep
-// the turn open and are reported once; the next End turn ends the turn.
+// Gallean Upgrade: move orders, phases 2-3 (docs/move-orders.md). On End turn the armies with an
+// order walk one by one in bar order before the turn ends.
+// - Before anyone walks, every order that would fight this turn is asked about, army by army in
+//   bar order (Attack / Plan another path / Cancel order). Plan another path keeps the turn open.
+// - A walk never starts a battle the player didn't accept and never acts as a thief on its own:
+//   it stops one step before. A bag is picked up and the walk goes on.
+// - After the walks, in bar order: armies stopped before a battle nobody saw coming (fog,
+//   interception) are asked the same way; a thief next to its target opens the thief window; an
+//   army that reached a site opens it.
+// - Armies that end with move points left keep the turn open once (one alert lists them); the
+//   next End turn ends the turn.
 internal sealed partial class WorldScreenViewModel
 {
-    private enum OrderWalkResult
+    private enum OrderStop
     {
+        None,
         Skipped,
-        Walked,
-        Blocked
+        Blocked,
+        Battle,
+        Thief,
+        Site,
+        MovesLeft,
+        Other
     }
 
     private sealed record OrderAttention(WorldStackId StackId, string Text);
 
     private readonly HashSet<WorldStackId> reportedOrders = [];
+    private readonly HashSet<WorldStackId> acceptedAttacks = [];
+    private readonly List<WorldStackId> cancelledOrders = [];
     private WorldTurnInfo? reportedOrdersTurn;
     private TaskCompletionSource? idleWaiter;
     private bool isAutoWalking;
@@ -33,6 +46,7 @@ internal sealed partial class WorldScreenViewModel
         {
             reportedOrdersTurn = WorldState.TurnInfo;
             reportedOrders.Clear();
+            acceptedAttacks.Clear();
         }
 
         List<WorldStackId> ordered = [.. StackItems.Where(item => item.HasMoveOrder).Select(item => item.StackId)];
@@ -44,24 +58,60 @@ internal sealed partial class WorldScreenViewModel
 
         List<OrderAttention> attention = [];
 
+        cancelledOrders.Clear();
         SetAutoWalking(true);
 
         try
         {
+            // 1. Planned attacks.
+            foreach (WorldStackId stackId in ordered)
+            {
+                if (CanWalk(stackId, out WorldStack? stack) &&
+                    !acceptedAttacks.Contains(stackId) &&
+                    FindOrderBattle(stack) is { } target &&
+                    !await AskAboutAttackAsync(stack, target))
+                {
+                    return false;
+                }
+            }
+
+            // 2. The walks, then the retry pass for armies blocked by our own armies.
+            Dictionary<WorldStackId, OrderStop> stops = [];
             List<WorldStackId> blocked = [];
 
             foreach (WorldStackId stackId in ordered)
             {
-                if (await WalkMoveOrderAsync(stackId, attention, isRetry: false) == OrderWalkResult.Blocked)
+                OrderStop stop = await WalkMoveOrderAsync(stackId);
+
+                if (stop == OrderStop.Blocked)
                 {
                     blocked.Add(stackId);
                 }
+
+                stops[stackId] = stop;
             }
 
-            // Retry pass: an army blocked by one of our own armies gets through once that one has walked.
             foreach (WorldStackId stackId in blocked)
             {
-                await WalkMoveOrderAsync(stackId, attention, isRetry: true);
+                stops[stackId] = await WalkMoveOrderAsync(stackId);
+            }
+
+            // 3. What needs the player, in bar order.
+            foreach (WorldStackId stackId in ordered)
+            {
+                if (!await HandleOrderStopAsync(stackId, stops[stackId], attention))
+                {
+                    return false;
+                }
+            }
+
+            // Orders cancelled in a prompt leave armies standing with move points: they count too.
+            foreach (WorldStackId stackId in cancelledOrders)
+            {
+                if (WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) && stack.MovementPoints > 0 && !reportedOrders.Contains(stackId))
+                {
+                    AddOrderAttention(attention, stack, Tr("{0} stopped with {1} move points left.", ResolveLeaderName(stack), stack.MovementPoints));
+                }
             }
         }
         finally
@@ -79,25 +129,29 @@ internal sealed partial class WorldScreenViewModel
         return false;
     }
 
-    private async Task<OrderWalkResult> WalkMoveOrderAsync(WorldStackId stackId, List<OrderAttention> attention, bool isRetry)
+    private bool CanWalk(WorldStackId stackId, [NotNullWhen(true)] out WorldStack? stack)
     {
-        if (!WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) ||
-            stack.OwnerId != ViewPlayerId ||
-            !HasMoveOrder(stack) ||
-            stack.MovementPoints <= 0 ||
-            IsFinished(stack) ||
-            reportedOrders.Contains(stackId))
+        return WorldState.Stacks.TryGetValue(stackId, out stack) &&
+               stack.OwnerId == ViewPlayerId &&
+               HasMoveOrder(stack) &&
+               stack.MovementPoints > 0 &&
+               !IsFinished(stack) &&
+               !reportedOrders.Contains(stackId);
+    }
+
+    private async Task<OrderStop> WalkMoveOrderAsync(WorldStackId stackId)
+    {
+        if (!CanWalk(stackId, out _))
         {
-            return OrderWalkResult.Skipped;
+            return OrderStop.Skipped;
         }
 
         WorldPosition destination = stackDestinations[stackId];
+        bool guarded = !acceptedAttacks.Contains(stackId);
 
-        if (IsAutoWalkBlocked(stackId, destination))
+        if (guarded && FindAutoWalkStop(stackId, destination) is { } before)
         {
-            AddOrderAttention(attention, stack, Tr("{0} stopped: something is in its way.", ResolveLeaderName(stack)));
-
-            return OrderWalkResult.Skipped;
+            return before;
         }
 
         ICommandResult<WorldCommandError, WorldEvent, Common.Empty> check =
@@ -105,18 +159,8 @@ internal sealed partial class WorldScreenViewModel
 
         if (check.Failed)
         {
-            if (check.Error.Value == WorldCommandError.InsufficientMovement)
-            {
-                // Not enough move points left for the next step: it walks on next turn.
-                return OrderWalkResult.Skipped;
-            }
-
-            if (isRetry)
-            {
-                AddOrderAttention(attention, stack, Tr("{0} could not continue its path.", ResolveLeaderName(stack)));
-            }
-
-            return OrderWalkResult.Blocked;
+            // Not enough move points left for the next step: it walks on next turn.
+            return check.Error.Value == WorldCommandError.InsufficientMovement ? OrderStop.Skipped : OrderStop.Blocked;
         }
 
         await WaitForIdleAsync();
@@ -130,64 +174,228 @@ internal sealed partial class WorldScreenViewModel
         {
             int bags = WorldState.Bags.Count;
 
-            arrived = await AutoWalkStackAsync(stackId, destination);
+            arrived = await AutoWalkStackAsync(stackId, destination, guarded);
 
             await WaitForIdleAsync();
 
             if (!WorldState.Stacks.TryGetValue(stackId, out after))
             {
-                return OrderWalkResult.Walked;
+                return OrderStop.None;
             }
 
             if (arrived || after.MovementPoints <= 0 || WorldState.Bags.Count >= bags ||
-                IsAutoWalkBlocked(stackId, destination) ||
+                FindAutoWalkStop(stackId, destination) is not null ||
                 GameModel.World.DryRunCommand(new WorldStepStackCommand(stackId, destination)).Failed)
             {
                 break;
             }
         }
 
-        if (after is null)
+        if (after is null || after.OwnerId != ViewPlayerId)
         {
-            return OrderWalkResult.Walked;
+            return OrderStop.None;
         }
-
-        string name = ResolveLeaderName(after);
 
         if (arrived)
         {
-            WorldSite? site = WorldPlan.For(WorldState).GetSiteAt(destination);
+            if (WorldPlan.For(WorldState).GetSiteAt(destination) is not null)
+            {
+                return OrderStop.Site;
+            }
 
-            if (site is not null)
-            {
-                AddOrderAttention(attention, after, Tr("{0} reached {1}.", name, GameModel.Texts.GetScenarioText(site.TitleTextId)));
-            }
-            else if (after.MovementPoints > 0)
-            {
-                AddOrderAttention(attention, after, Tr("{0} arrived with {1} move points left.", name, after.MovementPoints));
-            }
+            return after.MovementPoints > 0 ? OrderStop.MovesLeft : OrderStop.None;
         }
-        else if (after.MovementPoints > 0)
+
+        if (after.MovementPoints <= 0 || !HasMoveOrder(after))
         {
-            ICommandResult<WorldCommandError, WorldEvent, Common.Empty> next =
-                GameModel.World.DryRunCommand(new WorldStepStackCommand(stackId, destination));
-
-            if (IsAutoWalkBlocked(stackId, destination))
-            {
-                AddOrderAttention(attention, after, Tr("{0} stopped: something is in its way.", name));
-            }
-            else if (!next.Failed || next.Error.Value != WorldCommandError.InsufficientMovement)
-            {
-                // Stopped by something else (a scenario event, a blocked tile) with move points left.
-                AddOrderAttention(attention, after, Tr("{0} stopped with {1} move points left.", name, after.MovementPoints));
-            }
+            return OrderStop.None;
         }
 
-        return OrderWalkResult.Walked;
+        if (FindAutoWalkStop(stackId, destination) is { } stop)
+        {
+            return guarded ? stop : OrderStop.Other;
+        }
+
+        ICommandResult<WorldCommandError, WorldEvent, Common.Empty> next =
+            GameModel.World.DryRunCommand(new WorldStepStackCommand(stackId, destination));
+
+        // Stopped by something else (a scenario event, a blocked tile) with move points left.
+        return !next.Failed || next.Error.Value != WorldCommandError.InsufficientMovement ? OrderStop.Other : OrderStop.None;
     }
 
-    // Like MoveStackAsync, but quiet on errors and guarded on every step (see StepMoveAsync).
-    private async Task<bool> AutoWalkStackAsync(WorldStackId stackId, WorldPosition destination)
+    // Returns false when the turn has to stay open right away (the player plans another path).
+    private async Task<bool> HandleOrderStopAsync(WorldStackId stackId, OrderStop stop, List<OrderAttention> attention)
+    {
+        if (!WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) ||
+            stack.OwnerId != ViewPlayerId ||
+            reportedOrders.Contains(stackId))
+        {
+            return true;
+        }
+
+        string name = ResolveLeaderName(stack);
+
+        switch (stop)
+        {
+            case OrderStop.Battle:
+            {
+                if (FindOrderBattle(stack) is not { } target)
+                {
+                    AddOrderAttention(attention, stack, Tr("{0} stopped: something is in its way.", name));
+
+                    return true;
+                }
+
+                if (!await AskAboutAttackAsync(stack, target))
+                {
+                    return false;
+                }
+
+                if (acceptedAttacks.Contains(stackId))
+                {
+                    reportedOrders.Add(stackId);
+                    await WalkAcceptedAsync(stackId);
+                }
+
+                return true;
+            }
+
+            case OrderStop.Thief:
+            {
+                reportedOrders.Add(stackId);
+
+                if (BuildPathSelection(stack, stackDestinations[stackId])?.Encounter is WorldPathEncounter.Thief thief)
+                {
+                    FocusStack(stack);
+                    EnqueueEntry(new WorldEventQueue.Entry.ThiefAction(WorldState, stackId, thief.TargetPosition));
+                    await WaitForIdleAsync();
+                }
+
+                return true;
+            }
+
+            case OrderStop.Site:
+            {
+                reportedOrders.Add(stackId);
+
+                if (WorldPlan.For(WorldState).GetSiteAt(stack.Position) is { } site)
+                {
+                    FocusStack(stack);
+                    EnqueueEntry(new WorldEventQueue.Entry.SiteEnter(WorldState, stackId, site.Id));
+                    await WaitForIdleAsync();
+
+                    if (WorldState.Stacks.TryGetValue(stackId, out WorldStack? after) && after.MovementPoints > 0)
+                    {
+                        AddOrderAttention(attention, after, Tr("{0} reached {1}.", name, GameModel.Texts.GetScenarioText(site.TitleTextId)));
+                    }
+                }
+
+                return true;
+            }
+
+            case OrderStop.MovesLeft:
+                AddOrderAttention(attention, stack, Tr("{0} arrived with {1} move points left.", name, stack.MovementPoints));
+
+                return true;
+
+            case OrderStop.Blocked:
+                AddOrderAttention(attention, stack, Tr("{0} could not continue its path.", name));
+
+                return true;
+
+            case OrderStop.Other:
+                AddOrderAttention(attention, stack, Tr("{0} stopped with {1} move points left.", name, stack.MovementPoints));
+
+                return true;
+
+            default:
+                return true;
+        }
+    }
+
+    // Asks Attack / Plan another path / Cancel order. Returns false for Plan another path.
+    private async Task<bool> AskAboutAttackAsync(WorldStack stack, WorldPosition target)
+    {
+        FocusStack(stack);
+
+        (AssetSpriteKey.UnitEventPortrait? portrait, string targetName, bool isKnown) = ResolveOrderTarget(target);
+        MoveOrderPromptViewModel prompt = new(portrait, ResolveLeaderName(stack), targetName, isKnown);
+
+        Game.OpenScreen(prompt);
+
+        switch (await prompt.Choice)
+        {
+            case MoveOrderPromptChoice.Attack:
+                acceptedAttacks.Add(stack.Id);
+
+                return true;
+
+            case MoveOrderPromptChoice.CancelOrder:
+                SetSelectedPath(stack, null);
+                cancelledOrders.Add(stack.Id);
+
+                return true;
+
+            default:
+                reportedOrders.Remove(stack.Id);
+
+                // Re-plan mode right away: the path follows the mouse, the next click sets it.
+                if (Game.Settings.ShowPathOnHover && HasMoveOrder(stack))
+                {
+                    replanStackId = stack.Id;
+                    hoverPathKey = null;
+                    hoverPath = null;
+                    RefreshRenderRequest();
+                }
+
+                return false;
+        }
+    }
+
+    private async Task WalkAcceptedAsync(WorldStackId stackId)
+    {
+        if (WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) && HasMoveOrder(stack) && stack.MovementPoints > 0)
+        {
+            SelectStack(stackId);
+            await AutoWalkStackAsync(stackId, stackDestinations[stackId], guarded: false);
+            await WaitForIdleAsync();
+        }
+    }
+
+    // The battle this order runs into this turn, if any (WorldGetPathCommand only reports battles
+    // the army can reach with the move points it has).
+    private WorldPosition? FindOrderBattle(WorldStack stack)
+    {
+        return BuildPathSelection(stack, stackDestinations[stack.Id])?.Encounter is WorldPathEncounter.Battle battle
+            ? battle.TargetPosition
+            : null;
+    }
+
+    // Same portrait and name as the game's own attack prompt (CreateAttackPrompt).
+    private (AssetSpriteKey.UnitEventPortrait? Portrait, string Name, bool IsKnown) ResolveOrderTarget(WorldPosition position)
+    {
+        WorldPlan plan = WorldPlan.For(WorldState);
+        WorldVisibility visibility = WorldVisibility.Create(WorldState, ViewPlayerId, FogEnabled);
+
+        if (visibility.GetStackAt(plan, position, ViewPlayerId) is { } enemy)
+        {
+            (WorldUnit leader, GridPosition _, UnitDefinition _) = enemy.GetLeader(GameModel.Definitions);
+
+            return (new AssetSpriteKey.UnitEventPortrait(ScenarioEventPortraitId.Unit(leader.DefinitionId)),
+                    UnitNameResolver.Resolve(leader, GameModel.Definitions, GameModel.Texts),
+                    true);
+        }
+
+        if (visibility.GetFortificationAt(plan, position) is { } fortification)
+        {
+            return (null, GameModel.Texts.GetScenarioText(fortification.NameTextId), true);
+        }
+
+        return (null, Tr("an unknown enemy"), false);
+    }
+
+    // Like MoveStackAsync, but quiet on errors and, when guarded, checked before every step (see StepMoveAsync).
+    private async Task<bool> AutoWalkStackAsync(WorldStackId stackId, WorldPosition destination, bool guarded)
     {
         WorldCommandResult commandResult = await GameModel.World.DispatchCommandAsync(new WorldStepStackCommand(stackId, destination));
 
@@ -196,26 +404,32 @@ internal sealed partial class WorldScreenViewModel
             return false;
         }
 
-        ActiveMove move = new(stackId, destination, new TaskCompletionSource<bool>(), Guarded: true);
+        ActiveMove move = new(stackId, destination, new TaskCompletionSource<bool>(), Guarded: guarded);
         activeMove = move;
         FinishMoveStep(move, commandResult);
 
         return await move.Completion.Task;
     }
 
-    // True when the next step towards the destination would start a battle, or the thief already
-    // stands next to its target: the engine resolves an encounter at the end of the approach.
-    private bool IsAutoWalkBlocked(WorldStackId stackId, WorldPosition destination)
+    // What stops a guarded walk before its next step: a battle (an army, a city, an interception:
+    // the engine resolves an encounter at the end of the approach), or a thief already next to its
+    // target. Null when the next step is safe.
+    private OrderStop? FindAutoWalkStop(WorldStackId stackId, WorldPosition destination)
     {
         WorldStack stack = WorldState.Stacks[stackId];
         WorldPathSelection? path = BuildPathSelection(stack, destination);
 
         return path?.Encounter switch
         {
-            WorldPathEncounter.Battle => path.Path.Segments.Length <= 1,
-            WorldPathEncounter.Thief => path.Path.Segments.IsEmpty,
-            _ => false
+            WorldPathEncounter.Battle when path.Path.Segments.Length <= 1 => OrderStop.Battle,
+            WorldPathEncounter.Thief when path.Path.Segments.IsEmpty => OrderStop.Thief,
+            _ => null
         };
+    }
+
+    private bool IsAutoWalkBlocked(WorldStackId stackId, WorldPosition destination)
+    {
+        return FindAutoWalkStop(stackId, destination) is not null;
     }
 
     private void AddOrderAttention(List<OrderAttention> attention, WorldStack stack, string text)
@@ -261,7 +475,7 @@ internal sealed partial class WorldScreenViewModel
 
     private Task WaitForIdleAsync()
     {
-        if (eventQueue.IsIdle && activeMove is null)
+        if (eventQueue.IsIdle && activeMove is null && IsActive)
         {
             return Task.CompletedTask;
         }
@@ -273,7 +487,7 @@ internal sealed partial class WorldScreenViewModel
 
     private void SignalIdle()
     {
-        if (idleWaiter is not null && eventQueue.IsIdle && activeMove is null)
+        if (idleWaiter is not null && eventQueue.IsIdle && activeMove is null && IsActive)
         {
             TaskCompletionSource waiter = idleWaiter;
             idleWaiter = null;
@@ -281,8 +495,10 @@ internal sealed partial class WorldScreenViewModel
         }
     }
 
+    // A new or changed order is asked about and reported again.
     private void ForgetOrderReport(WorldStackId stackId)
     {
         reportedOrders.Remove(stackId);
+        acceptedAttacks.Remove(stackId);
     }
 }

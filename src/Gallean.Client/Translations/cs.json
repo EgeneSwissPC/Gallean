@@ -1697,6 +1697,8 @@
     "{0} stopped with {1} move points left.": "{0} stopped with {1} move points left.",
     "An army with an order needs you": "An army with an order needs you",
     "{0} armies with orders need you": "{0} armies with orders need you",
-    "End the turn again to continue.": "End the turn again to continue."
+    "End the turn again to continue.": "End the turn again to continue.",
+    "{0}: the path leads into battle with {1:*}.": "{0}: the path leads into battle with {1:*}.",
+    "Plan another path": "Plan another path"
   }
 }
