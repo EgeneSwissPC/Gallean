@@ -1617,6 +1617,44 @@ public sealed class CustomMapTests
         Assert.That(left, Is.EqualTo(leaves));
     }
 
+    // Gallean Upgrade, overflow spending phase 3b: with 9999 gold Classic+ upgrades its cities (one level per city
+    // per turn); Classic never upgrades cities.
+    [TestCase(AiBrainRegistry.ClassicId, 1)]
+    [TestCase(AiPersonalities.ClassicPlusId, 2)]
+    public void CityUpgradeTest(string worldAi, int expectedLevel)
+    {
+        CustomMap map = CreateMap();
+        Assert.That(map.PlaceVillage(new WorldPosition(10, 10), 1, WorldRace.Human, "North").Error, Is.Null);
+        Assert.That(map.PlaceVillage(new WorldPosition(10, 16), 1, WorldRace.Human, "South").Error, Is.Null);
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State with
+        {
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with
+            {
+                IsAi = true,
+                Resources = pair.Value.Resources with { Gold = 9999 }
+            })))
+        };
+        GameSession session = new(context, state) { AllowAiOnly = true, Ai = new AiSelection(worldAi, null) };
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        WorldPlayerId human = session.World.State.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+
+        while (session.World.State.TurnInfo.TurnNumber == 1)
+        {
+            session.ExecuteAiAction();
+        }
+
+        int[] levels = [.. session.World.State.Fortifications.Values.OfType<WorldCity>().Where(city => city.Owner == human).Select(city => city.DefinitionId.Level)];
+        Assert.That(levels, Has.Length.EqualTo(2));
+        Assert.That(levels, Is.All.EqualTo(expectedLevel));
+    }
+
     // Gallean Upgrade, overflow spending (docs/ai-overflow-spending.md, phase 3): with 9999 gold Classic buys one
     // unit per turn; Classic+ (every personality) keeps buying units and hires extra leaders.
     [Test]

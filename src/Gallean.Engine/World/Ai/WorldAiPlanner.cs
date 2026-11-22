@@ -203,6 +203,9 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             Add(WorldAiActionKind.ConstructBuilding, p => new ConstructBuildingAction(context, Priority: p));
             Add(WorldAiActionKind.PurchaseUnit, p => new PurchaseUnitAction(context, Priority: p));
 
+            // Gallean Upgrade: overflow spending is a rule of every designed AI, not a designer block.
+            designed.Add(new UpgradeCityAction(context, Priority: 0));
+
             return designed;
         }
 
@@ -212,7 +215,9 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             new ResearchSpellAction(context, Priority: 3),
             new PurchaseLeaderAction(context, Priority: 2),
             new ConstructBuildingAction(context, Priority: context.Profile.BuildingPriority),
-            new PurchaseUnitAction(context, Priority: context.Profile.UnitPriority)
+            new PurchaseUnitAction(context, Priority: context.Profile.UnitPriority),
+            // Gallean Upgrade: only acts while gold spending (never for Classic).
+            new UpgradeCityAction(context, Priority: 0)
         ];
     }
 }
