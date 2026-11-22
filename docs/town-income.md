@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: proposal, nothing built. The user asked for two features, in this order:
+Status: questions A-D and F-I answered, E open; nothing built. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -10,6 +10,14 @@ Status: proposal, nothing built. The user asked for two features, in this order:
 - Order: town income first, neutral economy second (user).
 - Neutrals pay normal hire prices: Gunits `ENROLL_C` (+ GDynUpgr per level above the base level). Neutral soldiers and leaders already have prices in the data (79 soldiers, 30-9950 gold; 94 leaders, 30-9950 gold).
 - Standard (Classic) AI stays as upstream's. Neutral buying is new code that runs only when the map rule for it is on. It is never an edit of the race players' economy code.
+- A (user): a per-map on/off setting, on by default in every new editor map and in The War of the Ring. Original campaigns have no setting, so they stay off.
+- B (user): the steeper table, 10 / 25 / 50 / 75 / 100 gold for levels 1-5, editable per map.
+- C (user): capitals benefit too. A capital pays the level-5 value of the table (100 by default) on top of the race base income (taken unless the user objects; a separate capital box in the editor would be the alternative).
+- D (user): rioting towns pay nothing.
+- F (user): neutrals earn only from their own towns, plus a starting bank.
+- G (user): garrisons first. Once a neutral side has more money, it sends out armies that attack enemy armies near its home towns or conquer nearby towns. Phase 5 builds this, after phase 4's measurement.
+- H (user): a neutral side buys only its own kind's soldiers, and the village level caps the price.
+- I (user): The War of the Ring's scripted neutral life is out of scope here; the user will rework it separately later.
 
 ## The problem today
 
@@ -39,9 +47,9 @@ Status: proposal, nothing built. The user asked for two features, in this order:
 
 ### Town income (phases 1-2)
 
-- Engine: `PlayerIncomeCalculator.GetIncomeInfo` adds `TownIncome` = the sum over the player's `WorldCity` fortifications of the table value for each city's level. `IncomeInfo` gets a `Towns` part, which `WorldGetPlayerInfoCommand` passes to the client. It goes through the same `Scale` as the other income, so difficulty and AI attitude apply. Capitals keep paying the race base income only.
-- Data: a per-map table in `SRules.json` (new column, e.g. `TOWN_INCOME` = `"10,20,30,40,50"` gold for levels 1-5). Missing or empty = no town income, so original campaigns stay as they are. Read into `ScenarioDefinition.TownIncome` (init property, like `ForeignSpellMarkup`).
-- Editor: `CustomMap.TownIncome` + a box in the economy panel; `CustomMapEconomy` adds the column through the same `PlayerIncomeCalculator` call it already uses. MapFromPlan: `rules.townIncome`.
+- Engine: `PlayerIncomeCalculator.GetIncomeInfo` adds `TownIncome` = the sum over the player's non-rioting `WorldCity` fortifications of the table value for each city's level, plus the level-5 value for an uncaptured own capital. `IncomeInfo` gets a `Towns` part, which `WorldGetPlayerInfoCommand` passes to the client. Scaling: see question E.
+- Data: a per-map table in `SRules.json` (new column, e.g. `TOWN_INCOME` = `"10,25,50,75,100"` gold for levels 1-5). Missing or empty = no town income, so original campaigns stay as they are. Read into `ScenarioDefinition.TownIncome` (init property, like `ForeignSpellMarkup`).
+- Editor: `CustomMap.TownIncome` (on with the default table for new maps) + an on/off box and the five values in the economy panel; `CustomMapEconomy` adds the column through the same `PlayerIncomeCalculator` call it already uses. MapFromPlan: `rules.townIncome`.
 - Turn flow: no change. `TurnStartedGenerateResourcesRule` already pays `IncomeInfo.Total` at each player's turn start.
 
 ### Neutral treasury (phase 3)
@@ -69,24 +77,24 @@ Status: proposal, nothing built. The user asked for two features, in this order:
 2. Town income on screen: income table line, city screen line, editor economy box and column, MapFromPlan `rules.townIncome`, War of the Ring setting. ~1-1.5 days.
 3. Neutral treasury: neutral sides earn from their towns, neutral starting bank in the editor. ~0.5-1 day.
 4. Neutral garrison buying: kind unit pools, neutral purchase command, neutral planner action, headless War of the Ring measurement. ~2 days.
-5. Neutral armies: leaders hired at villages, orders, measurement. ~2-3 days, specced after phase 4's numbers.
+5. Neutral armies: leaders hired at villages once the garrisons are full and gold is left, attacking enemy armies near home towns or conquering nearby towns, measurement. ~2-3 days, specced after phase 4's numbers.
 
 ## Open questions
 
-A. Scope. A1: per-map table in `SRules.json`, off unless the map sets it (original campaigns unchanged). A2: global gallean-upgrade rule. A3: on for large maps only (`LargeMapRules.MinMapSize` 256). Recommendation: A1, with new editor maps defaulting to the recommended table.
+~~A. Scope.~~ Answered: per-map on/off, on in new maps and The War of the Ring (Decisions).
 
-B. Amounts. B1: level x 10 (10/20/30/40/50). B2: level x 5. B3: steeper, so upgrades pay back faster (e.g. 10/25/50/75/100). For scale: race base income is 100 a turn, a resource 50. With B1 the Empire's 8 War of the Ring villages bring 220 a turn; an upgrade from level 1 to 2 (150 gold, +10) pays back in 15 turns, from 4 to 5 (750 gold, +10) in 75. Recommendation: B1 as the default, editable per map.
+~~B. Amounts.~~ Answered: 10/25/50/75/100, editable per map (Decisions).
 
-C. Capitals. C1: capitals keep only the race base income. C2: capitals also pay as a level-5 town. Recommendation: C1.
+~~C. Capitals.~~ Answered: capitals benefit too, at the level-5 value (Decisions).
 
-D. Rioting villages. D1: a rioting village pays nothing. D2: pays anyway. Recommendation: D1 (the game already disables hiring there).
+~~D. Rioting villages.~~ Answered: they pay nothing.
 
-E. Difficulty and AI attitude scaling. E1: town income is scaled like all other income. E2: never scaled. Recommendation: E1, so the editor prediction and the game use one formula.
+E. Difficulty and AI attitude scaling (asked again in more detail). Today all income goes through `PlayerIncomeCalculator.Scale`: everyone gets +30 % on Easy (`INCOME_E`), and computer players are then multiplied by `GAI` D_EASY_M / D_AVG_M / D_HARD_M / D_VHARD_M = 70 / 100 / 130 / 145 % (the same for all 7 attitudes). A level-3 town (50 gold) would pay you 65 on Easy and 50 otherwise; a computer player 45 / 50 / 65 / 72. E1: scale town income the same way. E2: never scale it (50 for everyone). E3: scale it for the races, but not for neutrals. Recommendation: E1.
 
-F. Neutral income source (phase 3). F1: town income only. F2: towns + the neutral race's data base income (100 gold) per side. F3: towns + a per-map flat amount. Recommendation: F1, plus the starting bank box.
+~~F. Neutral income source.~~ Answered: towns only, plus a starting bank.
 
-G. What neutrals buy. G1: garrison units only. G2: garrisons + new armies with leaders. Recommendation: G1 in phase 4, then decide G2 (phase 5) from the War of the Ring numbers.
+~~G. What neutrals buy.~~ Answered: garrisons first, then armies that hunt near home or take nearby towns (Decisions).
 
-H. Which units a neutral side may buy. H1: all soldiers of its kind (plain neutrals include the 9950 monsters). H2: the kind's soldiers, gated by village level (e.g. a level-N village sells units up to a price ceiling per level). H3: a per-map list per kind in the editor. Recommendation: H2 with a default ceiling table, and H3 later if needed.
+~~H. Which units.~~ Answered: own kind only, village level caps the price. The ceiling table per level is still open (asked when phase 4 starts).
 
-I. The War of the Ring's own neutral life (Shadow stages, spawns every 4 turns, retakes). I1: keep it as is and add buying on top. I2: lower the scripted spawns once neutrals buy. Recommendation: I1, then tune from the measurement.
+~~I. The War of the Ring's neutral life.~~ Answered: out of scope, reworked separately later.
