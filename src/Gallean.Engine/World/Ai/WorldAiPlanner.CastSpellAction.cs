@@ -33,6 +33,10 @@ internal sealed partial class WorldAiPlanner
             targetedSpells.Sort(CompareSpellLevel);
             globalSpells.Sort(CompareSpellLevel);
 
+            // Gallean Upgrade, docs/ai-unused-features.md phase 1: no summon whose upkeep the income can't carry.
+            targetedSpells.RemoveAll(spell => GetSpellEffectType(spell) == WorldAiSpellEffectType.Summon &&
+                                              !WorldAiSpending.CanAffordSummonUpkeep(Context.Profile, state, player, spell.CastingCost, Context.Engine));
+
             WorldCastSpellCommand? command = FindTargetedCast(state, playerId, targetedSpells);
 
             if (command is null && IsGlobalCastAllowed(player, globalSpells))

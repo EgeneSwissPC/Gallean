@@ -48,4 +48,7 @@ internal sealed record WorldAiProfile
     // Gallean Upgrade, overflow spending (docs/ai-overflow-spending.md): at or above this share of the
     // resource cap the AI lifts its spending limits. 0 = off, as in Classic.
     public int SpendAbovePercent { get; init; }
+    // Gallean Upgrade, unused features phase 1 (docs/ai-unused-features.md): on large maps, the share of a mana's
+    // income per turn that running summon upkeep may take before the AI stops summoning. 0 = no check (Classic).
+    public int SummonUpkeepPercent { get; init; }
 }
