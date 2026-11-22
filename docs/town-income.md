@@ -254,6 +254,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 - R (user): R1 for now. A full army first goes for hostile armies within the army radius of its home; only when none there is a fight it would take (question S) does it go for a town within the town radius.
 - S (user): S3. An army only takes a fight where the AI's strength estimate (`WorldAiEstimator`, garrison included for towns) gives it at least the map's margin over the target; the margin is a per-map setting, default 140 % (the game's own roaming margin, `RoamingPowerPercent`).
 - T (user): T2. An army that captures a town makes it its new home (it defends it, refills and leaves from there, and the radii are measured from it); after any other fight it goes back to its home village, where it heals and, being no longer full, waits to be refilled (P1).
+- U (user): U1, no switch for placed armies. Only armies the neutral economy bought follow these rules; armies placed on the map and the map's scripted ones (patrols, spawns) keep their own orders.
 
 ### Phase 5 questions
 
@@ -267,7 +268,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 
 ~~T. After a win or a captured town.~~ Answered: T2.
 
-U. Which armies. U1: only armies the neutral economy bought. U2: also the map's own neutral armies (The War of the Ring has 569; that would wake every placed army up). Recommendation: U1; placed armies keep their map orders.
+~~U. Which armies.~~ Answered: U1.
 
 V. Plain neutrals (player 0) can't take towns under the engine's order rule. V1: they only hunt armies near home. V2: lift that rule for this map rule. Recommendation: V1.
 
