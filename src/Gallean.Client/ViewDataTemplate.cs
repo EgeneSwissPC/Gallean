@@ -11,6 +11,7 @@ internal sealed class ViewDataTemplate : IDataTemplate
         {
             AlertViewModel => new AlertView(),
             AttackPromptViewModel => new AttackPromptView(),
+            MoveOrderPromptViewModel => new MoveOrderPromptView(),
             BattleLogPopupViewModel => new BattleLogPopupView(),
             BattleSandboxScreenViewModel => new BattleSandboxScreenView(),
             BattleSandboxUpgradesViewModel => new BattleSandboxUpgradesView(),
