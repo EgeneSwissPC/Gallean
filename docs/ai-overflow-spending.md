@@ -1,6 +1,6 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks); answers E-H taken (all recommendations); 3b-A city upgrades done; 2b next, then 3b-B site shopping (only if still needed); 4 left.
+Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks); answers E-H taken (all recommendations); 3b-A city upgrades and 2b foreign mana done; 3b-B site shopping parked (not needed on War of the Ring); 4 (designer block) left.
 
 ## Decisions
 
@@ -70,7 +70,7 @@ Gold, in spending mode:
 
 1. ~~Find why research stalls at 3-9 spells (headless diagnosis, no screen; ~0.5 day).~~ Done, see "Phase 1 — done".
 2. ~~Mana spending in the engine for all personalities and designed AIs (~1 day), mana bench + tournament.~~ Done, see "Phase 2 — done".
-2b. Foreign mana: rod planters prefer the mana sources the race needs (~1 day), see "Phase 2b — foreign mana".
+2b. ~~Foreign mana: rod planters prefer the mana sources the race needs (~1 day)~~ Done, see "Phase 2b — done".
 3. ~~Gold spending (~1 day), same checks.~~ Done, see "Phase 3 — done".
 3b. More gold sinks: ~~city upgrades first (~0.5 day)~~ done, see "Phase 3b-A — done"; then shopping at sites (~2 days), see "Phase 3b — more gold sinks".
 4. AI designer block "Spend resources above N %" (~0.5 day), the visible part in the AI editor.
@@ -169,20 +169,27 @@ Merged 4388ecf6 (feature commit 96f5a205 on `upgrade/ai-city-upgrades`).
 - Consequence for answer E: site shopping (3b-B) is not needed on this map for 60 turns; revisit if a longer run or another map shows gold at the cap again.
 - No real-client run (no client change); moves to phase 4.
 
-## Phase 2b — foreign mana (spec, not built)
+## Phase 2b — done (foreign mana: AI and map, user option 3)
 
-Problem: level 3-4 spells need two or three mana types (phase 1), each race earns only its own, so its research stops at level 2 and its mana piles up.
+Merged 1024ce68 (feature commit ec893e19 on `upgrade/ai-foreign-mana`).
 
-What the engine already offers:
-- War of the Ring has 247 resource nodes (`SCrys.json`): 115 gold mines and 132 mana sources (28 infernal, 26 life, 16 death, 27 rune, 35 grove).
-- Rod planters (`RodAction`) already target every resource node that is unowned or on hostile land and has no rod next to it, all with the same interest (`CreateRodInterest`); the nearest wins. They also remove hostile rods. Quota: 1 rod planter (+1 while gold spending since phase 3).
+First attempt (rod weighting only) measured almost no effect: only the Humans got a second mana (900 infernal in 60 turns). Diagnosis (`ForeignManaTest` in the bench, turn 30): every race needed one mana type for its cheapest level 3 spell, and the nearest source of it was 68 (Elf), 149 (Undead), 238 (Human), 282 (Dwarf) and 307 (Heretic, on Undead land) tiles from the capital, while `RodAction` ignores targets beyond 10 turns of movement. The Undead had no rod planter left at turn 30. User decision: option 3, fix both the AI and the map.
 
-Options:
-- **A.** Rod targets weighted by need: mana sources of a type the race's next unaffordable research costs get extra interest (x2), gold mines and already-owned types stay as they are (~0.5-1 day).
-- **B.** A plus one more rod planter while such a mana type is missing (~0.5 day on top).
-- **C.** Armies also go for enemy land with such sources (conquest targets): a much bigger AI change, not proposed now.
+What was built:
+- `WorldAiSpending.GetNeededMana`: the mana types the race lacks for its cheapest level 3 spell (`AI_CAT` not None, lord level limit 3 or more); our AIs only (`SpendAbovePercent > 0`), always, not only while spending (answers G, H).
+- `RodAction`: a resource node of a needed type gets twice the create-rod interest (capped at 200) and may be up to 30 turns away (`NeededManaMoveTurnLimit`, Classic's limit stays 10); other targets unchanged.
+- `PurchaseLeaderAction`: +1 rod planter while a needed type exists.
+- Map: `the-war-of-the-ring.json` places two sources of each race's missing mana about 36 miles from its capital (Human rune, Elf life, Dwarf life, Heretic death, Undead infernal): 257 resources instead of 247, all placed; gate-check results unchanged (the Misty Mountains leak was there before).
 
-Recommendation: A + B, measured with the War of the Ring bench (research levels reached, mana lost).
+Tests: `WorldAiOverflowSpendingTests` +3 (`RodPlanterGoesForNeededManaTest`: Classic's planter heads for the nearer gold mine, Classic+'s for the needed rune source; `RodPlanterWalksFarForNeededManaTest`: a needed source 70 tiles away with 6 MP, Classic ignores it, Classic+ walks there; `NeededManaTest`). Mutation checks: needed weighting off -> the first test fails; trip limit back to 10 -> the far test fails. Suite 5449. S099 Classic CSV identical apart from timings.
+
+Measured on the new map, 60 turns, seed 1, both runs with spending at 70 % (current AI = phases 2-3b; + 2b AI):
+- Mana lost at the cap: 7.2 % (current AI on the new map) / 6.9 % (with the 2b AI); old map 12.3 %. Human 7 %, Heretic 7 %, Elf 13-14 %, Dwarf and Undead 0 %.
+- Level 3 spells known at turn 60: 13 in both runs (old map: 1 in total). Every race now earns some of its missing mana (about 5,000-6,500 per race in 60 turns).
+- So the map fix did most of the work here; the AI part added a little foreign income (Elf 500 death, Dwarf 2,000 infernal and 1,300 more grove, Heretic 400 life) and matters on maps whose sources are far, as the far-trip test shows.
+- The Elves' remaining loss is rune mana (11,001), which no Elf spell the AI researches uses.
+- The two runs ran in parallel, so the AI times (27.2 and 20.8 min) are not comparable.
+- No real-client run (no client change); moves to phase 4.
 
 ## Open questions
 
