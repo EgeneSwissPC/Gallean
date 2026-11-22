@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Gallean.Engine;
 
 public sealed record ScenarioDefinition(
@@ -26,4 +28,8 @@ public sealed record ScenarioDefinition(
     // Gallean Upgrade map rule (SRules.json): mage towers charge this many percent more for spells of another race
     // than the buyer's. Spells traded in diplomacy keep their list price, so allies are the cheaper source.
     public int ForeignSpellMarkup { get; init; }
+
+    // Gallean Upgrade map rule (SRules.json TOWN_INCOME): gold per turn a town of level 1-5 brings its owner (a capital
+    // pays the level-5 value). Empty = off.
+    public ImmutableArray<int> TownIncome { get; init; } = [];
 }

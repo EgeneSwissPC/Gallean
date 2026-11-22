@@ -200,7 +200,8 @@ public static class ScenarioLoader
             scenarioInfo.MaxCity,
             nextScenarioId)
         {
-            ForeignSpellMarkup = scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.ForeignSpellMarkup ?? 0
+            ForeignSpellMarkup = scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.ForeignSpellMarkup ?? 0,
+            TownIncome = TownIncomeCalculator.Parse(scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.TownIncome)
         };
 
         WorldState state = new(
