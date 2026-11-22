@@ -33,6 +33,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 - Phase 2 decision: the bench fixes the game difficulty (default Average) instead of taking it from the host map,
   because it sets the computer players' accuracy and experience bonuses (S099 is Very hard, generated maps
   Average). The sandbox screen can offer a difficulty picker later; the tool has `--difficulty`.
+- BC (user, 2026-11-22): every listed target preference and behaviour block in the first version.
 - BB (user, 2026-11-22): battle AIs have stages; condition blocks: round, power share, leader hit points, cargo value.
 - BA (user, 2026-11-22): battle AIs get a "Battle AIs" tab in the AI editor.
 - SE (user, 2026-11-21): sides as set up, "Alternate sides" checkbox off by default.
@@ -207,8 +208,10 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
   share below/above N %; our leader below N % hit points; and (user, 2026-11-22) **"we carry items worth over N
   gold / a quest item"** as a battle-designer block (bag only by default, "count equipped items" option; combine it
   with the power-share block for "rich and losing"). The cargo block needs the battle to know the cargo (BH a).
-- **BC. First preferences and behaviours**: recommended weakest first, can-kill-now first, healers first, the leader
-  first, and the "focus fire" and "protect the leader" blocks.
+- ~~**BC. First preferences and behaviours**~~: answered — (b) all of them in the first version (user,
+  2026-11-22, "all the options available"): target preferences healers first, casters first, the leader first,
+  the hardest hitter first, finish the wounded; behaviour blocks protect the leader, focus fire, never flee, flee
+  below N % power share. ~3.5 days for these with their tests (each with a sandbox positive control).
 - **BD. Player's own Auto-play / Instant resolve**: (a) AI sides only, as today; (b) a setting "My auto battles use".
   Recommended (a) now, (b) as phase 6.
 - ~~**BE. Test armies**~~: answered by the user — any units at any level, saved as presets (battle sandbox, 3a).
