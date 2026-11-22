@@ -85,15 +85,25 @@ public sealed partial class VisualTests
 
         await WaitForWorldAsync(window);
 
-        // The hero's army stands in for the target: its own player sees the units, another player
-        // that hasn't spied on it gets the thief note.
+        // Real targets on S107: a neutral army (its units are always visible) and, if the map has
+        // one, an army of another race (not spied: only its leader and the thief note).
         WorldState state = gameModel.Snapshot.WorldState;
         WorldStack hero = Assert.NotNull(WorldPlan.For(state).GetStackAt(new WorldPosition(10, 14)));
-        WorldPlayerId stranger = state.Players.Keys.First(id => id != hero.OwnerId && state.Players[id].Race != WorldRace.Neutral);
-        WorldStackInfoViewModel known = WorldStackInfoViewModel.Create(state, hero.OwnerId, hero, gameModel.Definitions, gameModel.Texts, gameModel.Stats);
-        WorldStackInfoViewModel unknown = WorldStackInfoViewModel.Create(state, stranger, hero, gameModel.Definitions, gameModel.Texts, gameModel.Stats);
+        string heroName = UnitName(gameModel, hero);
+        WorldStack neutral = state.Stacks.Values
+            .Where(stack => state.Players[stack.OwnerId].Race == WorldRace.Neutral)
+            .OrderBy(stack => stack.Position.GetDistance(hero.Position))
+            .First();
+        WorldStack? rival = state.Stacks.Values
+            .Where(stack => stack.OwnerId != hero.OwnerId && state.Players[stack.OwnerId].Race != WorldRace.Neutral)
+            .OrderBy(stack => stack.Position.GetDistance(hero.Position))
+            .FirstOrDefault();
 
-        MoveOrderPromptViewModel prompt = new(known, "Pegasus Knight", "Orc Warband", isTargetKnown: true);
+        TestContext.Out.WriteLine($"attacker {heroName}, neutral {UnitName(gameModel, neutral)} at {neutral.Position}, rival {(rival is null ? "none" : UnitName(gameModel, rival))}");
+
+        WorldStackInfoViewModel known = WorldStackInfoViewModel.Create(state, hero.OwnerId, neutral, gameModel.Definitions, gameModel.Texts, gameModel.Stats);
+
+        MoveOrderPromptViewModel prompt = new(known, heroName, UnitName(gameModel, neutral), isTargetKnown: true);
         gameViewModel.OpenScreen(prompt);
         await SkipFramesAsync(30);
 
@@ -104,7 +114,7 @@ public sealed partial class VisualTests
         SettingsScreenViewModel settings = new(gameViewModel);
         settings.Language = Language.Russian;
 
-        MoveOrderPromptViewModel russian = new(known, "Рыцарь на пегасе", "Отряд орков", isTargetKnown: true);
+        MoveOrderPromptViewModel russian = new(known, heroName, UnitName(gameModel, neutral), isTargetKnown: true);
         gameViewModel.OpenScreen(russian);
         await SkipFramesAsync(30);
 
@@ -113,25 +123,37 @@ public sealed partial class VisualTests
         russian.CloseCommand.Execute(null);
         settings.Language = Language.English;
 
-        MoveOrderPromptViewModel hidden = new(unknown, "Pegasus Knight", "Orc Warband", isTargetKnown: true);
-        gameViewModel.OpenScreen(hidden);
-        await SkipFramesAsync(30);
+        if (rival is not null)
+        {
+            WorldStackInfoViewModel unknown = WorldStackInfoViewModel.Create(state, hero.OwnerId, rival, gameModel.Definitions, gameModel.Texts, gameModel.Stats);
+            MoveOrderPromptViewModel hidden = new(unknown, heroName, UnitName(gameModel, rival), isTargetKnown: true);
+            gameViewModel.OpenScreen(hidden);
+            await SkipFramesAsync(30);
 
-        await CaptureAsync(window, "3-not-spied");
+            await CaptureAsync(window, "3-not-spied");
 
-        hidden.CloseCommand.Execute(null);
+            hidden.CloseCommand.Execute(null);
+        }
 
         // A city as the target: the game's city info (garrison and visiting party).
-        WorldCapital capital = Assert.NotNull(WorldPlan.For(state).GetCapital(hero.OwnerId));
-        WorldFortificationInfoViewModel city = WorldFortificationInfoViewModel.CreateCapital(
-            state, hero.OwnerId, capital, WorldPlan.For(state).GetStackAt(capital.Entrance), gameModel.Definitions, gameModel.Texts, gameModel.Stats);
-        MoveOrderPromptViewModel cityPrompt = new(city, "Pegasus Knight", "Capital", isTargetKnown: true);
+        WorldCity town = state.Fortifications.Values.OfType<WorldCity>().Where(c => c.OwnerId != hero.OwnerId).OrderBy(c => c.Entrance.GetDistance(hero.Position)).First();
+        WorldFortificationInfoViewModel city = WorldFortificationInfoViewModel.CreateCity(
+            state, hero.OwnerId, town, WorldPlan.For(state).GetStackAt(town.Entrance), gameModel.Definitions, gameModel.Texts, gameModel.Stats);
+        TestContext.Out.WriteLine($"city {gameModel.Texts.GetScenarioText(town.NameTextId)} owner race {state.Players[town.OwnerId].Race}");
+        MoveOrderPromptViewModel cityPrompt = new(city, heroName, gameModel.Texts.GetScenarioText(town.NameTextId), isTargetKnown: true);
         gameViewModel.OpenScreen(cityPrompt);
         await SkipFramesAsync(30);
 
         await CaptureAsync(window, "4-city");
 
         cityPrompt.CloseCommand.Execute(null);
+    }
+
+    private static string UnitName(GameModel gameModel, WorldStack stack)
+    {
+        (WorldUnit leader, GridPosition _, UnitDefinition _) = stack.GetLeader(gameModel.Definitions);
+
+        return UnitNameResolver.Resolve(leader, gameModel.Definitions, gameModel.Texts);
     }
 
     // A revealed tile the hero reaches in two or three turns without any encounter on the way.
