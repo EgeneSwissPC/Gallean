@@ -561,3 +561,12 @@ bench presets `cargo`, AiTournament `--battle-ais`, `--new-battle-ai`, `examples
 Mirror results vs Classic (2000 runs, swap): leader first orcs 76 %, undead 58 %; focus fire orcs 70 %; healers/casters
 first no change in the stock armies (Classic already hits them as weakest; unit tests prove the effect).
 17 tests, mutations caught, suite 5428, S099 tournament identical to Classic.
+
+## Phase 8 done (2026-11-22)
+
+AI editor list: "Map AIs / Battle AIs" pill tabs (`AiEditorMenuScreenViewModel.IsBattle`), `DesignedBattleAiLibrary`
+(`AppDirectories.BattleAis` = `AIs/battle`, loaded at start-up), New / Copy / Delete for battle AIs (sources = built-in and
+designed battle AIs; a copy of Ruthless/Cautious keeps its knobs), Edit disabled on the battle tab until phase 9.
+`AiBrainFormatter` names/describes `custom-battle:` IDs, so Settings, the AI players panel and the sandbox pickers list them.
+List column 440 -> 510 so the Russian buttons fit (also on the map tab). Test `BattleAisTabTest`, visual
+`AiEditorMenuTest` (battle-list EN/RU), mutation caught, suite 5429, AOT client checked (tab, sandbox picker).
