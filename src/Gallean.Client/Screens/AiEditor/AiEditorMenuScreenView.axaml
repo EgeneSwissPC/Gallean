@@ -33,7 +33,7 @@
           Margin="56,32,0,32"
           HorizontalAlignment="Left"
           VerticalAlignment="Center"
-          ColumnDefinitions="440,56,400"
+          ColumnDefinitions="510,56,400"
           RowDefinitions="Auto,Auto,Auto,Auto,*,Auto">
 
       <local:OutlinedTextBlock Grid.Row="0" Grid.Column="0" Text="{local:Text 'AI editor'}" Classes="h1" Foreground="{StaticResource ScenarioSelectAccentBrush}" />
