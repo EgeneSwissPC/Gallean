@@ -1,13 +1,13 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-2 done (diagnosis, mana spending); phase 2b/3 next.
+Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); 2b and 4 left, gold sinks (answer D) open.
 
 ## Decisions
 
 - **User rule (2026-11-22):** every one of our world AIs, however different, must never reach 9999 mana or gold. When an amount gets close to the cap, the AI starts spending, and keeps spending until it is back below.
 - It applies to every personality (Classic+, Aggressive, Builder, Expansionist) and to every designed AI (AI designer), as a shared rule on top of their own knobs, not as a separate personality.
 - Classic stays identical to upstream (answer A): Classic+ gets the rule, so Classic+ is the original AI that spends.
-- Spending starts at 80 % of the cap = 8000 (answer B), editable per designed AI.
+- Spending starts at 70 % of the cap = 6999, for gold and mana alike (user change after phase 2; answer B was 80 %), editable per designed AI in phase 4.
 - Only useful casts (answer C); a summon next to its own armies counts as useful. Mana that nothing useful can use is still lost.
 - Gold sinks are units, buildings and leaders (answer D); merchant items and mage tower spells only if the bench still shows gold at the cap after phase 3.
 
@@ -67,7 +67,7 @@ Gold, in spending mode:
 1. ~~Find why research stalls at 3-9 spells (headless diagnosis, no screen; ~0.5 day).~~ Done, see "Phase 1 — done".
 2. ~~Mana spending in the engine for all personalities and designed AIs (~1 day), mana bench + tournament.~~ Done, see "Phase 2 — done".
 2b. In spending mode, foreign mana crystals get extra weight as rod and capture targets (~1 day), so level 3-4 research becomes affordable.
-3. Gold spending (~1 day), same checks.
+3. ~~Gold spending (~1 day), same checks.~~ Done, see "Phase 3 — done".
 4. AI designer block "Spend resources above N %" (~0.5 day), the visible part in the AI editor.
 
 ## Phase 1 — done (why research stalls)
@@ -112,6 +112,31 @@ Measured, War of the Ring 1024, all races Classic + spending, 60 turns, seed 1, 
 - No real-client run: no client code changed and nothing new is on screen; the AOT check moves to phase 4 (designer block).
 
 Known limits: one 60-turn run on one map; no strength comparison on a big map yet (the S100 tournament never enters spending mode).
+
+## Phase 3 — done (gold, threshold 70 %)
+
+Merged 8d7edcd6 (feature commit 914068e2 on `upgrade/ai-gold-spending`).
+
+What was built:
+- `WorldAiSpending.DefaultSpendAbovePercent` 80 -> 70 (user decision), so mana and gold spending start at 6999.
+- `WorldAiSpending.IsGoldSpending`: gold at or above the threshold.
+- Units (`PurchaseUnitAction`): no 1-unit-per-turn limit while gold spending; units still go into free garrison slots and AutoFit moves them into armies, so full garrisons end it.
+- Leaders (`PurchaseLeaderAction.GetSpendingExtraLeaders`): quota + 2 fighting leaders and + 1 rod planter while gold spending.
+- Not liftable: one building per turn is a game rule (`WorldConstructBuildingCommand`, `TurnActions.BuildingConstructed`) for every player.
+
+Tests: `CustomMapTests.GoldSpendingTest` (fresh 48x48 custom map, every player at 9999 gold, first player's first turn: Classic +1 unit, 9649 gold left; Classic+ +21 units and leaders, stops at 6729 gold, just under the line). `WorldAiOverflowSpendingTests` follow the 70 % (no spending at 6998). Suite 5444.
+
+Classic unchanged: S099 Classic CSV identical apart from timings (gallean-upgrade 9d75dd6b vs the branch). S100 Classic+ vs Classic, 12 x 60: identical results, nobody reaches 6999 there.
+
+Measured, War of the Ring, Classic + spending at 70 %, 60 turns, seed 1:
+- Gold lost at the cap: 21,329 (Classic) -> 9,345 (phase 2, side effect) -> 5,142. Left: Dwarf 3,644 (gold above 7000 from turn 42, at the cap from turn 51 with garrisons and leader quota full: nothing left to buy), Human 1,498.
+- Mana lost: 12.3 % of income (32,404 of 262,450; phase 2 at 80 %: 10.9 %, Classic: 70.7 %). Casts 902. Dwarf and Undead 0 %, Heretic 8 %, Human 10 %, Elf 28 % (11,001 rune, which no Elf spell uses, and 11,601 grove: the Elves know only 4 spells). Lowering the line does not help much here: the races already cast everything they know every turn.
+- AI time: 22.5 min for the 60 turns (Classic baseline 23.2, phase 2 25.5); the games differ, so read it as "no slowdown".
+- No real-client run: no client code changed; moves to phase 4.
+
+What's left for "never at the cap":
+- Gold (answer D was "later, only if gold still hits the cap"): it does, for the Dwarves. Candidate sinks: items at merchants, spells at mage towers, mercenaries, unit training at trainer sites.
+- Mana: phase 2b (foreign mana sources, so level 3-4 research becomes affordable), and for the Elves the spells marked `AI_CAT` None.
 
 ## Open questions
 
