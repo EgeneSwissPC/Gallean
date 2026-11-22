@@ -18,7 +18,7 @@ internal sealed partial class WorldScreenViewModel :
 {
     private sealed record SelectedMove(WorldStack Stack, WorldPathSelection Selection);
 
-    private sealed record ActiveMove(WorldStackId StackId, WorldPosition Destination, TaskCompletionSource<bool> Completion);
+    private sealed record ActiveMove(WorldStackId StackId, WorldPosition Destination, TaskCompletionSource<bool> Completion, bool Guarded = false);
 
     private static readonly TimeSpan StackIdleDelay = TimeSpan.FromMinutes(1);
     private static readonly TimeSpan StackIdleInterval = TimeSpan.FromMinutes(2);
@@ -149,7 +149,7 @@ internal sealed partial class WorldScreenViewModel :
 
     public override ScreenMusic Music => ScreenMusic.Tracks(musicQueue);
 
-    protected override bool IsBusy => base.IsBusy || !Snapshot.IsViewPlayerTurn || !eventQueue.IsIdle || activeMove is not null;
+    protected override bool IsBusy => base.IsBusy || !Snapshot.IsViewPlayerTurn || !eventQueue.IsIdle || activeMove is not null || isAutoWalking;
 
     private bool FogEnabled => Game.DevTools.IsFogEnabled;
 
@@ -167,7 +167,7 @@ internal sealed partial class WorldScreenViewModel :
         return IsActive &&
                !IsFastForward &&
                renderRequest is not null &&
-               renderRequest.State.TurnInfo.CurrentPlayerId != ViewPlayerId;
+               (renderRequest.State.TurnInfo.CurrentPlayerId != ViewPlayerId || isAutoWalking);
     }
 
     public void HandleRenderException(Exception ex)
@@ -916,6 +916,12 @@ internal sealed partial class WorldScreenViewModel :
         ClearSelectedAction();
         ClearHover();
 
+        // Move orders: armies with an order walk first; the turn stays open when one needs the player.
+        if (!await WalkMoveOrdersAsync())
+        {
+            return;
+        }
+
         if (!await TryDispatchWorldActionAsync(new WorldEndTurnCommand()))
         {
             return;
@@ -1073,6 +1079,13 @@ internal sealed partial class WorldScreenViewModel :
 
     private async Task StepMoveAsync(ActiveMove move)
     {
+        if (move.Guarded && IsAutoWalkBlocked(move.StackId, move.Destination))
+        {
+            EndMove(move, arrived: false);
+
+            return;
+        }
+
         WorldStepStackCommand command = new(move.StackId, move.Destination);
         WorldCommandResult commandResult = await GameModel.World.DispatchCommandAsync(command);
 
@@ -1366,6 +1379,7 @@ internal sealed partial class WorldScreenViewModel :
 
             NotifySnapshotGatedCommandsChanged();
             NotifySelectionCommandsChanged();
+            SignalIdle();
         }
     }
 
@@ -2078,7 +2092,7 @@ internal sealed partial class WorldScreenViewModel :
             CurrentPlayerPortraitKey = ResolveCurrentPlayerPortraitKey(request.State);
             FastForwardCommand.NotifyCanExecuteChanged();
 
-            if (IsViewPlayerTurn)
+            if (IsViewPlayerTurn && !isAutoWalking)
             {
                 IsFastForward = false;
             }
