@@ -548,3 +548,16 @@ Merged in 2d5bb2fe (+ 2b0333ff removing a test-run file the merge carried).
 ### Sandbox complete
 Phases 2–6 are done. Next on the roadmap: the battle AI designer itself (phases 7–9, open questions BA–BD), whose
 Test button will open this sandbox with the designed AI selected.
+
+## Phase 7 done (2026-11-22)
+
+Engine: `Ai/Designer/Battle/` (`DesignedBattleAi`, stages, `DesignedBattleCondition`: from round, power share
+below/above, leader hit points below, cargo above (bag, optional equipped), carries quest item; `DesignedBattleTactics`;
+`DesignedBattleAiBrain` -> Classic planner with a `BattleAiProfile`; `DesignedBattleAiStore` JSON), `BattleAiPreferences`,
+`BattleSideInfo.CargoValue/EquippedValue/CarriesQuestItem`, registry `custom-battle:` (missing -> Classic),
+bench presets `cargo`, AiTournament `--battle-ais`, `--new-battle-ai`, `examples/battle-ais/`.
+"Protect the leader" split (user, option A): heal/protect the leader first (x5 score) and a separate
+"hurt leader defends below N %" (off by default) — the defend half alone cost orcs 50 % -> 11 % in the mirror.
+Mirror results vs Classic (2000 runs, swap): leader first orcs 76 %, undead 58 %; focus fire orcs 70 %; healers/casters
+first no change in the stock armies (Classic already hits them as weakest; unit tests prove the effect).
+17 tests, mutations caught, suite 5428, S099 tournament identical to Classic.
