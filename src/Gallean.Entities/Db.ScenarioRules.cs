@@ -17,6 +17,10 @@ public static partial class Db
         // Neutral economy (docs/town-income.md phase 4): neutral sides buy units, leaders and village upgrades.
         [property: JsonPropertyName("NEUTRAL_BUYING")] bool? NeutralBuying = null,
         // Units per village level a neutral side keeps before it upgrades villages; null = 3.
-        [property: JsonPropertyName("NEUTRAL_UNIT_FACTOR")] int? NeutralUnitFactor = null
+        [property: JsonPropertyName("NEUTRAL_UNIT_FACTOR")] int? NeutralUnitFactor = null,
+        // Neutral armies (phase 5): hunt radius around home, town radius, and the strength margin in percent.
+        [property: JsonPropertyName("NEUTRAL_ARMY_RADIUS")] int? NeutralArmyRadius = null,
+        [property: JsonPropertyName("NEUTRAL_TOWN_RADIUS")] int? NeutralTownRadius = null,
+        [property: JsonPropertyName("NEUTRAL_ATTACK_MARGIN")] int? NeutralAttackMargin = null
     );
 }

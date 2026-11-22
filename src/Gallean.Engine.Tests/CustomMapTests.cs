@@ -2799,6 +2799,162 @@ public sealed class CustomMapTests
         Assert.That(plainSession.World.State.Stacks.Values.Any(stack => stack.OwnerId == wolves.Id), Is.False);
     }
 
+    // Neutral armies (town income phase 5): a bought army that is full hunts beatable hostile armies within the army
+    // radius of its home, else takes a beatable hostile town within the town radius; one that isn't full stays or goes
+    // home; a captured town becomes its home; placed armies are left alone; plain neutrals may take towns too.
+    [Test]
+    public void NeutralArmiesTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        CustomMapVillage camp = map.PlaceVillage(new WorldPosition(14, 36), 2, WorldRace.Neutral, "Camp").Village!;
+        CustomMapVillage farm = map.PlaceVillage(new WorldPosition(20, 30), 1, WorldRace.Human, "Farm").Village!;
+        map.NeutralBuying = true;
+        Assert.That((map.NeutralArmyRadius, map.NeutralTownRadius, map.NeutralAttackMargin), Is.EqualTo((10, 60, 140)), "Defaults.");
+        Assert.That((map.SetNeutralArmyRadius(0), map.NeutralArmyRadius, map.SetNeutralAttackMargin(5), map.NeutralAttackMargin), Is.EqualTo((true, 1, true, CustomMap.MinNeutralAttackMargin)));
+        map.SetNeutralArmyRadius(10);
+        map.SetNeutralAttackMargin(140);
+        Assert.That(map.SetNeutralTownRadius(60), Is.False);
+        Assert.That(map.Clone().NeutralAttackMargin, Is.EqualTo(140));
+        store.Save(map);
+        CustomMap reopened = store.Open(map.Id, definitions);
+        Assert.That((reopened.NeutralArmyRadius, reopened.NeutralTownRadius, reopened.NeutralAttackMargin), Is.EqualTo((10, 60, 140)));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State;
+        WorldCity campTown = (WorldCity)state.Fortifications[new WorldFortificationId(CustomMapWriter.GetVillageId(map.Id, camp.Id))];
+        WorldCity farmTown = (WorldCity)state.Fortifications[new WorldFortificationId(CustomMapWriter.GetVillageId(map.Id, farm.Id))];
+        WorldPlayer neutral = state.Players[campTown.OwnerId];
+        WorldPlayer human = state.Players[farmTown.OwnerId];
+        NeutralEconomyPlanner.Pools pools = NeutralEconomyPlanner.GetPools(WorldSubraceType.Neutral, definitions);
+        int nextUnit = 1;
+        WorldUnit Unit(UnitDefinition definition) => new(new WorldUnitId($"Test{nextUnit++:D3}"), definition.Id, definition.MaxHitpoints, 0, definition.Level, [], null, false);
+
+        // A bought plain-neutral army filled up to its leadership with the strongest small soldiers there are.
+        UnitDefinition leader = pools.Leaders.Where(unit => !unit.IsLarge).OrderBy(unit => unit.PurchaseCost.Gold).Last(unit => unit.PurchaseCost.Gold <= 3000);
+        UnitDefinition soldier = pools.Soldiers.Where(unit => !unit.IsLarge).OrderBy(unit => unit.PurchaseCost.Gold).Last(unit => unit.PurchaseCost.Gold <= 3000);
+        WorldStackBuilder builder = new WorldStackBuilder(definitions).PlaceUnit(Unit(leader), GridPosition.FrontCenter);
+        List<WorldUnit> placed = [];
+
+        foreach (GridPosition position in GridPosition.All.Where(position => position != GridPosition.FrontCenter))
+        {
+            WorldUnit extra = Unit(soldier);
+
+            if (builder.TryPlaceUnit(extra, position) && builder.TryBuild(out _, out _))
+            {
+                placed.Add(extra);
+            }
+        }
+
+        UnitGrid<WorldUnit> fullUnits = builder.Build();
+        Assert.That(StackCalculator.GetOccupiedLeadership(fullUnits, definitions), Is.EqualTo(StackCalculator.GetTotalLeadership(fullUnits, definitions)), "Full.");
+        WorldStack army = new(
+            new WorldStackId("Bought"), neutral.Id, campTown.Entrance, WorldStackDirection.South, fullUnits, 20, WorldInventory.Empty, LeaderEquipment.Empty,
+            WorldCommandHelpers.GetPlayerSubraceId(state, neutral.Id), 1, false, false, new WorldStackOrder.Stand(), null, 0, 0, null)
+        {
+            NeutralHomeId = campTown.Id
+        };
+        WorldStack placedArmy = army with { Id = new WorldStackId("Placed"), Position = campTown.Entrance with { X = campTown.Entrance.X + 3 }, NeutralHomeId = null };
+        WorldState world = state with { Stacks = state.Stacks.Add(army.Id, army).Add(placedArmy.Id, placedArmy) };
+        ImmutableArray<WorldEvent> Plan(WorldState s) => NeutralArmyPlanner.Plan(s, s.Players[neutral.Id], context);
+        WorldNeutralArmyOrderedEvent Ordered(WorldState s) => (WorldNeutralArmyOrderedEvent)Plan(s).Single();
+
+        // No hostile army near home: the weak Empire village 8 tiles away (empty garrison) is the target.
+        Assert.That(campTown.Entrance.GetDistance(farmTown.Entrance), Is.LessThanOrEqualTo(60));
+        WorldNeutralArmyOrderedEvent toTown = Ordered(world);
+        Assert.That((toTown.StackId, toTown.Order, toTown.HomeId), Is.EqualTo((army.Id, (WorldCanonicalStackOrder)new WorldStackOrder.SecureCity(farmTown.Id), campTown.Id)), "Placed armies get no order.");
+
+        // A weak Empire army 5 tiles from home comes first: hunt around home.
+        UnitDefinition weakling = Units.Where(unit => unit.Race == WorldRace.Human && unit.Category == UnitCategory.Soldier).OrderBy(unit => unit.MaxHitpoints).First();
+        UnitDefinition humanLeader = Units.Where(unit => unit.Race == WorldRace.Human && unit.Category == UnitCategory.Leader && !unit.IsLarge).OrderBy(unit => unit.MaxHitpoints).First();
+        WorldStack scouts = army with
+        {
+            Id = new WorldStackId("Scouts"), OwnerId = human.Id, Position = campTown.Entrance with { Y = campTown.Entrance.Y - 5 },
+            Units = new WorldStackBuilder(definitions).PlaceUnit(Unit(humanLeader), GridPosition.FrontCenter).Build(),
+            SubraceId = WorldCommandHelpers.GetPlayerSubraceId(state, human.Id), NeutralHomeId = null
+        };
+        WorldNeutralArmyOrderedEvent hunt = Ordered(world with { Stacks = world.Stacks.Add(scouts.Id, scouts) });
+        Assert.That(hunt.Order, Is.EqualTo((WorldCanonicalStackOrder)new WorldStackOrder.DefendLocation(NeutralArmyPlanner.HomeZoneId(campTown.Id), campTown.Entrance, 10)));
+
+        // Not full: it stays at home (already Stand: no order), or walks back from elsewhere.
+        WorldStack shortArmy = army with { Units = new WorldStackBuilder(definitions).PlaceUnit(Unit(leader), GridPosition.FrontCenter).Build() };
+        Assert.That(Plan(state with { Stacks = state.Stacks.Add(army.Id, shortArmy) }), Is.Empty);
+        WorldStack away = shortArmy with { Position = campTown.Entrance with { X = campTown.Entrance.X + 4 } };
+        Assert.That(Ordered(state with { Stacks = state.Stacks.Add(army.Id, away) }).Order, Is.TypeOf<WorldStackOrder.MoveToLocation>());
+
+        // A town it was sent to and now owns becomes its home.
+        WorldState taken = world with
+        {
+            Stacks = world.Stacks.SetItem(army.Id, army with { Order = new WorldStackOrder.SecureCity(farmTown.Id), Position = farmTown.Entrance }),
+            Fortifications = world.Fortifications.SetItem(farmTown.Id, farmTown with { OwnerId = neutral.Id })
+        };
+        Assert.That(Ordered(taken).HomeId, Is.EqualTo(farmTown.Id));
+
+        // The home survives a save.
+        using (MemoryStream stream = new())
+        {
+            WorldStateJsonSerializer.SerializeAsync(stream, world).GetAwaiter().GetResult();
+            stream.Position = 0;
+            WorldState back = WorldStateJsonSerializer.DeserializeAsync(stream).GetAwaiter().GetResult();
+            Assert.That((back.Stacks[army.Id].NeutralHomeId, back.Stacks[placedArmy.Id].NeutralHomeId), Is.EqualTo(((WorldFortificationId?)campTown.Id, (WorldFortificationId?)null)));
+        }
+
+        // A margin nobody reaches: nothing to do, it stays home.
+        map.SetNeutralAttackMargin(1000);
+        store.Save(map);
+        Scenario strict = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext strictContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, strict.Provider.Definition), strict.Provider, globals);
+        WorldState guarded = world with
+        {
+            Fortifications = world.Fortifications.SetItem(farmTown.Id, farmTown with { Garrison = new WorldGarrisonBuilder(definitions, farmTown.Garrison, 1).PlaceUnit(Unit(weakling), GridPosition.FrontCenter).Build() })
+        };
+        Assert.That(Ordered(guarded).Order, Is.EqualTo((WorldCanonicalStackOrder)new WorldStackOrder.SecureCity(farmTown.Id)), "One weak defender: still worth it at 140 %.");
+        UnitDefinition cheapLeader = pools.Leaders.Where(unit => !unit.IsLarge).OrderBy(unit => unit.PurchaseCost.Gold).First();
+        UnitDefinition cheapSoldier = pools.Soldiers.Where(unit => !unit.IsLarge).OrderBy(unit => unit.PurchaseCost.Gold).First();
+        WorldStackBuilder weakBuilder = new WorldStackBuilder(definitions).PlaceUnit(Unit(cheapLeader), GridPosition.FrontCenter);
+
+        foreach (GridPosition position in GridPosition.All.Where(position => position != GridPosition.FrontCenter))
+        {
+            WorldUnit extra = Unit(cheapSoldier);
+
+            if (!(weakBuilder.TryPlaceUnit(extra, position) && weakBuilder.TryBuild(out _, out _)))
+            {
+                break;
+            }
+        }
+
+        UnitDefinition champion = Units.Where(unit => unit.Race == WorldRace.Human && unit.Category == UnitCategory.Soldier && !unit.IsLarge).OrderBy(unit => unit.MaxHitpoints).Last();
+        WorldState strong = world with
+        {
+            Stacks = world.Stacks.SetItem(army.Id, army with { Units = weakBuilder.Build() }),
+            Fortifications = world.Fortifications.SetItem(farmTown.Id, farmTown with { Garrison = new WorldGarrisonBuilder(definitions, farmTown.Garrison, 1).PlaceUnit(Unit(champion), GridPosition.FrontCenter).Build() })
+        };
+        Assert.That(NeutralArmyPlanner.Plan(strong, strong.Players[neutral.Id], strictContext), Is.Empty, "A weak army against a champion at 1000 %: nothing (an empty town is always beatable).");
+
+        // In play (plain neutrals, neutral kinds off): the army is sent at the neutral turn start and takes the village.
+        WorldState game = world with { Players = world.Players.SetItems(world.Players.Values.Where(player => player.Race != WorldRace.Neutral).Select(player => KeyValuePair.Create(player.Id, player with { IsAi = false }))) };
+        GameSession session = new(context, game);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        TestWorldAiRunner runner = new(session, context);
+
+        for (int i = 0; i < 40 && ((WorldCity)session.World.State.Fortifications[farmTown.Id]).OwnerId != neutral.Id; i++)
+        {
+            if (session.World.State.CurrentPlayer.IsAi)
+            {
+                runner.PlayTurn();
+            }
+            else
+            {
+                Assert.That(session.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+            }
+        }
+
+        Assert.That(((WorldCity)session.World.State.Fortifications[farmTown.Id]).OwnerId, Is.EqualTo(neutral.Id), "The plain-neutral army took the Empire village.");
+        Assert.That(session.World.State.Stacks[placedArmy.Id].Position, Is.EqualTo(placedArmy.Position), "The placed army never moved.");
+    }
+
     // Map rule "neutral kinds": each neutral subrace type gets its own neutral player (only one kind per side, kinds
     // hostile to each other); plain neutrals stay with player 0; off = one neutral player. Survives save and reopen.
     [Test]

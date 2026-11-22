@@ -1576,11 +1576,23 @@ public sealed class MapEditorScreenViewModelTests
         editor.UndoCommand.Execute(null);
         Assert.That((editor.Map.NeutralUnitFactor, editor.NeutralFactorText), Is.EqualTo((3, "3")), "One undo step for the typing.");
 
+        // Neutral armies (phase 5): the two radii and the strength margin, one undo step per box while typing.
+        Assert.That((editor.NeutralArmyRadiusText, editor.NeutralTownRadiusText, editor.NeutralMarginText), Is.EqualTo(("10", "60", "140")));
+        editor.NeutralArmyRadiusText = "1";
+        editor.NeutralArmyRadiusText = "12";
+        editor.NeutralTownRadiusText = "999";
+        editor.NeutralMarginText = "1";
+        Assert.That((editor.Map.NeutralArmyRadius, editor.Map.NeutralTownRadius, editor.Map.NeutralAttackMargin), Is.EqualTo((12, CustomMap.MaxNeutralRadius, CustomMap.MinNeutralAttackMargin)));
+        editor.UndoCommand.Execute(null);
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.NeutralArmyRadius, editor.Map.NeutralTownRadius, editor.Map.NeutralAttackMargin), Is.EqualTo((12, 60, 140)), "One undo step per box.");
+        editor.NeutralMarginText = "120";
+
         editor.NeutralFactorText = "4";
         editor.NeutralBuying = false;
         editor.SaveCommand.Execute(null);
         CustomMap saved = loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions);
-        Assert.That((saved.NeutralBuying, saved.NeutralUnitFactor), Is.EqualTo((false, 4)));
+        Assert.That((saved.NeutralBuying, saved.NeutralUnitFactor, saved.NeutralArmyRadius, saved.NeutralTownRadius, saved.NeutralAttackMargin), Is.EqualTo((false, 4, 12, 60, 120)));
     }
 
     [Test]

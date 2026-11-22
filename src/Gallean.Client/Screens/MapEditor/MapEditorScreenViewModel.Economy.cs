@@ -89,6 +89,9 @@ internal sealed partial class MapEditorScreenViewModel
             NeutralGoldText = map.NeutralStartingGold.ToString(System.Globalization.CultureInfo.InvariantCulture);
             NeutralBuying = map.NeutralBuying;
             NeutralFactorText = map.NeutralUnitFactor.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            NeutralArmyRadiusText = map.NeutralArmyRadius.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            NeutralTownRadiusText = map.NeutralTownRadius.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            NeutralMarginText = map.NeutralAttackMargin.ToString(System.Globalization.CultureInfo.InvariantCulture);
             ShowTownIncome();
         }
         finally
@@ -181,6 +184,52 @@ internal sealed partial class MapEditorScreenViewModel
         }
 
         neutralFactorUndoCount = undoSteps.Count;
+        CanUndo = true;
+        IsDirty = true;
+    }
+
+    // Neutral armies (phase 5): hunt radius, town radius and strength margin. Typing into one box keeps one undo step.
+    [ObservableProperty]
+    public partial string NeutralArmyRadiusText { get; set; } = "10";
+
+    [ObservableProperty]
+    public partial string NeutralTownRadiusText { get; set; } = "60";
+
+    [ObservableProperty]
+    public partial string NeutralMarginText { get; set; } = "140";
+
+    private string? neutralNumberEditKey;
+    private int neutralNumberUndoCount = -1;
+
+    partial void OnNeutralArmyRadiusTextChanged(string value) => SetNeutralNumber(nameof(NeutralArmyRadiusText), value, map.SetNeutralArmyRadius);
+
+    partial void OnNeutralTownRadiusTextChanged(string value) => SetNeutralNumber(nameof(NeutralTownRadiusText), value, map.SetNeutralTownRadius);
+
+    partial void OnNeutralMarginTextChanged(string value) => SetNeutralNumber(nameof(NeutralMarginText), value, map.SetNeutralAttackMargin);
+
+    // Anything that isn't a number is ignored until it is one; values are clamped by the map.
+    private void SetNeutralNumber(string key, string value, Func<int, bool> set)
+    {
+        if (showingSpellMarkup || !int.TryParse(value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int number))
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+
+        if (!set(number))
+        {
+            return;
+        }
+
+        if (neutralNumberEditKey != key || neutralNumberUndoCount != undoSteps.Count)
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+        }
+
+        neutralNumberEditKey = key;
+        neutralNumberUndoCount = undoSteps.Count;
         CanUndo = true;
         IsDirty = true;
     }

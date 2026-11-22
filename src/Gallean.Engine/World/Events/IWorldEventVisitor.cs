@@ -47,6 +47,7 @@ public interface IWorldEventVisitor<in TContext, out TResult>
     TResult Visit(WorldResourcesStolenEvent ev, TContext context);
     TResult Visit(WorldSummonUpkeepPaidEvent ev, TContext context);
     TResult Visit(WorldNeutralUnitHiredEvent ev, TContext context);
+    TResult Visit(WorldNeutralArmyOrderedEvent ev, TContext context);
     TResult Visit(WorldAiOverrideChangedEvent ev, TContext context);
     TResult Visit(WorldRodCreatedEvent ev, TContext context);
     TResult Visit(WorldRodDestroyedEvent ev, TContext context);

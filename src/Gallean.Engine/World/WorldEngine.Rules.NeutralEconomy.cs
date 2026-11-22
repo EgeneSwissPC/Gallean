@@ -17,7 +17,7 @@ internal partial class WorldEngine
                 return EventRuleResult<WorldEvent>.Empty;
             }
 
-            return EventRuleResult<WorldEvent>.Append([.. NeutralEconomyPlanner.Plan(state, player, Context)]);
+            return EventRuleResult<WorldEvent>.Append([.. NeutralEconomyPlanner.Plan(state, player, Context), .. NeutralArmyPlanner.Plan(state, player, Context)]);
         }
     }
 }

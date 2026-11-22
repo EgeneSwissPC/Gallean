@@ -295,7 +295,10 @@ internal static class NeutralEconomyPlanner
                 ExpirationTurn: null,
                 PendingLeaderUpgrades: 0,
                 BattlesWon: 0,
-                SourceTemplateId: null);
+                SourceTemplateId: null)
+            {
+                NeutralHomeId = city.Id
+            };
 
             entranceStacks[city.Entrance] = stack;
             Pay(definition.PurchaseCost.Gold);

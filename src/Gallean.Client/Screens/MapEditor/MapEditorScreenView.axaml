@@ -518,7 +518,19 @@
                 <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'Units per village level before upgrading'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <TextBox x:Name="NeutralFactorBox" Grid.Column="1" Text="{Binding NeutralFactorText}" MaxLength="2" HorizontalContentAlignment="Right" />
               </Grid>
-              <TextBlock Text="{local:Text 'Each turn every neutral village buys one unit of its kind: first for its garrison, then, while the side has fewer units than this number times its village levels, for an army waiting at the village (a new leader when there is none); after that it grows the village. The higher the level, the dearer the units it sells.'}"
+              <Grid ColumnDefinitions="*,54" IsEnabled="{Binding NeutralBuying}">
+                <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'Their armies hunt within (tiles)'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="NeutralArmyRadiusBox" Grid.Column="1" Text="{Binding NeutralArmyRadiusText}" MaxLength="3" HorizontalContentAlignment="Right" />
+              </Grid>
+              <Grid ColumnDefinitions="*,54" IsEnabled="{Binding NeutralBuying}">
+                <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'and go for towns within (tiles)'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="NeutralTownRadiusBox" Grid.Column="1" Text="{Binding NeutralTownRadiusText}" MaxLength="3" HorizontalContentAlignment="Right" />
+              </Grid>
+              <Grid ColumnDefinitions="*,54" IsEnabled="{Binding NeutralBuying}">
+                <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'when at least this strong (%)'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="NeutralMarginBox" Grid.Column="1" Text="{Binding NeutralMarginText}" MaxLength="4" HorizontalContentAlignment="Right" />
+              </Grid>
+              <TextBlock Text="{local:Text 'Each turn every neutral village buys one unit of its kind: first for its garrison, then, while the side has fewer units than this number times its village levels, for an army waiting at the village (a new leader when there is none); after that it grows the village. The higher the level, the dearer the units it sells. A full army leaves its village to fight hostile armies near home, or else to take a town; a town it takes becomes its new home.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}" />
