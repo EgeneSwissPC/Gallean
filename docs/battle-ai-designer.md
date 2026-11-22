@@ -33,6 +33,7 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
 - Phase 2 decision: the bench fixes the game difficulty (default Average) instead of taking it from the host map,
   because it sets the computer players' accuracy and experience bonuses (S099 is Very hard, generated maps
   Average). The sandbox screen can offer a difficulty picker later; the tool has `--difficulty`.
+- BD (user, 2026-11-22): a per-battle AI picker on the battle screen for the player's own auto battles.
 - BC (user, 2026-11-22): every listed target preference and behaviour block in the first version.
 - BB (user, 2026-11-22): battle AIs have stages; condition blocks: round, power share, leader hit points, cargo value.
 - BA (user, 2026-11-22): battle AIs get a "Battle AIs" tab in the AI editor.
@@ -195,11 +196,17 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
    margins of error, per-unit survival, "Alternate sides" checkbox.
 6. ~~**Watch battle**~~ (done, see "Phase 6 — done"; ~1.5 days): spectator battle screen (both sides AI with their brains, battle items used),
    back to the setup afterwards, "Watch seed N" from the results.
-7. **Engine knobs + designed battle AI** (~2 days): profile knobs, document, store, brain, registry (after BB, BC).
-8. **Battle AI editor mode and list** (~1 day, after BA).
+Re-split after BA-BD (2026-11-22):
+7. **Engine: designed battle AI** (~5 days): `BattleAiProfile` knobs (5 target preferences, 9→ protect the leader,
+   focus fire, never flee, flee below N %), `DesignedBattleAi` with stages and 4 condition blocks (round, power share,
+   leader hit points, cargo value — the cargo block needs `BattleInfo` to carry each side's bag value and quest-item
+   flag, BH a), store (`AIs/battle/`), brain, registry, `custom-battle:` → Classic fallback; Classic copy = Classic
+   on the bench; each block with a sandbox positive control. Engine-first: WIP commit before the client.
+8. **"Battle AIs" tab in the AI editor** (~1 day): list, New / Copy / Delete / Edit; designed battle AIs in Settings, the AI players panel and the sandbox pickers.
 9. **Designer screen** (~2–3 days); its Test button opens the sandbox with the designed AI selected (replaces the
    separate Test panel).
-10. Optional: designed battle AI for the player's own Auto-play / Instant resolve (after BD).
+10. **Battle AI picker on the battle screen** (~1 day, BD c): the player's own Auto-play / Instant resolve use the chosen AI per battle.
+11. Later, not designed yet: battle items in AI battles (BG), map AI weighing cargo (BH c).
 
 ## 7. Open questions
 
@@ -212,8 +219,9 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
   2026-11-22, "all the options available"): target preferences healers first, casters first, the leader first,
   the hardest hitter first, finish the wounded; behaviour blocks protect the leader, focus fire, never flee, flee
   below N % power share. ~3.5 days for these with their tests (each with a sandbox positive control).
-- **BD. Player's own Auto-play / Instant resolve**: (a) AI sides only, as today; (b) a setting "My auto battles use".
-  Recommended (a) now, (b) as phase 6.
+- ~~**BD. Player's own Auto-play / Instant resolve**~~: answered — (c) a battle AI picker on the battle screen next
+  to Auto-play, chosen per battle (Classic preselected); Auto-play and Instant resolve on the player's side use it;
+  Heal and defend / Refuse to flee unchanged (user, 2026-11-22). Needs room in the battle screen's top bar.
 - ~~**BE. Test armies**~~: answered by the user — any units at any level, saved as presets (battle sandbox, 3a).
 - **BG. Battle items in AI battles** (user, 2026-11-22: "must be implemented at some point"): Classic only drinks
   healing potions (`HealItemAction`, `PotionHeal`, only in live battles with `CanUseItems`); it never uses orbs,
