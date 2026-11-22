@@ -351,12 +351,14 @@
               <ColumnDefinition Width="Auto" SharedSizeGroup="EconomyCount" />
               <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeCapital" />
               <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeNodes" />
+              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTowns" />
               <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTotal" />
             </Grid.ColumnDefinitions>
             <TextBlock Grid.Column="1" Classes="income-cell caption" Text="{local:Text 'Count'}" Foreground="{StaticResource SecondaryTextBrush}" />
             <TextBlock Grid.Column="2" Classes="income-cell caption" Text="{local:Text 'Capital'}" Foreground="{StaticResource SecondaryTextBrush}" />
             <TextBlock Grid.Column="3" Classes="income-cell caption" Text="{local:Text 'Sources'}" Foreground="{StaticResource SecondaryTextBrush}" />
-            <TextBlock Grid.Column="4" Classes="income-cell caption" Text="{local:Text 'Total'}" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock Grid.Column="4" Classes="income-cell caption" Text="{local:Text 'Towns'}" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding ShowTownsColumn}" />
+            <TextBlock Grid.Column="5" Classes="income-cell caption" Text="{local:Text 'Total'}" Foreground="{StaticResource SecondaryTextBrush}" />
           </Grid>
         </StackPanel>
         <ScrollViewer HorizontalScrollBarVisibility="Disabled" Margin="0,4,0,0">
@@ -388,6 +390,7 @@
                               <ColumnDefinition Width="Auto" SharedSizeGroup="EconomyCount" />
                               <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeCapital" />
                               <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeNodes" />
+                              <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTowns" />
                               <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTotal" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
@@ -397,7 +400,8 @@
                             <TextBlock Grid.Column="1" Classes="income-cell body" Text="{Binding CountText}" />
                             <TextBlock Grid.Column="2" Classes="income-cell body" Text="{Binding Income.CapitalIncomeText}" Foreground="{StaticResource SecondaryTextBrush}" />
                             <TextBlock Grid.Column="3" Classes="income-cell body" Text="{Binding Income.ResourceNodesIncomeText}" Foreground="{StaticResource SecondaryTextBrush}" />
-                            <TextBlock Grid.Column="4" Classes="income-cell body" Text="{Binding Income.IncomeText}" />
+                            <TextBlock Grid.Column="4" Classes="income-cell body" Text="{Binding Income.TownsIncomeText}" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding Income.ShowTowns}" />
+                            <TextBlock Grid.Column="5" Classes="income-cell body" Text="{Binding Income.IncomeText}" />
                           </Grid>
                         </DataTemplate>
                       </ItemsControl.ItemTemplate>
@@ -422,6 +426,7 @@
                         <ColumnDefinition Width="Auto" SharedSizeGroup="EconomyCount" />
                         <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeCapital" />
                         <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeNodes" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTowns" />
                         <ColumnDefinition Width="Auto" SharedSizeGroup="IncomeTotal" />
                       </Grid.ColumnDefinitions>
                       <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6">
@@ -461,6 +466,30 @@
               </ItemsControl>
               <Button x:Name="CopyBankButton" Classes="pill" local:PlateChrome.TextureSeed="6" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Content="{local:Text 'Same for all races'}" Command="{Binding CopyBankToAllCommand}" />
               <TextBlock Text="{local:Text 'The race own mana goes to each race own mana. In the game a human player gets 300% of it on Easy, 50% on Hard and 25% on Very hard; computer players get it as set.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
+            </StackPanel>
+            <!-- Map rule "town income" (docs/town-income.md): gold per turn by town level. -->
+            <StackPanel Spacing="6" Margin="16,6,14,0">
+              <local:OutlinedTextBlock Text="{local:Text 'Towns'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+              <CheckBox x:Name="TownIncomeBox" IsChecked="{Binding TownIncomeOn}" Content="{local:Text 'Towns bring gold every turn'}" />
+              <ItemsControl ItemsSource="{Binding TownIncomeFields}" IsEnabled="{Binding TownIncomeOn}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="5" />
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:MapEditorTownIncomeFieldViewModel">
+                    <StackPanel Spacing="2" Margin="0,0,6,0">
+                      <TextBlock Classes="caption" Text="{Binding Label}" HorizontalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                      <TextBox Text="{Binding Text}" MaxLength="4" HorizontalContentAlignment="Right" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="{local:Text 'Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.'}"
                          Classes="caption"
                          TextWrapping="Wrap"
                          Foreground="{StaticResource SecondaryTextBrush}" />

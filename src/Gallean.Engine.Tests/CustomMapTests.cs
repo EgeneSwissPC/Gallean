@@ -2520,6 +2520,17 @@ public sealed class CustomMapTests
         WorldState riot = state with { Fortifications = state.Fortifications.SetItem(hill.Id, hill with { RiotTurns = 2 }) };
         Assert.That(Towns(human, riot), Is.EqualTo(110));
 
+        // The city screen and the income table get the same numbers: this town, one level up, and the towns total.
+        WorldState humanTurn = state with { TurnInfo = state.TurnInfo with { CurrentPlayerId = human.Id } };
+        WorldGetCityInfoCommand.Result CityInfo(WorldFortification fortification) => new WorldGetCityInfoCommand(fortification.Id).Execute(humanTurn, context).Data!;
+        WorldFortification humanCapital = state.Fortifications.Values.OfType<WorldCapital>().Single(capital => capital.OwnerId == human.Id);
+        WorldFortification glade = state.Fortifications.Values.OfType<WorldCity>().Single(city => city.OwnerId == elf.Id);
+        Assert.That((CityInfo(hill).TownIncome, CityInfo(hill).NextLevelTownIncome), Is.EqualTo(((int?)50, (int?)75)));
+        Assert.That((CityInfo(humanCapital).TownIncome, CityInfo(humanCapital).NextLevelTownIncome), Is.EqualTo(((int?)100, (int?)null)));
+        Assert.That(CityInfo(glade).TownIncome, Is.Null, "Not the viewer's town.");
+        Assert.That(new WorldGetCityInfoCommand(hill.Id).Execute(riot with { TurnInfo = humanTurn.TurnInfo }, context).Data!.TownIncome, Is.Zero, "Rioting.");
+        Assert.That(new WorldGetPlayerInfoCommand(human.Id).Execute(state, context).Data!.TownsIncome, Is.EqualTo(new WorldResourceSet(160, 0, 0, 0, 0, 0)));
+
         // A captured capital pays neither its owner nor the captor.
         WorldCapital elfCapital = state.Fortifications.Values.OfType<WorldCapital>().Single(capital => capital.OwnerId == elf.Id);
         WorldState captured = state with { Fortifications = state.Fortifications.SetItem(elfCapital.Id, elfCapital with { CapturedById = human.Id }) };
@@ -2560,6 +2571,7 @@ public sealed class CustomMapTests
         Assert.That(plain.Provider.Definition.TownIncome, Is.Empty);
         EngineContext plainContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, plain.Provider.Definition), plain.Provider, globals);
         Assert.That(PlayerIncomeCalculator.GetIncomeInfo(human, state, plainContext).Total.Gold, Is.EqualTo(100));
+        Assert.That(new WorldGetCityInfoCommand(hill.Id).Execute(humanTurn, plainContext).Data!.TownIncome, Is.Null, "Rule off: no line on the city screen.");
         Assert.That(ScenarioLoader.Load(globalDb, ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, new Db.ScenarioId("S135SC0000")), campaignDb, new ScenarioId("S135SC0000"), definitions, globals).Provider.Definition.TownIncome, Is.Empty);
     }
 

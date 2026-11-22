@@ -1681,6 +1681,11 @@
     "Spend when rich": "Тратить при избытке",
     "When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this.": "Когда золото или мана доходят до этой доли от лимита 9999, ИИ тратит больше: больше заклинаний и исследований, воины без ограничения «один за ход», дополнительные предводители, улучшение городов. Без этого блока: 70 %. Classic так никогда не делает.",
     "Spend more above": "Тратить больше, когда запас выше",
-    "% of the cap": "% от лимита"
+    "% of the cap": "% от лимита",
+    "Towns": "Города",
+    "Gold per turn": "Золото за ход",
+    "+{0} (next level +{1})": "+{0} (на следующем уровне +{1})",
+    "Towns bring gold every turn": "Города приносят золото каждый ход",
+    "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Золото за ход, которое город каждого уровня приносит владельцу. Столица платит как город 5 уровня; бунтующий город не платит ничего."
   }
 }

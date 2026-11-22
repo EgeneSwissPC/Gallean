@@ -1077,11 +1077,22 @@ internal sealed partial class CityTabViewModel
 
     private static IReadOnlyList<StatRowViewModel> BuildCityStats(WorldGetCityInfoCommand.Result info)
     {
-        return
+        List<StatRowViewModel> rows =
         [
             new StatRowViewModel(IconMoniker.Armor, Tr("Armor"), new StatValueViewModel(TextSpans.FromText($"{info.ArmorBonus:+0;-0;0}"), 0), null),
             new StatRowViewModel(IconMoniker.Heal, Tr("Regeneration"), new StatValueViewModel(TextSpans.FromText(Tr("{0}%", info.Regeneration)), 0), null)
         ];
+
+        // Gallean Upgrade, map rule "town income": what the town pays per turn, and one level up.
+        if (info.TownIncome is { } gold)
+        {
+            string text = info.NextLevelTownIncome is { } next
+                ? Tr("+{0} (next level +{1})", gold, next)
+                : $"+{gold}";
+            rows.Add(new StatRowViewModel(IconMoniker.Gold, Tr("Gold per turn"), new StatValueViewModel(TextSpans.FromText(text), 0), null));
+        }
+
+        return rows;
     }
 
     private WorldGetCityInfoCommand.Result ResolveCityInfo()

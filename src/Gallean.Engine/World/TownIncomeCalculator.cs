@@ -45,19 +45,24 @@ internal static class TownIncomeCalculator
 
         foreach (WorldFortification fortification in state.Fortifications.Values)
         {
-            switch (fortification)
+            if (fortification.Owner == player.Id)
             {
-                case WorldCity city when city.OwnerId == player.Id && !FortificationCalculator.IsRioting(city):
-                    gold += GetLevelValue(table, definitions.GetCity(city.DefinitionId).Level);
-                    break;
-
-                case WorldCapital { CapturedById: null } capital when capital.OwnerId == player.Id:
-                    gold += GetLevelValue(table, LevelCount);
-                    break;
+                gold += GetFortificationGold(fortification, table, definitions);
             }
         }
 
         return gold;
+    }
+
+    // What one town or capital pays its owner per turn, before scaling (0 for a rioting town or a captured capital).
+    public static int GetFortificationGold(WorldFortification fortification, ImmutableArray<int> table, IGameDefinitionProvider definitions)
+    {
+        return fortification switch
+        {
+            WorldCity city when !FortificationCalculator.IsRioting(city) => GetLevelValue(table, definitions.GetCity(city.DefinitionId).Level),
+            WorldCapital { CapturedById: null } => GetLevelValue(table, LevelCount),
+            _ => 0
+        };
     }
 
     public static int GetLevelValue(ImmutableArray<int> table, int level)

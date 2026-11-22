@@ -1681,6 +1681,11 @@
     "Spend when rich": "Spend when rich",
     "When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this.": "When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this.",
     "Spend more above": "Spend more above",
-    "% of the cap": "% of the cap"
+    "% of the cap": "% of the cap",
+    "Towns": "Towns",
+    "Gold per turn": "Gold per turn",
+    "+{0} (next level +{1})": "+{0} (next level +{1})",
+    "Towns bring gold every turn": "Towns bring gold every turn",
+    "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing."
   }
 }

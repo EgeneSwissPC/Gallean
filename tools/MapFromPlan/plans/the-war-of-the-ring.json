@@ -21,7 +21,14 @@
  "leaderMovement": 20,
  "rules": {
   "spellMarkup": 50,
-  "neutralKinds": true
+  "neutralKinds": true,
+  "townIncome": [
+   10,
+   25,
+   50,
+   75,
+   100
+  ]
  },
  "startingBanks": {
   "Human": {

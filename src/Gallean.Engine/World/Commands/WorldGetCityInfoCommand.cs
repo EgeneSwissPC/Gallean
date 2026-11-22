@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using CommandResult = Gallean.Engine.ICommandResult<Gallean.Engine.WorldCommandError, Gallean.Engine.WorldEvent, Gallean.Engine.WorldGetCityInfoCommand.Result>;
 
 namespace Gallean.Engine;
@@ -10,7 +11,14 @@ public sealed record WorldGetCityInfoCommand(WorldFortificationId FortificationI
         Growth? Growth,
         WorldCommandError? HealError,
         int ArmorBonus,
-        int Regeneration);
+        int Regeneration)
+    {
+        // Gallean Upgrade, map rule "town income": gold per turn this town pays its owner (before difficulty and AI
+        // scaling), and what it would pay one level up; null when the rule is off or the town isn't the viewer's.
+        public int? TownIncome { get; init; }
+
+        public int? NextLevelTownIncome { get; init; }
+    }
 
     public CommandResult Execute(WorldState state, IEngineContext context)
     {
@@ -40,6 +48,20 @@ public sealed record WorldGetCityInfoCommand(WorldFortificationId FortificationI
             healError = null;
         }
 
+        ImmutableArray<int> townTable = context.Scenario.Definition.TownIncome;
+        int? townIncome = null;
+        int? nextLevelTownIncome = null;
+
+        if (!townTable.IsDefaultOrEmpty && target.Owner == player.Id)
+        {
+            townIncome = TownIncomeCalculator.GetFortificationGold(target, townTable, context.Definitions);
+
+            if (target is WorldCity town && context.Definitions.GetCity(town.DefinitionId).Level < TownIncomeCalculator.LevelCount)
+            {
+                nextLevelTownIncome = TownIncomeCalculator.GetLevelValue(townTable, context.Definitions.GetCity(town.DefinitionId).Level + 1);
+            }
+        }
+
         if (WorldCommandHelpers.TryGetCurrentPlayerFortification(state, FortificationId, out WorldFortification? fortification) &&
             fortification is WorldCity city)
         {
@@ -47,11 +69,15 @@ public sealed record WorldGetCityInfoCommand(WorldFortificationId FortificationI
             WorldResourceSet growthCost = CityCalculator.GetGrowthCost(definition, player, context);
             WorldCommandResult upgradeResult = new WorldUpgradeCityCommand(FortificationId).Execute(state, context);
 
-            return CommandResult.Success(new Result(new Growth(growthCost, upgradeResult.Error), healError, armorBonus, regeneration), []);
+            return CommandResult.Success(new Result(new Growth(growthCost, upgradeResult.Error), healError, armorBonus, regeneration)
+            {
+                TownIncome = townIncome,
+                NextLevelTownIncome = nextLevelTownIncome
+            }, []);
         }
         else
         {
-            return CommandResult.Success(new Result(Growth: null, healError, armorBonus, regeneration), []);
+            return CommandResult.Success(new Result(Growth: null, healError, armorBonus, regeneration) { TownIncome = townIncome }, []);
         }
     }
 }
