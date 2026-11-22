@@ -255,6 +255,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 - S (user): S3. An army only takes a fight where the AI's strength estimate (`WorldAiEstimator`, garrison included for towns) gives it at least the map's margin over the target; the margin is a per-map setting, default 140 % (the game's own roaming margin, `RoamingPowerPercent`).
 - T (user): T2. An army that captures a town makes it its new home (it defends it, refills and leaves from there, and the radii are measured from it); after any other fight it goes back to its home village, where it heals and, being no longer full, waits to be refilled (P1).
 - U (user): U1, no switch for placed armies. Only armies the neutral economy bought follow these rules; armies placed on the map and the map's scripted ones (patrols, spawns) keep their own orders.
+- V (user): V2. The engine rule that keeps plain-neutral armies from the SecureCity order (`StackOrderCalculator`) gets one exception: armies bought by the neutral economy, while the map rule is on. Original campaigns and placed armies are unchanged; without it, maps with neutral kinds off would have no conquest at all.
 
 ### Phase 5 questions
 
@@ -270,7 +271,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 
 ~~U. Which armies.~~ Answered: U1.
 
-V. Plain neutrals (player 0) can't take towns under the engine's order rule. V1: they only hunt armies near home. V2: lift that rule for this map rule. Recommendation: V1.
+~~V. Plain neutrals and towns.~~ Answered: V2.
 
 W. Who counts as an enemy. W1: everyone hostile to the side, including other neutral kinds (they are separate sides). W2: only the races' armies and towns. Recommendation: W1, since the kinds are hostile to each other by design; W2 if neutral-vs-neutral wars drain them in the measurement.
 
