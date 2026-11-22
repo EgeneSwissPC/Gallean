@@ -15,6 +15,7 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **How orders run (question D: D1).** On E, ordered armies walk one by one in bar order, animated, the camera jumping to each like during the AI turn. Space skips the current walk; holding it skips the rest. Then the turn ends. A setting for instant walks (D2) may come later.
 - **Walking order (question E: E1).** Bar order, left to right (leader level high first, then ID). Retry pass (recommended add-on, taken unless the user objects): an army blocked by one of the player's own armies tries once more after all others have walked; if still stuck it keeps its order and stays put.
 - **Surprises during the walk (question F: F1).** An enemy revealed by the fog or an interception stops the army one tile before the battle; it keeps its order, the others carry on, and after all walks (before the turn ends) each stopped army is asked with the question G prompt.
+- **Attack prompt during End turn (question G: G1).** The game's `AttackPromptViewModel` window, camera on the asking army with its path drawn, text naming both armies ("<own leader>'s army: the path leads into battle with <enemy>"). Buttons: **Attack** (accepted for this turn, fights when its walk comes), **Plan another path** (closes, selects the army in re-plan mode, turn stays open; Esc does the same), **Cancel order** (order deleted, army stays, next army is asked).
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -85,7 +86,7 @@ Phase 4 can move first if saving matters more than the rest.
 
 ~~F. **Surprise encounters during the walk.**~~ Answered: F1, stop one tile short, keep the order, ask before the turn ends (see Decisions).
 
-G. **Prompt buttons.** G1: Attack / Plan another path / Cancel order (recommended). G2: Attack / Plan another path only (as the user described).
+~~G. **Prompt buttons.**~~ Answered: G1, Attack / Plan another path / Cancel order (see Decisions).
 
 H. **Other encounters on the way.** H1: bags are picked up and the walk continues; arriving at a site (merchant, mage, trainer, mercenaries) ends the order without opening the site screen; thief actions are asked like attacks (recommended). H2: stop at every encounter.
 
