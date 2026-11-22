@@ -2776,6 +2776,27 @@ public sealed class CustomMapTests
         store.Save(map);
         Scenario plain = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
         Assert.That(plain.Provider.Definition.NeutralBuying, Is.False);
+        EngineContext plainContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, plain.Provider.Definition), plain.Provider, globals);
+        WorldState plainGame = With(plain.State, greenskins, 1000);
+        plainGame = plainGame with { Players = plainGame.Players.SetItems(plainGame.Players.Values.Where(player => player.Race != WorldRace.Neutral).Select(player => KeyValuePair.Create(player.Id, player with { IsAi = false }))) };
+        GameSession plainSession = new(plainContext, plainGame);
+        Assert.That(plainSession.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        TestWorldAiRunner plainRunner = new(plainSession, plainContext);
+
+        while (plainSession.World.State.TurnInfo.TurnNumber == round)
+        {
+            if (plainSession.World.State.CurrentPlayer.IsAi)
+            {
+                plainRunner.PlayTurn();
+            }
+            else
+            {
+                Assert.That(plainSession.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+            }
+        }
+
+        Assert.That(plainSession.World.State.Fortifications[orcTownId].Garrison.GetUnits().Count(), Is.EqualTo(1), "Rule off: the garrison stays as placed.");
+        Assert.That(plainSession.World.State.Stacks.Values.Any(stack => stack.OwnerId == wolves.Id), Is.False);
     }
 
     // Map rule "neutral kinds": each neutral subrace type gets its own neutral player (only one kind per side, kinds
