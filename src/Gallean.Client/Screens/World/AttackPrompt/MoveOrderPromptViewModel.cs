@@ -11,15 +11,18 @@ internal enum MoveOrderPromptChoice
     CancelOrder
 }
 
+// The target is shown like the world's right-click info (WorldStackInfoViewModel /
+// WorldFortificationInfoViewModel): its units when the player may see them (own, neutral, spied
+// race), otherwise the game's note that a thief must spy on it.
 internal sealed partial class MoveOrderPromptViewModel(
-    AssetSpriteKey.UnitEventPortrait? portraitKey,
+    WorldPositionInfoViewModel? targetInfo,
     string armyName,
     string targetName,
     bool isTargetKnown) : AbstractScreenViewModel
 {
     private readonly TaskCompletionSource<MoveOrderPromptChoice> choice = new();
 
-    public AssetSpriteKey.UnitEventPortrait? PortraitKey { get; } = portraitKey;
+    public WorldPositionInfoViewModel? TargetInfo { get; } = targetInfo;
     public TextSpans Message { get; } = TrSpans("{0}: the path leads into battle with {1:*}.", armyName, targetName);
     public bool IsTargetKnown { get; } = isTargetKnown;
 
