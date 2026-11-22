@@ -252,6 +252,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 - P (user): P1 for now. An army leaves home once it is full (its leader's leadership used up); the village keeps its garrison and the free entrance lets the next leader be hired.
 - Q (user): Q2. Two per-map settings: armies hunt hostile armies within 10 tiles of their home village and go for towns within 60 tiles (SRules, editor Neutrals section, MapFromPlan). On The War of the Ring a 60-tile town radius reaches another side's town from 18 of the 42 neutral villages.
 - R (user): R1 for now. A full army first goes for hostile armies within the army radius of its home; only when none there is a fight it would take (question S) does it go for a town within the town radius.
+- S (user): S3. An army only takes a fight where the AI's strength estimate (`WorldAiEstimator`, garrison included for towns) gives it at least the map's margin over the target; the margin is a per-map setting, default 140 % (the game's own roaming margin, `RoamingPowerPercent`).
 
 ### Phase 5 questions
 
@@ -261,7 +262,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 
 ~~R. What they go for.~~ Answered: R1 for now.
 
-S. Which fights they take. S1: only fights they are clearly stronger in (the roaming filter). S2: any fight the AI scores positively (the ordered scoring, which can lose armies). Recommendation: S1 (needs a small check in the rule, since the orders themselves use the ordered scoring).
+~~S. Which fights they take.~~ Answered: S3 (Decisions).
 
 T. After a win or a captured town. T1: go back home (the village's order again) and wait to be refilled. T2: a captured town keeps the army as its defender and becomes its new home. T3: keep hunting from where they are, with the nearest own village as home. Recommendation: T2 for captured towns, T1 otherwise.
 
