@@ -1689,6 +1689,8 @@
     "Gold per turn": "Золото за ход",
     "+{0} (next level +{1})": "+{0} (на следующем уровне +{1})",
     "Towns bring gold every turn": "Города приносят золото каждый ход",
-    "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Золото за ход, которое город каждого уровня приносит владельцу. Столица платит как город 5 уровня; бунтующий город не платит ничего."
+    "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Золото за ход, которое город каждого уровня приносит владельцу. Столица платит как город 5 уровня; бунтующий город не платит ничего.",
+    "Starting gold of each neutral side": "Стартовое золото каждой нейтральной стороны",
+    "Neutral towns bring {0} gold a turn in all.": "Нейтральные города приносят всего {0} золота за ход."
   }
 }

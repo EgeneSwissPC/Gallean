@@ -1689,6 +1689,8 @@
     "Gold per turn": "Gold per turn",
     "+{0} (next level +{1})": "+{0} (next level +{1})",
     "Towns bring gold every turn": "Towns bring gold every turn",
-    "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing."
+    "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.",
+    "Starting gold of each neutral side": "Starting gold of each neutral side",
+    "Neutral towns bring {0} gold a turn in all.": "Neutral towns bring {0} gold a turn in all."
   }
 }

@@ -31,6 +31,9 @@ public sealed record CustomMapEconomyRace(WorldRace Race, int LandTiles, int Lan
 // difficulty bonus and no AI attitude scaling (both are 100 % at Average anyway).
 public sealed record CustomMapEconomy(ImmutableArray<CustomMapEconomyRace> Races, ImmutableArray<(WorldResourceType Type, int Count)> Unclaimed)
 {
+    // Gold per turn all neutral towns bring their neutral sides together (town income phase 3).
+    public int NeutralTownsIncome { get; init; }
+
     private static readonly ImmutableArray<WorldResourceType> ResourceTypes =
     [
         WorldResourceType.Gold,
@@ -109,9 +112,16 @@ public sealed record CustomMapEconomy(ImmutableArray<CustomMapEconomyRace> Races
             });
         }
 
+        int neutralTowns = average.Players.Values
+            .Where(player => player.Race == WorldRace.Neutral)
+            .Sum(player => PlayerIncomeCalculator.GetIncomeInfo(player with { IsAi = false }, average, context, townIncome ?? context.Scenario.Definition.TownIncome).Towns.Gold);
+
         return new CustomMapEconomy(
             [.. races],
-            [.. ResourceTypes.Where(unclaimed.ContainsKey).Select(type => (type, unclaimed[type]))]);
+            [.. ResourceTypes.Where(unclaimed.ContainsKey).Select(type => (type, unclaimed[type]))])
+        {
+            NeutralTownsIncome = neutralTowns
+        };
     }
 
     public static int Get(WorldResourceSet resources, WorldResourceType type)

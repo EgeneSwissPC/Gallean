@@ -509,6 +509,15 @@
             <StackPanel Spacing="6" Margin="16,6,14,0">
               <local:OutlinedTextBlock Text="{local:Text 'Neutrals'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
               <CheckBox x:Name="NeutralKindsBox" IsChecked="{Binding NeutralKinds}" Content="{local:Text 'Each kind of neutral is its own side'}" />
+              <Grid ColumnDefinitions="*,54">
+                <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'Starting gold of each neutral side'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="NeutralGoldBox" Grid.Column="1" Text="{Binding NeutralGoldText}" MaxLength="4" HorizontalContentAlignment="Right" />
+              </Grid>
+              <TextBlock Text="{Binding NeutralIncomeText}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         IsVisible="{Binding ShowTownsColumn}"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
               <TextBlock Text="{local:Text 'Greenskins, sea creatures, barbarians, wolves, dragons and the other kinds only help their own kind and are hostile to the rest. A village belongs to the kind of its garrison. Plain neutrals share one side.'}"
                          Classes="caption"
                          TextWrapping="Wrap"

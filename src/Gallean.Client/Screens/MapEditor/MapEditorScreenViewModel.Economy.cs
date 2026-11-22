@@ -86,6 +86,7 @@ internal sealed partial class MapEditorScreenViewModel
         {
             SpellMarkupText = map.ForeignSpellMarkup.ToString(System.Globalization.CultureInfo.InvariantCulture);
             NeutralKinds = map.NeutralKinds;
+            NeutralGoldText = map.NeutralStartingGold.ToString(System.Globalization.CultureInfo.InvariantCulture);
             ShowTownIncome();
         }
         finally
@@ -93,6 +94,49 @@ internal sealed partial class MapEditorScreenViewModel
             showingSpellMarkup = false;
         }
     }
+
+    // Neutrals' starting gold (each neutral side gets it; town income phase 3). Typing keeps one undo step.
+    [ObservableProperty]
+    public partial string NeutralGoldText { get; set; } = "0";
+
+    private int neutralGoldUndoCount = -1;
+
+    partial void OnNeutralGoldTextChanged(string value)
+    {
+        if (showingSpellMarkup)
+        {
+            return;
+        }
+
+        string trimmed = value.Trim();
+        int gold = 0;
+
+        if (trimmed.Length > 0 && !int.TryParse(trimmed, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out gold))
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+
+        if (!map.SetNeutralStartingGold(gold))
+        {
+            return;
+        }
+
+        if (neutralGoldUndoCount != undoSteps.Count)
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+        }
+
+        neutralGoldUndoCount = undoSteps.Count;
+        CanUndo = true;
+        IsDirty = true;
+    }
+
+    // "Neutral towns bring 120 gold a turn in all." while the map has town income.
+    [ObservableProperty]
+    public partial string NeutralIncomeText { get; private set; } = string.Empty;
 
     // Towns (map rule "town income", docs/town-income.md): on/off and the gold per turn for town levels 1-5. Turning it
     // on fills in the last table used in this session, or the default one.
@@ -323,6 +367,7 @@ internal sealed partial class MapEditorScreenViewModel
         try
         {
             ShowTownsColumn = !map.TownIncome.IsDefaultOrEmpty;
+            NeutralIncomeText = ShowTownsColumn ? Tr("Neutral towns bring {0} gold a turn in all.", Economy.NeutralTownsIncome) : string.Empty;
             EconomyRaces = [.. Economy.Races.Select(race => new MapEditorEconomyRaceViewModel(race, map.Players.FirstOrDefault(player => player.Race == race.Race)?.StartingBank ?? WorldResourceSet.Empty, ShowTownsColumn))];
             UnclaimedResources = [.. Economy.Unclaimed.Select(entry => new MapEditorEconomyRowViewModel(new CustomMapEconomyRow(entry.Type, entry.Count, 0, 0)))];
             SelectedEconomyRace = EconomyRaces.FirstOrDefault(race => race.Race == selected);

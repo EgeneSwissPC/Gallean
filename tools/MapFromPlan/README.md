@@ -60,9 +60,9 @@ centre. Points outside it are reported.
 
 ### Map editor features (rules, banks, zones, templates, events)
 
-- `rules`: `{ spellMarkup: percent, neutralKinds: bool, townIncome: [5 values] | bool }`: the editor's map rules (mage
+- `rules`: `{ spellMarkup: percent, neutralKinds: bool, townIncome: [5 values] | bool, neutralGold: gold }`: the editor's map rules (mage
   towers charge more for other races' spells; each neutral kind is its own side; gold per turn for town levels 1-5,
-  on with the editor's default 10/25/50/75/100 when left out, `false` = off). `startingBanks`: `{ Race: { Gold, LifeMana, ... } }`.
+  on with the editor's default 10/25/50/75/100 when left out, `false` = off; gold each neutral side starts with, 0 when left out). `startingBanks`: `{ Race: { Gold, LifeMana, ... } }`.
 - `capitals[].garrison` / `capitals[].army`: `{ template, tier }`; the guardian stays in the garrison. Templates with
   `"race": "Human"` pick that race's units. `villages[].army`: an army stationed in the village (`name` to use it in
   events). `armies[]`: `name` (for events), `loot: { chance, items, max }` (a bag next to the army), `bounty: item`,

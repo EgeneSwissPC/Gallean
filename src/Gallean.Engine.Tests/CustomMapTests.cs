@@ -2509,7 +2509,8 @@ public sealed class CustomMapTests
         // of the base income (100 gold + 25 own mana).
         Assert.That(Towns(human, state), Is.EqualTo(160));
         Assert.That(Towns(elf, state), Is.EqualTo(125));
-        Assert.That(Towns(neutral, state), Is.Zero, "Neutrals earn nothing yet (phase 3).");
+        Assert.That(Towns(neutral, state), Is.EqualTo(75), "Neutrals earn from their own towns (level 4), nothing else.");
+        Assert.That(PlayerIncomeCalculator.GetIncomeInfo(neutral, state, context).Total, Is.EqualTo(new WorldResourceSet(75, 0, 0, 0, 0, 0)));
         PlayerIncomeCalculator.IncomeInfo humanIncome = PlayerIncomeCalculator.GetIncomeInfo(human, state, context);
         Assert.That(humanIncome.Towns, Is.EqualTo(new WorldResourceSet(160, 0, 0, 0, 0, 0)));
         Assert.That((humanIncome.Total.Gold, humanIncome.Total.LifeMana, humanIncome.Capital.Gold, humanIncome.ResourceNodes.Gold), Is.EqualTo((260, 25, 100, 0)));
@@ -2571,8 +2572,92 @@ public sealed class CustomMapTests
         Assert.That(plain.Provider.Definition.TownIncome, Is.Empty);
         EngineContext plainContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, plain.Provider.Definition), plain.Provider, globals);
         Assert.That(PlayerIncomeCalculator.GetIncomeInfo(human, state, plainContext).Total.Gold, Is.EqualTo(100));
+        Assert.That(PlayerIncomeCalculator.GetIncomeInfo(neutral, state, plainContext).Total, Is.EqualTo(WorldResourceSet.Empty), "Rule off: neutrals earn nothing.");
         Assert.That(new WorldGetCityInfoCommand(hill.Id).Execute(humanTurn, plainContext).Data!.TownIncome, Is.Null, "Rule off: no line on the city screen.");
         Assert.That(ScenarioLoader.Load(globalDb, ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, new Db.ScenarioId("S135SC0000")), campaignDb, new ScenarioId("S135SC0000"), definitions, globals).Provider.Definition.TownIncome, Is.Empty);
+    }
+
+    // Town income phase 3: every neutral side starts with the map's neutral gold and earns from its own towns at its
+    // turn start, scaled like all other income (neutrals are computer players). Each kind's side keeps its own gold.
+    [Test]
+    public void NeutralTreasuryTest()
+    {
+        CustomMapUnit Kind(Db.SubraceType kind) => CustomMapUnit.From(Units
+            .Where(unit => unit.Race == WorldRace.Neutral && !unit.IsLarge && unit.Category != UnitCategory.Leader)
+            .Where(unit => globalDb.Units[new Db.Id(unit.Id.Value)].SubraceType == kind)
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First());
+
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Assert.That(map.NeutralStartingGold, Is.Zero);
+        CustomMapVillage orcs = map.PlaceVillage(new WorldPosition(4, 16), 3, WorldRace.Neutral, "Orc town").Village!;
+        Assert.That(map.UpdateVillage(orcs.Id, 3, WorldRace.Neutral, "Orc town", Slots((GridPosition.FrontCenter, Kind(Db.SubraceType.NeutralGreenSkin)))), Is.Null);
+        CustomMapVillage huts = map.PlaceVillage(new WorldPosition(14, 36), 1, WorldRace.Neutral, "Wolf huts").Village!;
+        Assert.That(map.UpdateVillage(huts.Id, 1, WorldRace.Neutral, "Wolf huts", Slots((GridPosition.FrontCenter, Kind(Db.SubraceType.NeutralWolf)))), Is.Null);
+        Assert.That(map.PlaceVillage(new WorldPosition(20, 12), 2, WorldRace.Neutral, "Empty").Error, Is.Null, "No garrison: plain neutrals.");
+
+        Assert.That((map.SetNeutralStartingGold(300), map.SetNeutralStartingGold(300), map.SetNeutralStartingGold(20000), map.NeutralStartingGold), Is.EqualTo((true, false, true, CustomMapPlayer.MaxStartingAmount)));
+        Assert.That(map.SetNeutralStartingGold(300), Is.True);
+        Assert.That(map.Clone().NeutralStartingGold, Is.EqualTo(300));
+        map.NeutralKinds = true;
+        map.SetTownIncome(CustomMap.DefaultTownIncome);
+        store.Save(map);
+        Assert.That(store.Open(map.Id, definitions).NeutralStartingGold, Is.EqualTo(300));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State;
+        WorldPlayerId OwnerOf(CustomMapVillage village) => ((WorldCity)state.Fortifications[new WorldFortificationId(CustomMapWriter.GetVillageId(map.Id, village.Id))]).OwnerId;
+        WorldPlayerId greenskins = OwnerOf(orcs);
+        WorldPlayerId wolves = OwnerOf(huts);
+        WorldPlayerId primary = WorldCommandHelpers.GetNeutralPlayerId(state);
+        WorldPlayer[] neutrals = [.. state.Players.Values.Where(player => player.Race == WorldRace.Neutral)];
+        Assert.That(neutrals.Select(player => player.Id), Is.EquivalentTo(new[] { primary, greenskins, wolves }));
+        Assert.That(neutrals.Select(player => player.Resources), Is.All.EqualTo(new WorldResourceSet(300, 0, 0, 0, 0, 0)), "Every neutral side starts with the map's gold.");
+        Assert.That(neutrals.All(player => player.IsAi), Is.True);
+
+        // Level 3 = 50 for the greenskins, level 1 = 10 for the wolves, level 2 = 25 for plain neutrals; the AI
+        // attitude percent at Average is 100.
+        int Income(WorldPlayerId id) => PlayerIncomeCalculator.GetIncomeInfo(state.Players[id], state, context).Total.Gold;
+        Assert.That((Income(greenskins), Income(wolves), Income(primary)), Is.EqualTo((50, 10, 25)));
+        Assert.That(CustomMapEconomy.Calculate(state, context).NeutralTownsIncome, Is.EqualTo(85), "The editor's total for all neutral sides.");
+
+        // A full round: each side's treasury grows by exactly its own towns' gold at its own turn start.
+        WorldState humans = state with
+        {
+            Difficulty = WorldDifficulty.Average,
+            Players = state.Players.SetItems(state.Players.Values.Where(player => player.Race != WorldRace.Neutral).Select(player => KeyValuePair.Create(player.Id, player with { IsAi = false })))
+        };
+        GameSession session = new(context, humans);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        int Gold(WorldPlayerId id) => session.World.State.Players[id].Resources.Gold;
+        Dictionary<WorldPlayerId, int> before = neutrals.ToDictionary(player => player.Id, player => Gold(player.Id));
+        int round = session.World.State.TurnInfo.TurnNumber;
+        TestWorldAiRunner runner = new(session, context);
+
+        // Humans move first, then the computer players: every neutral side starts one turn before the round ends.
+        while (session.World.State.TurnInfo.TurnNumber == round)
+        {
+            if (session.World.State.CurrentPlayer.IsAi)
+            {
+                runner.PlayTurn();
+            }
+            else
+            {
+                Assert.That(session.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+            }
+        }
+
+        Assert.That(neutrals.Select(player => Gold(player.Id) - before[player.Id]), Is.EqualTo(neutrals.Select(player => player.Id == greenskins ? 50 : player.Id == wolves ? 10 : 25)));
+
+        // Without town income neutrals keep their starting gold.
+        map.SetTownIncome([]);
+        store.Save(map);
+        Scenario plain = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        EngineContext plainContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, plain.Provider.Definition), plain.Provider, globals);
+        Assert.That(plain.State.Players.Values.Where(player => player.Race == WorldRace.Neutral).Sum(player => PlayerIncomeCalculator.GetIncomeInfo(player, plain.State, plainContext).Total.Gold), Is.Zero);
     }
 
     // Map rule "neutral kinds": each neutral subrace type gets its own neutral player (only one kind per side, kinds

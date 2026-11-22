@@ -242,7 +242,7 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
                 ConstructTurn: 0,
                 MakeId(prefix, "PB", i),
                 MakeId(prefix, "KS", i),
-                mapPlayer is null ? Db.ResourceSet.Empty : GetStartingBank(mapPlayer),
+                mapPlayer is null ? new Db.ResourceSet(map.NeutralStartingGold, 0, 0, 0, 0, 0) : GetStartingBank(mapPlayer),
                 Db.ResourceSet.Empty,
                 mapPlayer is null ? Db.AiAttitudeType.Medium : Db.AiAttitudeType.Humongous,
                 Face: 0,
