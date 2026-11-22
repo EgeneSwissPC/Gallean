@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5 specced below, all questions (P-W) answered, nothing built. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5a built on branch `upgrade/neutral-armies` (8bcb4422, not merged): armies never left in the measurement; fix options X1-X3 below wait for the user. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -277,3 +277,15 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 ~~W. Who counts as an enemy.~~ Answered: W1.
 
 Phases: 5a orders handed out by the rule (T1) with the strength-margin check, the V2 exception, the three map settings (army radius 10, town radius 60, margin 140 %) in SRules, the editor's Neutrals section and MapFromPlan, and tests, ~1.5 days; 5b War of the Ring measurement (neutral turn time, armies out, battles by side, towns changing hands, losses) and tuning, ~0.5 day.
+
+### Phase 5a - built, measured, not merged
+
+Commit 8bcb4422 on `upgrade/neutral-armies`: `NeutralArmyPlanner` (orders from the neutral economy rule), `WorldStack.NeutralHomeId` (saved), `WorldNeutralArmyOrderedEvent`, map settings NEUTRAL_ARMY_RADIUS / NEUTRAL_TOWN_RADIUS / NEUTRAL_ATTACK_MARGIN with editor boxes and MapFromPlan keys, `CustomMapTests.NeutralArmiesTest` (5 mutation checks caught), editor test. Suite 5506.
+
+Finding while building: the SecureCity restriction for plain neutrals lives only in `StackOrderCalculator`, which only scenario events use; orders set by the rule aren't affected, so V2 needed no engine change (the test shows a plain-neutral army taking an Empire village in play).
+
+Measurement (War of the Ring, 20 turns, seed 1): identical to phase 4, no army ever left. Diagnostic: the Free Men's 14-16 bought armies held 2-3 units of 6 leadership after 10 turns. Cause: decision N fills waiting armies only while the side is below its unit target, and decision P1 sends an army out only when it is full; once the side reaches its target it upgrades instead, each upgrade adds a garrison slot that is filled first, so armies stay half full.
+
+Experiment (reverted): a waiting army is filled whatever the target, the target only decides between a new leader and an upgrade. Result after 20 turns: 5 Free Men armies out (one with SecureCity, others hunting or returning), the Free Men took an Empire village (Free Men 16 -> 17 villages, Empire 8 -> 7), neutral turns 1392 ms vs 1376 ms. The other kinds stayed above their unit targets the whole time, so they never hired leaders and sent nothing out.
+
+X1: the experiment: waiting armies are filled before upgrades whatever the target; the target only gates new leaders. X2: armies leave at half their leadership instead of full (changes P1). X3: keep it as built; armies leave only while a side is below its target. Recommendation: X1.
