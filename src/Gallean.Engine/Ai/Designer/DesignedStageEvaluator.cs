@@ -111,7 +111,7 @@ internal static class DesignedStageEvaluator
             GatherArmies = rules.GatherArmies ?? 0,
             RushEnemyCapital = rules.RushEnemyCapital ?? false,
             GoldReserve = rules.GoldReserve ?? 0,
-            SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent
+            SpendAbovePercent = rules.SpendAbovePercent ?? WorldAiSpending.DefaultSpendAbovePercent
         };
     }
 

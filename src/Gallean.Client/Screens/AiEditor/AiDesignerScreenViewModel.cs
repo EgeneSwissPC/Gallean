@@ -749,6 +749,11 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
             viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(AiDesignerRule.GoldReserve), OnChanged, reserve));
         }
 
+        if (rules.SpendAbovePercent is { } spend)
+        {
+            viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(AiDesignerRule.SpendAbove), OnChanged, spend));
+        }
+
         viewModel.RefreshState();
         loading = wasLoading;
 
@@ -930,7 +935,8 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
             Rule(AiDesignerRule.KeepArmiesHome)?.Number(0),
             Rule(AiDesignerRule.GatherArmies)?.Number(0),
             Rule(AiDesignerRule.RushEnemyCapital) is null ? null : true,
-            Rule(AiDesignerRule.GoldReserve)?.Number(0));
+            Rule(AiDesignerRule.GoldReserve)?.Number(0),
+            Rule(AiDesignerRule.SpendAbove)?.Number(0));
 
         return new DesignedWorldStage(stage.Name.Trim(), when, ToTiers(stage.Economy), ToTiers(stage.Army), rules);
     }

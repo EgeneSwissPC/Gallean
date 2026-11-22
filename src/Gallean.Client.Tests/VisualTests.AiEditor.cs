@@ -52,7 +52,7 @@ public sealed partial class VisualTests
                     Army = [[WorldAiActionKind.UseItem], [WorldAiActionKind.AutoFit], [WorldAiActionKind.Attack, WorldAiActionKind.EnterCity, WorldAiActionKind.TakeBag], [WorldAiActionKind.Heal], [WorldAiActionKind.Move]],
                     Rules = new DesignedWorldRules(ReinforcePercent: 50, AttackPowerPercent: 70, WaitForFreeCapital: true)
                 },
-                DesignedWorldStage.Classic with { Name = "Build up", Rules = new DesignedWorldRules(AttackPowerPercent: 120) }
+                DesignedWorldStage.Classic with { Name = "Build up", Rules = new DesignedWorldRules(AttackPowerPercent: 120, SpendAbovePercent: 85) }
             ]);
             DesignedAiLibrary.Store.Save(design);
             DesignedAiLibrary.Reload();
@@ -88,6 +88,15 @@ public sealed partial class VisualTests
             await SkipFramesAsync(2);
             Assert.That(designer.HelpTitle, Is.EqualTo(Tr("Attack advantage")));
             await CaptureAsync(window, "3-help");
+
+            // Overflow spending phase 4: the "Spend when rich" tuning block and its help.
+            Control spendWhenRich = PaletteBlock(Tr("Spend when rich"));
+            spendWhenRich.BringIntoView();
+            await SkipFramesAsync(3);
+            window.MouseMove(Assert.NotNull(spendWhenRich.TranslatePoint(new Point(20, 8), window)));
+            await SkipFramesAsync(2);
+            Assert.That(designer.HelpTitle, Is.EqualTo(Tr("Spend when rich")));
+            await CaptureAsync(window, "3b-help-spend");
 
             // + Stage scrolls the new card into sight.
             Button addStage = view.FindControl<Button>("AddStageButton")!;
@@ -164,7 +173,7 @@ public sealed partial class VisualTests
                     Name = "Вернуть город",
                     When = [[new DesignedStageCondition.LostCity(), new DesignedStageCondition.EnemyNearCapital(6)]],
                     Rules = new DesignedWorldRules(HurtPercent: 60, HealedPercent: 85, ReinforcePercent: 50, AttackPowerPercent: 70, LeaderSavingsGold: 200, WaitForFreeCapital: true,
-                        KeepArmiesHome: 1, GatherArmies: 2, RushEnemyCapital: true, GoldReserve: 300)
+                        KeepArmiesHome: 1, GatherArmies: 2, RushEnemyCapital: true, GoldReserve: 300, SpendAbovePercent: 85)
                 },
                 DesignedWorldStage.Classic with { Name = "Развитие" }
             ]);
