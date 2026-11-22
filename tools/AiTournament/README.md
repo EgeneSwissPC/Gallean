@@ -85,3 +85,15 @@ DOTNET_ROOT=~/.dotnet ./AiTournament --export-armies S099SC0000 /tmp/armies
 It prints each side's win share with its 95 % margin of error (Wilson interval half-width, e.g. `A 55 % ± 3`; at 30
 runs the margin is about ± 17 points, at 1000 about ± 3). Per side it prints wins (attacking / defending), runs where the side fled, units alive, hit points left, and per unit how
 often it survived. Measured: 20 runs of 4 vs 4 units take ~0.1 s.
+
+## Designed battle AIs
+
+`--battle-ais <dir>` loads designed battle AIs (`<name>.json`, ID `custom-battle:<name>`) for `--ai-a` / `--ai-b`.
+`--new-battle-ai <dir> <name> [source]` writes one copied from Classic or a built-in battle AI, to edit by hand.
+Examples in `examples/battle-ais/` (one block each, plus `careful-courier.json` with a "rich and losing" stage):
+
+```
+AiTournament --battle examples/armies/orcs.json examples/armies/orcs.json --battle-ais examples/battle-ais --ai-a custom-battle:leader-first --runs 2000 --swap
+```
+
+Army presets take `"cargo": ["<item id>", ...]` (the bag; no effect in battle, read by the cargo condition).

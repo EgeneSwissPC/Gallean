@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "name": "Protect leader",
+  "stages": [
+    {
+      "name": "Default",
+      "when": [],
+      "tactics": {
+        "healersFirst": 0,
+        "castersFirst": 0,
+        "leaderFirst": 0,
+        "hardestHitterFirst": 0,
+        "woundedFirst": 0,
+        "focusFire": 0,
+        "protectLeader": true,
+        "neverFlee": false,
+        "fleeBelowPercent": 25,
+        "canDefend": true
+      }
+    }
+  ]
+}
