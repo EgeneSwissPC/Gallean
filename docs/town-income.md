@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: questions A-D and F-I answered, E open; nothing built. The user asked for two features, in this order:
+Status: all questions answered (H's price ceiling table is asked when phase 4 starts); nothing built. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -14,6 +14,7 @@ Status: questions A-D and F-I answered, E open; nothing built. The user asked fo
 - B (user): the steeper table, 10 / 25 / 50 / 75 / 100 gold for levels 1-5, editable per map.
 - C (user): capitals benefit too. A capital pays the level-5 value of the table (100 by default) on top of the race base income (taken unless the user objects; a separate capital box in the editor would be the alternative).
 - D (user): rioting towns pay nothing.
+- E (user): E1. Town income goes through the same `PlayerIncomeCalculator.Scale` as all other income: +30 % for everyone on Easy (`INCOME_E`), then for computer players (neutrals included) `GAI` D_EASY_M / D_AVG_M / D_HARD_M / D_VHARD_M = 70 / 100 / 130 / 145 %. A level-3 town (50) pays a human 65 on Easy and 50 otherwise, a computer player 45 / 50 / 65 / 72. The editor prediction uses the same formula.
 - F (user): neutrals earn only from their own towns, plus a starting bank.
 - G (user): garrisons first. Once a neutral side has more money, it sends out armies that attack enemy armies near its home towns or conquer nearby towns. Phase 5 builds this, after phase 4's measurement.
 - H (user): a neutral side buys only its own kind's soldiers, and the village level caps the price.
@@ -47,7 +48,7 @@ Status: questions A-D and F-I answered, E open; nothing built. The user asked fo
 
 ### Town income (phases 1-2)
 
-- Engine: `PlayerIncomeCalculator.GetIncomeInfo` adds `TownIncome` = the sum over the player's non-rioting `WorldCity` fortifications of the table value for each city's level, plus the level-5 value for an uncaptured own capital. `IncomeInfo` gets a `Towns` part, which `WorldGetPlayerInfoCommand` passes to the client. Scaling: see question E.
+- Engine: `PlayerIncomeCalculator.GetIncomeInfo` adds `TownIncome` = the sum over the player's non-rioting `WorldCity` fortifications of the table value for each city's level, plus the level-5 value for an uncaptured own capital. `IncomeInfo` gets a `Towns` part, which `WorldGetPlayerInfoCommand` passes to the client. Scaling: the existing `Scale` (decision E).
 - Data: a per-map table in `SRules.json` (new column, e.g. `TOWN_INCOME` = `"10,25,50,75,100"` gold for levels 1-5). Missing or empty = no town income, so original campaigns stay as they are. Read into `ScenarioDefinition.TownIncome` (init property, like `ForeignSpellMarkup`).
 - Editor: `CustomMap.TownIncome` (on with the default table for new maps) + an on/off box and the five values in the economy panel; `CustomMapEconomy` adds the column through the same `PlayerIncomeCalculator` call it already uses. MapFromPlan: `rules.townIncome`.
 - Turn flow: no change. `TurnStartedGenerateResourcesRule` already pays `IncomeInfo.Total` at each player's turn start.
@@ -89,7 +90,7 @@ Status: questions A-D and F-I answered, E open; nothing built. The user asked fo
 
 ~~D. Rioting villages.~~ Answered: they pay nothing.
 
-E. Difficulty and AI attitude scaling (asked again in more detail). Today all income goes through `PlayerIncomeCalculator.Scale`: everyone gets +30 % on Easy (`INCOME_E`), and computer players are then multiplied by `GAI` D_EASY_M / D_AVG_M / D_HARD_M / D_VHARD_M = 70 / 100 / 130 / 145 % (the same for all 7 attitudes). A level-3 town (50 gold) would pay you 65 on Easy and 50 otherwise; a computer player 45 / 50 / 65 / 72. E1: scale town income the same way. E2: never scale it (50 for everyone). E3: scale it for the races, but not for neutrals. Recommendation: E1.
+~~E. Difficulty and AI attitude scaling.~~ Answered: E1, scaled like all other income (Decisions).
 
 ~~F. Neutral income source.~~ Answered: towns only, plus a starting bank.
 
