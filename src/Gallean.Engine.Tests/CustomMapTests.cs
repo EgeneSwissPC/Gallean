@@ -1617,6 +1617,53 @@ public sealed class CustomMapTests
         Assert.That(left, Is.EqualTo(leaves));
     }
 
+    // Gallean Upgrade, overflow spending (docs/ai-overflow-spending.md, phase 3): with 9999 gold Classic buys one
+    // unit per turn; Classic+ (every personality) keeps buying units and hires extra leaders.
+    [Test]
+    public void GoldSpendingTest()
+    {
+        (int Units, int Gold) PlayFirstTurn(string worldAi)
+        {
+            CustomMap map = CreateMap();
+            CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+            store.Save(map);
+
+            GlobalVariables globals = new();
+            Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+            EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+            WorldState state = scenario.State with
+            {
+                Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with
+                {
+                    IsAi = true,
+                    Resources = pair.Value.Resources with { Gold = 9999 }
+                })))
+            };
+            GameSession session = new(context, state) { AllowAiOnly = true, Ai = new AiSelection(worldAi, null) };
+            Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+            WorldPlayerId first = session.World.State.TurnInfo.CurrentPlayerId;
+            int Units() => session.World.State.Stacks.Values.Where(stack => stack.OwnerId == first).Sum(stack => stack.Units.GetUnits().Count()) +
+                           session.World.State.Fortifications.Values.Where(fortification => fortification.Owner == first).Sum(fortification => fortification.Garrison.GetUnits().Count());
+            int before = Units();
+
+            while (session.World.State.TurnInfo.CurrentPlayerId == first)
+            {
+                session.ExecuteAiAction();
+            }
+
+            return (Units() - before, session.World.State.Players[first].Resources.Gold);
+        }
+
+        (int classicUnits, int classicGold) = PlayFirstTurn(AiBrainRegistry.ClassicId);
+        (int spenderUnits, int spenderGold) = PlayFirstTurn(AiPersonalities.ClassicPlusId);
+
+        Assert.That(classicUnits, Is.LessThanOrEqualTo(2), "Classic: one unit, at most one leader");
+        Assert.That(spenderUnits, Is.GreaterThan(classicUnits + 1));
+        Assert.That(spenderGold, Is.LessThan(classicGold));
+        TestContext.Out.WriteLine($"Classic +{classicUnits} units, {classicGold} gold; Classic+ +{spenderUnits} units, {spenderGold} gold");
+    }
+
     // Gallean Upgrade (AI designer, phase 5): an AI-only game on CreateMap's map where the Human player uses a
     // designed AI with these rules (every other player Classic+). Optional: the whole map explored.
     private (GameSession Session, WorldPlayerId Human, WorldPosition HumanEntrance, WorldPosition ElfEntrance) DesignedGame(DesignedWorldRules rules, bool reveal = false)

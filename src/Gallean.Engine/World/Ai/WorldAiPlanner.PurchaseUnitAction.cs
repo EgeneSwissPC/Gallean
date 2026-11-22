@@ -8,7 +8,9 @@ internal sealed partial class WorldAiPlanner
 
         public override WorldAiActionPlan? Plan(WorldState state, WorldPlayerId playerId, WorldAiMemory memory)
         {
-            if (memory.Turn.UnitsPurchased >= MaxUnitsPerTurn)
+            // Gallean Upgrade, overflow spending: no per-turn unit limit while gold is near the cap.
+            if (memory.Turn.UnitsPurchased >= MaxUnitsPerTurn &&
+                !WorldAiSpending.IsGoldSpending(Context.Profile, state.Players[playerId], Context.Engine.Globals))
             {
                 return null;
             }
