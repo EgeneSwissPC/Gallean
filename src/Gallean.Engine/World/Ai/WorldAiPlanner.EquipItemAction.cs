@@ -53,7 +53,8 @@ internal sealed partial class WorldAiPlanner
 
         private WorldAiActionPlan? PlanEquip(ActionContext context)
         {
-            if (!Context.Profile.EquipItems)
+            // Neutral armies keep the items the map gave them in the bag (loot), even under one of our AIs.
+            if (!Context.Profile.EquipItems || !WorldHelpers.IsRacePlayable(context.State.Players[context.Stack.OwnerId].Race))
             {
                 return null;
             }

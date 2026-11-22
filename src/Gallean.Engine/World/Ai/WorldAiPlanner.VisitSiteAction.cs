@@ -56,7 +56,9 @@ internal sealed partial class WorldAiPlanner
 
         private WorldAiActionPlan? PlanVisit(ActionContext context)
         {
-            if (!Context.Profile.VisitSites)
+            // Neutral sides spend their gold through the "neutrals buy units" map rule (NeutralEconomyPlanner,
+            // docs/town-income.md phase 4), never through site visits, even when a neutral player uses one of our AIs.
+            if (!Context.Profile.VisitSites || !WorldHelpers.IsRacePlayable(context.State.Players[context.Stack.OwnerId].Race))
             {
                 return null;
             }

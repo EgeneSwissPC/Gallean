@@ -21,10 +21,10 @@ public sealed class WorldAiEquipmentTests
 
     private static WorldItem Owned(ItemDefinition definition, string id) => new(new WorldItemId(id), definition.Id, Charges: null);
 
-    private static WorldAiActionPlan FirstPlan(string brainId, IReadOnlyList<WorldItem> bag, LeaderEquipment equipment, WorldSite? site = null, int gold = 2000)
+    private static WorldAiActionPlan FirstPlan(string brainId, IReadOnlyList<WorldItem> bag, LeaderEquipment equipment, WorldSite? site = null, int gold = 2000, WorldRace race = WorldRace.Undead)
     {
         WorldMap map = TestHelpers.SimpleMap(10, 10);
-        WorldPlayer ai = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with
+        WorldPlayer ai = TestHelpers.SimplePlayer(new WorldPlayerId(1), race, map) with
         {
             IsAi = true,
             Resources = new WorldResourceSet(gold, 0, 0, 0, 0, 0)
@@ -92,6 +92,12 @@ public sealed class WorldAiEquipmentTests
         // The other way round nothing changes.
         Assert.That(FirstPlan(AiPersonalities.ClassicPlusId, [Owned(CheapBoots, "cheap")], Wearing(LeaderEquipmentSlot.Boots, Owned(GoodBoots, "good"))).Command,
             Is.Not.InstanceOf<WorldUnequipItemCommand>().And.Not.InstanceOf<WorldEquipItemCommand>());
+    }
+
+    [Test]
+    public void NeutralArmiesKeepTheirLootTest()
+    {
+        Assert.That(FirstPlan(AiPersonalities.ClassicPlusId, [Owned(Banner, "b1")], LeaderEquipment.Empty, race: WorldRace.Neutral).Command, Is.Not.InstanceOf<WorldEquipItemCommand>());
     }
 
     [Test]
