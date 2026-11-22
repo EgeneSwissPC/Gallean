@@ -1412,7 +1412,6 @@
     "No AIs of your own yet. Create one on the right.": "No AIs of your own yet. Create one on the right.",
     "New map AI": "New map AI",
     "Start from": "Start from",
-    "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel. Battle AIs come in a later update.": "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel. Battle AIs come in a later update.",
     "Create AI": "Create AI",
     "My AI": "My AI",
     "1 stage": "1 stage",
@@ -1613,6 +1612,13 @@
     "Watch the first battle the attacker of the setup won, as it was fought": "Watch the first battle the attacker of the setup won, as it was fought",
     "Watch the first battle the attacker of the setup lost, as it was fought": "Watch the first battle the attacker of the setup lost, as it was fought",
     "Watch": "Watch",
-    "Watch one battle on the battle screen, both sides played by their AI": "Watch one battle on the battle screen, both sides played by their AI"
+    "Watch one battle on the battle screen, both sides played by their AI": "Watch one battle on the battle screen, both sides played by their AI",
+    "Your battle AIs": "Your battle AIs",
+    "New battle AI": "New battle AI",
+    "Map AIs": "Map AIs",
+    "Battle AIs": "Battle AIs",
+    "A new battle AI plays exactly like the one it starts from until you change it. Battle AIs appear in Settings, in the AI players panel and in the battle sandbox. The battle AI designer screen comes in a later update.": "A new battle AI plays exactly like the one it starts from until you change it. Battle AIs appear in Settings, in the AI players panel and in the battle sandbox. The battle AI designer screen comes in a later update.",
+    "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel.": "A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel.",
+    "Delete \"{0}\"? Games and settings that use it play Classic instead. This cannot be undone.": "Delete \"{0}\"? Games and settings that use it play Classic instead. This cannot be undone."
   }
 }
