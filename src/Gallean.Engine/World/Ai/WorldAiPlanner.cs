@@ -163,6 +163,7 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             designed.Add(new ChangeOrderAction(context, Priority: 0));
             // Gallean Upgrade: site visits are a rule of every designed AI (docs/ai-unused-features.md phase 4).
             designed.Add(new VisitSiteAction(context, Priority: 2));
+            designed.Add(new EquipItemAction(context, Priority: 6));
 
             return designed;
         }
@@ -181,7 +182,9 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             new MoveAction(context, Priority: 1),
             new ChangeOrderAction(context, Priority: 0),
             // Gallean Upgrade: does nothing unless the profile has VisitSites (never for Classic).
-            new VisitSiteAction(context, Priority: 2)
+            new VisitSiteAction(context, Priority: 2),
+            // Gallean Upgrade: does nothing unless the profile has EquipItems (never for Classic).
+            new EquipItemAction(context, Priority: 6)
         ];
     }
 

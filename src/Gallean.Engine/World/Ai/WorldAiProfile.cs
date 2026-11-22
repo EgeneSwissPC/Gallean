@@ -57,4 +57,6 @@ internal sealed record WorldAiProfile
     public bool UseAllSpells { get; init; }
     // Gallean Upgrade, unused features phase 4: fighting armies visit sites to buy what they can use. False = Classic.
     public bool VisitSites { get; init; }
+    // Gallean Upgrade, unused features phase 5: leaders equip banners, tomes, artifacts and boots. False = Classic.
+    public bool EquipItems { get; init; }
 }
