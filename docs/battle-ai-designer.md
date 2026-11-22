@@ -197,7 +197,7 @@ Re-split after the answers (2026-11-21); every sandbox phase copies the original
 6. ~~**Watch battle**~~ (done, see "Phase 6 — done"; ~1.5 days): spectator battle screen (both sides AI with their brains, battle items used),
    back to the setup afterwards, "Watch seed N" from the results.
 Re-split after BA-BD (2026-11-22):
-7. **Engine: designed battle AI** (~5 days): `BattleAiProfile` knobs (5 target preferences, 9→ protect the leader,
+7. **Engine: designed battle AI** (~5 days): `BattleAiProfile` knobs (5 target preferences; 4 behaviour blocks: protect the leader,
    focus fire, never flee, flee below N %), `DesignedBattleAi` with stages and 4 condition blocks (round, power share,
    leader hit points, cargo value — the cargo block needs `BattleInfo` to carry each side's bag value and quest-item
    flag, BH a), store (`AIs/battle/`), brain, registry, `custom-battle:` → Classic fallback; Classic copy = Classic
