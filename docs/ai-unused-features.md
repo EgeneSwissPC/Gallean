@@ -1,6 +1,6 @@
 # AI: the parts of the game it never uses
 
-Status: questions A-F answered (2026-11-22); phases 1-3 done, phase 4 (site visits) next.
+Status: questions A-F answered (2026-11-22); phases 1-4 done, phase 5 (equipment) next.
 
 ## Decisions
 
@@ -47,7 +47,7 @@ War of the Ring has 23 sites: 8 merchants, 6 mage towers, 6 mercenary camps, 3 t
 1. ~~A: summon upkeep awareness (~0.5 day).~~ Done, see "Phase 1 — done".
 2. ~~B: "not for the AI" spells (~0.5-1 day).~~ Done, see "Phase 2 — done".
 3. ~~C: area spells (~1 day).~~ Done, see "Phase 3 — done".
-4. D: site visits: mercenaries, trainers, mage towers, potions (~3-4 days).
+4. ~~D: site visits: mercenaries, trainers, mage towers, potions (~3-4 days).~~ Done, see "Phase 4 — done".
 5. E: equipment, then equipment at merchants (~2 days).
 
 ## Phase 1 — done (summon upkeep awareness)
@@ -84,6 +84,21 @@ Merged d73cb5fe (feature commit 7cd2eb8d on `upgrade/ai-area-spells`, then galle
 - `CastSpellAction.FindAreaCast` (our AIs, `UseAllSpells`; runs after Classic's choices and before overflow spending): attack and weaken spells centred on a visible hostile army (the 30 nearest to own armies) whose square holds no own or allied army; heal on an own damaged army, boost and invisibility on an own army about to fight (outside a city, movement left, an enemy within 7 tiles), each with no hostile army in the square. Score = the ring power of every wanted army in the square; cast when it reaches 2 armies (`AreaMinStacks`), or 1 when the spell's mana is above the spending line. Fog, unfog and terrain area spells stay out (answer E).
 - Tests: `AreaAttackOnTwoArmiesTest` (Classic never casts, Classic+ centres on one of two neutrals), `AreaAttackSparesOwnArmiesTest` (an own army in the square -> no cast; one neutral alone -> no cast), `AreaHealOnTwoWoundedArmiesTest`. Mutation checks: own-army check off -> the spare test fails; area casting off -> the other two fail. Suite 5473 after both merges. S099 Classic CSV identical apart from timings (against gallean-upgrade cfe773ef).
 - Measured, War of the Ring (new map), 60 turns, seed 1: 37 area casts (Elf 19, Undead 10, Human 8); the Dwarves and Heretics learned no area spell in 60 turns (only 4 area spells were known in total, all races together). Mana lost 6.0 % (phase 2: 5.9 %, within noise).
+- No real-client run (no client change).
+
+## Phase 4 — done (site visits)
+
+Merged 8d9c0957 (feature commit 12542e42 on `upgrade/ai-site-visits`; gallean-upgrade merged in twice because another session merged move orders phase 2 and town income phase 3 meanwhile).
+
+- Built as one stack action instead of four steps, because the site types share the walking and only differ in the purchase: `WorldAiPlanner.VisitSiteAction` (priority 2, registered for Classic's list and designed AIs, acts only with the new profile knob `VisitSites`, true for every personality and designed AI).
+- Who: armies on a Normal order whose leader is a fighter or a mage (rod planters, explorers and thieves keep their own jobs).
+- Where (answer B): explored sites whose entrance it can reach within 2 turns of its full movement, plus 1 turn per 2,000 gold, at most 6; score = the attitude's interest in that site type (`GAI.json` I_MERCHANT/I_TOWERS/I_H_MERCS/I_TRAINER) x the inverse path cost, like rod targets. Only sites where it would buy something right now count.
+- What, at the entrance, one purchase per decision: mercenaries = the most expensive unit that fits the army; trainers = the unit that gains the most experience (the engine trains as far as the gold goes, so it is only done when the whole cost fits); mage towers = a spell with an effect the AI can cast; merchants = healing or revive potions while the army carries fewer than 2 (answer C).
+- Decision taken without asking (say if it should change): site purchases leave at least 500 gold (`VisitSiteAction.GoldKept`), except while gold spending, so shopping doesn't starve unit and leader purchases.
+- Tests: `WorldAiSiteVisitTests` (5: mercenary, trainer and mage tower purchases at the entrance, walking toward a merchant 6 tiles away, the 500-gold rule), Classic as the control in each. Mutation checks: knob gate off -> all 5 fail; gold rule off -> 2 fail. Suite 5489 after both merges. S099 Classic CSV identical apart from timings (against gallean-upgrade b90dbb4e).
+- Measured, War of the Ring (new map), 60 turns, seed 1, with and without site visits (other phases on in both):
+  - Humans: 9 spells, 23 trainings, 2 potions for 15,965 gold; their mana lost at the cap fell from 7 % to 1 % (more spells to cast). Dwarves: 3 potions. Heretics: 4 spells. Elves and Undead: nothing.
+  - No mercenaries were bought: the six mercenary camps lie 55 to 331 tiles from the nearest capital, mostly beyond the 6-turn limit, and armies that are already full can't take more units. Not verified per army.
 - No real-client run (no client change).
 
 ## Open questions
