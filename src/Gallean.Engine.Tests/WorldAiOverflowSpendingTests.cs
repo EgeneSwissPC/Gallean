@@ -142,4 +142,95 @@ public sealed class WorldAiOverflowSpendingTests
         DesignedWorldStage stage = DesignedWorldAi.FromClassic("custom:test", "Test").Stages[0];
         Assert.That(DesignedStageEvaluator.ToProfile(stage).SpendAbovePercent, Is.EqualTo(WorldAiSpending.DefaultSpendAbovePercent));
     }
+
+    // Phase 2b: a rod planter between a near gold mine and a farther rune source. The race's cheapest level 3
+    // spell needs rune mana it lacks: Classic+ goes for the rune source (also when not rich), Classic for the mine.
+    private static (GameSession Session, IEngineContext Context, WorldPlayer Player) RodGame(int runeX = 9, bool withMine = true)
+    {
+        WorldMap map = TestHelpers.SimpleMap(Math.Max(12, runeX + 3), 3);
+        WorldSpellDefinitionId levelThreeId = new("levelThree");
+        WorldSpellDefinition levelThree = TestHelpers.SimpleSpellDefinition(levelThreeId, new WorldAttackSpellEffect(UnitAttackSource.Fire, 20)) with { Level = 3 };
+
+        UnitDefinition planterDefinition = TestHelpers.SimpleLeaderDefinition(
+                TestHelpers.SimpleUnitDefinition("planter", maxHitpoints: 100, initiative: 50, damage: 10),
+                movementPoints: 6, leadership: 2) with
+            {
+                LeaderCategory = UnitLeaderCategory.Rod,
+                LeaderAbilities = LeaderAbility.Rod
+            };
+
+        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with
+        {
+            IsAi = true,
+            Resources = new WorldResourceSet(Gold: 150, DeathMana: 2000, RuneMana: 0, LifeMana: 0, InfernalMana: 0, GroveMana: 0),
+            Spellbook = new WorldPlayerSpellbook([levelThreeId], [])
+        };
+
+        WorldStack planter = TestHelpers.SimpleStack(
+            new WorldStackId("Planter"),
+            player.Id,
+            new WorldPosition(5, 1),
+            new UnitGrid<WorldUnit>.Builder().Place(TestHelpers.SimpleUnit(new WorldUnitId("planter"), planterDefinition), GridPosition.BackBottom, false).Build(),
+            movementPoints: 6);
+
+        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(planterDefinition)
+            .WithDefinition(levelThree)
+            .WithResearchableSpell(new WorldSpellResearchCost(WorldRace.Undead, levelThreeId,
+                new WorldResourceSet(Gold: 0, DeathMana: 450, RuneMana: 450, LifeMana: 0, InfernalMana: 0, GroveMana: 0)))
+            .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
+            .WithPlayer(player)
+            .WithStack(planter)
+            .WithResourceNode(new WorldResourceNode(new WorldResourceNodeId("rune"), new WorldPosition(runeX, 1), WorldResourceType.RuneMana, AiPriority: 3));
+
+        if (withMine)
+        {
+            builder = builder.WithResourceNode(new WorldResourceNode(new WorldResourceNodeId("mine"), new WorldPosition(2, 1), WorldResourceType.Gold, AiPriority: 3));
+        }
+
+        (GameSession session, IEngineContext context) = builder.BuildSession();
+
+        return (session, context, player);
+    }
+
+    private static int? FirstTargetX(IWorldAiBrain brain, int runeX = 9, bool withMine = true)
+    {
+        (GameSession session, IEngineContext context, _) = RodGame(runeX, withMine);
+        WorldAiActionPlan plan = brain.DecideAction(context, session.World.State, WorldAiMemory.Empty);
+
+        return plan.Command switch
+        {
+            WorldAiMoveStackCommand move => move.TargetPosition.X,
+            WorldCreateRodCommand create => create.TargetPosition.X,
+            _ => null
+        };
+    }
+
+    // A needed rune source 70 tiles away (MP 6, so beyond Classic's 10 turns of 6 MP): only Classic+ walks there.
+    [Test]
+    public void RodPlanterWalksFarForNeededManaTest()
+    {
+        Assert.That(FirstTargetX(ClassicWorldAiBrain.Instance, runeX: 75, withMine: false), Is.Null.Or.LessThanOrEqualTo(5), "Classic: too far");
+        Assert.That(FirstTargetX(AiBrainRegistry.ResolveWorld(AiPersonalities.ClassicPlusId), runeX: 75, withMine: false), Is.GreaterThan(5), "Classic+: needed, within 30 turns");
+    }
+
+    [Test]
+    public void RodPlanterGoesForNeededManaTest()
+    {
+        Assert.That(FirstTargetX(ClassicWorldAiBrain.Instance), Is.LessThan(5), "Classic: the nearer gold mine");
+        Assert.That(FirstTargetX(AiBrainRegistry.ResolveWorld(AiPersonalities.ClassicPlusId)), Is.GreaterThan(5), "Classic+: the rune source it needs");
+    }
+
+    [Test]
+    public void NeededManaTest()
+    {
+        (GameSession session, IEngineContext context, WorldPlayer player) = RodGame();
+        WorldPlayer current = session.World.State.Players[player.Id];
+        WorldAiProfile ours = WorldAiProfile.Classic with { SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent };
+
+        Assert.That(WorldAiSpending.GetNeededMana(WorldAiProfile.Classic, current, context), Is.Empty);
+        Assert.That(WorldAiSpending.GetNeededMana(ours, current, context), Is.EquivalentTo(new[] { WorldResourceType.RuneMana }));
+        Assert.That(WorldAiSpending.GetNeededMana(ours, current with { Resources = current.Resources with { RuneMana = 450 } }, context), Is.Empty);
+    }
 }

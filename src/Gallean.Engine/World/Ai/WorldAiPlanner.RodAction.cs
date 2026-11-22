@@ -6,7 +6,15 @@ internal sealed partial class WorldAiPlanner
 {
     private sealed partial record RodAction(WorldAiContext Context, int Priority) : AbstractStackAction(Context, Priority)
     {
-        private readonly record struct Target(WorldPosition Position, int Range, int Interest, IWorldCommand<Empty> Command);
+        private const int NeededManaMaxInterest = 200;
+
+        // Gallean Upgrade, phase 2b: rod planters may walk this many turns for a needed mana (Classic: MoveTurnLimit).
+        private const int NeededManaMoveTurnLimit = 30;
+
+        private readonly record struct Target(WorldPosition Position, int Range, int Interest, IWorldCommand<Empty> Command)
+        {
+            public int TurnLimit { get; init; } = MoveTurnLimit;
+        }
 
         private readonly record struct Candidate(Target Target, WorldPosition Position, int Cost, int Score);
 
@@ -186,7 +194,7 @@ internal sealed partial class WorldAiPlanner
             return UtilityScore.Combine(
             [
                 Considerations.TargetInterest(target.Interest),
-                Considerations.TargetMoveCost(cost, stackStats.MaxMovementPoints * MoveTurnLimit)
+                Considerations.TargetMoveCost(cost, stackStats.MaxMovementPoints * target.TurnLimit)
             ]);
         }
 
@@ -208,6 +216,8 @@ internal sealed partial class WorldAiPlanner
             if (ResourceSetCalculator.CanAfford(player.Resources, Context.Engine.Globals.RodCost))
             {
                 WorldPlan plan = WorldPlan.For(state);
+                // Gallean Upgrade, overflow spending phase 2b: sources of a needed mana count double.
+                IReadOnlySet<WorldResourceType> needed = WorldAiSpending.GetNeededMana(Context.Profile, player, Context.Engine);
 
                 foreach (WorldResourceNode node in state.ResourceNodes.Values)
                 {
@@ -223,7 +233,13 @@ internal sealed partial class WorldAiPlanner
                                 {
                                     WorldCreateRodCommand command = new(stack.Id, position);
 
-                                    yield return new Target(position, Context.Engine.Globals.RodPlantRange, attitude.CreateRodInterest, command);
+                                    bool isNeeded = needed.Contains(node.ResourceType);
+                                    int interest = isNeeded ? Math.Min(attitude.CreateRodInterest * 2, NeededManaMaxInterest) : attitude.CreateRodInterest;
+
+                                    yield return new Target(position, Context.Engine.Globals.RodPlantRange, interest, command)
+                                    {
+                                        TurnLimit = isNeeded ? NeededManaMoveTurnLimit : MoveTurnLimit
+                                    };
                                 }
                             }
                         }
