@@ -42,7 +42,7 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
     public string NewTitle => IsBattle ? Tr("New battle AI") : Tr("New map AI");
 
     public string Hint => IsBattle
-        ? Tr("A new battle AI plays exactly like the one it starts from until you change it. Battle AIs appear in Settings, in the AI players panel and in the battle sandbox. The battle AI designer screen comes in a later update.")
+        ? Tr("A new battle AI plays exactly like the one it starts from until you change it. Battle AIs appear in Settings, in the AI players panel and in the battle sandbox.")
         : Tr("A new AI plays exactly like the one it starts from until you change it. Your AIs appear in Settings and in the AI players panel.");
     public int NameLength => MaxNameLength;
 
@@ -128,6 +128,9 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
             DesignedBattleAiLibrary.Store.Save(battle);
             Refresh(battle.Id);
 
+            // A new AI opens straight in the designer.
+            Game.ShowScreen(new AiDesignerScreenViewModel(Game, battle));
+
             return;
         }
 
@@ -204,15 +207,24 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
             }));
     }
 
-    // Battle AIs get their designer screen in phase 9.
     private bool CanEdit()
     {
-        return SelectedAi is not null && !IsBattle;
+        return SelectedAi is not null;
     }
 
     [RelayCommand(CanExecute = nameof(CanEdit))]
     private void Edit()
     {
+        if (IsBattle)
+        {
+            if (SelectedAi is { } chosen && DesignedBattleAiLibrary.Store.LoadAll().FirstOrDefault(design => design.Id == chosen.Id) is { } battle)
+            {
+                Game.ShowScreen(new AiDesignerScreenViewModel(Game, battle));
+            }
+
+            return;
+        }
+
         if (SelectedAi is { } selected &&
             DesignedAiLibrary.Store.LoadAll().FirstOrDefault(design => design.Id == selected.Id) is { } design)
         {

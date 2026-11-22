@@ -14,7 +14,10 @@ internal enum AiDesignerCategory
     Army,
     Rule,
     Tuning,
-    Behaviour
+    Behaviour,
+
+    // Gallean Upgrade (battle AI designer): target preferences of a battle stage.
+    Target
 }
 
 // Rule and tuning blocks (one of each per stage).
@@ -28,7 +31,20 @@ internal enum AiDesignerRule
     KeepArmiesHome,
     GatherArmies,
     RushEnemyCapital,
-    GoldReserve
+    GoldReserve,
+
+    // Battle AI designer: tactics of a battle stage (one of each per stage).
+    HealersFirst,
+    CastersFirst,
+    LeaderFirst,
+    HardestHitterFirst,
+    WoundedFirst,
+    FocusFire,
+    ProtectLeader,
+    LeaderDefends,
+    NeverFlee,
+    FleeBelow,
+    NeverDefend
 }
 
 internal enum AiDesignerCondition
@@ -37,7 +53,16 @@ internal enum AiDesignerCondition
     GoldAbove,
     CitiesBelow,
     EnemyNearCapital,
-    LostCity
+    LostCity,
+
+    // Battle AI designer: conditions of a battle stage, judged before each action of one of its units.
+    FromRound,
+    PowerShareBelow,
+    PowerShareAbove,
+    LeaderHitpointsBelow,
+    CargoAbove,
+    CargoWithGearAbove,
+    CarriesQuestItem
 }
 
 // A palette entry: what the block is (one of Condition / Action / Rule is set), its label and its help text.
@@ -141,6 +166,7 @@ internal static class AiDesignerBlocks
             AiDesignerCategory.Army => new SolidColorBrush(Color.FromRgb(0x8C, 0x2F, 0x2F)),
             AiDesignerCategory.Rule => new SolidColorBrush(Color.FromRgb(0x2F, 0x6E, 0x3E)),
             AiDesignerCategory.Behaviour => new SolidColorBrush(Color.FromRgb(0xA0, 0x55, 0x1E)),
+            AiDesignerCategory.Target => new SolidColorBrush(Color.FromRgb(0x8C, 0x2F, 0x2F)),
             _ => new SolidColorBrush(Color.FromRgb(0x5E, 0x3A, 0x84))
         };
     }
@@ -194,6 +220,48 @@ internal static class AiDesignerBlocks
         new(AiDesignerCategory.Behaviour, Tr("Keep a gold reserve"), Tr("Spells, research, leaders, buildings and units never spend the treasury below that much gold."), Rule: AiDesignerRule.GoldReserve)
     ];
 
+    // ---------------------------------------------------------------- battle AI designer
+
+    public static IReadOnlyList<AiDesignerPaletteItem> BattleConditions =>
+    [
+        new(AiDesignerCategory.Condition, Tr("From round N"), Tr("True from that battle round on."), Condition: AiDesignerCondition.FromRound),
+        new(AiDesignerCategory.Condition, Tr("Losing: power below N %"), Tr("True while our side holds less than that share of the power on the field (hit points, damage, armour of every unit still standing). Classic thinks about fleeing below 25 %."), Condition: AiDesignerCondition.PowerShareBelow),
+        new(AiDesignerCategory.Condition, Tr("Winning: power above N %"), Tr("True while our side holds more than that share of the power on the field."), Condition: AiDesignerCondition.PowerShareAbove),
+        new(AiDesignerCategory.Condition, Tr("Leader hurt below N %"), Tr("True while our leader has less than that share of its hit points, or has fallen. Never true for an army without a leader."), Condition: AiDesignerCondition.LeaderHitpointsBelow),
+        new(AiDesignerCategory.Condition, Tr("Carrying valuables over N"), Tr("True while the items in our army's bag are worth more than that much gold. Equipped items don't count: they make the leader stronger instead, which the power share already sees."), Condition: AiDesignerCondition.CargoAbove),
+        new(AiDesignerCategory.Condition, Tr("Bag and gear worth over N"), Tr("Like \"Carrying valuables\", but the leader's equipped items count too."), Condition: AiDesignerCondition.CargoWithGearAbove),
+        new(AiDesignerCategory.Condition, Tr("Carrying a quest item"), Tr("True while our army carries or wears a special quest item."), Condition: AiDesignerCondition.CarriesQuestItem)
+    ];
+
+    public static IReadOnlyList<AiDesignerPaletteItem> BattleTargets =>
+    [
+        new(AiDesignerCategory.Target, Tr("Healers first"), Tr("Enemy units that heal, cure or revive get a bonus on Classic's score for a target. 100 % doubles it."), Rule: AiDesignerRule.HealersFirst),
+        new(AiDesignerCategory.Target, Tr("Mages first"), Tr("Enemy units whose attack hits every unit (mages) get a bonus on Classic's score."), Rule: AiDesignerRule.CastersFirst),
+        new(AiDesignerCategory.Target, Tr("Leader first"), Tr("The enemy leader gets a bonus on Classic's score. In the sandbox this wins most mirror battles."), Rule: AiDesignerRule.LeaderFirst),
+        new(AiDesignerCategory.Target, Tr("Hardest hitter first"), Tr("The enemy unit with the strongest attack gets a bonus on Classic's score."), Rule: AiDesignerRule.HardestHitterFirst),
+        new(AiDesignerCategory.Target, Tr("Finish the weakest"), Tr("The enemy unit with the fewest hit points left gets a bonus on Classic's score."), Rule: AiDesignerRule.WoundedFirst),
+        new(AiDesignerCategory.Target, Tr("Focus fire"), Tr("The enemy unit that has lost the largest share of its hit points gets a bonus, so attacks keep going to the same unit until it falls."), Rule: AiDesignerRule.FocusFire)
+    ];
+
+    public static IReadOnlyList<AiDesignerPaletteItem> BattleTactics =>
+    [
+        new(AiDesignerCategory.Behaviour, Tr("Protect our leader"), Tr("Heals, cures and protections go to our leader first (they count five times on Classic's score)."), Rule: AiDesignerRule.ProtectLeader),
+        new(AiDesignerCategory.Behaviour, Tr("Hurt leader defends"), Tr("Our leader defends instead of attacking while below that share of its hit points. In the sandbox this costs a strong leader most of its battles; it suits a weak caster leader."), Rule: AiDesignerRule.LeaderDefends),
+        new(AiDesignerCategory.Behaviour, Tr("Flee below N %"), Tr("Our leader thinks about fleeing when our side holds less than that share of the power. Classic: 25 %."), Rule: AiDesignerRule.FleeBelow),
+        new(AiDesignerCategory.Behaviour, Tr("Never flee"), Tr("Our leader never flees, however the battle goes."), Rule: AiDesignerRule.NeverFlee),
+        new(AiDesignerCategory.Behaviour, Tr("Never defend"), Tr("No unit defends: every unit attacks when it can."), Rule: AiDesignerRule.NeverDefend)
+    ];
+
+    public static IReadOnlyList<AiDesignerPaletteGroup> CreateBattlePalette()
+    {
+        return
+        [
+            new(Tr("When"), BattleConditions),
+            new(Tr("Target preferences"), BattleTargets),
+            new(Tr("Tactics"), BattleTactics)
+        ];
+    }
+
     public static IReadOnlyList<AiDesignerPaletteItem> Actions(AiDesignerCategory category)
     {
         return category == AiDesignerCategory.Economy ? EconomyActions : ArmyActions;
@@ -206,12 +274,12 @@ internal static class AiDesignerBlocks
 
     public static AiDesignerPaletteItem ItemFor(AiDesignerCondition condition)
     {
-        return Conditions.First(item => item.Condition == condition);
+        return Conditions.Concat(BattleConditions).First(item => item.Condition == condition);
     }
 
     public static AiDesignerPaletteItem ItemFor(AiDesignerRule rule)
     {
-        return Rules.Concat(Behaviours).First(item => item.Rule == rule);
+        return Rules.Concat(Behaviours).Concat(BattleTargets).Concat(BattleTactics).First(item => item.Rule == rule);
     }
 
     public static IReadOnlyList<AiDesignerPaletteGroup> CreatePalette()
@@ -247,6 +315,19 @@ internal static class AiDesignerBlocks
             { Rule: AiDesignerRule.GatherArmies } => [new MapEditorBlockText(Tr("Attack only when")), Number(first ?? 2, 2, 20), new MapEditorBlockText(Tr("armies stand together"))],
             { Rule: AiDesignerRule.RushEnemyCapital } => [new MapEditorBlockText(Tr("March on the nearest enemy capital"))],
             { Rule: AiDesignerRule.GoldReserve } => [new MapEditorBlockText(Tr("Never spend below")), Number(first ?? 300, 0, 9999), new MapEditorBlockText(Tr("gold"))],
+            { Condition: AiDesignerCondition.FromRound } => [new MapEditorBlockText(Tr("From round")), Number(first ?? 3, 1, 99)],
+            { Condition: AiDesignerCondition.PowerShareBelow } => [new MapEditorBlockText(Tr("We hold less than")), Number(first ?? 40, 0, 100), new MapEditorBlockText(Tr("% of the power"))],
+            { Condition: AiDesignerCondition.PowerShareAbove } => [new MapEditorBlockText(Tr("We hold more than")), Number(first ?? 60, 0, 100), new MapEditorBlockText(Tr("% of the power"))],
+            { Condition: AiDesignerCondition.LeaderHitpointsBelow } => [new MapEditorBlockText(Tr("Our leader below")), Number(first ?? 50, 1, 100), new MapEditorBlockText(Tr("% hit points"))],
+            { Condition: AiDesignerCondition.CargoAbove } => [new MapEditorBlockText(Tr("We carry items worth over")), Number(first ?? 1000, 0, 99999), new MapEditorBlockText(Tr("gold"))],
+            { Condition: AiDesignerCondition.CargoWithGearAbove } => [new MapEditorBlockText(Tr("We carry and wear items worth over")), Number(first ?? 2000, 0, 99999), new MapEditorBlockText(Tr("gold"))],
+            { Condition: AiDesignerCondition.CarriesQuestItem } => [new MapEditorBlockText(Tr("We carry a quest item"))],
+            { Category: AiDesignerCategory.Target } => [new MapEditorBlockText(item.Label), new MapEditorBlockText("+"), Number(first ?? 100, 10, 1000), new MapEditorBlockText("%")],
+            { Rule: AiDesignerRule.ProtectLeader } => [new MapEditorBlockText(Tr("Heal and protect our leader first"))],
+            { Rule: AiDesignerRule.LeaderDefends } => [new MapEditorBlockText(Tr("Our leader defends below")), Number(first ?? 30, 1, 100), new MapEditorBlockText(Tr("% hit points"))],
+            { Rule: AiDesignerRule.FleeBelow } => [new MapEditorBlockText(Tr("Flee when we hold less than")), Number(first ?? 25, 1, 100), new MapEditorBlockText(Tr("% of the power"))],
+            { Rule: AiDesignerRule.NeverFlee } => [new MapEditorBlockText(Tr("Never flee"))],
+            { Rule: AiDesignerRule.NeverDefend } => [new MapEditorBlockText(Tr("Never defend: every unit attacks"))],
             _ => [new MapEditorBlockText(item.Label)]
         };
 

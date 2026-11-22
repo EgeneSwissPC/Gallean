@@ -4,6 +4,7 @@ using Avalonia.Headless;
 using Avalonia.Headless.NUnit;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using Gallean.Configuration;
 using Gallean.Engine;
 using Gallean.Engine.Contracts;
 using Gallean.Tests.Common;
@@ -234,6 +235,64 @@ public sealed partial class VisualTests
             DesignedAiLibrary.Directory = previous;
             DesignedBattleAiLibrary.Directory = previousBattle;
             AiBrainRegistry.SetDesignedWorldAis([]);
+            AiBrainRegistry.SetDesignedBattleAis([]);
+        }
+    }
+
+    [AvaloniaTest]
+    public async Task BattleAiDesignerTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        string previous = DesignedBattleAiLibrary.Directory;
+        DesignedBattleAiLibrary.Directory = sb.GetPath("AIs/battle");
+
+        try
+        {
+            (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
+            DesignedBattleAi design = new("custom-battle:courier", "Careful courier", [
+                new DesignedBattleStage("Rich and losing",
+                    [[new DesignedBattleCondition.CargoAbove(1500), new DesignedBattleCondition.PowerShareBelow(45)], [new DesignedBattleCondition.CarriesQuestItem()]],
+                    DesignedBattleTactics.Classic with { ProtectLeader = true, FleeBelowPercent = 60 }),
+                new DesignedBattleStage("Finish them", [[new DesignedBattleCondition.FromRound(3), new DesignedBattleCondition.PowerShareAbove(60)]],
+                    DesignedBattleTactics.Classic with { LeaderFirst = 100, FocusFire = 100, NeverFlee = true }),
+                DesignedBattleStage.Classic with { Tactics = DesignedBattleTactics.Classic with { HealersFirst = 100 } }
+            ]);
+            DesignedBattleAiLibrary.Store.Save(design);
+            DesignedBattleAiLibrary.Reload();
+
+            AiDesignerScreenViewModel designer = new(gameViewModel, design);
+            gameViewModel.ShowScreen(designer);
+            await SkipFramesAsync(4);
+            await CaptureAsync(window, "1-loaded");
+
+            AiDesignerScreenView view = window.GetVisualDescendants().OfType<AiDesignerScreenView>().Single();
+            Control PaletteBlock(string label) => view.GetVisualDescendants().OfType<Border>()
+                .First(border => border.Classes.Contains("palette-block") && border.DataContext is AiDesignerPaletteItem item && item.Label == label);
+
+            // Drag "Leader hurt below N %" into the first condition set, and "Mages first" onto the second stage's tactics.
+            Border firstGroup = view.GetVisualDescendants().OfType<Border>().First(border => border.Tag is "group");
+            await DragAsync(window, PaletteBlock(Tr("Leader hurt below N %")), firstGroup);
+            Assert.That(designer.ToBattleDesign().Stages[0].When[0], Has.Length.EqualTo(3));
+            Border secondRules = view.GetVisualDescendants().OfType<Border>().Where(border => border.Tag is "rules").ElementAt(1);
+            secondRules.BringIntoView();
+            await SkipFramesAsync(3);
+            await DragAsync(window, PaletteBlock(Tr("Mages first")), secondRules);
+            Assert.That(designer.ToBattleDesign().Stages[1].Tactics.CastersFirst, Is.EqualTo(100));
+
+            window.MouseMove(Assert.NotNull(PaletteBlock(Tr("Hurt leader defends")).TranslatePoint(new Point(20, 8), window)));
+            await SkipFramesAsync(2);
+            Assert.That(designer.HelpTitle, Is.EqualTo(Tr("Hurt leader defends")));
+            await CaptureAsync(window, "2-edited");
+
+            SettingsScreenViewModel settings = new(gameViewModel) { Language = Language.Russian };
+            gameViewModel.ShowScreen(new AiDesignerScreenViewModel(gameViewModel, design));
+            await SkipFramesAsync(4);
+            await CaptureAsync(window, "3-ru");
+            settings.Language = Language.English;
+        }
+        finally
+        {
+            DesignedBattleAiLibrary.Directory = previous;
             AiBrainRegistry.SetDesignedBattleAis([]);
         }
     }

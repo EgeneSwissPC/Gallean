@@ -60,6 +60,11 @@ internal sealed partial class AiDesignerStageViewModel : ObservableObject
     public partial int Number { get; set; }
 
     public bool ShowWhen => !IsDefault;
+
+    // Battle AIs have no economy or army rows.
+    public bool ShowSlots => !screen.IsBattle;
+    public string RulesTitle => screen.RulesTitle;
+    public string RulesHint => screen.RulesHint;
     public bool CanMoveUp => !IsDefault && !IsFirst;
     public bool CanMoveDown => !IsDefault && !IsLastBeforeDefault;
     public bool CanRemove => !IsDefault;

@@ -13,7 +13,7 @@ internal sealed partial class AiDesignerScreenViewModel
     private CancellationTokenSource? testCancellation;
     private IReadOnlyList<MapEditorOption<string>>? testMaps;
 
-    public IReadOnlyList<MapEditorOption<string>> TestMaps => testMaps ??= LoadTestMaps();
+    public IReadOnlyList<MapEditorOption<string>> TestMaps => testMaps ??= IsBattle ? [] : LoadTestMaps();
 
     private IReadOnlyList<MapEditorOption<string>>? testOpponents;
 

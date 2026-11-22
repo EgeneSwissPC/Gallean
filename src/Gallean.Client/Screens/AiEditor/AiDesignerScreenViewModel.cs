@@ -8,15 +8,18 @@ namespace Gallean.Client;
 
 // Gallean Upgrade (AI designer, docs/ai-designer.md, phase 3): edits one designed map AI. The view
 // models mirror the DesignedWorldAi; every change snapshots the design for undo, and Save writes the file.
+// The battle AI designer (docs/battle-ai-designer.md phase 9) uses the same screen for a DesignedBattleAi:
+// the When blocks are battle conditions, the economy and army rows are hidden, and the rules area holds the
+// stage's target preferences and tactics.
 internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewModel
 {
     private const int MaxHistory = 200;
 
     private readonly string id;
-    private readonly Stack<DesignedWorldAi> undo = new();
-    private readonly Stack<DesignedWorldAi> redo = new();
-    private DesignedWorldAi current;
-    private DesignedWorldAi saved;
+    private readonly Stack<object> undo = new();
+    private readonly Stack<object> redo = new();
+    private object current;
+    private object saved;
     private bool loading;
 
     public AiDesignerScreenViewModel(GameViewModel game, DesignedWorldAi design)
@@ -26,11 +29,39 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
         name_ = design.Name;
         Palette = AiDesignerBlocks.CreatePalette();
         Load(design);
-        current = ToDesign();
+        current = Snapshot();
         saved = current;
         SelectedStage = Stages.FirstOrDefault();
         RefreshProblems();
         InitializeTest();
+    }
+
+    public AiDesignerScreenViewModel(GameViewModel game, DesignedBattleAi design)
+    {
+        Game = game;
+        IsBattle = true;
+        id = design.Id;
+        name_ = design.Name;
+        Palette = AiDesignerBlocks.CreateBattlePalette();
+        Load(design);
+        current = Snapshot();
+        saved = current;
+        SelectedStage = Stages.FirstOrDefault();
+        RefreshProblems();
+    }
+
+    // A battle AI (DesignedBattleAi) rather than a map AI.
+    public bool IsBattle { get; }
+    public bool IsMap => !IsBattle;
+    public string Title => IsBattle ? Tr("Battle AI designer") : Tr("AI designer");
+    public string RulesTitle => IsBattle ? Tr("Targets and tactics") : Tr("Rules and tuning");
+    public string RulesHint => IsBattle
+        ? Tr("Drop target and tactic blocks here; without them the stage plays like Classic")
+        : Tr("Drop rule blocks here; without them the stage plays by the Classic values");
+
+    private object Snapshot()
+    {
+        return IsBattle ? ToBattleDesign() : ToDesign();
     }
 
     public GameViewModel Game { get; }
@@ -75,8 +106,9 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
 
     public bool HasProblems => ProblemText.Length > 0;
     public string HelpTitle => HelpItem?.Label ?? Tr("How it works");
-    public string HelpText => HelpItem?.Description ??
-        Tr("Each card is a stage. From the top, the first stage whose When holds is the one the AI plays; the last card plays when none above holds. In a stage, the economy and army rows are priorities: the top row first, blocks in one row are equal. A block left out is never done in that stage. Drag blocks from the left, or click one to add it to the selected stage.");
+    public string HelpText => HelpItem?.Description ?? (IsBattle
+        ? Tr("Each card is a stage. Before every action of one of its units, the AI plays the first stage from the top whose When holds; the last card plays when none above holds. In a stage, target blocks add a bonus to Classic's choice of whom to hit, and tactic blocks change fleeing, defending and healing. Drag blocks from the left, or click one to add it to the selected stage.")
+        : Tr("Each card is a stage. From the top, the first stage whose When holds is the one the AI plays; the last card plays when none above holds. In a stage, the economy and army rows are priorities: the top row first, blocks in one row are equal. A block left out is never done in that stage. Drag blocks from the left, or click one to add it to the selected stage."));
 
     public override bool PaintsOwnBackground => true;
 
@@ -97,7 +129,7 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
             return;
         }
 
-        DesignedWorldAi next = ToDesign();
+        object next = Snapshot();
 
         if (next.Equals(current))
         {
@@ -108,9 +140,9 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
         while (undo.Count > MaxHistory)
         {
             // Stack has no RemoveLast; history beyond the cap is rarely needed, so trim by rebuilding.
-            DesignedWorldAi[] kept = [.. undo.Take(MaxHistory)];
+            object[] kept = [.. undo.Take(MaxHistory)];
             undo.Clear();
-            foreach (DesignedWorldAi snapshot in kept.Reverse())
+            foreach (object snapshot in kept.Reverse())
             {
                 undo.Push(snapshot);
             }
@@ -368,7 +400,7 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
             AiDesignerGroupViewModel group => item.Category == AiDesignerCategory.Condition && !group.Stage.IsDefault,
             AiDesignerTierViewModel tier => item.Category == tier.Slot.Category,
             AiDesignerSlotViewModel slot => item.Category == slot.Category,
-            AiDesignerStageViewModel => item.Category is AiDesignerCategory.Rule or AiDesignerCategory.Tuning or AiDesignerCategory.Behaviour,
+            AiDesignerStageViewModel => item.Category is AiDesignerCategory.Rule or AiDesignerCategory.Tuning or AiDesignerCategory.Behaviour or AiDesignerCategory.Target,
             _ => false
         };
     }
@@ -425,13 +457,14 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
     private void AddStage()
     {
         int insertAt = Math.Max(0, Stages.Count - 1);
-        DesignedWorldStage stage = DesignedWorldStage.Classic with
-        {
-            Name = Tr("Stage {0}", Stages.Count),
-            When = [[new DesignedStageCondition.FromTurn(20)]]
-        };
+        AiDesignerStageViewModel viewModel = IsBattle
+            ? CreateBattleStage(new DesignedBattleStage(Tr("Stage {0}", Stages.Count), [[new DesignedBattleCondition.FromRound(3)]], DesignedBattleTactics.Classic))
+            : CreateStage(DesignedWorldStage.Classic with
+            {
+                Name = Tr("Stage {0}", Stages.Count),
+                When = [[new DesignedStageCondition.FromTurn(20)]]
+            });
 
-        AiDesignerStageViewModel viewModel = CreateStage(stage);
         Stages.Insert(insertAt, viewModel);
         RefreshStages();
         SelectedStage = viewModel;
@@ -508,15 +541,27 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
 
     private bool CanRedo() => redo.Count > 0;
 
-    private void Restore(DesignedWorldAi design)
+    private void Restore(object snapshot)
     {
         int selected = SelectedStage is null ? 0 : Stages.IndexOf(SelectedStage);
         loading = true;
-        name_ = design.Name;
+
+        if (snapshot is DesignedBattleAi battle)
+        {
+            name_ = battle.Name;
+            Load(battle);
+        }
+        else
+        {
+            DesignedWorldAi world = (DesignedWorldAi)snapshot;
+            name_ = world.Name;
+            Load(world);
+        }
+
         OnPropertyChanged(nameof(Name));
-        Load(design);
+        object restored = snapshot;
         loading = false;
-        current = design;
+        current = restored;
         SelectedStage = Stages.ElementAtOrDefault(Math.Clamp(selected, 0, Stages.Count - 1));
         AfterChange();
     }
@@ -526,6 +571,19 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
     [RelayCommand(CanExecute = nameof(CanSave))]
     private void Save()
     {
+        if (IsBattle)
+        {
+            DesignedBattleAi battle = ToBattleDesign();
+            DesignedBattleAiLibrary.Store.Save(battle);
+            DesignedBattleAiLibrary.Reload();
+            saved = battle;
+            current = battle;
+            HasChanges = false;
+            StatusText = Tr("Saved.");
+
+            return;
+        }
+
         DesignedWorldAi design = ToDesign();
         DesignedAiLibrary.Store.Save(design);
         DesignedAiLibrary.Reload();
@@ -562,7 +620,12 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
 
     private void Leave()
     {
-        Game.ShowScreen(new AiEditorMenuScreenViewModel(Game, selectId: id));
+        if (IsBattle)
+        {
+            DesignedBattleAiLibrary.Reload();
+        }
+
+        Game.ShowScreen(new AiEditorMenuScreenViewModel(Game, selectId: id, battle: IsBattle));
     }
 
     [RelayCommand]
@@ -570,6 +633,18 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
     {
         TryClose();
     }
+
+    // Battle AIs: the Test button opens the battle sandbox with this AI, as it is on screen (saved or not), on the
+    // attacker side; the sandbox's Back returns here. The saved AIs are registered again on return.
+    [RelayCommand]
+    private Task TestInSandboxAsync()
+    {
+        DesignedBattleAi design = ToBattleDesign();
+        AiBrainRegistry.SetDesignedBattleAis([.. DesignedBattleAiLibrary.Store.LoadAll().Where(other => other.Id != id), design]);
+
+        return Game.OpenBattleSandboxAsync(this, id);
+    }
+
 
     // ---------------------------------------------------------------- model <-> view models
 
@@ -680,6 +755,127 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
         return viewModel;
     }
 
+    private void Load(DesignedBattleAi design)
+    {
+        bool wasLoading = loading;
+        loading = true;
+        Stages.Clear();
+
+        ImmutableArray<DesignedBattleStage> stages = design.Stages.IsDefaultOrEmpty ? [DesignedBattleStage.Classic] : design.Stages;
+
+        foreach (DesignedBattleStage stage in stages)
+        {
+            Stages.Add(CreateBattleStage(stage));
+        }
+
+        // As for map AIs: the last card is the default stage.
+        if (!stages[^1].When.IsDefaultOrEmpty)
+        {
+            Stages.Add(CreateBattleStage(DesignedBattleStage.Classic with { Name = Tr("Default") }));
+        }
+
+        RefreshStages();
+        loading = wasLoading;
+    }
+
+    private AiDesignerStageViewModel CreateBattleStage(DesignedBattleStage stage)
+    {
+        bool wasLoading = loading;
+        loading = true;
+        AiDesignerStageViewModel viewModel = new(this, stage.Name);
+
+        foreach (ImmutableArray<DesignedBattleCondition> group in stage.When.IsDefault ? [] : stage.When)
+        {
+            AiDesignerGroupViewModel groupViewModel = new(viewModel);
+
+            foreach (DesignedBattleCondition condition in group)
+            {
+                (AiDesignerCondition kind, int? value) = condition switch
+                {
+                    DesignedBattleCondition.FromRound round => (AiDesignerCondition.FromRound, (int?)round.Round),
+                    DesignedBattleCondition.PowerShareBelow below => (AiDesignerCondition.PowerShareBelow, below.Percent),
+                    DesignedBattleCondition.PowerShareAbove above => (AiDesignerCondition.PowerShareAbove, above.Percent),
+                    DesignedBattleCondition.LeaderHitpointsBelow leader => (AiDesignerCondition.LeaderHitpointsBelow, leader.Percent),
+                    DesignedBattleCondition.CargoAbove { IncludeEquipped: true } cargo => (AiDesignerCondition.CargoWithGearAbove, cargo.Gold),
+                    DesignedBattleCondition.CargoAbove cargo => (AiDesignerCondition.CargoAbove, cargo.Gold),
+                    _ => (AiDesignerCondition.CarriesQuestItem, null)
+                };
+
+                groupViewModel.Blocks.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(kind), OnChanged, value));
+            }
+
+            viewModel.Groups.Add(groupViewModel);
+        }
+
+        DesignedBattleTactics tactics = stage.Tactics;
+
+        void Add(AiDesignerRule rule, int? value = null)
+        {
+            viewModel.Rules.Add(AiDesignerBlocks.CreateBlock(AiDesignerBlocks.ItemFor(rule), OnChanged, value));
+        }
+
+        if (tactics.HealersFirst != 0) { Add(AiDesignerRule.HealersFirst, tactics.HealersFirst); }
+        if (tactics.CastersFirst != 0) { Add(AiDesignerRule.CastersFirst, tactics.CastersFirst); }
+        if (tactics.LeaderFirst != 0) { Add(AiDesignerRule.LeaderFirst, tactics.LeaderFirst); }
+        if (tactics.HardestHitterFirst != 0) { Add(AiDesignerRule.HardestHitterFirst, tactics.HardestHitterFirst); }
+        if (tactics.WoundedFirst != 0) { Add(AiDesignerRule.WoundedFirst, tactics.WoundedFirst); }
+        if (tactics.FocusFire != 0) { Add(AiDesignerRule.FocusFire, tactics.FocusFire); }
+        if (tactics.ProtectLeader) { Add(AiDesignerRule.ProtectLeader); }
+        if (tactics.LeaderDefendsBelowPercent != 0) { Add(AiDesignerRule.LeaderDefends, tactics.LeaderDefendsBelowPercent); }
+        if (tactics.FleeBelowPercent != DesignedBattleTactics.Classic.FleeBelowPercent) { Add(AiDesignerRule.FleeBelow, tactics.FleeBelowPercent); }
+        if (tactics.NeverFlee) { Add(AiDesignerRule.NeverFlee); }
+        if (!tactics.CanDefend) { Add(AiDesignerRule.NeverDefend); }
+
+        viewModel.RefreshState();
+        loading = wasLoading;
+
+        return viewModel;
+    }
+
+    public DesignedBattleAi ToBattleDesign()
+    {
+        return new DesignedBattleAi(id, Name.Trim(), [.. Stages.Select(ToBattleStage)]);
+    }
+
+    private static DesignedBattleStage ToBattleStage(AiDesignerStageViewModel stage)
+    {
+        ImmutableArray<ImmutableArray<DesignedBattleCondition>> when = stage.IsDefault
+            ? []
+            : [.. stage.Groups.Where(group => group.Blocks.Count > 0).Select(group => group.Blocks.Select(ToBattleCondition).ToImmutableArray())];
+
+        AiDesignerBlockViewModel? Rule(AiDesignerRule rule) => stage.Rules.FirstOrDefault(block => block.Item.Rule == rule);
+        int Bonus(AiDesignerRule rule) => Rule(rule)?.Number(0) ?? 0;
+
+        DesignedBattleTactics tactics = new(
+            Bonus(AiDesignerRule.HealersFirst),
+            Bonus(AiDesignerRule.CastersFirst),
+            Bonus(AiDesignerRule.LeaderFirst),
+            Bonus(AiDesignerRule.HardestHitterFirst),
+            Bonus(AiDesignerRule.WoundedFirst),
+            Bonus(AiDesignerRule.FocusFire),
+            Rule(AiDesignerRule.ProtectLeader) is not null,
+            Rule(AiDesignerRule.NeverFlee) is not null,
+            Rule(AiDesignerRule.FleeBelow)?.Number(0) ?? DesignedBattleTactics.Classic.FleeBelowPercent,
+            Rule(AiDesignerRule.NeverDefend) is null,
+            Bonus(AiDesignerRule.LeaderDefends));
+
+        return new DesignedBattleStage(stage.Name.Trim(), when, tactics);
+    }
+
+    private static DesignedBattleCondition ToBattleCondition(AiDesignerBlockViewModel block)
+    {
+        return block.Item.Condition switch
+        {
+            AiDesignerCondition.FromRound => new DesignedBattleCondition.FromRound(block.Number(0)),
+            AiDesignerCondition.PowerShareBelow => new DesignedBattleCondition.PowerShareBelow(block.Number(0)),
+            AiDesignerCondition.PowerShareAbove => new DesignedBattleCondition.PowerShareAbove(block.Number(0)),
+            AiDesignerCondition.LeaderHitpointsBelow => new DesignedBattleCondition.LeaderHitpointsBelow(block.Number(0)),
+            AiDesignerCondition.CargoAbove => new DesignedBattleCondition.CargoAbove(block.Number(0)),
+            AiDesignerCondition.CargoWithGearAbove => new DesignedBattleCondition.CargoAbove(block.Number(0), IncludeEquipped: true),
+            _ => new DesignedBattleCondition.CarriesQuestItem()
+        };
+    }
+
     private void LoadTiers(AiDesignerSlotViewModel slot, ImmutableArray<ImmutableArray<WorldAiActionKind>> tiers)
     {
         HashSet<WorldAiActionKind> seen = [];
@@ -778,7 +974,7 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
                 problem = true;
             }
 
-            if (stage.Economy.Tiers.Count == 0 && stage.Army.Tiers.Count == 0)
+            if (IsMap && stage.Economy.Tiers.Count == 0 && stage.Army.Tiers.Count == 0)
             {
                 problems.Add(Tr("{0}: the economy and army rows are empty, so the AI does nothing in this stage.", name));
                 problem = true;
