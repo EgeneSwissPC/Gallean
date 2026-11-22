@@ -17,13 +17,14 @@ internal static class AiPersonalities
         [
             new ProfileWorldAiBrain(
                 new AiBrainInfo(ClassicPlusId, "Classic+", "The original AI, but it no longer waits in the capital to save up for a leader."),
-                new WorldAiProfile { WaitForFreeCapital = true, SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent }),
+                new WorldAiProfile { WaitForFreeCapital = true, SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent, SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent }),
             new ProfileWorldAiBrain(
                 new AiBrainInfo(AggressiveId, "Aggressive", "Attacks with less advantage and sends armies out earlier, before they are full or healed."),
                 new WorldAiProfile
                 {
                     WaitForFreeCapital = true,
                     SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent,
+                    SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent,
                     AttackPowerPercent = 80,
                     HurtThreshold = 700,
                     HealedThreshold = 850,
@@ -35,6 +36,7 @@ internal static class AiPersonalities
                 {
                     WaitForFreeCapital = true,
                     SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent,
+                    SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent,
                     AttackPowerPercent = 130,
                     HurtThreshold = 900,
                     HealedThreshold = 950,
@@ -46,6 +48,7 @@ internal static class AiPersonalities
                 {
                     WaitForFreeCapital = true,
                     SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent,
+                    SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent,
                     LeaderOvercommitGold = 800,
                     ReinforceThreshold = 500,
                     RodPriority = 3

@@ -233,4 +233,72 @@ public sealed class WorldAiOverflowSpendingTests
         Assert.That(WorldAiSpending.GetNeededMana(ours, current, context), Is.EquivalentTo(new[] { WorldResourceType.RuneMana }));
         Assert.That(WorldAiSpending.GetNeededMana(ours, current with { Resources = current.Resources with { RuneMana = 450 } }, context), Is.Empty);
     }
+
+    // docs/ai-unused-features.md phase 1: summon upkeep awareness on large maps. Income 300 death mana, limit 50 %.
+    private static (GameSession Session, IEngineContext Context, WorldPlayer Player) SummonGame(int runningUpkeep, int deathMana = 9000)
+    {
+        WorldMap map = TestHelpers.SimpleMap(LargeMapRules.MinMapSize, LargeMapRules.MinMapSize);
+        WorldSpellDefinitionId summonId = new("summon");
+        UnitDefinition leader = Leader();
+        UnitDefinition summoned = TestHelpers.SimpleUnitDefinition("summoned", maxHitpoints: 50, initiative: 40, damage: 10) with
+        {
+            Category = UnitCategory.Summon,
+            Leadership = 1,
+            MovementPoints = 20,
+            Lifetime = 3
+        };
+        WorldPlayer ai = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with
+        {
+            IsAi = true,
+            Resources = Death(deathMana),
+            Spellbook = new WorldPlayerSpellbook([], [summonId])
+        };
+        WorldPlayer neutral = TestHelpers.SimplePlayer(new WorldPlayerId(3), WorldRace.Neutral, map) with { IsAi = true };
+
+        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(leader)
+            .WithDefinition(summoned)
+            .WithDefinition(TestHelpers.SimpleSpellDefinition(summonId, new WorldSummonStackSpellEffect(summoned.Id)) with { CastingCost = Death(100) })
+            .WithRace(TestHelpers.SimpleRace(WorldRace.Undead, new GlobalTextId("undead"), WorldMapTerrain.Neutral) with { Income = Death(300) })
+            .WithDefinition(TestHelpers.SimpleLord(ai.LordId, ai.Race, LordCategory.Warrior))
+            .WithPlayer(ai)
+            .WithDefinition(TestHelpers.SimpleLord(neutral.LordId, neutral.Race, LordCategory.Warrior))
+            .WithPlayer(neutral)
+            .WithStack(Stack("Own", ai.Id, leader, new WorldPosition(0, 0)))
+            .WithStack(Stack("Neutral", neutral.Id, leader, new WorldPosition(10, 10)))
+            .WithSubrace(TestHelpers.NeutralSubrace);
+
+        if (runningUpkeep > 0)
+        {
+            builder = builder.WithStack(Stack("Summoned", ai.Id, leader, new WorldPosition(30, 30)) with { SummonUpkeep = Death(runningUpkeep) });
+        }
+
+        (GameSession session, IEngineContext context) = builder.BuildSession();
+
+        return (session, context, ai);
+    }
+
+    // Income 300 death mana. Below the spending line the limit is 50 % (150), at or above it 100 % (300).
+    [TestCase(0, 2000, true)]
+    [TestCase(100, 2000, false)]
+    [TestCase(100, 9000, true)]
+    [TestCase(250, 9000, false)]
+    public void SummonUpkeepLimitTest(int runningUpkeep, int deathMana, bool summons)
+    {
+        (GameSession session, IEngineContext context, WorldPlayer ai) = SummonGame(runningUpkeep, deathMana);
+        WorldState state = session.World.State;
+        WorldPlayer player = state.Players[ai.Id];
+        WorldAiProfile ours = AiBrainRegistry.ResolveWorld(AiPersonalities.ClassicPlusId) is ProfileWorldAiBrain brain ? brain.Profile : throw new AssertionException("Classic+");
+
+        Assert.That(WorldAiSpending.CanAffordSummonUpkeep(ours, state, player, Death(100), context), Is.EqualTo(summons));
+        Assert.That(WorldAiSpending.CanAffordSummonUpkeep(WorldAiProfile.Classic, state, player, Death(100), context), Is.True, "Classic: no check");
+
+        // Only a rich AI casts here (spending mode reaches the far neutral army), so check the AI's choice at 9000.
+        if (deathMana >= 7000)
+        {
+            WorldAiActionPlan plan = AiBrainRegistry.ResolveWorld(AiPersonalities.ClassicPlusId).DecideAction(context, state, WorldAiMemory.Empty);
+            Assert.That(plan.Command is WorldCastSpellCommand, Is.EqualTo(summons), plan.Command.ToString());
+        }
+    }
 }

@@ -8,6 +8,48 @@ internal static class WorldAiSpending
     // User decision: start at 70 % of the cap (6999 of 9999), for gold and mana alike.
     public const int DefaultSpendAbovePercent = 70;
 
+    // docs/ai-unused-features.md, answer D: running summon upkeep may take at most half of a mana's income.
+    public const int DefaultSummonUpkeepPercent = 50;
+    public const int RichSummonUpkeepPercent = 100;
+
+    // True when casting this summon keeps the running summon upkeep of every mana it costs within the profile's
+    // share of that mana's income. Always true for Classic (knob 0) and on maps without summon upkeep.
+    // User decision (option B): a mana at or above the spending line may carry upkeep up to 100 % of its income.
+    public static bool CanAffordSummonUpkeep(WorldAiProfile profile, WorldState state, WorldPlayer player, WorldResourceSet castingCost, IEngineContext context)
+    {
+        if (profile.SummonUpkeepPercent <= 0 || !LargeMapRules.AppliesTo(state.Map))
+        {
+            return true;
+        }
+
+        WorldResourceSet upkeep = castingCost;
+
+        foreach (WorldStack stack in state.Stacks.Values)
+        {
+            if (stack.OwnerId == player.Id && stack.SummonUpkeep is { } running)
+            {
+                upkeep = ResourceSetCalculator.Add(upkeep, running);
+            }
+        }
+
+        WorldResourceSet income = PlayerIncomeCalculator.GetIncomeInfo(player, state, context).Total;
+        WorldResourceSet have = player.Resources;
+        int spendingLine = profile.SpendAbovePercent > 0 ? GetThreshold(profile, context.Globals) : int.MaxValue;
+
+        bool Fits(int cost, int total, int perTurn, int amount)
+        {
+            int percent = amount >= spendingLine ? Math.Max(profile.SummonUpkeepPercent, RichSummonUpkeepPercent) : profile.SummonUpkeepPercent;
+
+            return cost <= 0 || total * 100 <= perTurn * percent;
+        }
+
+        return Fits(castingCost.DeathMana, upkeep.DeathMana, income.DeathMana, have.DeathMana) &&
+               Fits(castingCost.RuneMana, upkeep.RuneMana, income.RuneMana, have.RuneMana) &&
+               Fits(castingCost.LifeMana, upkeep.LifeMana, income.LifeMana, have.LifeMana) &&
+               Fits(castingCost.InfernalMana, upkeep.InfernalMana, income.InfernalMana, have.InfernalMana) &&
+               Fits(castingCost.GroveMana, upkeep.GroveMana, income.GroveMana, have.GroveMana);
+    }
+
     public static int GetThreshold(WorldAiProfile profile, GlobalVariables globals)
     {
         return globals.MaxResourceAmount * profile.SpendAbovePercent / 100;
