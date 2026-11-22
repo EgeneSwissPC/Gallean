@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 questions all answered, phase 4 in progress. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-4 done (merges ee232a30, 9f1a4423, 1d6c92ce, c6a700b5); phase 5 (what neutral armies do) next, to be specced from the phase 4 numbers. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -29,6 +29,8 @@ Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 questions
 - M (user): M2. A separate map rule "Neutrals buy units" (SRules, editor Neutrals section, MapFromPlan `rules.neutralBuying`), on by default in new editor maps, MapFromPlan plans and The War of the Ring; off in maps made in code and in original scenarios. Off = neutrals still earn (phase 3) but never buy or upgrade.
 - I (user): The War of the Ring's scripted neutral life is out of scope here; the user will rework it separately later.
 - Taken while building phase 1: `CustomMap.Create` starts with the rule off. The editor's new-map path turns it on with `CustomMap.DefaultTownIncome` (phase 2), and MapFromPlan sets it for The War of the Ring (phase 2). Maps built in code (tests, the battle bench, AI designer test maps) keep their economy, so no existing measurement changes.
+- Taken while building phase 4: the buying runs as an engine rule right after a neutral side's income (`TurnResourcesGeneratedNeutralEconomyRule`, like summon upkeep), not as an AI action. So it works the same whichever AI the neutrals use, needs no AI memory, and the standard AI code is untouched.
+- Taken while building phase 4: a village whose garrison still has room for one of its allowed soldiers saves its gold until it can buy one (it doesn't hire leaders meanwhile). An army waiting at a village entrance blocks new leaders there until phase 5 moves armies out; a full waiting army means that village buys nothing more while the side is below the unit target. With neutral kinds off, the single neutral side buys plain neutrals only.
 - Taken while building phase 3: neutral income follows the town income rule (no separate switch): with town income on, every neutral side earns from its own towns. Their starting gold is one value for all neutral sides (`CustomMap.NeutralStartingGold`, gold only, 0 by default); per-side banks would need the writer's kind split in the editor. The War of the Ring keeps 0 for now (its neutral life gets reworked later, decision I).
 - Taken while building phase 2: the world screen's income table is laid out in columns per source (Capital, Sources, Total), so towns became a "Towns" column instead of a line; it only appears when towns pay (the same in the editor's economy panel).
 - Taken while building phase 2: MapFromPlan plans get town income like new editor maps unless `rules.townIncome` is `false`; a five-value array sets the table. The War of the Ring sets it explicitly.
@@ -91,7 +93,7 @@ Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 questions
 1. ~~Town income in the engine: SRules table, `PlayerIncomeCalculator`, `IncomeInfo.Towns`, tests. ~1 day.~~ Done, see below.
 2. ~~Town income on screen: income table line, city screen line, editor economy box and column, MapFromPlan `rules.townIncome`, War of the Ring setting. ~1-1.5 days.~~ Done, see below.
 3. ~~Neutral treasury: neutral sides earn from their towns, neutral starting bank in the editor. ~0.5-1 day.~~ Done, see below.
-4. Neutral economy: kind unit and leader pools, neutral purchase and hire commands, neutral planner actions in the user's order (fill garrisons; below factor x levels units, hire leaders at villages and fill their armies; then upgrade villages with full garrisons), the unit factor setting, headless War of the Ring measurement. New armies wait at their village. ~3 days.
+4. ~~Neutral economy: kind unit and leader pools, neutral purchase and hire commands, neutral planner actions in the user's order (fill garrisons; below factor x levels units, hire leaders at villages and fill their armies; then upgrade villages with full garrisons), the unit factor setting, headless War of the Ring measurement. New armies wait at their village. ~3 days.~~ Done, see below.
 5. Neutral armies: what the armies from phase 4 do (attack enemy armies near home towns, conquer nearby towns), measurement. ~2 days, specced after phase 4's numbers.
 
 ## Open questions
@@ -192,3 +194,29 @@ Tests: `CustomMapTests.TownIncomeTest` now expects the neutral level-4 town's 75
 Suite 5484 (5482 on gallean-upgrade after move orders phase 2 + these 2 tests), rerun on the merged tree.
 
 Real-client check (AOT build, mapgen map with town income on and 300 neutral gold, one neutral side owning villages of level 1, 3 and 4): the editor showed 300 and "Neutral towns bring 135 gold a turn in all."; the turn-1 save had the neutral player at 300 gold, the turn-2 save at 435 (300 + 135); the Empire went from 775 to 1050 (+275, as in phase 2).
+
+## Phase 4 - done
+
+Commits 2e586957 (engine, editor, tests) and 369f0edb (rule-switch test); merged as c6a700b5.
+
+What was built:
+- Map rules in SRules: `NEUTRAL_BUYING` (bool) and `NEUTRAL_UNIT_FACTOR` (int, null = 3) -> `ScenarioDefinition.NeutralBuying` / `NeutralUnitFactor`.
+- `NeutralEconomyPlanner` (new, `World/`): kind pools from `IGameDefinitionProvider.GetNeutralUnits()` (new default interface member, `GameDefinitionProvider` lists the neutral race's units) by the side's subrace, without water-only units, sorted by price; the price rank per village level (H2b); the gold-weighted draw (L); the buying order per village (garrison; below factor x levels units the army at the entrance or a new leader with the Stand order; then the upgrade of a full village); one purchase per village per turn in random village order (J, K), any number while gold is above the spending line (6999).
+- `TurnResourcesGeneratedNeutralEconomyRule` runs it right after a neutral side's income when the rule is on. Purchases use the game's own events (`WorldUnitPurchasedEvent`, `WorldStackCreatedEvent`, `WorldCityUpgradedEvent`) plus one new `WorldNeutralUnitHiredEvent` (a unit added to a waiting army, paid).
+- Map editor: `CustomMap.NeutralBuying` / `NeutralUnitFactor` (1-20), written and read back; on in new editor maps; Neutrals section checkbox "Neutrals buy units", "Units per village level before upgrading" box and an explanation. MapFromPlan `rules.neutralBuying` (on when left out) and `rules.neutralUnitFactor`; The War of the Ring sets buying on. 3 new strings in all 7 catalogs.
+
+Tests: new `CustomMapTests.NeutralEconomyTest` (setters, clamping, clone, save and reopen; pools 9 greenskin soldiers / 6 leaders, 0 sea creature leaders; the rank 2 / 4 / 6 / 8 / 9 per level; the weights; a garrison purchase from the allowed six; saving gold when too poor; a new wolf leader waiting at the entrance with the Stand order; the next purchase filling that army; an upgrade to level 2 for 150 once the unit target is met; several purchases above the spending line; a played round with the state following; a played round with the rule off where nothing is bought) and `MapEditorScreenViewModelTests.NeutralBuyingTest`. Mutation checks, each built and run: unit target ignored, spending line ignored, rank cap removed, weight flattened, rule switch ignored -> the test fails every time (the last one only after adding the played round with the rule off). `MapEditorEconomyTest` visual run passed, Neutrals section reviewed.
+
+Suite 5505 (5503 on the branch, then gallean-upgrade gained the other agent's neutral guard tests), rerun on the merged tree.
+
+Headless War of the Ring, 20 turns, seed 1, every player AI, buying on vs off (`NeutralEconomyBenchTests`, not committed):
+- Neutral turn time: 1523 ms vs 1522 ms on average, so no measurable cost.
+- Free Men: village levels 25 -> 51 (off: 24, they lost a village), units 25 -> 153 (off: 72, from the scripted spawns), garrisons 25 -> 50, armies 0 -> 33 (off: 17), gold 215 left (off: 6090 piled up).
+- Greenskins: levels 21 -> 35, garrisons 16 -> 30, 2250 gold left (off: 7000). Barbarians: levels 13 -> 24 (off 13), 210 gold (off 3270). Wild Elves 4 -> 8, Marsh Folk 3 -> 6, Wolves 3 -> 5, plain neutrals 6 -> 12.
+- Dragons saved 1500 gold without buying: their level-4 village sells its 4 cheapest dragons (4500-5300) and has a free slot, so it saves for one (the H2b rule working as written; they'd buy around turn 60 at 75 a turn).
+- Sea Creatures own no village and have no land leaders: nothing.
+- Every side upgraded steadily; the unit target held them back only where they were below it (the Free Men hired leaders first, as asked).
+
+Real-client check (AOT build, mapgen map, town income on, neutral gold 300, buying on, one neutral side): turn 1 save: 300 gold, Gallymar (level 1) and Vinusi (level 4) empty, Errgok (level 3) full. Turn 2 save: Gallymar bought an Air Elemental (50), Vinusi a large 300-gold unit, Errgok (full) hired a 40-gold leader waiting at its entrance with the Stand order; gold 45 = 300 + 135 income - 50 - 300 - 40.
+
+Known limits: waiting armies never leave (phase 5); a village with an allowed soldier it can't afford yet saves rather than buying something else.
