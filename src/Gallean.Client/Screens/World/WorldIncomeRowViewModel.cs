@@ -26,5 +26,12 @@ internal sealed record WorldIncomeRowViewModel(WorldResourceType Type, int Capit
 
     public string ResourceNodesIncomeText => ResourceNodesIncome.ToString();
 
+    // Gallean Upgrade, map rule "town income": the towns column (gold only), shown when the map has the rule.
+    public int TownsIncome { get; init; }
+
+    public bool ShowTowns { get; init; }
+
+    public string TownsIncomeText => TownsIncome.ToString();
+
     public string IncomeText => $"+{Income}";
 }

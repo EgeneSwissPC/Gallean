@@ -30,6 +30,10 @@ internal sealed partial class MapEditorScreenViewModel
 
     public bool HasUnclaimed => UnclaimedResources.Count > 0;
 
+    // The towns column of the income table, shown when the map has town income.
+    [ObservableProperty]
+    public partial bool ShowTownsColumn { get; private set; }
+
     // The palette shares the left of the map with the economy panel.
     public bool ShowLandmarkPalette => IsLandmarkTool && !IsEconomyOpen && !IsLocationsOpen && !IsEventsOpen;
 
@@ -82,11 +86,84 @@ internal sealed partial class MapEditorScreenViewModel
         {
             SpellMarkupText = map.ForeignSpellMarkup.ToString(System.Globalization.CultureInfo.InvariantCulture);
             NeutralKinds = map.NeutralKinds;
+            ShowTownIncome();
         }
         finally
         {
             showingSpellMarkup = false;
         }
+    }
+
+    // Towns (map rule "town income", docs/town-income.md): on/off and the gold per turn for town levels 1-5. Turning it
+    // on fills in the last table used in this session, or the default one.
+    [ObservableProperty]
+    public partial bool TownIncomeOn { get; set; }
+
+    [ObservableProperty]
+    public partial IReadOnlyList<MapEditorTownIncomeFieldViewModel> TownIncomeFields { get; private set; } = [];
+
+    private IReadOnlyList<int> lastTownIncome = CustomMap.DefaultTownIncome;
+    private int townIncomeEditLevel;
+    private int townIncomeUndoCount = -1;
+
+    private void ShowTownIncome()
+    {
+        TownIncomeOn = !map.TownIncome.IsDefaultOrEmpty;
+        IReadOnlyList<int> shown = TownIncomeOn ? map.TownIncome : lastTownIncome;
+        TownIncomeFields = [.. shown.Select((gold, index) => new MapEditorTownIncomeFieldViewModel(index + 1, gold, amount => SetTownIncomeLevel(index + 1, amount)))];
+    }
+
+    partial void OnTownIncomeOnChanged(bool value)
+    {
+        if (showingSpellMarkup || value == !map.TownIncome.IsDefaultOrEmpty)
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+
+        if (!value)
+        {
+            lastTownIncome = [.. map.TownIncome];
+        }
+
+        if (map.SetTownIncome(value ? lastTownIncome : []))
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+            townIncomeUndoCount = -1;
+            CanUndo = true;
+            IsDirty = true;
+            RefreshEconomy();
+        }
+    }
+
+    // One level's box changed: typing into the same box keeps one undo step. Ignored while the rule is off.
+    private void SetTownIncomeLevel(int level, int amount)
+    {
+        if (map.TownIncome.IsDefaultOrEmpty)
+        {
+            return;
+        }
+
+        CustomMap before = map.Clone();
+
+        if (!map.SetTownIncome(map.TownIncome.SetItem(level - 1, amount)))
+        {
+            return;
+        }
+
+        if (townIncomeEditLevel != level || townIncomeUndoCount != undoSteps.Count)
+        {
+            undoSteps.Push(before);
+            TrimUndo();
+        }
+
+        townIncomeEditLevel = level;
+        townIncomeUndoCount = undoSteps.Count;
+        CanUndo = true;
+        IsDirty = true;
+        RefreshEconomy();
     }
 
     // An empty box counts as 0; anything that isn't a number is ignored until it is one. Typing keeps one undo step.
@@ -239,13 +316,14 @@ internal sealed partial class MapEditorScreenViewModel
         economyMap = map;
 
         economyState = ShownState;
-        Economy = CustomMapEconomy.Calculate(ShownState, editorGame.Session.EngineContext);
+        Economy = CustomMapEconomy.Calculate(ShownState, editorGame.Session.EngineContext, map.TownIncome);
         WorldRace? selected = SelectedEconomyRace?.Race;
         updatingEconomy = true;
 
         try
         {
-            EconomyRaces = [.. Economy.Races.Select(race => new MapEditorEconomyRaceViewModel(race, map.Players.FirstOrDefault(player => player.Race == race.Race)?.StartingBank ?? WorldResourceSet.Empty))];
+            ShowTownsColumn = !map.TownIncome.IsDefaultOrEmpty;
+            EconomyRaces = [.. Economy.Races.Select(race => new MapEditorEconomyRaceViewModel(race, map.Players.FirstOrDefault(player => player.Race == race.Race)?.StartingBank ?? WorldResourceSet.Empty, ShowTownsColumn))];
             UnclaimedResources = [.. Economy.Unclaimed.Select(entry => new MapEditorEconomyRowViewModel(new CustomMapEconomyRow(entry.Type, entry.Count, 0, 0)))];
             SelectedEconomyRace = EconomyRaces.FirstOrDefault(race => race.Race == selected);
         }
@@ -279,7 +357,7 @@ internal sealed partial class MapEditorScreenViewModel
 }
 
 // One race's block in the economy panel, laid out like the game's "Income per turn" table.
-internal sealed class MapEditorEconomyRaceViewModel(CustomMapEconomyRace race, WorldResourceSet bank)
+internal sealed class MapEditorEconomyRaceViewModel(CustomMapEconomyRace race, WorldResourceSet bank, bool showTowns = false)
 {
     public WorldRace Race => race.Race;
 
@@ -303,15 +381,54 @@ internal sealed class MapEditorEconomyRaceViewModel(CustomMapEconomyRace race, W
     public string Summary => race.Rods == 1
         ? Tr("Land: {0} tiles ({1}%) · 1 rod", race.LandTiles, race.LandPercent)
         : Tr("Land: {0} tiles ({1}%) · {2} rods", race.LandTiles, race.LandPercent, race.Rods);
-    public IReadOnlyList<MapEditorEconomyRowViewModel> Rows { get; } = [.. race.Rows.Select(row => new MapEditorEconomyRowViewModel(row))];
+    public IReadOnlyList<MapEditorEconomyRowViewModel> Rows { get; } = [.. race.Rows.Select(row => new MapEditorEconomyRowViewModel(row, showTowns))];
 }
 
 // A resource type: the game's income row (icon, name, capital, sources, total) plus how many resources of it.
-internal sealed class MapEditorEconomyRowViewModel(CustomMapEconomyRow row)
+internal sealed class MapEditorEconomyRowViewModel(CustomMapEconomyRow row, bool showTowns = false)
 {
-    public WorldIncomeRowViewModel Income { get; } = new(row.Type, row.CapitalIncome, row.ResourcesIncome, row.Total);
+    public WorldIncomeRowViewModel Income { get; } = new(row.Type, row.CapitalIncome, row.ResourcesIncome, row.Total) { TownsIncome = row.TownsIncome, ShowTowns = showTowns };
     public int Count => row.Resources;
     public string CountText => row.Resources.ToString();
+}
+
+// One level of the town income table: "Level N" and a box that takes 0-9999 gold.
+internal sealed partial class MapEditorTownIncomeFieldViewModel : ObservableObject
+{
+    private readonly Action<int>? commit;
+
+    public MapEditorTownIncomeFieldViewModel(int level, int gold, Action<int> commit)
+    {
+        Level = level;
+        Text = gold.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        this.commit = commit;
+    }
+
+    public int Level { get; }
+    public string Label => Tr("Level {0}", Level);
+
+    [ObservableProperty]
+    public partial string Text { get; set; }
+
+    partial void OnTextChanged(string value)
+    {
+        // An empty box counts as 0; anything else that isn't a number is ignored until it is one.
+        if (commit is null)
+        {
+            return;
+        }
+
+        string trimmed = value.Trim();
+
+        if (trimmed.Length == 0)
+        {
+            commit(0);
+        }
+        else if (int.TryParse(trimmed, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int gold))
+        {
+            commit(Math.Min(gold, CustomMap.MaxTownIncome));
+        }
+    }
 }
 
 // One amount of the starting bank editor: the resource's icon and name, and a box that takes 0-9999.

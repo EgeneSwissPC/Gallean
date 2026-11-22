@@ -1684,6 +1684,19 @@
     "% of the cap": "% от лимита",
     "Cancel order": "Отменить приказ",
     "Tab skips armies with orders": "Tab пропускает армии с приказом",
-    "When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.": "Если включено, Tab пропускает армии с приказом на марш, а пройти по ним можно клавишей O. Если выключено, Tab обходит все армии, армии с приказом — последними."
+    "When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.": "Если включено, Tab пропускает армии с приказом на марш, а пройти по ним можно клавишей O. Если выключено, Tab обходит все армии, армии с приказом — последними.",
+    "Towns": "Города",
+    "Gold per turn": "Золото за ход",
+    "+{0} (next level +{1})": "+{0} (на следующем уровне +{1})",
+    "Towns bring gold every turn": "Города приносят золото каждый ход",
+    "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Золото за ход, которое город каждого уровня приносит владельцу. Столица платит как город 5 уровня; бунтующий город не платит ничего.",
+    "{0} stopped: something is in its way.": "{0}: путь преграждён, армия остановилась.",
+    "{0} could not continue its path.": "{0}: не удалось продолжить путь.",
+    "{0} reached {1}.": "{0}: прибыл в {1}.",
+    "{0} arrived with {1} move points left.": "{0}: прибыл, осталось очков движения: {1}.",
+    "{0} stopped with {1} move points left.": "{0}: остановился, осталось очков движения: {1}.",
+    "An army with an order needs you": "Армия с приказом ждёт вашего решения",
+    "{0} armies with orders need you": "Армий с приказом ждут вашего решения: {0}",
+    "End the turn again to continue.": "Закончите ход ещё раз, чтобы продолжить."
   }
 }

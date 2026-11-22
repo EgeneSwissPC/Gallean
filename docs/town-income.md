@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phase 1 done (merge ee232a30); phase 2 next. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-2 done (merges ee232a30, 9f1a4423); phase 3 next. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -20,6 +20,8 @@ Status: phase 1 done (merge ee232a30); phase 2 next. H's price ceiling table is 
 - H (user): a neutral side buys only its own kind's soldiers, and the village level caps the price.
 - I (user): The War of the Ring's scripted neutral life is out of scope here; the user will rework it separately later.
 - Taken while building phase 1: `CustomMap.Create` starts with the rule off. The editor's new-map path turns it on with `CustomMap.DefaultTownIncome` (phase 2), and MapFromPlan sets it for The War of the Ring (phase 2). Maps built in code (tests, the battle bench, AI designer test maps) keep their economy, so no existing measurement changes.
+- Taken while building phase 2: the world screen's income table is laid out in columns per source (Capital, Sources, Total), so towns became a "Towns" column instead of a line; it only appears when towns pay (the same in the editor's economy panel).
+- Taken while building phase 2: MapFromPlan plans get town income like new editor maps unless `rules.townIncome` is `false`; a five-value array sets the table. The War of the Ring sets it explicitly.
 - Taken while building phase 1: the table is one SRules column, `TOWN_INCOME` = `"10,25,50,75,100"` (null = off), so SRules files written before keep loading.
 
 ## The problem today
@@ -77,7 +79,7 @@ Status: phase 1 done (merge ee232a30); phase 2 next. H's price ceiling table is 
 ## Phases
 
 1. ~~Town income in the engine: SRules table, `PlayerIncomeCalculator`, `IncomeInfo.Towns`, tests. ~1 day.~~ Done, see below.
-2. Town income on screen: income table line, city screen line, editor economy box and column, MapFromPlan `rules.townIncome`, War of the Ring setting. ~1-1.5 days.
+2. ~~Town income on screen: income table line, city screen line, editor economy box and column, MapFromPlan `rules.townIncome`, War of the Ring setting. ~1-1.5 days.~~ Done, see below.
 3. Neutral treasury: neutral sides earn from their towns, neutral starting bank in the editor. ~0.5-1 day.
 4. Neutral garrison buying: kind unit pools, neutral purchase command, neutral planner action, headless War of the Ring measurement. ~2 days.
 5. Neutral armies: leaders hired at villages once the garrisons are full and gold is left, attacking enemy armies near home towns or conquering nearby towns, measurement. ~2-3 days, specced after phase 4's numbers.
@@ -120,3 +122,23 @@ Suite 5456 (5455 on the branch point + this test; gallean-upgrade gained one tes
 Real-client check: none in this phase. No map turns the rule on yet, so nothing in the game changes; the client check (income table line, turn-2 treasury = turn-1 + predicted income) moves to phase 2.
 
 Known limits: a rounding remainder from scaling goes to the resources part of `IncomeInfo` (at most 2 gold, only for computer players or on Easy; the total is exact).
+
+## Phase 2 - done
+
+Commits d44cf700 (feature), 22f3ceac and 6ac7b715 (visual test), 8881fdc3 (panel width); merged as 9f1a4423.
+
+What was built:
+- World screen: the "Income per turn" tooltip (`WorldScreenView.axaml`, `WorldIncomeViewModel`, `WorldIncomeRowViewModel`) has a "Towns" column between Sources and Total, shown only when towns pay. `WorldGetPlayerInfoCommand.Result.TownsIncome` (init property) carries it.
+- City screen (`CityTabViewModel.BuildCityStats`): a "Gold per turn" row under Armor and Regeneration, "+25 (next level +50)" for a village that can still grow, "+100" for a capital, 0 while rioting, no row when the rule is off. `WorldGetCityInfoCommand.Result.TownIncome` / `NextLevelTownIncome` (init properties, unscaled), via the new `TownIncomeCalculator.GetFortificationGold`.
+- Map editor economy panel (`MapEditorScreenViewModel.Economy.cs`, `MapEditorScreenView.axaml`): a "Towns" section under the starting bank with an on/off box and five level boxes (one undo step while typing a box, one for the switch; switching back on restores the last table); the income table gets the towns column; the panel is 470 px wide instead of 430 so names like "Infernal mana" don't run into the count.
+- New maps: `MapEditorMenuScreenViewModel` turns town income on with 10/25/50/75/100.
+- MapFromPlan: `rules.townIncome` (README updated); The War of the Ring plan sets `[10, 25, 50, 75, 100]`, and a generator run writes `TOWN_INCOME` "10,25,50,75,100" to its SRules.json.
+- Translations: 5 new strings in all 7 catalogs (Russian translated).
+
+Tests: `CustomMapTests.TownIncomeTest` extended (city info for a level-3 town 50 / next 75, the capital 100 / no next level, another race's town no row, a rioting town 0, the income query's towns part 160, no row with the rule off); new `MapEditorScreenViewModelTests.TownIncomeTest` (on in a new map, boxes, capital column 100, typing, clamping, undo steps, off/on, save and reopen) and `WorldIncomeViewModelTests.TownsColumnTest`; `EconomyPanelTest` now expects the capital's 100 in new maps (+200 instead of +100). All 16 map editor visual tests passed; `MapEditorEconomyTest` has two new shots (towns column, towns boxes), reviewed.
+
+Suite 5475 (5473 on gallean-upgrade after AI unused features phase 3 + these 2 tests), rerun on the merged tree.
+
+Real-client check (AOT build, mapgen map with town income on, Average): the editor's economy panel predicted Empire gold +275 (100 capital, 50 resources, 125 towns = capital 100 + Ford level 2 25) and Undead +300; in the game the turn-1 treasury was 775 = 500 bank + 275, the income tooltip showed the Towns column (Gold 100 / 50 / 125 / +275), the capital screen "Gold per turn +100", Ford "+25 (next level +50)". After upgrading Ford to level 3 (250 gold) it showed "+50 (next level +75)", and the turn-2 treasury was 825 = 525 + 300.
+
+Known limits: the game's upgrade prompt ("This will increase garrison capacity, regeneration and armor bonus") doesn't mention the extra gold; the city screen row shows it instead.

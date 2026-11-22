@@ -852,6 +852,18 @@ public sealed partial class VisualTests
         await editor.SpreadTask;
         await SkipFramesAsync(10);
         await CaptureAsync(window, "5-after-30-turns");
+
+        // Town income on (a map made in code starts without it): the towns column, then the five boxes.
+        editor.BackToMapCommand.Execute(null);
+        editor.TownIncomeOn = true;
+        editor.TownIncomeFields[2].Text = "60";
+        await SkipFramesAsync(10);
+        Assert.That(editor.ShowTownsColumn, Is.True);
+        await CaptureAsync(window, "6-town-income");
+        Avalonia.Controls.CheckBox townBox = view.GetVisualDescendants().OfType<Avalonia.Controls.CheckBox>().First(box => box.Name == "TownIncomeBox");
+        townBox.FindAncestorOfType<Avalonia.Controls.ScrollViewer>()!.ScrollToEnd();
+        await SkipFramesAsync(10);
+        await CaptureAsync(window, "7-town-income-boxes");
     }
 
     [AvaloniaTest]
