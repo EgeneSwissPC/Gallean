@@ -1,6 +1,6 @@
 # AI: the parts of the game it never uses
 
-Status: questions A-F answered (2026-11-22); phase 1 in progress.
+Status: questions A-F answered (2026-11-22); phase 1 done, phase 2 next.
 
 ## Decisions
 
@@ -8,7 +8,7 @@ Status: questions A-F answered (2026-11-22); phase 1 in progress.
 - Who (answer A): all our AIs (Classic+, Aggressive, Builder, Expansionist, every designed AI); Classic untouched. Designer blocks may follow later.
 - Site visits (answer B): whenever the army can afford something useful there and the site is reachable; the richer the player, the further the AI is willing to walk (no fixed this-turn-or-next limit).
 - Merchants (answer C): only items the AI can use; more item kinds as the AI learns to use them (equipment after phase 5).
-- Summon upkeep (answer D): a tunable profile knob, the share of a mana's income per turn that running summon upkeep may take; default 50 % for our AIs (not raised in spending mode).
+- Summon upkeep (answer D): a tunable profile knob, the share of a mana's income per turn that running summon upkeep may take; default 50 % for our AIs. After the measurement (option B, user): while that mana is at or above the spending line, up to 100 % of its income.
 - Fog, unfog, remove rod and change terrain spells (answer E): later, once their goals are designed.
 - Order (answer F): phases 1-5 as listed.
 - Same rule as every AI change: Classic stays identical to upstream. The new behaviour belongs to our AIs (Classic+, Aggressive, Builder, Expansionist, every designed AI), gated by a profile knob, and is proven with the S099 Classic CSV diff.
@@ -44,11 +44,24 @@ War of the Ring has 23 sites: 8 merchants, 6 mage towers, 6 mercenary camps, 3 t
 
 ## Phases (proposal)
 
-1. A: summon upkeep awareness (~0.5 day). Independent of every question except D.
+1. ~~A: summon upkeep awareness (~0.5 day).~~ Done, see "Phase 1 — done".
 2. B: "not for the AI" spells (~0.5-1 day).
 3. C: area spells (~1 day).
 4. D: site visits: mercenaries, trainers, mage towers, potions (~3-4 days).
 5. E: equipment, then equipment at merchants (~2 days).
+
+## Phase 1 — done (summon upkeep awareness)
+
+Merged 96aa9792 (feature commit 32b1c99d on `upgrade/ai-summon-upkeep`).
+
+- `WorldAiProfile.SummonUpkeepPercent` (0 = Classic, no check); every personality and designed AI gets `WorldAiSpending.DefaultSummonUpkeepPercent` 50.
+- `WorldAiSpending.CanAffordSummonUpkeep`: on maps where summon upkeep applies (`LargeMapRules`), the new summon's casting cost plus the upkeep of the player's running summons must stay within the knob's share of that mana's income (`PlayerIncomeCalculator`), per mana the summon costs; a mana at or above the spending line may use up to 100 % (`RichSummonUpkeepPercent`, user option B). `CastSpellAction` drops summons that fail it before choosing.
+- Tests: `WorldAiOverflowSpendingTests.SummonUpkeepLimitTest` (income 300 death mana: 2000 mana and nothing running -> summons; 2000 mana and 100 running -> no (50 %); 9000 mana and 100 running -> summons (100 %); 9000 and 250 running -> no; Classic always passes the check; at 9000 the Classic+ brain's first action matches). Mutation checks: check forced off -> the 50 % case fails; rich raise removed -> the 100 % case fails. Suite 5454. S099 Classic CSV identical apart from timings.
+- Measured, War of the Ring (new map), 60 turns, seed 1, spending 70 %:
+  - no limit (before): 343 summons, 7 summons dismissed for unpaid upkeep, 51,200 mana paid as upkeep, mana lost at the cap 6.9 %;
+  - 50 % always: 268 summons, 0 dismissed, 20,500 upkeep, lost 9.5 % (Elf grove loss 1,051 -> 8,901: the upkeep had been a mana sink);
+  - 50 %, 100 % when rich (merged): 272 summons, 0 dismissed, 47,900 upkeep, lost 6.8 %.
+- No real-client run (no client change).
 
 ## Open questions
 
