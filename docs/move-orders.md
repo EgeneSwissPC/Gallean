@@ -17,6 +17,7 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **Surprises during the walk (question F: F1).** An enemy revealed by the fog or an interception stops the army one tile before the battle; it keeps its order, the others carry on, and after all walks (before the turn ends) each stopped army is asked with the question G prompt.
 - **Attack prompt during End turn (question G: G1).** The game's `AttackPromptViewModel` window, camera on the asking army with its path drawn, text naming both armies ("<own leader>'s army: the path leads into battle with <enemy>"). Buttons: **Attack** (accepted for this turn, fights when its walk comes), **Plan another path** (closes, selects the army in re-plan mode, turn stays open; Esc does the same), **Cancel order** (order deleted, army stays, next army is asked).
 - **Other encounters on the way (question H, user's own variant).** Bags: the army picks the bag up, the game's own "Treasure" loot popup (`LootScreenViewModel`, Continue button) shows what was found, and Continue resumes the walk. Sites (merchant, mage, trainer, mercenaries) reached as the destination and thief actions: asked this turn, after the walks and before the turn ends, in the same queue as the F1 surprises: the camera goes to the army and the site screen or the thief action window opens as it does for a manual move. Closing it carries on with the queue.
+- **Saving (question I: I2).** Orders are not saved: they live in the world screen like today's stored destinations and are gone after loading a save. No engine or save-format change; the feature stays client-only. Phase 4 is dropped.
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -46,32 +47,27 @@ On big maps (512, 1024) a player ends up with many armies that spend most turns 
 
 ## Technical approach
 
-Client only, except saving orders (question I).
+Client only (decision I: orders are not saved).
 
-- **Order state.** Keep `stackDestinations` as the source of truth (it already is) and add a read helper `HasMoveOrder(stack)` = destination stored and not reached. If question I picks saving, the destination moves into the save (see below) and `stackDestinations` reads/writes through it.
+- **Order state.** Keep `stackDestinations` as the source of truth (it already is) and add a read helper `HasMoveOrder(stack)` = destination stored and not reached. Not saved (decision I).
 - **Army bar.** `WorldStackItemViewModel.HasMoveOrder`; sort key `(HasMoveOrder, -Level, StackId)` in `UpdateStackItems`; a `Classes.ordered` on the card with a new `WorldStackBarOrderedBrush` for the move-points text (Theme colour + brush in `Colors.axaml`). Turns left: `WorldStackItemViewModel.OrderTurns`, from a `WorldGetPathCommand` dry run per ordered army (every `WorldPathSegment` carries its `Turn`, so the count is the last segment's turn, plus one if turns are numbered from zero; check the numbering before building). Compute only for ordered armies and only when the world state reference changed, not on every bar refresh, and draw it as a small outlined number on the left side of the card (the side that stays visible when cards overlap). `FindNextAvailableStackItem` skips ordered armies when `GameSettings.TabSkipsOrders` is on (new record param after `ShowPathOnHover`, default true, same no-format-bump pattern); `HasAvailableStack` always ignores them, so the End turn medallion lights up when only ordered armies are left. New `SelectNextOrderedStackCommand` / previous (O / Shift+O in `WorldVisual.GetHotkeyCommands`). The checkbox goes into the Settings panel next to "Show path under the cursor"; the panel is at its height limit for 1366x768, so it shares a row or the panel widens (check the Settings visual tests, EN and RU).
 - **Order path display (decision A).** `ResolveHoverPathKey` returns null while the selected army has an order and is not in re-plan mode, so the stored path (`cursor.Path`) stays drawn. A view-model flag `replanStackId` is set by the first map click on such an army (the click does nothing else) and cleared on selection change, Esc, a confirmed move or the end of the turn; while it is set the hover path and its one-click move work as today.
 - **End turn.** `EndTurnAsync` becomes: collect ordered armies with move points > 0 in bar order -> dry-run `WorldGetPathCommand` for each -> armies with a battle (or thief) encounter this turn that aren't accepted yet go into a confirm queue -> if the queue isn't empty, run the prompts and stop -> otherwise walk each army with a guarded step loop -> confirm queue for armies stopped by surprises -> `WorldEndTurnCommand`.
 - **Guarded walk.** Before each `WorldStepStackCommand` of an auto-walk, re-run `WorldGetPathCommand` (0.01-0.2 ms per call on the 512 map, measured for the hover path with movebench `--hover`) and stop if a battle encounter that wasn't accepted appears. Accepted attacks use the existing encounter visitor (same battle flow as a manual attack).
-- **Saving (if I1).** New `WorldStack.MoveOrder` init property (`WorldPosition?`, saved, old saves load with none), set by a new `WorldSetStackMoveOrderCommand` so it goes through the engine and survives save/load and hotseat. Same pattern as `WorldStack.SummonUpkeep`.
 - **Cancel.** X and a Stop button next to Continue on the selected card (question J).
 - New UI strings in all 7 catalogs (ru translated).
 
 ## Testing
 
 - Client tests (`WorldScreenViewModel`, test world builder): with an order, hovering keeps the order path and a first click only enters re-plan mode, the second click replaces the order; bar order, colour flag and turns left (drops by one after a turn of walking); Tab skips ordered armies with the setting on and visits them last with it off; O cycles only ordered armies; End turn highlight; E walks two ordered armies in bar order and ends the turn; an army blocked by an own army that walks later gets through on the retry pass; an order with an enemy in reach stops End turn and opens the prompt, Attack fights, Plan another path leaves the turn open, the second E doesn't ask again; an enemy revealed during the walk stops the army one tile short; arriving clears the order; X clears the order.
-- If saved (I1): save round-trip test with `Does.Not.Contain` for helper fields; an old save loads with no orders.
 - Visual tests: bar with ordered cards (colour, turns left, position; also in a crowded, overlapping bar), the order path staying drawn with the mouse elsewhere and the hover path after the first click, the attack prompt during End turn.
-- Real client (AOT build) on the 1024 War of the Ring map: give 5 armies far orders, press E for several turns, save/load in between.
+- Real client (AOT build) on the 1024 War of the Ring map: give 5 armies far orders, press E for several turns (orders are expected to be gone after a load).
 
 ## Phases (estimates)
 
 1. **Visible orders** (~1.5 days): bar colour, turns-left number and order, Tab skip + setting, O key, End turn highlight, order path stays put while the mouse moves (first click enters re-plan mode), X / Stop. No automatic walking yet; M still walks.
 2. **Orders walk on End turn** (~1-2 days): the guarded walk for orders without any battle this turn; anything unexpected stops the army and blocks End turn with a short message until the player handles it.
-3. **Attack confirmations** (~1-2 days): the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk.
-4. **Orders in the save** (~1 day, if I1): engine field + command, client reads through it.
-
-Phase 4 can move first if saving matters more than the rest.
+3. **Attack confirmations** (~1-2 days): the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk, treasure popup, sites and thief actions asked this turn.
 
 ## Open questions
 
@@ -91,7 +87,7 @@ Phase 4 can move first if saving matters more than the rest.
 
 ~~H. **Other encounters on the way.**~~ Answered: bags picked up with the Treasure popup, then the walk continues; sites and thief actions open this turn, before the turn ends (see Decisions).
 
-I. **Save orders?** I1: yes, as a saved army field (recommended; on long games a load would otherwise wipe every order). I2: no, keep today's client-only memory.
+~~I. **Save orders?**~~ Answered: I2, not saved (see Decisions).
 
 J. **Cancel and skip.** J1: X or the Stop button cancels the order; a new path replaces it; Finish (Enter) skips the army this turn but keeps its order (recommended). J2: Finish also cancels the order.
 
