@@ -13,7 +13,10 @@ internal sealed class DesignedWorldAiBrain(DesignedWorldAi design) : IWorldAiBra
     public WorldAiActionPlan DecideAction(IEngineContext context, WorldState state, WorldAiMemory memory, IWorldAiTrace? trace = null)
     {
         (DesignedWorldStage? stage, WorldAiMemory updated, ImmutableSortedSet<WorldFortificationId> owned) = FindStage(state, memory);
-        WorldAiProfile profile = stage is null ? WorldAiProfile.Classic : DesignedStageEvaluator.ToProfile(stage);
+        // No stage = Classic, plus overflow spending (every designed AI spends, docs/ai-overflow-spending.md).
+        WorldAiProfile profile = stage is null
+            ? WorldAiProfile.Classic with { SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent }
+            : DesignedStageEvaluator.ToProfile(stage);
 
         WorldAiActionPlan plan = new WorldAiController(context, profile).DecideAction(state, updated, trace);
 

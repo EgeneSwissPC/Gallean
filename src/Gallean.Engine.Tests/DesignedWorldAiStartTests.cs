@@ -19,8 +19,9 @@ public sealed class DesignedWorldAiStartTests
 
         Assert.That(design.Id, Is.EqualTo("custom:copy"));
         Assert.That(copy.Priorities, Is.EquivalentTo(DesignedStageEvaluator.GetEffectivePriorities(source)));
+        // Every designed AI spends at the cap (docs/ai-overflow-spending.md), also a copy of Classic.
         Assert.That(copy with { Priorities = null, RodPriority = source.RodPriority, BuildingPriority = source.BuildingPriority, UnitPriority = source.UnitPriority },
-            Is.EqualTo(source));
+            Is.EqualTo(source with { SpendAbovePercent = WorldAiSpending.DefaultSpendAbovePercent }));
     }
 
     [Test]
