@@ -2732,11 +2732,14 @@ public sealed class CustomMapTests
         WorldState waiting = With(state with { Stacks = state.Stacks.Add(hired.Stack.Id, hired.Stack) }, wolves, 1000);
         Assert.That(Plan(waiting, wolves).Single(), Is.TypeOf<WorldNeutralUnitHiredEvent>());
 
-        // Enough units (3 x 1): the full village grows instead (150 gold for level 2).
+        // Enough units (3 x 1): the army waiting at the entrance is still filled first while it isn't full (decision
+        // X1); with no army there, the full village grows (150 gold for level 2).
         WorldStack army = hired.Stack;
         WorldUnit soldier = new(new WorldUnitId("Extra"), NeutralEconomyPlanner.GetPools(WorldSubraceType.NeutralWolf, definitions).Soldiers[0].Id, 100, 0, 1, [], null, false);
         army = army with { Units = new WorldStackBuilder(definitions).PlaceUnit(army.Units.GetUnits().Single().Unit, GridPosition.FrontCenter).PlaceUnit(soldier, GridPosition.FrontTop).Build() };
-        WorldState strong = With(state with { Stacks = state.Stacks.Add(army.Id, army) }, wolves, 1000);
+        Assert.That(Plan(With(state with { Stacks = state.Stacks.Add(army.Id, army) }, wolves, 1000), wolves).Single(), Is.TypeOf<WorldNeutralUnitHiredEvent>(), "X1: fill the waiting army first.");
+        WorldStack away = army with { Position = wolfHuts.Entrance with { X = wolfHuts.Entrance.X + 3 } };
+        WorldState strong = With(state with { Stacks = state.Stacks.Add(away.Id, away) }, wolves, 1000);
         WorldCityUpgradedEvent grow = (WorldCityUpgradedEvent)Plan(strong, wolves).Single();
         Assert.That((grow.CityId, grow.DefinitionId.Level, grow.Cost.Gold), Is.EqualTo((hutsId, 2, 150)));
 
