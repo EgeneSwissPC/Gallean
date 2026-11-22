@@ -257,7 +257,7 @@ internal static class AiDesignerBlocks
         return
         [
             new(Tr("When"), BattleConditions),
-            new(Tr("Targets"), BattleTargets),
+            new(Tr("Target preferences"), BattleTargets),
             new(Tr("Tactics"), BattleTactics)
         ];
     }

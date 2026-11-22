@@ -1659,7 +1659,7 @@
     "Protect our leader": "Защищать предводителя",
     "Tactics": "Тактика",
     "Targets and tactics": "Цели и тактика",
-    "Test in the battle sandbox": "Проверить в песочнице сражений",
+    "Test in the battle sandbox": "Проверить в песочнице",
     "The enemy leader gets a bonus on Classic's score. In the sandbox this wins most mirror battles.": "Вражеский предводитель получает бонус к оценке классического ИИ. В песочнице это выигрывает большинство зеркальных боёв.",
     "The enemy unit that has lost the largest share of its hit points gets a bonus, so attacks keep going to the same unit until it falls.": "Вражеский отряд, потерявший наибольшую долю здоровья, получает бонус, так что удары идут в один отряд, пока он не падёт.",
     "The enemy unit with the fewest hit points left gets a bonus on Classic's score.": "Вражеский отряд с наименьшим остатком здоровья получает бонус к оценке классического ИИ.",
@@ -1675,6 +1675,7 @@
     "We carry items worth over": "Мы несём предметы дороже",
     "We hold less than": "У нас меньше",
     "We hold more than": "У нас больше",
-    "Winning: power above N %": "Побеждаем: сила выше N %"
+    "Winning: power above N %": "Побеждаем: сила выше N %",
+    "Target preferences": "Предпочтения целей"
   }
 }
