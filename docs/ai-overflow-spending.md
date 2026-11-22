@@ -1,6 +1,6 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec answered (all four recommendations taken, 2026-11-22); phase 1 done (diagnosis), phase 2 next.
+Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-2 done (diagnosis, mana spending); phase 2b/3 next.
 
 ## Decisions
 
@@ -65,7 +65,8 @@ Gold, in spending mode:
 ## Phases
 
 1. ~~Find why research stalls at 3-9 spells (headless diagnosis, no screen; ~0.5 day).~~ Done, see "Phase 1 — done".
-2. Mana spending in the engine for all personalities and designed AIs (~1 day), mana bench + tournament.
+2. ~~Mana spending in the engine for all personalities and designed AIs (~1 day), mana bench + tournament.~~ Done, see "Phase 2 — done".
+2b. In spending mode, foreign mana crystals get extra weight as rod and capture targets (~1 day), so level 3-4 research becomes affordable.
 3. Gold spending (~1 day), same checks.
 4. AI designer block "Spend resources above N %" (~0.5 day), the visible part in the AI editor.
 
@@ -86,6 +87,31 @@ What it means for phase 2:
 - Lasting fix for levels 3-4: the AI must own other mana sources (capture or rod foreign mana crystals). That is an expansion change, proposed as phase 2b below.
 
 Proposed phase 2 scope (spending mode only): research every turn including boosts and restore movement (still skipping `AI_CAT` None), several casts per turn on any visible enemy, summons as the main sink, boosts on armies about to attack. Proposed phase 2b (~1 day, after measuring phase 2): in spending mode, foreign mana crystals get extra weight as rod and capture targets.
+
+## Phase 2 — done (mana spending)
+
+Merged d9eb5927 (feature commit 0819774b on `upgrade/ai-overflow-spending`).
+
+What was built:
+- `WorldAiProfile.SpendAbovePercent` (0 = off = Classic). Classic+, Aggressive, Builder and Expansionist set 80; every designed AI gets 80 (stage profiles in `DesignedStageEvaluator.ToProfile`, and the no-stage fallback in `DesignedWorldAiBrain`). The designer block that edits it is phase 4.
+- `World/Ai/WorldAiSpending.cs`: spending mode is on while any mana is at or above 80 % of `MaxResourceAmount` (7999); a spell counts only if its cost uses a mana that is over the line.
+- Research (`ResearchSpellAction`), in spending mode: every turn, no 12-spell cap, levels up to 5 (the lord's limit still applies), boosts and invisibility included; `AI_CAT` None spells are still skipped.
+- Casting (`CastSpellAction.FindSpendingCast`), only when Classic found nothing to cast: attack/summon and weaken spells on the 30 visible hostile armies nearest to its own (neutrals included), boosts and invisibility on its armies with movement left within 7 tiles of a visible enemy, heals on any damaged own army, restore movement as in Classic, global spells without the suggested-level and all-four-manas gates (heal/boost/invisibility/restore movement only). Each spell is still limited by the lord's casts per turn.
+- Area spells (radius 1 or more) are still not cast by the AI, as in Classic.
+
+Tests: `WorldAiOverflowSpendingTests` (5: attack spell on a far neutral army, no spending at 7998 mana, heal on an army at 80 % HP, research on a non-research turn, every personality and designed AI has 80), each with Classic as the control. Mutation check: with spending forced off, 3 of 5 fail (the other two assert no spending / the profile values). Two designed-AI tests now expect the spending knob (a designed copy of Classic = Classic + spending, per the decision). Suite 5434 on the branch, 5443 after the merge (gallean-upgrade had gained battle AI designer phases 8-10).
+
+Classic unchanged: the S099 tournament CSV (Classic, 8 games x 50 turns) is identical before and after apart from the timing columns. S100 Classic+ vs Classic (12 games x 60 turns): identical results, since nobody reaches 8000 mana on that map.
+
+Measured, War of the Ring 1024, all races Classic + spending, 60 turns, seed 1, compared with the Classic baseline above:
+- Mana lost at the cap: 184,181 -> 28,379 (70.7 % -> 10.9 % of income). Spent on spells and research: 19,800 -> 138,000 (7.6 % -> 53.1 %). Casts: 62 -> 842.
+- Lost share / turns starting at the cap: Human 10 % / 9 (was 76 % / 49), Elf 23 % / 35 (74 % / 51), Dwarf 0 % / 0 (53 % / 39), Heretic 8 % / 8 (74 % / 52), Undead 0 % / 0 (65 % / 48).
+- The Elves' rest is mostly rune mana (11,001 of 18,852 lost): no Elf spell the AI researches costs rune, so nothing useful can use it (answer C). Their grove loss fell to 13.6 %.
+- AI time: the 60 turns took 25.5 min instead of 23.2 min (about +10 %).
+- The target (under 5 % lost, no turn at the cap) is reached for Dwarves and Undead, not yet for Humans, Heretics and Elves. Phase 2b (foreign mana, so level 3-4 spells become affordable) is the next lever; casting is already near the per-turn limit of a Warrior lord with 4-8 spells.
+- No real-client run: no client code changed and nothing new is on screen; the AOT check moves to phase 4 (designer block).
+
+Known limits: one 60-turn run on one map; no strength comparison on a big map yet (the S100 tournament never enters spending mode).
 
 ## Open questions
 
