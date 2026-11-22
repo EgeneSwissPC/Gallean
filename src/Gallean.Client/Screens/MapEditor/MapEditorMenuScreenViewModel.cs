@@ -122,7 +122,15 @@ internal sealed partial class MapEditorMenuScreenViewModel : AbstractScreenViewM
         WorldRace[] races = [.. Races.Where(race => race.IsSelected).Select(race => race.Race)];
         string id = store.NextId();
 
-        await Game.OpenMapEditorAsync(store, _ => CustomMap.Create(id, name, size, terrain, races));
+        await Game.OpenMapEditorAsync(store, _ =>
+        {
+            CustomMap map = CustomMap.Create(id, name, size, terrain, races);
+
+            // Gallean Upgrade: new maps start with town income on (docs/town-income.md, decision A).
+            map.SetTownIncome(CustomMap.DefaultTownIncome);
+
+            return map;
+        });
     }
 
     private bool CanOpen()

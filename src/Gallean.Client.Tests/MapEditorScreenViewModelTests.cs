@@ -1326,9 +1326,9 @@ public sealed class MapEditorScreenViewModelTests
         MapEditorEconomyRaceViewModel empire = editor.EconomyRaces[0];
         Assert.That(empire.Rows.Select(row => (row.Income.Name, row.Count, row.Income.CapitalIncome, row.Income.ResourceNodesIncome, row.Income.IncomeText)), Is.EqualTo(new[]
         {
-            ("Gold", 0, 100, 0, "+100"),
+            ("Gold", 0, 100, 0, "+200"),
             ("Life mana", 0, 25, 0, "+25")
-        }));
+        }), "New maps have town income: the capital adds the level-5 amount (100).");
         Assert.That(empire.Summary, Is.EqualTo("Land: 25 tiles (1%) · 0 rods"), "The capital's 5x5.");
         Assert.That(editor.HasUnclaimed, Is.False);
 
@@ -1343,7 +1343,7 @@ public sealed class MapEditorScreenViewModelTests
         editor.BeginStroke(new WorldPosition(26, 30));
         empire = editor.EconomyRaces[0];
         Assert.That(empire.Rows[0].Count, Is.EqualTo(1));
-        Assert.That(empire.Rows[0].Income.IncomeText, Is.EqualTo("+150"));
+        Assert.That(empire.Rows[0].Income.IncomeText, Is.EqualTo("+250"));
         Assert.That(editor.UnclaimedResources.Select(row => (row.Income.Name, row.Count)), Is.EqualTo(new[] { ("Gold", 1) }));
 
         // A rod counts, and its land can take the neutral mine.
@@ -1462,6 +1462,61 @@ public sealed class MapEditorScreenViewModelTests
         editor.SaveCommand.Execute(null);
         CustomMap saved = loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions);
         Assert.That((saved.ForeignSpellMarkup, saved.NeutralKinds), Is.EqualTo((50, true)));
+    }
+
+    // Map rule "town income": new maps start with it on (10/25/50/75/100); the economy panel switches it and edits the
+    // five amounts (one undo step while typing a box), the income table gets a towns column, and the map saves it.
+    [Test]
+    public async Task TownIncomeTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        Assert.That(editor.Map.TownIncome, Is.EqualTo(CustomMap.DefaultTownIncome), "On in a new map.");
+        editor.ToggleEconomyCommand.Execute(null);
+        Assert.That(editor.TownIncomeOn, Is.True);
+        Assert.That(editor.TownIncomeFields.Select(field => (field.Label, field.Text)), Is.EqualTo(new[] { ("Level 1", "10"), ("Level 2", "25"), ("Level 3", "50"), ("Level 4", "75"), ("Level 5", "100") }));
+
+        // The capital pays the level-5 amount: a towns column with 100 gold.
+        WorldIncomeRowViewModel gold = editor.EconomyRaces[0].Rows.Single(row => row.Income.Type == WorldResourceType.Gold).Income;
+        Assert.That((editor.ShowTownsColumn, gold.ShowTowns, gold.TownsIncome, gold.Income), Is.EqualTo((true, true, 100, 200)));
+
+        editor.TownIncomeFields[4].Text = "1";
+        editor.TownIncomeFields[4].Text = "15";
+        editor.TownIncomeFields[4].Text = "15x";
+        editor.TownIncomeFields[4].Text = "150";
+        Assert.That((editor.Map.TownIncome[4], editor.IsDirty), Is.EqualTo((150, true)));
+        gold = editor.EconomyRaces[0].Rows.Single(row => row.Income.Type == WorldResourceType.Gold).Income;
+        Assert.That(gold.TownsIncome, Is.EqualTo(150), "The economy follows the table.");
+        editor.TownIncomeFields[0].Text = "99999";
+        Assert.That(editor.Map.TownIncome[0], Is.EqualTo(CustomMap.MaxTownIncome));
+
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.TownIncome[0], editor.TownIncomeFields[0].Text), Is.EqualTo((10, "10")));
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.TownIncome[4], editor.TownIncomeFields[4].Text), Is.EqualTo((100, "100")), "One undo step for the typing.");
+
+        // Off: no towns column, the boxes keep their values for switching back on; one undo step.
+        editor.TownIncomeFields[2].Text = "60";
+        editor.TownIncomeOn = false;
+        Assert.That((editor.Map.TownIncome.IsEmpty, editor.ShowTownsColumn), Is.EqualTo((true, false)));
+        gold = editor.EconomyRaces[0].Rows.Single(row => row.Income.Type == WorldResourceType.Gold).Income;
+        Assert.That((gold.ShowTowns, gold.TownsIncome, gold.Income), Is.EqualTo((false, 0, 100)));
+        editor.TownIncomeFields[1].Text = "40";
+        Assert.That(editor.Map.TownIncome.IsEmpty, Is.True, "Boxes do nothing while off.");
+        editor.UndoCommand.Execute(null);
+        Assert.That(editor.Map.TownIncome, Is.EqualTo(new[] { 10, 25, 60, 75, 100 }));
+        editor.TownIncomeOn = false;
+        editor.TownIncomeOn = true;
+        Assert.That(editor.Map.TownIncome, Is.EqualTo(new[] { 10, 25, 60, 75, 100 }), "Back on with the last table.");
+
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).TownIncome, Is.EqualTo(new[] { 10, 25, 60, 75, 100 }));
+        editor.TownIncomeOn = false;
+        editor.SaveCommand.Execute(null);
+        Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).TownIncome, Is.Empty);
     }
 
     [Test]

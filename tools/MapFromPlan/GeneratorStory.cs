@@ -68,6 +68,17 @@ internal sealed partial class Generator
             map.NeutralKinds = rules["neutralKinds"] is { } kinds && kinds.GetValue<bool>();
         }
 
+        // Town income: on with the editor's default table like every new editor map, unless the plan sets
+        // rules.townIncome to false (off) or to its own five values (levels 1-5).
+        JsonNode? townIncome = plan["rules"]?["townIncome"];
+        map.SetTownIncome(townIncome switch
+        {
+            null => CustomMap.DefaultTownIncome,
+            JsonArray values => [.. values.Select(value => value!.GetValue<int>())],
+            _ when townIncome.GetValue<bool>() => CustomMap.DefaultTownIncome,
+            _ => []
+        });
+
         if (plan["startingBanks"] is JsonObject banks)
         {
             foreach ((string raceName, JsonNode? bank) in banks)
