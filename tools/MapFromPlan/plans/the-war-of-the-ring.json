@@ -28,7 +28,8 @@
    50,
    75,
    100
-  ]
+  ],
+  "neutralBuying": true
  },
  "startingBanks": {
   "Human": {

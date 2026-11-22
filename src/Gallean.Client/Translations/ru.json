@@ -1701,6 +1701,9 @@
     "Starting gold of each neutral side": "Стартовое золото каждой нейтральной стороны",
     "Neutral towns bring {0} gold a turn in all.": "Нейтральные города приносят всего {0} золота за ход.",
     "{0}: the path leads into battle with {1:*}.": "{0}: путь приведёт к битве с противником {1:*}.",
-    "Plan another path": "Проложить другой путь"
+    "Plan another path": "Проложить другой путь",
+    "Neutrals buy units": "Нейтралы покупают воинов",
+    "Units per village level before upgrading": "Воинов на уровень города до улучшения",
+    "Each turn every neutral village buys one unit of its kind: first for its garrison, then, while the side has fewer units than this number times its village levels, for an army waiting at the village (a new leader when there is none); after that it grows the village. The higher the level, the dearer the units it sells.": "Каждый ход каждый нейтральный город покупает одного воина своего вида: сначала в гарнизон, затем, пока у стороны меньше воинов, чем это число, умноженное на уровни её городов, в армию, ждущую у города (нового предводителя, если армии нет); после этого улучшает город. Чем выше уровень, тем дороже воины, которых он продаёт."
   }
 }

@@ -1550,6 +1550,39 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That(loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions).NeutralStartingGold, Is.EqualTo(400));
     }
 
+    // Map rule "neutrals buy units" (town income phase 4): on in new maps; a checkbox (one undo step) and the units per
+    // village level box (1-20, one undo step while typing), both saved with the map.
+    [Test]
+    public async Task NeutralBuyingTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+        (GameViewModel game, GameLoader loader) = Build(sb);
+        using GameViewModel disposeGame = game;
+
+        MapEditorScreenViewModel editor = PlaceCapitals(await CreateMapAsync(game, WorldRace.Human, WorldRace.Dwarf));
+        Assert.That((editor.Map.NeutralBuying, editor.Map.NeutralUnitFactor), Is.EqualTo((true, 3)), "On in a new map.");
+        editor.ToggleEconomyCommand.Execute(null);
+        Assert.That((editor.NeutralBuying, editor.NeutralFactorText), Is.EqualTo((true, "3")));
+
+        editor.NeutralBuying = false;
+        Assert.That((editor.Map.NeutralBuying, editor.IsDirty), Is.EqualTo((false, true)));
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.NeutralBuying, editor.NeutralBuying), Is.EqualTo((true, true)));
+
+        editor.NeutralFactorText = "5";
+        editor.NeutralFactorText = "";
+        editor.NeutralFactorText = "50";
+        Assert.That(editor.Map.NeutralUnitFactor, Is.EqualTo(CustomMap.MaxNeutralUnitFactor));
+        editor.UndoCommand.Execute(null);
+        Assert.That((editor.Map.NeutralUnitFactor, editor.NeutralFactorText), Is.EqualTo((3, "3")), "One undo step for the typing.");
+
+        editor.NeutralFactorText = "4";
+        editor.NeutralBuying = false;
+        editor.SaveCommand.Execute(null);
+        CustomMap saved = loader.CreateMapStore()!.Open(editor.Map.Id, editor.Definitions);
+        Assert.That((saved.NeutralBuying, saved.NeutralUnitFactor), Is.EqualTo((false, 4)));
+    }
+
     [Test]
     public async Task SpreadPreviewTest()
     {

@@ -513,6 +513,15 @@
                 <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'Starting gold of each neutral side'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
                 <TextBox x:Name="NeutralGoldBox" Grid.Column="1" Text="{Binding NeutralGoldText}" MaxLength="4" HorizontalContentAlignment="Right" />
               </Grid>
+              <CheckBox x:Name="NeutralBuyingBox" IsChecked="{Binding NeutralBuying}" Content="{local:Text 'Neutrals buy units'}" />
+              <Grid ColumnDefinitions="*,54" IsEnabled="{Binding NeutralBuying}">
+                <TextBlock Grid.Column="0" Classes="caption" Text="{local:Text 'Units per village level before upgrading'}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <TextBox x:Name="NeutralFactorBox" Grid.Column="1" Text="{Binding NeutralFactorText}" MaxLength="2" HorizontalContentAlignment="Right" />
+              </Grid>
+              <TextBlock Text="{local:Text 'Each turn every neutral village buys one unit of its kind: first for its garrison, then, while the side has fewer units than this number times its village levels, for an army waiting at the village (a new leader when there is none); after that it grows the village. The higher the level, the dearer the units it sells.'}"
+                         Classes="caption"
+                         TextWrapping="Wrap"
+                         Foreground="{StaticResource SecondaryTextBrush}" />
               <TextBlock Text="{Binding NeutralIncomeText}"
                          Classes="caption"
                          TextWrapping="Wrap"

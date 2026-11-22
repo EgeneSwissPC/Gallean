@@ -235,6 +235,29 @@ public sealed partial class CustomMap
 
     public const int MaxTownIncome = 9999;
 
+    // Map rule "neutrals buy units" (SRules.json, docs/town-income.md phase 4): neutral sides spend their gold on
+    // garrisons, leaders with armies and village upgrades. Off in maps made in code; the editor turns it on for new maps.
+    public bool NeutralBuying { get; set; }
+
+    // Units per village level a neutral side keeps before upgrading villages (1-20, default 3).
+    public int NeutralUnitFactor { get; private set; } = ScenarioDefinition.DefaultNeutralUnitFactor;
+
+    public const int MaxNeutralUnitFactor = 20;
+
+    public bool SetNeutralUnitFactor(int factor)
+    {
+        int clamped = Math.Clamp(factor, 1, MaxNeutralUnitFactor);
+
+        if (clamped == NeutralUnitFactor)
+        {
+            return false;
+        }
+
+        NeutralUnitFactor = clamped;
+
+        return true;
+    }
+
     // Gold every neutral side starts with (Splayer BANK of each neutral player; town income phase 3). Neutrals spend
     // it from phase 4 on; 0 by default.
     public int NeutralStartingGold { get; private set; }
@@ -290,7 +313,9 @@ public sealed partial class CustomMap
             ForeignSpellMarkup = ForeignSpellMarkup,
             NeutralKinds = NeutralKinds,
             TownIncome = TownIncome,
-            NeutralStartingGold = NeutralStartingGold
+            NeutralStartingGold = NeutralStartingGold,
+            NeutralBuying = NeutralBuying,
+            NeutralUnitFactor = NeutralUnitFactor
         };
     }
 

@@ -201,7 +201,9 @@ public static class ScenarioLoader
             nextScenarioId)
         {
             ForeignSpellMarkup = scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.ForeignSpellMarkup ?? 0,
-            TownIncome = TownIncomeCalculator.Parse(scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.TownIncome)
+            TownIncome = TownIncomeCalculator.Parse(scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.TownIncome),
+            NeutralBuying = scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.NeutralBuying ?? false,
+            NeutralUnitFactor = scenarioDb.ScenarioRulesByScenario[scenarioId].FirstOrDefault()?.NeutralUnitFactor ?? ScenarioDefinition.DefaultNeutralUnitFactor
         };
 
         WorldState state = new(

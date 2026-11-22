@@ -13,6 +13,10 @@ public static partial class Db
         [property: JsonPropertyName("SPELL_MARKUP")] int ForeignSpellMarkup,
         [property: JsonPropertyName("NEUTRAL_KINDS")] bool NeutralKinds,
         // Town income (docs/town-income.md): gold per turn for town levels 1-5, comma-separated; null = off.
-        [property: JsonPropertyName("TOWN_INCOME")] string? TownIncome = null
+        [property: JsonPropertyName("TOWN_INCOME")] string? TownIncome = null,
+        // Neutral economy (docs/town-income.md phase 4): neutral sides buy units, leaders and village upgrades.
+        [property: JsonPropertyName("NEUTRAL_BUYING")] bool? NeutralBuying = null,
+        // Units per village level a neutral side keeps before it upgrades villages; null = 3.
+        [property: JsonPropertyName("NEUTRAL_UNIT_FACTOR")] int? NeutralUnitFactor = null
     );
 }

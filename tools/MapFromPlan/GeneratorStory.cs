@@ -71,6 +71,8 @@ internal sealed partial class Generator
         // Town income: on with the editor's default table like every new editor map, unless the plan sets
         // rules.townIncome to false (off) or to its own five values (levels 1-5).
         map.SetNeutralStartingGold(Plan.Integer(plan["rules"]?["neutralGold"], 0));
+        map.NeutralBuying = plan["rules"]?["neutralBuying"] is not { } buying || buying.GetValue<bool>();
+        map.SetNeutralUnitFactor(Plan.Integer(plan["rules"]?["neutralUnitFactor"], ScenarioDefinition.DefaultNeutralUnitFactor));
 
         JsonNode? townIncome = plan["rules"]?["townIncome"];
         map.SetTownIncome(townIncome switch

@@ -150,6 +150,7 @@ public sealed partial class GameSession
         public Empty Visit(WorldResourcesGivenEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldResourcesStolenEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldSummonUpkeepPaidEvent ev, Empty context) => Empty.Value;
+        public Empty Visit(WorldNeutralUnitHiredEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldAiOverrideChangedEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldGameResumedEvent ev, Empty context) => Empty.Value;
         public Empty Visit(WorldDiplomacyProposalSentEvent ev, Empty context) => Empty.Value;
