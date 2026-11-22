@@ -128,19 +128,27 @@ internal sealed partial class WorldAiPlanner
 
         // Gallean Upgrade, overflow spending: while gold is near the cap, two more fighting armies and one more
         // rod planter than Classic's quota.
+        // Phase 2b: one more rod planter while a mana for the next level 3 spell is missing (our AIs only).
         private int GetSpendingExtraLeaders(WorldPlayer player, LeaderRole role)
         {
-            if (!WorldAiSpending.IsGoldSpending(Context.Profile, player, Context.Engine.Globals))
+            int extra = 0;
+
+            if (WorldAiSpending.IsGoldSpending(Context.Profile, player, Context.Engine.Globals))
             {
-                return 0;
+                extra += role switch
+                {
+                    LeaderRole.Fighter => 2,
+                    LeaderRole.Rod => 1,
+                    _ => 0
+                };
             }
 
-            return role switch
+            if (role == LeaderRole.Rod && WorldAiSpending.GetNeededMana(Context.Profile, player, Context.Engine).Count > 0)
             {
-                LeaderRole.Fighter => 2,
-                LeaderRole.Rod => 1,
-                _ => 0
-            };
+                extra += 1;
+            }
+
+            return extra;
         }
 
         private static int GetLeaderQuota(WorldState state, WorldPlayerId playerId, LeaderRole role)

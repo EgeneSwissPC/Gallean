@@ -13,6 +13,77 @@ internal static class WorldAiSpending
         return globals.MaxResourceAmount * profile.SpendAbovePercent / 100;
     }
 
+    // Phase 2b: the mana types the race lacks for the cheapest level 3 spell it could research (answer H),
+    // for our AIs only (SpendAbovePercent > 0; answer G: always, not only while spending). Empty = nothing needed.
+    public static IReadOnlySet<WorldResourceType> GetNeededMana(WorldAiProfile profile, WorldPlayer player, IEngineContext context)
+    {
+        const int Level = 3;
+
+        if (profile.SpendAbovePercent <= 0)
+        {
+            return EmptyTypes;
+        }
+
+        LordDefinition lord = context.Definitions.GetLord(player.LordId);
+        int levelLimit = lord.Category switch
+        {
+            LordCategory.Warrior => context.Globals.LordWarriorSpellResearchLevelLimit,
+            LordCategory.Mage => context.Globals.LordMageSpellResearchLevelLimit,
+            LordCategory.Guildmaster => context.Globals.LordGuildmasterSpellResearchLevelLimit
+        };
+
+        if (levelLimit < Level)
+        {
+            return EmptyTypes;
+        }
+
+        IReadOnlyDictionary<WorldSpellDefinitionId, WorldResourceSet> costs = context.Definitions.GetSpellResearchCosts(player.Race);
+        WorldResourceSet? cheapest = null;
+        int cheapestTotal = int.MaxValue;
+
+        foreach (WorldSpellDefinitionId spellId in player.Spellbook.Available.Where(id => !player.Spellbook.Acquired.Contains(id)).Order())
+        {
+            WorldSpellDefinition spell = context.Definitions.GetSpell(spellId);
+
+            if (spell.Level == Level && spell.AiType != WorldAiSpellType.None && costs.TryGetValue(spellId, out WorldResourceSet cost))
+            {
+                int total = cost.DeathMana + cost.RuneMana + cost.LifeMana + cost.InfernalMana + cost.GroveMana;
+
+                if (total < cheapestTotal)
+                {
+                    cheapest = cost;
+                    cheapestTotal = total;
+                }
+            }
+        }
+
+        if (cheapest is not { } need)
+        {
+            return EmptyTypes;
+        }
+
+        WorldResourceSet have = player.Resources;
+        HashSet<WorldResourceType> types = [];
+
+        AddIfShort(types, WorldResourceType.DeathMana, need.DeathMana, have.DeathMana);
+        AddIfShort(types, WorldResourceType.RuneMana, need.RuneMana, have.RuneMana);
+        AddIfShort(types, WorldResourceType.LifeMana, need.LifeMana, have.LifeMana);
+        AddIfShort(types, WorldResourceType.InfernalMana, need.InfernalMana, have.InfernalMana);
+        AddIfShort(types, WorldResourceType.GroveMana, need.GroveMana, have.GroveMana);
+
+        return types;
+
+        static void AddIfShort(HashSet<WorldResourceType> types, WorldResourceType type, int need, int have)
+        {
+            if (need > 0 && have < need)
+            {
+                types.Add(type);
+            }
+        }
+    }
+
+    private static readonly IReadOnlySet<WorldResourceType> EmptyTypes = new HashSet<WorldResourceType>();
+
     // True when gold is at or above the threshold.
     public static bool IsGoldSpending(WorldAiProfile profile, WorldPlayer player, GlobalVariables globals)
     {

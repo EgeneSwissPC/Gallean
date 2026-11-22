@@ -6,6 +6,8 @@ internal sealed partial class WorldAiPlanner
 {
     private sealed partial record RodAction(WorldAiContext Context, int Priority) : AbstractStackAction(Context, Priority)
     {
+        private const int NeededManaMaxInterest = 200;
+
         private readonly record struct Target(WorldPosition Position, int Range, int Interest, IWorldCommand<Empty> Command);
 
         private readonly record struct Candidate(Target Target, WorldPosition Position, int Cost, int Score);
@@ -208,6 +210,8 @@ internal sealed partial class WorldAiPlanner
             if (ResourceSetCalculator.CanAfford(player.Resources, Context.Engine.Globals.RodCost))
             {
                 WorldPlan plan = WorldPlan.For(state);
+                // Gallean Upgrade, overflow spending phase 2b: sources of a needed mana count double.
+                IReadOnlySet<WorldResourceType> needed = WorldAiSpending.GetNeededMana(Context.Profile, player, Context.Engine);
 
                 foreach (WorldResourceNode node in state.ResourceNodes.Values)
                 {
@@ -223,7 +227,11 @@ internal sealed partial class WorldAiPlanner
                                 {
                                     WorldCreateRodCommand command = new(stack.Id, position);
 
-                                    yield return new Target(position, Context.Engine.Globals.RodPlantRange, attitude.CreateRodInterest, command);
+                                    int interest = needed.Contains(node.ResourceType)
+                                        ? Math.Min(attitude.CreateRodInterest * 2, NeededManaMaxInterest)
+                                        : attitude.CreateRodInterest;
+
+                                    yield return new Target(position, Context.Engine.Globals.RodPlantRange, interest, command);
                                 }
                             }
                         }
