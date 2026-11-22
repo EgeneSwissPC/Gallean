@@ -14,6 +14,7 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **Bar look (question B: B3).** Cards with an order show their move points in soft green (not blue: the selected card already glows light blue) plus the number of turns the army still needs to arrive. User: spec it now so it isn't forgotten.
 - **How orders run (question D: D1).** On E, ordered armies walk one by one in bar order, animated, the camera jumping to each like during the AI turn. Space skips the current walk; holding it skips the rest. Then the turn ends. A setting for instant walks (D2) may come later.
 - **Walking order (question E: E1).** Bar order, left to right (leader level high first, then ID). Retry pass (recommended add-on, taken unless the user objects): an army blocked by one of the player's own armies tries once more after all others have walked; if still stuck it keeps its order and stays put.
+- **Surprises during the walk (question F: F1).** An enemy revealed by the fog or an interception stops the army one tile before the battle; it keeps its order, the others carry on, and after all walks (before the turn ends) each stopped army is asked with the question G prompt.
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -82,7 +83,7 @@ Phase 4 can move first if saving matters more than the rest.
 
 ~~E. **Walking order.**~~ Answered: E1, bar order, plus a retry pass for armies blocked by own armies (see Decisions).
 
-F. **Surprise encounters during the walk** (enemy revealed by the fog, interception). F1: stop one tile short, keep the order, ask after the others have walked, before the turn ends (recommended). F2: stop and drop the order.
+~~F. **Surprise encounters during the walk.**~~ Answered: F1, stop one tile short, keep the order, ask before the turn ends (see Decisions).
 
 G. **Prompt buttons.** G1: Attack / Plan another path / Cancel order (recommended). G2: Attack / Plan another path only (as the user described).
 
