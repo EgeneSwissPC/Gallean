@@ -253,6 +253,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 - Q (user): Q2. Two per-map settings: armies hunt hostile armies within 10 tiles of their home village and go for towns within 60 tiles (SRules, editor Neutrals section, MapFromPlan). On The War of the Ring a 60-tile town radius reaches another side's town from 18 of the 42 neutral villages.
 - R (user): R1 for now. A full army first goes for hostile armies within the army radius of its home; only when none there is a fight it would take (question S) does it go for a town within the town radius.
 - S (user): S3. An army only takes a fight where the AI's strength estimate (`WorldAiEstimator`, garrison included for towns) gives it at least the map's margin over the target; the margin is a per-map setting, default 140 % (the game's own roaming margin, `RoamingPowerPercent`).
+- T (user): T2. An army that captures a town makes it its new home (it defends it, refills and leaves from there, and the radii are measured from it); after any other fight it goes back to its home village, where it heals and, being no longer full, waits to be refilled (P1).
 
 ### Phase 5 questions
 
@@ -264,7 +265,7 @@ The user's wish (from the answers to G and N): neutrals protect their villages f
 
 ~~S. Which fights they take.~~ Answered: S3 (Decisions).
 
-T. After a win or a captured town. T1: go back home (the village's order again) and wait to be refilled. T2: a captured town keeps the army as its defender and becomes its new home. T3: keep hunting from where they are, with the nearest own village as home. Recommendation: T2 for captured towns, T1 otherwise.
+~~T. After a win or a captured town.~~ Answered: T2.
 
 U. Which armies. U1: only armies the neutral economy bought. U2: also the map's own neutral armies (The War of the Ring has 569; that would wake every placed army up). Recommendation: U1; placed armies keep their map orders.
 
