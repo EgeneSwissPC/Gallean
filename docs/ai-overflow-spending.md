@@ -1,6 +1,6 @@
 # AI overflow spending: never sit at the 9999 cap
 
-Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks); answers E-H taken (all recommendations); building 3b-A city upgrades first, then 2b, then 3b-B site shopping; 4 left.
+Status: spec answered (all four recommendations taken, 2026-11-22); phases 1-3 done (diagnosis, mana, gold); user picked both 2b (foreign mana) and 3b (more gold sinks); answers E-H taken (all recommendations); 3b-A city upgrades done; 2b next, then 3b-B site shopping (only if still needed); 4 left.
 
 ## Decisions
 
@@ -72,7 +72,7 @@ Gold, in spending mode:
 2. ~~Mana spending in the engine for all personalities and designed AIs (~1 day), mana bench + tournament.~~ Done, see "Phase 2 — done".
 2b. Foreign mana: rod planters prefer the mana sources the race needs (~1 day), see "Phase 2b — foreign mana".
 3. ~~Gold spending (~1 day), same checks.~~ Done, see "Phase 3 — done".
-3b. More gold sinks: city upgrades first (~0.5 day), then shopping at sites (~2 days), see "Phase 3b — more gold sinks".
+3b. More gold sinks: ~~city upgrades first (~0.5 day)~~ done, see "Phase 3b-A — done"; then shopping at sites (~2 days), see "Phase 3b — more gold sinks".
 4. AI designer block "Spend resources above N %" (~0.5 day), the visible part in the AI editor.
 
 ## Phase 1 — done (why research stalls)
@@ -157,6 +157,17 @@ Options:
 - **C.** Mage towers too: buy spells the race can't research (~1 day on top of B; the spells then also become mana sinks).
 
 Recommendation: A first, then B with mercenaries and training (gold straight into army strength), items last; C after measuring B.
+
+## Phase 3b-A — done (city upgrades)
+
+Merged 4388ecf6 (feature commit 96f5a205 on `upgrade/ai-city-upgrades`).
+
+- New economy action `WorldAiPlanner.UpgradeCityAction` (priority 0, fixed score MaxScore/2): while gold spending, `WorldUpgradeCityCommand` on the owned city with the lowest level first. Registered for every profile and for designed AIs (it is part of the spending rule, not a designer block); it does nothing unless gold is at or above the threshold, so Classic never upgrades.
+- Test: `CustomMapTests.CityUpgradeTest` (two Human level-1 villages, 9999 gold, turn 1: Classic leaves both at 1, Classic+ brings both to 2). Mutation check: with the action switched off, the Classic+ case fails. Suite 5446.
+- Classic unchanged: S099 Classic CSV identical apart from timings.
+- Measured, War of the Ring, 70 %, 60 turns, seed 1: **no gold lost at the cap for any race** (phase 3: 5,142; Classic: 21,329). The Dwarves now hover around 6,100-7,900 from turn 41 and end at 8,883 on turn 60. Mana losses unchanged (Human 10 %, Elf 27 %, Heretic 8 %, Dwarf and Undead 0 %).
+- Consequence for answer E: site shopping (3b-B) is not needed on this map for 60 turns; revisit if a longer run or another map shows gold at the cap again.
+- No real-client run (no client change); moves to phase 4.
 
 ## Phase 2b — foreign mana (spec, not built)
 
