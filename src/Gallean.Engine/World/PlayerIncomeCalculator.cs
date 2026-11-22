@@ -1,3 +1,5 @@
+using System.Collections.Immutable;
+
 namespace Gallean.Engine;
 
 internal static class PlayerIncomeCalculator
@@ -5,11 +7,21 @@ internal static class PlayerIncomeCalculator
     public sealed record IncomeInfo(
         WorldResourceSet Total,
         WorldResourceSet Capital,
-        WorldResourceSet ResourceNodes);
+        WorldResourceSet ResourceNodes)
+    {
+        // Gallean Upgrade: gold from towns (map rule "town income", docs/town-income.md); part of Total.
+        public WorldResourceSet Towns { get; init; } = WorldResourceSet.Empty;
+    }
 
     private const int PercentMax = 100;
 
     public static IncomeInfo GetIncomeInfo(WorldPlayer player, WorldState state, IEngineContext context)
+    {
+        return GetIncomeInfo(player, state, context, context.Scenario.Definition.TownIncome);
+    }
+
+    // The map editor passes the table being edited instead of the loaded scenario's.
+    public static IncomeInfo GetIncomeInfo(WorldPlayer player, WorldState state, IEngineContext context, ImmutableArray<int> townIncome)
     {
         if (WorldHelpers.IsRacePlayable(player.Race))
         {
@@ -25,11 +37,13 @@ internal static class PlayerIncomeCalculator
                 }
             }
 
-            WorldResourceSet income = Scale(ResourceSetCalculator.Add(raceIncome, nodesIncome), player, state, context);
+            WorldResourceSet townsIncome = WorldResourceSet.Empty with { Gold = TownIncomeCalculator.GetGold(player, state, townIncome, context.Definitions) };
+            WorldResourceSet income = Scale(ResourceSetCalculator.Add(ResourceSetCalculator.Add(raceIncome, nodesIncome), townsIncome), player, state, context);
             WorldResourceSet paidRaceIncome = Scale(raceIncome, player, state, context);
-            WorldResourceSet paidNodesIncome = ResourceSetCalculator.Subtract(income, paidRaceIncome);
+            WorldResourceSet paidTownsIncome = Scale(townsIncome, player, state, context);
+            WorldResourceSet paidNodesIncome = ResourceSetCalculator.Subtract(ResourceSetCalculator.Subtract(income, paidRaceIncome), paidTownsIncome);
 
-            return new IncomeInfo(income, paidRaceIncome, paidNodesIncome);
+            return new IncomeInfo(income, paidRaceIncome, paidNodesIncome) { Towns = paidTownsIncome };
         }
         else
         {

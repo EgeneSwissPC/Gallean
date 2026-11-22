@@ -182,6 +182,24 @@
   <Style Selector="Button.world-stack-card.exhausted local|OutlinedTextBlock.moves">
     <Setter Property="Foreground" Value="{StaticResource WorldStackBarNoMovesBrush}" />
   </Style>
+  <!-- Gallean Upgrade: move orders (docs/move-orders.md) -->
+  <Style Selector="Button.world-stack-card.ordered local|OutlinedTextBlock.moves">
+    <Setter Property="Foreground" Value="{StaticResource WorldStackBarOrderedMovesBrush}" />
+  </Style>
+  <Style Selector="Button.world-stack-card local|OutlinedTextBlock.order-turns">
+    <Setter Property="Margin" Value="0,60,0,0" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="VerticalAlignment" Value="Top" />
+    <Setter Property="IsHitTestVisible" Value="False" />
+    <Setter Property="Foreground" Value="{StaticResource WorldStackBarOrderedMovesBrush}" />
+    <Setter Property="FontFamily" Value="{StaticResource FontFamilySerif}" />
+    <Setter Property="FontSize" Value="{StaticResource FontSizeLg}" />
+    <Setter Property="Outline" Value="{StaticResource WorldStackBarTextOutlineBrush}" />
+    <Setter Property="OutlineThickness" Value="1" />
+  </Style>
+  <Style Selector="Button.world-stack-card.selected local|OutlinedTextBlock.order-turns">
+    <Setter Property="Margin" Value="0,72,0,0" />
+  </Style>
   <Style Selector="Button.world-stack-card local|OutlinedTextBlock.name">
     <Setter Property="Margin" Value="4,0,4,72" />
     <Setter Property="HorizontalAlignment" Value="Center" />
@@ -235,6 +253,12 @@
     </Style>
     <Style Selector="^ Button.world-stack-card.selected local|OutlinedTextBlock.moves">
       <Setter Property="Margin" Value="0,54,0,0" />
+    </Style>
+    <Style Selector="^ Button.world-stack-card local|OutlinedTextBlock.order-turns">
+      <Setter Property="Margin" Value="0,72,0,0" />
+    </Style>
+    <Style Selector="^ Button.world-stack-card.selected local|OutlinedTextBlock.order-turns">
+      <Setter Property="Margin" Value="0,86,0,0" />
     </Style>
     <Style Selector="^ Button.world-stack-card local|OutlinedTextBlock.name">
       <Setter Property="Margin" Value="4,0,4,96" />

@@ -852,6 +852,7 @@ internal static class Theme
             public static Color TextOutlineColor { get; } = Color.FromArgb(230, 6, 6, 8);
             public static Color MovesColor { get; } = Color.FromRgb(236, 232, 222);
             public static Color NoMovesColor { get; } = Color.FromRgb(214, 150, 96);
+            public static Color OrderedMovesColor { get; } = Color.FromRgb(150, 214, 120);
         }
 
         public static Color BackdropColor { get; } = Color.FromRgb(18, 17, 21);

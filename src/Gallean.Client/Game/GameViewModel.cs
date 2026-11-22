@@ -101,7 +101,7 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
                     Settings.UiSize,
                     Settings.LockCursor,
                     Settings.MovementSpeed,
-                    Settings.Language) with { ShowPathOnHover = Settings.ShowPathOnHover, WorldAi = Settings.WorldAi, BattleAi = Settings.BattleAi });
+                    Settings.Language) with { ShowPathOnHover = Settings.ShowPathOnHover, WorldAi = Settings.WorldAi, BattleAi = Settings.BattleAi, TabSkipsOrders = Settings.TabSkipsOrders });
             }
         }
     }
