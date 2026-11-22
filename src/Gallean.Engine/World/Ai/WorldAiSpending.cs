@@ -1,3 +1,5 @@
+using Gallean.Common;
+
 namespace Gallean.Engine;
 
 // Gallean Upgrade: overflow spending (docs/ai-overflow-spending.md). When a resource is close to the
@@ -87,7 +89,8 @@ internal static class WorldAiSpending
         {
             WorldSpellDefinition spell = context.Definitions.GetSpell(spellId);
 
-            if (spell.Level == Level && spell.AiType != WorldAiSpellType.None && costs.TryGetValue(spellId, out WorldResourceSet cost))
+            if (spell.Level == Level && (spell.AiType != WorldAiSpellType.None || profile.UseAllSpells) &&
+                spell.Effect.Accept(WorldAiSpellEffectTypeVisitor.Instance, Empty.Value) is not null && costs.TryGetValue(spellId, out WorldResourceSet cost))
             {
                 int total = cost.DeathMana + cost.RuneMana + cost.LifeMana + cost.InfernalMana + cost.GroveMana;
 
