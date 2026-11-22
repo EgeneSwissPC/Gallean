@@ -26,10 +26,12 @@ public sealed class WorldMoveOrdersTests
         int movementPoints = 4,
         WorldPosition? enemyPosition = null,
         WorldPosition[]? bagPositions = null,
-        int width = 12)
+        int width = 12,
+        WorldPosition? sitePosition = null,
+        bool spiedEnemy = false)
     {
         WorldMap map = TestHelpers.SimpleMap(width, 2);
-        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map);
+        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with { SpiedPlayers = spiedEnemy ? [new WorldPlayerId(2)] : [] };
         WorldPlayer enemyPlayer = TestHelpers.SimplePlayer(new WorldPlayerId(2), WorldRace.Heretic, map) with { IsAi = true };
 
         IGameDefinitionProvider stackDefinitions = new TestGameDefinitionProviderBuilder()
@@ -72,6 +74,18 @@ public sealed class WorldMoveOrdersTests
         foreach (WorldPosition bag in bagPositions ?? [])
         {
             builder = builder.WithBag(new WorldBag(new WorldBagId($"Bag{bag.X}{bag.Y}"), bag, new WorldObjectVariant(0), WorldInventory.Empty, AiPriority: 0));
+        }
+
+        if (sitePosition is not null)
+        {
+            builder = builder.WithSite(new WorldTrainerSite(
+                new WorldSiteId("trainer"),
+                new WorldFootprint(sitePosition.Value, 1, 1),
+                new WorldObjectVariant(0),
+                new ScenarioTextId("Trainer"),
+                new ScenarioTextId("Greeting"),
+                VisitorIds: [],
+                AiPriority: 0));
         }
 
         (GameSession session, _) = builder.BuildSession();
@@ -461,39 +475,191 @@ public sealed class WorldMoveOrdersTests
         Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(4, 0)));
     }
 
-    [Test]
-    public async Task WalkStopsBeforeEnemyTest()
+    // Phase 3: the end-of-turn questions.
+
+    // The enemy at (5,0) intercepts at (4,x). Stack1 gets an order past it and stops at (2,0) on
+    // turn 1 (out of moves); next turn the interception is in reach.
+    private static async Task<Setup> OrderPastEnemyAsync(bool spiedEnemy = false)
     {
-        // The enemy at (9,0) intercepts anything that walks next to it; the order runs past it.
-        Setup setup = CreateWorld(enemyPosition: new WorldPosition(9, 0), width: 16);
-        WorldScreenViewModel world = setup.World;
+        Setup setup = CreateWorld(enemyPosition: new WorldPosition(5, 0), width: 16, spiedEnemy: spiedEnemy);
 
-        await OrderFirstAsync(setup, x: 14);
-        Assert.That(world.HasMoveOrder(First), Is.True);
-
-        // Walk to (6,0) with M; the turns end without the computer player acting.
-        for (int i = 0; i < 2; i++)
-        {
-            await NextTurnAsync(setup);
-            world.SelectStackItemCommand.Execute(First);
-            world.ContinuePathCommand.Execute(null);
-            world.CompleteAnimation();
-            world.CompleteAnimation();
-        }
-
-        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(6, 0)));
+        await OrderFirstAsync(setup, x: 12);
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(2, 0)));
+        Assert.That(setup.World.HasMoveOrder(First), Is.True);
 
         await NextTurnAsync(setup);
+
+        return setup;
+    }
+
+    // Presses End turn and plays animations until the order prompt opens.
+    private static async Task<(Task EndTurn, MoveOrderPromptViewModel Prompt)> EndTurnUntilPromptAsync(Setup setup)
+    {
+        Task task = setup.World.EndTurnCommand.ExecuteAsync(null);
+
+        for (int i = 0; i < 200 && setup.GameViewModel.TopScreen is not MoveOrderPromptViewModel && !task.IsCompleted; i++)
+        {
+            setup.World.CompleteAnimation();
+            await Task.Yield();
+        }
+
+        MoveOrderPromptViewModel prompt = Assert.IsOfType<MoveOrderPromptViewModel>(setup.GameViewModel.TopScreen);
+
+        return (task, prompt);
+    }
+
+    private static async Task FinishAsync(Setup setup, Task task)
+    {
+        for (int i = 0; i < 200 && !task.IsCompleted; i++)
+        {
+            setup.World.CompleteAnimation();
+            await Task.Yield();
+        }
+
+        Assert.That(task.IsCompleted, Is.True, "End turn didn't finish");
+        await task;
+    }
+
+    [Test]
+    public async Task PlannedAttackAsksFirstTest()
+    {
+        Setup setup = await OrderPastEnemyAsync();
         int turn = TurnOf(setup);
 
+        (Task task, MoveOrderPromptViewModel prompt) = await EndTurnUntilPromptAsync(setup);
+
+        // Asked before anyone walked, about the right army and enemy.
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(2, 0)));
+        Assert.That(prompt.IsTargetKnown, Is.True);
+        Assert.That(prompt.Message.Text, Is.EqualTo("name: the path leads into battle with name."));
+        Assert.That(setup.World.StackItems.Single(item => item.IsSelected).StackId, Is.EqualTo(First));
+
+        prompt.PlanAnotherPathCommand.Execute(null);
+        await FinishAsync(setup, task);
+
+        // Plan another path: nothing moved, the turn is open, the path follows the mouse at once.
+        Assert.That(TurnOf(setup), Is.EqualTo(turn));
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(2, 0)));
+        Assert.That(setup.World.HasMoveOrder(First), Is.True);
+
+        setup.World.UpdateHover(new WorldPosition(2, 1), null);
+
+        Assert.That(GetPathPositions(setup.World), Is.EqualTo(new[] { new WorldPosition(2, 1) }));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task PromptShowsEnemyUnitsWhenKnownTest(bool spiedEnemy)
+    {
+        Setup setup = await OrderPastEnemyAsync(spiedEnemy);
+
+        (Task task, MoveOrderPromptViewModel prompt) = await EndTurnUntilPromptAsync(setup);
+
+        // Like the right-click info: the units of a spied race, the thief note otherwise.
+        WorldStackInfoViewModel info = Assert.IsOfType<WorldStackInfoViewModel>(prompt.TargetInfo);
+
+        if (spiedEnemy)
+        {
+            Assert.That(info.Note, Is.Null);
+            Assert.That(info.Grid.Units, Has.Count.EqualTo(1));
+        }
+        else
+        {
+            Assert.That(info.Note, Is.EqualTo("A thief must spy on this race to gain information about it."));
+            Assert.That(info.Grid.Units, Is.Empty);
+        }
+
+        prompt.PlanAnotherPathCommand.Execute(null);
+        await FinishAsync(setup, task);
+    }
+
+    [Test]
+    public async Task PlannedAttackCancelOrderTest()
+    {
+        Setup setup = await OrderPastEnemyAsync();
+        int turn = TurnOf(setup);
+
+        (Task task, MoveOrderPromptViewModel prompt) = await EndTurnUntilPromptAsync(setup);
+
+        prompt.CancelOrderCommand.Execute(null);
+        await FinishAsync(setup, task);
+
+        // The order is gone; the army still has its move points, so the turn stays open once.
+        Assert.That(setup.World.HasMoveOrder(First), Is.False);
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(2, 0)));
+        Assert.That(TurnOf(setup), Is.EqualTo(turn));
+        Assert.That(setup.GameViewModel.Alert.Current?.Details, Does.Contain("stopped with 4 move points left"));
+    }
+
+    [Test]
+    public async Task PlannedAttackFightsTest()
+    {
+        Setup setup = await OrderPastEnemyAsync();
+
+        (Task task, MoveOrderPromptViewModel prompt) = await EndTurnUntilPromptAsync(setup);
+
+        prompt.AttackCommand.Execute(null);
+
+        for (int i = 0; i < 50 && setup.GameModel.Snapshot.BattleState is null; i++)
+        {
+            setup.World.CompleteAnimation();
+            await Task.Yield();
+        }
+
+        // The accepted walk runs into the interception and the battle starts.
+        Assert.That(setup.GameModel.Snapshot.BattleState, Is.Not.Null);
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(4, 0)).Or.EqualTo(new WorldPosition(4, 1)));
+        Assert.That(task.IsCompleted, Is.False);
+    }
+
+    [Test]
+    public async Task EscapePlansAnotherPathTest()
+    {
+        Setup setup = await OrderPastEnemyAsync();
+        int turn = TurnOf(setup);
+
+        (Task task, MoveOrderPromptViewModel prompt) = await EndTurnUntilPromptAsync(setup);
+
+        prompt.CloseCommand.Execute(null);
+        await FinishAsync(setup, task);
+
+        Assert.That(setup.GameViewModel.TopScreen, Is.SameAs(setup.World));
+        Assert.That(TurnOf(setup), Is.EqualTo(turn));
+        Assert.That(setup.World.HasMoveOrder(First), Is.True);
+    }
+
+    [Test]
+    public async Task ReachedSiteOpensTest()
+    {
+        Setup setup = CreateWorld(sitePosition: new WorldPosition(5, 0));
+
+        await OrderFirstAsync(setup, x: 5);
+        await NextTurnAsync(setup);
         await PressEndTurnAsync(setup);
 
-        // (8,0) is next to the enemy: the walk stops at (7,0) instead of fighting there.
-        Assert.That(setup.GameModel.Snapshot.BattleState, Is.Null);
-        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(7, 0)));
-        Assert.That(world.HasMoveOrder(First), Is.True);
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(4, 0)));
+
+        Task task = setup.World.EndTurnCommand.ExecuteAsync(null);
+
+        for (int i = 0; i < 100 && setup.GameViewModel.TopScreen is WorldScreenViewModel && !task.IsCompleted; i++)
+        {
+            setup.World.CompleteAnimation();
+            await Task.Yield();
+        }
+
+        // The army walked onto the site and the site screen opened during End turn.
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(5, 0)));
+        ManagementScreenViewModel site = Assert.IsOfType<ManagementScreenViewModel>(setup.GameViewModel.TopScreen);
+        Assert.That(task.IsCompleted, Is.False);
+
+        // Closing it: the army still has 2 move points, so the turn stays open once.
+        int turn = TurnOf(setup);
+
+        site.CloseCommand.Execute(null);
+        await FinishAsync(setup, task);
+
         Assert.That(TurnOf(setup), Is.EqualTo(turn));
-        Assert.That(setup.GameViewModel.Alert.Current?.Details, Does.Contain("something is in its way"));
+        Assert.That(setup.GameViewModel.Alert.Current?.Details, Does.Contain("reached Trainer"));
     }
 
     [Test]

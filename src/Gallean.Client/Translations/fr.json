@@ -1699,6 +1699,8 @@
     "{0} armies with orders need you": "{0} armies with orders need you",
     "End the turn again to continue.": "End the turn again to continue.",
     "Starting gold of each neutral side": "Starting gold of each neutral side",
-    "Neutral towns bring {0} gold a turn in all.": "Neutral towns bring {0} gold a turn in all."
+    "Neutral towns bring {0} gold a turn in all.": "Neutral towns bring {0} gold a turn in all.",
+    "{0}: the path leads into battle with {1:*}.": "{0}: the path leads into battle with {1:*}.",
+    "Plan another path": "Plan another path"
   }
 }

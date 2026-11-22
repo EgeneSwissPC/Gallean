@@ -1,6 +1,6 @@
 # Town income and neutral economy
 
-Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 waits for questions H2 and J-M (asked when the user started it). H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
+Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 questions all answered, phase 4 in progress. H's price ceiling table is asked when phase 4 starts. The user asked for two features, in this order:
 
 1. Every town (village) brings a small amount of gold every turn, depending on its level.
 2. Neutrals then have gold of their own and buy units on their own.
@@ -18,6 +18,15 @@ Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 waits for
 - F (user): neutrals earn only from their own towns, plus a starting bank.
 - G (user): garrisons first. Once a neutral side has more money, it sends out armies that attack enemy armies near its home towns or conquer nearby towns. Phase 5 builds this, after phase 4's measurement.
 - H (user): a neutral side buys only its own kind's soldiers, and the village level caps the price.
+- N (user): neutrals upgrade their villages, but only once a village's garrison is full AND the side owns at least factor x (sum of its villages' levels) units; below that they buy units first, including new leaders whose armies they also fill. Example from the user: 7 level-3, 2 level-2 and 1 level-1 villages with factor 3 = 7x3x3 + 2x2x3 + 1x1x3 = 78 units. Factor 3 to start with.
+  - Readings taken unless the user objects: every unit the side owns counts once (garrisons and armies, leaders included, a large unit counts 1); "towns" are its villages (neutrals have no capital); the factor is a per-map setting (SRules, editor Neutrals section, MapFromPlan `rules.neutralUnitFactor`), default 3, so it can be tuned without a new build.
+  - What it means for The War of the Ring (generated map, units now vs target with factor 3): only the Free Men are below it (25 units in 16 villages vs 75), so they would hire leaders and fill armies first; every other side already has far more (Greenskins 475 vs 63, Wolves 274 vs 9) and would upgrade as soon as a garrison is full and gold allows. Sea Creatures own no village and all their leaders are water-only, so they buy nothing.
+  - New phase split (decision N makes leader hiring part of the buying order): phase 4 = the whole neutral economy (garrisons, leaders with their armies filled, village upgrades, in the user's order), new armies wait at their village; phase 5 = what those armies do (attack enemy armies near their home towns, conquer nearby towns).
+- H2 (user): H2b, to try first and revisit if it plays badly. A level-N village sells the cheapest N/5 (rounded up, at least one) of its kind's soldiers, and of its kind's leaders, by gold price at level 1; ties keep the data order.
+- J (user): J2. Each neutral side makes at most one purchase per village it owns per turn (a soldier, a leader or a village upgrade); while its gold is above the spending line (70 % of the cap, `WorldAiSpending.DefaultSpendAbovePercent`) the limit is lifted, so piled-up gold gets spent.
+- K (user): random for now. When gold doesn't reach every village, the villages take their turn in a random order (the engine's random provider, so a seeded headless run repeats exactly); threatened-first can come later if random plays badly.
+- L (user): random, weighted by the side's gold: the more gold, the more likely an expensive unit, but any allowed, affordable unit that fits can come up. Formula taken unless the user objects (tuned after the measurement): weight = price ^ t with t = clamp(gold / 2000 - 1, -1, 1), so cheap units are favoured below 2000 gold, all equally likely at 2000, dear ones favoured above. Level-3 Greenskin village: with 300 gold Goblin 45 %, Goblin Archer 45 %, Orc 10 %; with 900 gold 35 / 35 / 13 / Goblin Elder 9 / Orc Champion 7 %; with 2000 gold each of the six 17 %; with 4000 gold Goblin 2, Goblin Archer 2, Orc 10, Goblin Elder 22, Orc Champion 29, Cyclops 34 %. The same draw picks the leader when a leader is hired.
+- M (user): M2. A separate map rule "Neutrals buy units" (SRules, editor Neutrals section, MapFromPlan `rules.neutralBuying`), on by default in new editor maps, MapFromPlan plans and The War of the Ring; off in maps made in code and in original scenarios. Off = neutrals still earn (phase 3) but never buy or upgrade.
 - I (user): The War of the Ring's scripted neutral life is out of scope here; the user will rework it separately later.
 - Taken while building phase 1: `CustomMap.Create` starts with the rule off. The editor's new-map path turns it on with `CustomMap.DefaultTownIncome` (phase 2), and MapFromPlan sets it for The War of the Ring (phase 2). Maps built in code (tests, the battle bench, AI designer test maps) keep their economy, so no existing measurement changes.
 - Taken while building phase 3: neutral income follows the town income rule (no separate switch): with town income on, every neutral side earns from its own towns. Their starting gold is one value for all neutral sides (`CustomMap.NeutralStartingGold`, gold only, 0 by default); per-side banks would need the writer's kind split in the editor. The War of the Ring keeps 0 for now (its neutral life gets reworked later, decision I).
@@ -82,8 +91,8 @@ Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 waits for
 1. ~~Town income in the engine: SRules table, `PlayerIncomeCalculator`, `IncomeInfo.Towns`, tests. ~1 day.~~ Done, see below.
 2. ~~Town income on screen: income table line, city screen line, editor economy box and column, MapFromPlan `rules.townIncome`, War of the Ring setting. ~1-1.5 days.~~ Done, see below.
 3. ~~Neutral treasury: neutral sides earn from their towns, neutral starting bank in the editor. ~0.5-1 day.~~ Done, see below.
-4. Neutral garrison buying: kind unit pools, neutral purchase command, neutral planner action, headless War of the Ring measurement. ~2 days.
-5. Neutral armies: leaders hired at villages once the garrisons are full and gold is left, attacking enemy armies near home towns or conquering nearby towns, measurement. ~2-3 days, specced after phase 4's numbers.
+4. Neutral economy: kind unit and leader pools, neutral purchase and hire commands, neutral planner actions in the user's order (fill garrisons; below factor x levels units, hire leaders at villages and fill their armies; then upgrade villages with full garrisons), the unit factor setting, headless War of the Ring measurement. New armies wait at their village. ~3 days.
+5. Neutral armies: what the armies from phase 4 do (attack enemy armies near home towns, conquer nearby towns), measurement. ~2 days, specced after phase 4's numbers.
 
 ## Open questions
 
@@ -113,15 +122,17 @@ Facts they build on (counted from the data and a generated War of the Ring):
 - The War of the Ring as generated: every neutral village garrison is already full except the Dragons' (2 free slots of 4). So garrison buying there only starts once garrisons lose units in battles; the race villages all start empty.
 - The race AI's own garrison buying (`WorldAiPlanner.PurchaseUnitAction`): any owned fortification, scored per unit, at most 1 unit per turn per player (Classic; our AIs lift the limit above the spending line).
 
-H2. The price cap per village level. H2a: one fixed gold ceiling for all kinds (e.g. 50 / 300 / 900 / 1800 / 5600, close to the race tiers); then Barbarians, Marsh Folk, Dragons and Wolves can't buy anything in level-1 villages and Free Men are never limited. H2b: per kind, by price rank: a level-N village sells the cheapest N/5 of that kind's soldiers (at least one), so every kind can buy in every village (Wolves always the Wolf; Greenskins goblins at level 1, up to trolls at level 5; Dragons only where 2 slots are free). H2c: H2a, but a kind with nothing under the ceiling may buy its cheapest soldier. Recommendation: H2b.
+~~N. Do neutrals upgrade their villages?~~ Answered with the user's own rule (Decisions, N).
 
-J. How many units per turn. J1: 1 unit per turn per neutral side (like Classic), no limit while its gold is above the spending line (70 % of the cap, like our AIs). J2: 1 per village per turn. J3: as many as the gold allows. Recommendation: J1.
+~~H2. The price cap per village level.~~ Answered: H2b for now (Decisions).
 
-K. Which village first. K1: the one with an enemy army closest to it (threatened first), then the emptiest. K2: the emptiest first. K3: the highest level first. Recommendation: K1.
+~~J. How many units per turn.~~ Answered: J2 (Decisions).
 
-L. Which unit. L1: the most expensive soldier that is allowed, affordable and fits. L2: random among those. L3: the best value (hit points per gold). Recommendation: L1.
+~~K. Which village first.~~ Answered: random for now (Decisions).
 
-M. When it applies. M1: whenever a neutral side has gold (original campaigns give neutrals none, so they stay as they are; no extra switch). M2: a separate map rule "neutrals buy units". Recommendation: M1.
+~~L. Which unit.~~ Answered: weighted random, richer sides lean to dearer units (Decisions).
+
+~~M. When it applies.~~ Answered: M2, a map rule (Decisions).
 
 ## Phase 1 - done
 

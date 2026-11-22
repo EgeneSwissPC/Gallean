@@ -1699,6 +1699,8 @@
     "{0} armies with orders need you": "Армий с приказом ждут вашего решения: {0}",
     "End the turn again to continue.": "Закончите ход ещё раз, чтобы продолжить.",
     "Starting gold of each neutral side": "Стартовое золото каждой нейтральной стороны",
-    "Neutral towns bring {0} gold a turn in all.": "Нейтральные города приносят всего {0} золота за ход."
+    "Neutral towns bring {0} gold a turn in all.": "Нейтральные города приносят всего {0} золота за ход.",
+    "{0}: the path leads into battle with {1:*}.": "{0}: путь приведёт к битве с противником {1:*}.",
+    "Plan another path": "Проложить другой путь"
   }
 }

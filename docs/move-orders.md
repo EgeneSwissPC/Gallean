@@ -1,6 +1,6 @@
 # Move orders (armies that keep walking on their own)
 
-Status: phases 1 (bb2ed500) and 2 (54e66f09) merged; phase 3 to build.
+Status: all three phases merged: 1 (bb2ed500), 2 (54e66f09), 3 (ed787104).
 
 Gallean Upgrade only. Human players only; the AI is not touched.
 
@@ -24,6 +24,10 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **Settings layout (user correction after phase 1).** Both world-map checkboxes, "Show the army path under the cursor" and "Tab skips armies with orders" under it, sit in the panel footer left of Close (merged cef5bbb9). The panel had no free row; the footer row was half empty. RU label back to "Tab пропускает армии с приказом".
 - **Bags on the way (found while building phase 2).** Paths never cross a bag tile, so a walk meets a bag only as its destination: the army picks it up from the next tile (the game's own treasure popup when it holds items) and walks on onto the tile. Decision H's "pick up and continue" is therefore in phase 2 already.
 - **Space during the walks (decided while building phase 2).** Space switches on the game's own fast-forward (2x, as during computer turns) for the rest of the walks instead of skipping one walk; the fast-forward ends with the walks.
+- **Surprises are rare (found while building phase 3).** The path check counts every army on the map, hidden ones too, and paths never cross the fog, so nearly every battle an order runs into this turn is already known before anyone walks and is asked in the first round. The after-walk question is a safety net (for example when a walk changes the route); a test with the first round switched off shows that net catches the same battle.
+- **Cancelled orders (decided while building phase 3).** An army whose order is cancelled in the prompt keeps the turn open once if it still has move points ("stopped with N move points left"), the same rule as arrivals (decision K).
+- **Prompt (decided while building phase 3).** A copy of the game's attack prompt (`MoveOrderPromptView`, 640 px wide so the Russian buttons fit) instead of an extra button in the upstream view; it shows the enemy's portrait like the original.
+- **The prompt shows what the player knows about the target (user request after phase 3, merged 846837c7).** Instead of the large portrait, the prompt shows the target like the world's right-click info (`WorldStackInfoViewModel` / `WorldFortificationInfoViewModel`, templates copied from `WorldScreenView`): an army's leader with its units when the player may see them (`WorldVisibility.KnowsPlayerContents`: own, neutral, or a race a thief has spied on), otherwise the leader with the game's "A thief must spy on this race to gain information about it."; a city shows its level, owner, garrison and visiting party the same way (or the city thief note). Tests: `PromptShowsEnemyUnitsWhenKnownTest` (spied: 1 unit, not spied: the note), visual `WorldMoveOrderPromptTest` shots 1-4 (army with units, Russian, not spied, capital with garrison). Suite 5495. The game's own attack prompt (when you click) is unchanged.
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -74,7 +78,7 @@ Client only (decision I: orders are not saved).
 
 1. ~~**Visible orders** (~1.5 days): bar colour, turns-left number and order, Tab skip + setting, O key, End turn highlight, order path stays put while the mouse moves (first click enters re-plan mode), X / Stop. No automatic walking yet; M still walks.~~ Done, see "Phase 1 — done".
 2. ~~**Orders walk on End turn** (~1-2 days): the guarded walk for orders without any battle this turn, one by one in bar order with the camera following and Space skipping, the retry pass, Finish = wait this turn; anything unexpected stops the army and blocks End turn with a short message until the player handles it.~~ Done, see "Phase 2 — done".
-3. **End-of-turn queue** (~2-2.5 days): arrivals with moves left (decision K), the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk, treasure popup, sites and thief actions asked this turn.
+3. ~~**End-of-turn queue** (~2-2.5 days): arrivals with moves left (decision K), the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk, treasure popup, sites and thief actions asked this turn.~~ Done, see "Phase 3 — done".
 
 ## Phase 1 — done
 
@@ -112,6 +116,21 @@ Tests: `WorldMoveOrdersTests` +7 (walks over three End turns and arrives, arriva
 Real client (AOT build, The War of the Ring as Empire): the Pegasus Knight with an order 2 tiles away walked on E and the alert "Pegasus Knight arrived with 19 move points left. End the turn again to continue." kept turn 2 open; an order 10 points away from 0 move points: E ended the turn without moving, on turn 4 E walked it along the path (camera following) and reported 13 points left; the settings show both checkboxes stacked left of Close. The stop before an enemy and the bag pick-up were checked by tests only (no enemy near the start on that map).
 
 Known limits (phase 3): the alert is a short message, not the per-army prompt; armies stopped before a battle aren't asked Attack / Plan another path / Cancel order yet; sites aren't opened; the walk order of armies with the same leader level follows the army ID.
+
+## Phase 3 — done
+
+Feature commit e6d58839, merged in ed787104 (gallean-upgrade, on top of town income phase 4 docs; the 7 translation catalogs conflicted again and were rebuilt).
+
+What was built:
+- `Screens/World/AttackPrompt/MoveOrderPromptViewModel` / `MoveOrderPromptView` (registered in `ViewDataTemplate`): title "Confirm the attack", the enemy's portrait (or the unknown-enemy icon), "<army>: the path leads into battle with <enemy>.", buttons Attack / Plan another path / Cancel order; Esc = Plan another path.
+- `WalkMoveOrdersAsync` now runs in three rounds: (1) every ordered army whose path reaches a battle this turn is asked in bar order, with the camera on it; (2) the walks: accepted armies walk unguarded and fight when their turn comes (the game's normal battle), the rest stay guarded; (3) in bar order: a guarded army stopped before a battle is asked the same way (Attack walks it now), a thief next to its target opens the game's thief window, an army that reached a site opens the site screen. Then the alert for armies with move points left, including cancelled orders.
+- Plan another path ends the End turn at once and puts the army in re-plan mode (the path follows the mouse; the next click sets the new order). Accepted attacks are remembered for the turn; a new order clears them.
+
+Tests: `WorldMoveOrdersTests` 24 (phase 3: planned attack asked first with the right names, Plan another path keeps the turn and enables the hover path, Cancel order keeps the turn with "stopped with 4 move points left", Attack starts the battle at the interception, Esc = Plan another path, reaching a trainer opens its screen and closing it keeps the turn with "reached Trainer"). Visual: `WorldMoveOrderPromptTest` (English and Russian shots with the real pack). Mutation checks: first round off -> the two first-round tests fail, while Attack and Esc still pass through the after-walk question (so that branch is tested); walks always guarded -> the Attack test fails. Suite 5493 on the merged tree (5486 on our branch; gallean-upgrade gained tests meanwhile).
+
+Real client (AOT build): the build starts and plays the custom mapgen map; the 1024 checks from phase 2 still apply. The prompt itself was checked with the visual test only: on the test maps no enemy stood where an order could reach it without the game's own attack prompt opening first (an order needs the army to stop short, and an enemy within this turn's reach is asked by the original prompt when the order is given).
+
+Known limits: thief actions open the thief window without our prompt (it has its own cancel); after a fought battle the army doesn't walk on in the same End turn; a walk order between armies with the same leader level follows the army ID.
 
 ## Open questions
 
