@@ -1683,7 +1683,7 @@
     "Spend more above": "Тратить больше, когда запас выше",
     "% of the cap": "% от лимита",
     "Cancel order": "Отменить приказ",
-    "Tab skips armies with orders": "Tab пропускает армии в пути",
+    "Tab skips armies with orders": "Tab пропускает армии с приказом",
     "When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.": "Если включено, Tab пропускает армии с приказом на марш, а пройти по ним можно клавишей O. Если выключено, Tab обходит все армии, армии с приказом — последними.",
     "Towns": "Города",
     "Gold per turn": "Золото за ход",
