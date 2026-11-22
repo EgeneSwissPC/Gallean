@@ -11,6 +11,8 @@ public static partial class Db
         [property: ScenarioKey, JsonPropertyName("NO_SCEN")] ScenarioId ScenarioId,
         [property: DataKey, JsonPropertyName("RULES_ID")] Id RulesId,
         [property: JsonPropertyName("SPELL_MARKUP")] int ForeignSpellMarkup,
-        [property: JsonPropertyName("NEUTRAL_KINDS")] bool NeutralKinds
+        [property: JsonPropertyName("NEUTRAL_KINDS")] bool NeutralKinds,
+        // Town income (docs/town-income.md): gold per turn for town levels 1-5, comma-separated; null = off.
+        [property: JsonPropertyName("TOWN_INCOME")] string? TownIncome = null
     );
 }

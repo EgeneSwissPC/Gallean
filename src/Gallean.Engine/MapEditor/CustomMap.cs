@@ -226,6 +226,15 @@ public sealed partial class CustomMap
     // so only neutrals of one kind help each other and different kinds are hostile. Off = one neutral side.
     public bool NeutralKinds { get; set; }
 
+    // Map rule "town income" (SRules.json, docs/town-income.md): gold per turn a town of level 1-5 brings its owner; a
+    // capital pays the level-5 value and a rioting town nothing. Empty = off. The editor turns it on with
+    // DefaultTownIncome for new maps; maps created in code (tests, benches) start without it.
+    public ImmutableArray<int> TownIncome { get; private set; } = [];
+
+    public static readonly ImmutableArray<int> DefaultTownIncome = [10, 25, 50, 75, 100];
+
+    public const int MaxTownIncome = 9999;
+
     public static CustomMap Create(string id, string name, int size, WorldMapTerrain baseTerrain, IEnumerable<WorldRace> races)
     {
         List<CustomMapPlayer> players = [];
@@ -260,7 +269,8 @@ public sealed partial class CustomMap
         return new CustomMap(Id, Name, Description, Size, cells, mountains, players, stacks, villages, resources, ruins, bags, sites, landmarks, rods, locations, events, templates, variables)
         {
             ForeignSpellMarkup = ForeignSpellMarkup,
-            NeutralKinds = NeutralKinds
+            NeutralKinds = NeutralKinds,
+            TownIncome = TownIncome
         };
     }
 
@@ -277,6 +287,27 @@ public sealed partial class CustomMap
         }
 
         ForeignSpellMarkup = clamped;
+
+        return true;
+    }
+
+    // Sets the town income table: empty switches the rule off, otherwise one value per town level 1-5, each kept within
+    // 0 and MaxTownIncome. Returns false when nothing changed.
+    public bool SetTownIncome(IReadOnlyList<int> values)
+    {
+        if (values.Count != 0 && values.Count != TownIncomeCalculator.LevelCount)
+        {
+            throw new ArgumentException($"Town income needs {TownIncomeCalculator.LevelCount} values or none.", nameof(values));
+        }
+
+        ImmutableArray<int> table = [.. values.Select(value => Math.Clamp(value, 0, MaxTownIncome))];
+
+        if (table.SequenceEqual(TownIncome))
+        {
+            return false;
+        }
+
+        TownIncome = table;
 
         return true;
     }

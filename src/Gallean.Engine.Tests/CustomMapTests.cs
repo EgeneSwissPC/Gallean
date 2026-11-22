@@ -2467,6 +2467,102 @@ public sealed class CustomMapTests
         Assert.That(ScenarioLoader.Load(globalDb, ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, new Db.ScenarioId("S135SC0000")), campaignDb, new ScenarioId("S135SC0000"), definitions, globals).Provider.Definition.ForeignSpellMarkup, Is.Zero);
     }
 
+    // Map rule "town income" (docs/town-income.md): towns pay their owner gold by level from the map's table, an
+    // uncaptured capital pays the level-5 value, a rioting town nothing, and the gold is scaled like all other income.
+    // The table survives save and reopen; maps made in code and original scenarios have the rule off.
+    [Test]
+    public void TownIncomeTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapStore store = new(mapsDirectory, globalDb, campaignDb);
+        Assert.That(map.TownIncome, Is.Empty, "Off unless set.");
+        Assert.That(map.PlaceVillage(new WorldPosition(14, 36), 1, WorldRace.Human, "Ford").Error, Is.Null);
+        Assert.That(map.PlaceVillage(new WorldPosition(20, 12), 3, WorldRace.Human, "Hill").Error, Is.Null);
+        Assert.That(map.PlaceVillage(new WorldPosition(34, 14), 2, WorldRace.Elf, "Glade").Error, Is.Null);
+        Assert.That(map.PlaceVillage(new WorldPosition(10, 40), 4, WorldRace.Neutral, "Wild").Error, Is.Null);
+
+        Assert.That(map.SetTownIncome(CustomMap.DefaultTownIncome), Is.True);
+        Assert.That(map.SetTownIncome([10, 25, 50, 75, 100]), Is.False, "No change.");
+        Assert.That(map.SetTownIncome([-5, 25, 50, 75, 20000]), Is.True);
+        Assert.That(map.TownIncome, Is.EqualTo(new[] { 0, 25, 50, 75, CustomMap.MaxTownIncome }));
+        Assert.Throws<ArgumentException>(() => map.SetTownIncome([10, 20]));
+        Assert.That(map.SetTownIncome(CustomMap.DefaultTownIncome), Is.True);
+        Assert.That(map.Clone().TownIncome, Is.EqualTo(CustomMap.DefaultTownIncome));
+        store.Save(map);
+        Assert.That(store.Open(map.Id, definitions).TownIncome, Is.EqualTo(CustomMap.DefaultTownIncome));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        Assert.That(scenario.Provider.Definition.TownIncome, Is.EqualTo(CustomMap.DefaultTownIncome));
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        WorldState state = scenario.State with
+        {
+            Difficulty = WorldDifficulty.Average,
+            Players = scenario.State.Players.SetItems(scenario.State.Players.Select(pair => KeyValuePair.Create(pair.Key, pair.Value with { IsAi = false })))
+        };
+        WorldPlayer human = state.Players.Values.Single(player => player.Race == WorldRace.Human);
+        WorldPlayer elf = state.Players.Values.Single(player => player.Race == WorldRace.Elf);
+        WorldPlayer neutral = state.Players.Values.First(player => player.Race == WorldRace.Neutral);
+        int Towns(WorldPlayer player, WorldState world) => PlayerIncomeCalculator.GetIncomeInfo(world.Players[player.Id], world, context).Towns.Gold;
+
+        // Empire: level 1 (10) + level 3 (50) + capital (100); Elves: level 2 (25) + capital (100). Gold only, on top
+        // of the base income (100 gold + 25 own mana).
+        Assert.That(Towns(human, state), Is.EqualTo(160));
+        Assert.That(Towns(elf, state), Is.EqualTo(125));
+        Assert.That(Towns(neutral, state), Is.Zero, "Neutrals earn nothing yet (phase 3).");
+        PlayerIncomeCalculator.IncomeInfo humanIncome = PlayerIncomeCalculator.GetIncomeInfo(human, state, context);
+        Assert.That(humanIncome.Towns, Is.EqualTo(new WorldResourceSet(160, 0, 0, 0, 0, 0)));
+        Assert.That((humanIncome.Total.Gold, humanIncome.Total.LifeMana, humanIncome.Capital.Gold, humanIncome.ResourceNodes.Gold), Is.EqualTo((260, 25, 100, 0)));
+        Assert.That(new WorldGetPlayerInfoCommand(human.Id).Execute(state, context).Data!.TotalIncome.Gold, Is.EqualTo(260));
+
+        // A rioting town pays nothing.
+        WorldCity hill = state.Fortifications.Values.OfType<WorldCity>().Single(city => city.OwnerId == human.Id && definitions.GetCity(city.DefinitionId).Level == 3);
+        WorldState riot = state with { Fortifications = state.Fortifications.SetItem(hill.Id, hill with { RiotTurns = 2 }) };
+        Assert.That(Towns(human, riot), Is.EqualTo(110));
+
+        // A captured capital pays neither its owner nor the captor.
+        WorldCapital elfCapital = state.Fortifications.Values.OfType<WorldCapital>().Single(capital => capital.OwnerId == elf.Id);
+        WorldState captured = state with { Fortifications = state.Fortifications.SetItem(elfCapital.Id, elfCapital with { CapturedById = human.Id }) };
+        Assert.That((Towns(elf, captured), Towns(human, captured)), Is.EqualTo((25, 160)));
+
+        // Scaled like all other income: +30 % for everyone on Easy, then the AI attitude's percent for computers.
+        WorldAiAttitudeDefinition attitude = definitions.GetAiAttitude(human.AiAttitude);
+        Assert.That((attitude.EasyIncomePercent, attitude.HardIncomePercent, attitude.VeryHardIncomePercent), Is.EqualTo((70, 130, 145)));
+        Assert.That(Towns(human, state with { Difficulty = WorldDifficulty.Easy }), Is.EqualTo(208), "Human on Easy: 160 x 130 %.");
+        WorldState ai = state with { Players = state.Players.SetItem(human.Id, human with { IsAi = true }) };
+        Assert.That(Towns(human, ai with { Difficulty = WorldDifficulty.Easy }), Is.EqualTo(145), "Computer on Easy: 160 x 130 % x 70 %.");
+        Assert.That(Towns(human, ai with { Difficulty = WorldDifficulty.VeryHard }), Is.EqualTo(232), "Computer on Very hard: 160 x 145 %.");
+
+        // The editor's economy overview shows the same towns column, or the table being edited.
+        Assert.That(CustomMapEconomy.Calculate(state, context).GetRace(WorldRace.Human)!.GetRow(WorldResourceType.Gold), Is.EqualTo(new CustomMapEconomyRow(WorldResourceType.Gold, 0, 100, 0) { TownsIncome = 160 }));
+        Assert.That(CustomMapEconomy.Calculate(state, context).GetRace(WorldRace.Human)!.GetRow(WorldResourceType.Gold)!.Total, Is.EqualTo(260));
+        Assert.That(CustomMapEconomy.Calculate(state, context, [1, 2, 3, 4, 5]).GetRace(WorldRace.Human)!.GetRow(WorldResourceType.Gold)!.TownsIncome, Is.EqualTo(9));
+        Assert.That(CustomMapEconomy.Calculate(state, context, []).GetRace(WorldRace.Human)!.GetRow(WorldResourceType.Gold)!.TownsIncome, Is.Zero);
+
+        // The game pays it at the turn start: the Elves' treasury grows by exactly the predicted income.
+        GameSession session = new(context, state);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        int elfGold = session.World.State.Players[elf.Id].Resources.Gold;
+
+        while (session.World.State.TurnInfo.CurrentPlayerId != elf.Id)
+        {
+            elfGold = session.World.State.Players[elf.Id].Resources.Gold;
+            Assert.That(session.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+        }
+
+        Assert.That(session.World.State.Players[elf.Id].Resources.Gold - elfGold, Is.EqualTo(225), "100 base + 125 towns.");
+
+        // Without the rule (empty table, and original scenarios with no SRules.json) towns pay nothing.
+        map.SetTownIncome([]);
+        store.Save(map);
+        Assert.That(store.Open(map.Id, definitions).TownIncome, Is.Empty);
+        Scenario plain = ScenarioLoader.Load(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals);
+        Assert.That(plain.Provider.Definition.TownIncome, Is.Empty);
+        EngineContext plainContext = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, plain.Provider.Definition), plain.Provider, globals);
+        Assert.That(PlayerIncomeCalculator.GetIncomeInfo(human, state, plainContext).Total.Gold, Is.EqualTo(100));
+        Assert.That(ScenarioLoader.Load(globalDb, ScenarioDatabaseLoader.Load(RiseOfTheElves.ScenarioDatabasePath, new Db.ScenarioId("S135SC0000")), campaignDb, new ScenarioId("S135SC0000"), definitions, globals).Provider.Definition.TownIncome, Is.Empty);
+    }
+
     // Map rule "neutral kinds": each neutral subrace type gets its own neutral player (only one kind per side, kinds
     // hostile to each other); plain neutrals stay with player 0; off = one neutral player. Survives save and reopen.
     [Test]

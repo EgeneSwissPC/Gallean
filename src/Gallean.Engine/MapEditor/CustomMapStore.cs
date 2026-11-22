@@ -100,6 +100,7 @@ public sealed class CustomMapStore(string mapsDirectory, GlobalDatabase globalDb
             CustomMapEventsFile.ReadVariables(Path.Combine(mapsDirectory, info.ScenarioId.Value, CustomMapEventsFile.FileName)));
         map.SetForeignSpellMarkup(scenario.Provider.Definition.ForeignSpellMarkup);
         map.NeutralKinds = database.ScenarioRulesByScenario[info.ScenarioId].FirstOrDefault()?.NeutralKinds ?? false;
+        map.SetTownIncome(scenario.Provider.Definition.TownIncome);
 
         return map;
     }

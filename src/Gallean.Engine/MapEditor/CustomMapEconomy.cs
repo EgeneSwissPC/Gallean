@@ -3,10 +3,13 @@ using System.Collections.Immutable;
 namespace Gallean.Engine;
 
 // One resource type of a race in the economy overview: how many resources of that type stand on its land, and its
-// income per turn of that type from the capital (the race's base income) and from those resources.
+// income per turn of that type from the capital (the race's base income), from those resources and from its towns
+// (map rule "town income", gold only).
 public sealed record CustomMapEconomyRow(WorldResourceType Type, int Resources, int CapitalIncome, int ResourcesIncome)
 {
-    public int Total => CapitalIncome + ResourcesIncome;
+    public int TownsIncome { get; init; }
+
+    public int Total => CapitalIncome + ResourcesIncome + TownsIncome;
 }
 
 // A race in the economy overview: its land (tiles and the share of the land the game counts for "transform land"),
@@ -43,7 +46,8 @@ public sealed record CustomMapEconomy(ImmutableArray<CustomMapEconomyRace> Races
         return Races.FirstOrDefault(entry => entry.Race == race);
     }
 
-    public static CustomMapEconomy Calculate(WorldState state, IEngineContext context)
+    // townIncome: the table being edited (the loaded scenario's when null).
+    public static CustomMapEconomy Calculate(WorldState state, IEngineContext context, ImmutableArray<int>? townIncome = null)
     {
         WorldState average = state with { Difficulty = WorldDifficulty.Average };
         WorldPlan plan = WorldPlan.For(average);
@@ -74,13 +78,16 @@ public sealed record CustomMapEconomy(ImmutableArray<CustomMapEconomyRace> Races
                 continue;
             }
 
-            PlayerIncomeCalculator.IncomeInfo income = PlayerIncomeCalculator.GetIncomeInfo(player with { IsAi = false }, average, context);
+            PlayerIncomeCalculator.IncomeInfo income = PlayerIncomeCalculator.GetIncomeInfo(player with { IsAi = false }, average, context, townIncome ?? context.Scenario.Definition.TownIncome);
             Dictionary<WorldResourceType, int> owned = counts.GetValueOrDefault(player.Id) ?? [];
             List<CustomMapEconomyRow> rows = [];
 
             foreach (WorldResourceType type in ResourceTypes)
             {
-                CustomMapEconomyRow row = new(type, owned.GetValueOrDefault(type), Get(income.Capital, type), Get(income.ResourceNodes, type));
+                CustomMapEconomyRow row = new(type, owned.GetValueOrDefault(type), Get(income.Capital, type), Get(income.ResourceNodes, type))
+                {
+                    TownsIncome = Get(income.Towns, type)
+                };
 
                 if (row.Resources > 0 || row.Total > 0)
                 {
