@@ -570,3 +570,18 @@ designed battle AIs; a copy of Ruthless/Cautious keeps its knobs), Edit disabled
 `AiBrainFormatter` names/describes `custom-battle:` IDs, so Settings, the AI players panel and the sandbox pickers list them.
 List column 440 -> 510 so the Russian buttons fit (also on the map tab). Test `BattleAisTabTest`, visual
 `AiEditorMenuTest` (battle-list EN/RU), mutation caught, suite 5429, AOT client checked (tab, sandbox picker).
+
+## Phase 9 done (2026-11-22)
+
+The map AI designer screen edits battle AIs too (`AiDesignerScreenViewModel(game, DesignedBattleAi)`, `IsBattle`):
+palette "When" (7 battle conditions: from round, losing/winning power share, leader hurt, valuables in the bag, bag
+and gear, quest item), "Target preferences" (6 blocks, "+ N %" bonus, default 100) and "Tactics" (protect our leader,
+hurt leader defends below N %, flee below N %, never flee, never defend). Economy/army rows hidden; the rules area is
+"Targets and tactics". Undo/redo, stages, save and problems as for map AIs (undo snapshots are `object`).
+Test: "Test in the battle sandbox" registers the AI as it is on screen (saved or not) and opens the sandbox with it
+on the attacker side (`GameViewModel.OpenBattleSandboxAsync(returnTo, aiId)`, `BattleSandboxScreenViewModel.ReturnTo`,
+`SelectTestAi`); the sandbox's Back returns to the same designer, unsaved changes kept. Create on the battle tab
+opens the new AI in the designer; Edit enabled.
+Tests `BattleAiDesignerTests` (4), `BattleAisTabTest` updated, visual `BattleAiDesignerTest` (EN edited + RU),
+mutation caught, suite 5433 (LanguageSwitchTest flaky, passes on rerun), AOT client: list -> Edit -> add block ->
+Test -> sandbox with the AI selected -> Back -> designer with the unsaved block.
