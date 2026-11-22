@@ -11,7 +11,20 @@
     <local:ModalPanel Classes="accent" Width="660" Padding="28,24" Title="{local:Text 'Settings'}" InitialFocus="{Binding #CloseButton}">
 
       <local:ModalPanel.Footer>
-        <Button x:Name="CloseButton" Margin="0,24,0,0" HorizontalAlignment="Right" Content="{local:Text 'Close'}" Classes="pill" Command="{Binding CloseCommand}" MinWidth="150" />
+        <!-- Gallean Upgrade: our world-map checkboxes sit left of Close, so the panel still fits 1366x768. -->
+        <Grid ColumnDefinitions="*,Auto" Margin="0,16,0,0">
+          <StackPanel Grid.Column="0" Spacing="8" VerticalAlignment="Bottom">
+            <CheckBox IsChecked="{Binding ShowPathOnHover}">
+              <TextBlock Text="{local:Text 'Show the army path under the cursor'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+            </CheckBox>
+            <!-- Move orders (docs/move-orders.md) -->
+            <CheckBox IsChecked="{Binding TabSkipsOrders}"
+                      ToolTip.Tip="{local:Text 'When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.'}">
+              <TextBlock Text="{local:Text 'Tab skips armies with orders'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
+            </CheckBox>
+          </StackPanel>
+          <Button x:Name="CloseButton" Grid.Column="1" VerticalAlignment="Bottom" HorizontalAlignment="Right" Content="{local:Text 'Close'}" Classes="pill" Command="{Binding CloseCommand}" MinWidth="150" />
+        </Grid>
       </local:ModalPanel.Footer>
 
       <StackPanel Spacing="16" Grid.IsSharedSizeScope="True">
@@ -216,17 +229,6 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
 
-          <!-- Gallean Upgrade: move orders (docs/move-orders.md) -->
-          <CheckBox Grid.Row="2"
-                    Grid.Column="2"
-                    Grid.ColumnSpan="2"
-                    HorizontalAlignment="Left"
-                    VerticalAlignment="Center"
-                    IsChecked="{Binding TabSkipsOrders}"
-                    ToolTip.Tip="{local:Text 'When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.'}">
-            <TextBlock Text="{local:Text 'Tab skips armies with orders'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
-          </CheckBox>
-
           <TextBlock Grid.Row="3"
                      Grid.Column="0"
                      Text="{local:Text 'Battle speed'}"
@@ -306,10 +308,6 @@
             </ComboBox.ItemTemplate>
           </ComboBox>
         </Grid>
-
-        <CheckBox IsChecked="{Binding ShowPathOnHover}">
-          <TextBlock Text="{local:Text 'Show the army path under the cursor'}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" />
-        </CheckBox>
       </StackPanel>
 
     </local:ModalPanel>
