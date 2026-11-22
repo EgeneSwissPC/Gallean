@@ -861,7 +861,7 @@ public sealed partial class VisualTests
         Assert.That(editor.ShowTownsColumn, Is.True);
         await CaptureAsync(window, "6-town-income");
         Avalonia.Controls.CheckBox townBox = view.GetVisualDescendants().OfType<Avalonia.Controls.CheckBox>().First(box => box.Name == "TownIncomeBox");
-        townBox.BringIntoView();
+        townBox.FindAncestorOfType<Avalonia.Controls.ScrollViewer>()!.ScrollToEnd();
         await SkipFramesAsync(10);
         await CaptureAsync(window, "7-town-income-boxes");
     }
