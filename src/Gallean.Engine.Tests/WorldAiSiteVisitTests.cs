@@ -42,9 +42,9 @@ public sealed class WorldAiSiteVisitTests
     private static WorldSite Trainer() => new WorldTrainerSite(new WorldSiteId("site"), SiteFootprint, new WorldObjectVariant(0),
         new ScenarioTextId("Title"), new ScenarioTextId("Greeting"), [], 3);
 
-    private static WorldAiActionPlan FirstPlan(string brainId, WorldSite site, WorldPosition position, int gold)
+    private static WorldAiActionPlan FirstPlan(string brainId, WorldSite site, WorldPosition position, int gold, int mapSize = 14)
     {
-        WorldMap map = TestHelpers.SimpleMap(14, 14);
+        WorldMap map = TestHelpers.SimpleMap(mapSize, mapSize);
         WorldPlayer ai = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with
         {
             IsAi = true,
@@ -110,6 +110,19 @@ public sealed class WorldAiSiteVisitTests
 
         Assert.That(Distance(FirstPlan(AiBrainRegistry.ClassicId, Merchant(), start, 2000)), Is.GreaterThanOrEqualTo(start.GetDistance(Entrance)));
         Assert.That(Distance(FirstPlan(AiPersonalities.ClassicPlusId, Merchant(), start, 2000)), Is.LessThan(start.GetDistance(Entrance)));
+    }
+
+    // Mercenary camps: 4 turns of walking when poor, growing to 20 as gold nears the cap. 40 tiles at 6 MP a turn
+    // is beyond 4 turns (2000 gold) and beyond the 6 turns of other sites, but within 16 turns (9000 gold).
+    [TestCase(2000, false)]
+    [TestCase(9000, true)]
+    public void MercenaryWalkGrowsWithGoldTest(int gold, bool walks)
+    {
+        WorldPosition start = new(44, 44);
+        WorldAiActionPlan plan = FirstPlan(AiPersonalities.ClassicPlusId, Mercenaries(), start, gold, mapSize: 48);
+        bool towards = plan.Command is WorldAiMoveStackCommand move && move.TargetPosition.GetDistance(Entrance) < start.GetDistance(Entrance);
+
+        Assert.That(towards, Is.EqualTo(walks), plan.Command.ToString());
     }
 
     [Test]

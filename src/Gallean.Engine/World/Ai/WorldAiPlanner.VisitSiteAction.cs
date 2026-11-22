@@ -14,6 +14,10 @@ internal sealed partial class WorldAiPlanner
         private const int BaseTurnLimit = 2;
         private const int GoldPerExtraTurn = 2000;
         private const int MaxTurnLimit = 6;
+        // User decision: mercenary camps and trainers may be further away, and the limit grows progressively as gold
+        // nears the cap: 4 turns when poor, up to 20 at 9999 (quadratic in the share of the cap).
+        private const int TroopBaseTurnLimit = 4;
+        private const int TroopMaxTurnLimit = 20;
         // Site purchases keep this much gold, except while gold spending (overflow spending phase 3).
         public const int GoldKept = 500;
         private const int MaxPotions = 2;
@@ -90,12 +94,17 @@ internal sealed partial class WorldAiPlanner
             WorldPlayer player = state.Players[stack.OwnerId];
             WorldAiAttitudeDefinition attitude = Context.Engine.Definitions.GetAiAttitude(player.AiAttitude);
             int maxMovement = Context.Engine.UnitStats.GetWorldStackStats(stack).MaxMovementPoints;
-            int turnLimit = Math.Min(MaxTurnLimit, BaseTurnLimit + Math.Max(0, player.Resources.Gold) / GoldPerExtraTurn);
-            int costLimit = maxMovement * turnLimit;
+            int gold = Math.Clamp(player.Resources.Gold, 0, Context.Engine.Globals.MaxResourceAmount);
+            int turnLimit = Math.Min(MaxTurnLimit, BaseTurnLimit + gold / GoldPerExtraTurn);
+            long share = (long)gold * gold;
+            long cap = (long)Context.Engine.Globals.MaxResourceAmount * Context.Engine.Globals.MaxResourceAmount;
+            int troopTurnLimit = TroopBaseTurnLimit + (int)((TroopMaxTurnLimit - TroopBaseTurnLimit) * share / cap);
             (WorldSite Site, int Score)? best = null;
 
             foreach (WorldSite site in state.Sites.Values)
             {
+                int costLimit = maxMovement * (site is WorldMercenarySite or WorldTrainerSite ? troopTurnLimit : turnLimit);
+
                 if (!player.FogOfWar.Get(site.Entrance.X, site.Entrance.Y) ||
                     !pathMap.TryGetPath(site.Entrance, WorldMovementLimit.Unlimited, out WorldPath? path) ||
                     path.Cost > costLimit ||
@@ -213,28 +222,65 @@ internal sealed partial class WorldAiPlanner
                 case WorldMerchantSite merchant:
                 {
                     int potions = stack.Inventory.Items.Count(item => IsPotion(Context.Engine.Definitions.GetItem(item.DefinitionId)));
-
-                    if (potions >= MaxPotions)
-                    {
-                        return null;
-                    }
+                    IWorldCommand<Empty>? best = null;
+                    int bestValue = -1;
 
                     foreach (WorldMerchantItem item in merchant.Items)
                     {
                         ItemDefinition definition = Context.Engine.Definitions.GetItem(item.ItemId);
-                        MerchantSiteCalculator.PurchaseInfo info = MerchantSiteCalculator.GetPurchaseInfo(merchant, atEntrance, player, item.ItemId, Context.Engine);
+                        bool wanted = (IsPotion(definition) && potions < MaxPotions) || IsEquipmentUpgrade(stack, definition);
+                        int value = EquipItemAction.GetValue(definition);
 
-                        if (IsPotion(definition) && info.Error is null && Keeps(info.Cost))
+                        if (wanted && value > bestValue)
                         {
-                            return new WorldPurchaseItemCommand(stack.Id, site.Id, item.ItemId);
+                            MerchantSiteCalculator.PurchaseInfo info = MerchantSiteCalculator.GetPurchaseInfo(merchant, atEntrance, player, item.ItemId, Context.Engine);
+
+                            if (info.Error is null && Keeps(info.Cost))
+                            {
+                                best = new WorldPurchaseItemCommand(stack.Id, site.Id, item.ItemId);
+                                bestValue = value;
+                            }
                         }
                     }
 
-                    return null;
+                    return best;
                 }
                 default:
                     return null;
             }
+        }
+
+        // Phase 5 (answer C): equipment the leader can wear that fills an empty slot or beats what is in it, counting
+        // what already waits in the bag. Only with EquipItems, so the AI never buys what it won't put on.
+        private bool IsEquipmentUpgrade(WorldStack stack, ItemDefinition definition)
+        {
+            if (!Context.Profile.EquipItems || !EquipItemAction.CanEquip(stack, definition, Context.Engine))
+            {
+                return false;
+            }
+
+            int value = EquipItemAction.GetValue(definition);
+
+            foreach (LeaderEquipmentSlot slot in EquipItemAction.Slots)
+            {
+                if (!LeaderEquipmentCalculator.CanPlace(definition.Category, slot))
+                {
+                    continue;
+                }
+
+                bool betterInBag = stack.Inventory.Items.Any(item =>
+                {
+                    ItemDefinition waiting = Context.Engine.Definitions.GetItem(item.DefinitionId);
+                    return LeaderEquipmentCalculator.CanPlace(waiting.Category, slot) && EquipItemAction.GetValue(waiting) >= value;
+                });
+
+                if (!betterInBag && (stack.Equipment[slot] is not { } equipped || EquipItemAction.GetValue(Context.Engine.Definitions.GetItem(equipped.DefinitionId)) < value))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         // Items the world AI already uses (UseItemAction): healing and revive potions.

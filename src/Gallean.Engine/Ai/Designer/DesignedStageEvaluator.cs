@@ -114,7 +114,8 @@ internal static class DesignedStageEvaluator
             SpendAbovePercent = rules.SpendAbovePercent ?? WorldAiSpending.DefaultSpendAbovePercent,
             SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent,
             UseAllSpells = true,
-            VisitSites = true
+            VisitSites = true,
+            EquipItems = true
         };
     }
 

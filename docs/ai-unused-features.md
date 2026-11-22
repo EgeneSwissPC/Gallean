@@ -1,12 +1,12 @@
 # AI: the parts of the game it never uses
 
-Status: questions A-F answered (2026-11-22); phases 1-4 done, phase 5 (equipment) next.
+Status: questions A-F answered (2026-11-22); all five phases done; follow-ups listed in "Phase 5 — done".
 
 ## Decisions
 
 - **User priority (2026-11-22):** this comes before lookahead, objectives and maps carrying AIs: "the whole parts of the game go unused ... real players have a huge advantage over them".
 - Who (answer A): all our AIs (Classic+, Aggressive, Builder, Expansionist, every designed AI); Classic untouched. Designer blocks may follow later.
-- Site visits (answer B): whenever the army can afford something useful there and the site is reachable; the richer the player, the further the AI is willing to walk (no fixed this-turn-or-next limit).
+- Site visits (answer B): whenever the army can afford something useful there and the site is reachable; the richer the player, the further the AI is willing to walk (no fixed this-turn-or-next limit). After phase 4 (user): mercenary camps and trainers get longer limits that grow progressively as gold nears the cap.
 - Merchants (answer C): only items the AI can use; more item kinds as the AI learns to use them (equipment after phase 5).
 - Summon upkeep (answer D): a tunable profile knob, the share of a mana's income per turn that running summon upkeep may take; default 50 % for our AIs. After the measurement (option B, user): while that mana is at or above the spending line, up to 100 % of its income.
 - Fog, unfog, remove rod and change terrain spells (answer E): later, once their goals are designed.
@@ -48,7 +48,7 @@ War of the Ring has 23 sites: 8 merchants, 6 mage towers, 6 mercenary camps, 3 t
 2. ~~B: "not for the AI" spells (~0.5-1 day).~~ Done, see "Phase 2 — done".
 3. ~~C: area spells (~1 day).~~ Done, see "Phase 3 — done".
 4. ~~D: site visits: mercenaries, trainers, mage towers, potions (~3-4 days).~~ Done, see "Phase 4 — done".
-5. E: equipment, then equipment at merchants (~2 days).
+5. ~~E: equipment, then equipment at merchants (~2 days).~~ Done, see "Phase 5 — done".
 
 ## Phase 1 — done (summon upkeep awareness)
 
@@ -99,6 +99,21 @@ Merged 8d9c0957 (feature commit 12542e42 on `upgrade/ai-site-visits`; gallean-up
 - Measured, War of the Ring (new map), 60 turns, seed 1, with and without site visits (other phases on in both):
   - Humans: 9 spells, 23 trainings, 2 potions for 15,965 gold; their mana lost at the cap fell from 7 % to 1 % (more spells to cast). Dwarves: 3 potions. Heretics: 4 spells. Elves and Undead: nothing.
   - No mercenaries were bought: the six mercenary camps lie 55 to 331 tiles from the nearest capital, mostly beyond the 6-turn limit, and armies that are already full can't take more units. Not verified per army.
+- No real-client run (no client change).
+
+## Phase 5 — done (equipment; longer walks to mercenaries and trainers)
+
+Merged 2d25bf9c (feature commit d0105a8e on `upgrade/ai-equipment`; gallean-upgrade merged in once more for the other session's move-orders work).
+
+- Equipment: `WorldAiPlanner.EquipItemAction` (priority 6, every order; acts only with the new knob `EquipItems`, true for every personality and designed AI). From the army's bag it equips banners, tomes, artifacts and boots into empty slots, most valuable first (value = the item's price in all resources), if the leader has the ability (`LeaderEquipmentCalculator.GetRequiredAbility`); when no free slot fits and the bag holds a better item, it takes the cheapest worse item off first (the equip command only fills empty slots). Battle slots (potions, orbs, talismans, scrolls, wands) stay untouched.
+- Merchants: besides potions, `VisitSiteAction` buys the most valuable piece of equipment the leader can wear that fills an empty slot or beats what is worn, unless a better one already waits in the bag (answer C).
+- Longer walks (user, after phase 4): mercenary camps and trainers may be 4 turns away when poor, growing with the square of gold's share of the cap up to 20 turns at 9999 (about 8 at 5,000, 11 at 7,000); other sites keep 2 turns + 1 per 2,000 gold, at most 6.
+- Tests: `WorldAiEquipmentTests` (4: equips a banner from the bag, takes cheap boots off when better ones wait, ignores a sword without the weapon ability, buys boots at a merchant but not a sword it can't use and not boots no better than worn ones), `WorldAiSiteVisitTests.MercenaryWalkGrowsWithGoldTest` (a camp 40 tiles away: not at 2,000 gold, yes at 9,000). Mutation checks: equipping off -> 2 equipment tests fail; old limit for camps -> the 9,000 case fails. Suite 5501 after the merge. S099 Classic CSV identical apart from timings (against gallean-upgrade 13724c59).
+- Measured, War of the Ring (new map), 60 turns, seed 1:
+  - Training rose with the longer limits: Dwarves 10, Heretics 5, Humans 23 (before: Humans 23 only). Heretic mana lost 8 % -> 5 %.
+  - Still no mercenaries: at turn 60 only 2 of the 30 fighting armies had room for another unit (the AI keeps them full from its garrisons), and mercenaries only join the visiting army.
+  - No item was equipped: the runs with and without equipping were identical. At turn 60 the armies carried 8 equippable items in total, none usable by the leader carrying it (23 leaders had some equipment ability, but not the one their bag's item needs); no merchant sale happened either.
+- So this phase is correct (tests) but rarely triggers on this map. Follow-ups, not built: mercenaries that replace the weakest unit of a full army; handing items to the army whose leader can wear them (or to the capital); preferring equipment abilities when leaders level up; battle-slot items (questions BG/BH of the battle AI designer).
 - No real-client run (no client change).
 
 ## Open questions
