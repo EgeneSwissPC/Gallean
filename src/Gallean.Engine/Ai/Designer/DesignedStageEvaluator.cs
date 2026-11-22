@@ -113,7 +113,8 @@ internal static class DesignedStageEvaluator
             GoldReserve = rules.GoldReserve ?? 0,
             SpendAbovePercent = rules.SpendAbovePercent ?? WorldAiSpending.DefaultSpendAbovePercent,
             SummonUpkeepPercent = WorldAiSpending.DefaultSummonUpkeepPercent,
-            UseAllSpells = true
+            UseAllSpells = true,
+            VisitSites = true
         };
     }
 

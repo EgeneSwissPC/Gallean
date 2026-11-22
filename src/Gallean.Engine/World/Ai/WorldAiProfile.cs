@@ -55,4 +55,6 @@ internal sealed record WorldAiProfile
     // marks "not for the AI" (AI_CAT None) when their effect is one the AI knows how to cast, and cast area spells.
     // False = Classic.
     public bool UseAllSpells { get; init; }
+    // Gallean Upgrade, unused features phase 4: fighting armies visit sites to buy what they can use. False = Classic.
+    public bool VisitSites { get; init; }
 }

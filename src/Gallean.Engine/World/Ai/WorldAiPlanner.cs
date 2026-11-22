@@ -161,6 +161,8 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             Add(WorldAiActionKind.TakeBag, p => new TakeBagAction(context, Priority: p));
             Add(WorldAiActionKind.Move, p => new MoveAction(context, Priority: p));
             designed.Add(new ChangeOrderAction(context, Priority: 0));
+            // Gallean Upgrade: site visits are a rule of every designed AI (docs/ai-unused-features.md phase 4).
+            designed.Add(new VisitSiteAction(context, Priority: 2));
 
             return designed;
         }
@@ -177,7 +179,9 @@ internal sealed partial class WorldAiPlanner(WorldAiContext context)
             new EnterCityAction(context, Priority: 2),
             new TakeBagAction(context, Priority: 2),
             new MoveAction(context, Priority: 1),
-            new ChangeOrderAction(context, Priority: 0)
+            new ChangeOrderAction(context, Priority: 0),
+            // Gallean Upgrade: does nothing unless the profile has VisitSites (never for Classic).
+            new VisitSiteAction(context, Priority: 2)
         ];
     }
 
