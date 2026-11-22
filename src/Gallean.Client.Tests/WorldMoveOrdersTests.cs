@@ -27,10 +27,11 @@ public sealed class WorldMoveOrdersTests
         WorldPosition? enemyPosition = null,
         WorldPosition[]? bagPositions = null,
         int width = 12,
-        WorldPosition? sitePosition = null)
+        WorldPosition? sitePosition = null,
+        bool spiedEnemy = false)
     {
         WorldMap map = TestHelpers.SimpleMap(width, 2);
-        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map);
+        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with { SpiedPlayers = spiedEnemy ? [new WorldPlayerId(2)] : [] };
         WorldPlayer enemyPlayer = TestHelpers.SimplePlayer(new WorldPlayerId(2), WorldRace.Heretic, map) with { IsAi = true };
 
         IGameDefinitionProvider stackDefinitions = new TestGameDefinitionProviderBuilder()
@@ -478,9 +479,9 @@ public sealed class WorldMoveOrdersTests
 
     // The enemy at (5,0) intercepts at (4,x). Stack1 gets an order past it and stops at (2,0) on
     // turn 1 (out of moves); next turn the interception is in reach.
-    private static async Task<Setup> OrderPastEnemyAsync()
+    private static async Task<Setup> OrderPastEnemyAsync(bool spiedEnemy = false)
     {
-        Setup setup = CreateWorld(enemyPosition: new WorldPosition(5, 0), width: 16);
+        Setup setup = CreateWorld(enemyPosition: new WorldPosition(5, 0), width: 16, spiedEnemy: spiedEnemy);
 
         await OrderFirstAsync(setup, x: 12);
         Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(2, 0)));
@@ -544,6 +545,32 @@ public sealed class WorldMoveOrdersTests
         setup.World.UpdateHover(new WorldPosition(2, 1), null);
 
         Assert.That(GetPathPositions(setup.World), Is.EqualTo(new[] { new WorldPosition(2, 1) }));
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task PromptShowsEnemyUnitsWhenKnownTest(bool spiedEnemy)
+    {
+        Setup setup = await OrderPastEnemyAsync(spiedEnemy);
+
+        (Task task, MoveOrderPromptViewModel prompt) = await EndTurnUntilPromptAsync(setup);
+
+        // Like the right-click info: the units of a spied race, the thief note otherwise.
+        WorldStackInfoViewModel info = Assert.IsOfType<WorldStackInfoViewModel>(prompt.TargetInfo);
+
+        if (spiedEnemy)
+        {
+            Assert.That(info.Note, Is.Null);
+            Assert.That(info.Grid.Units, Has.Count.EqualTo(1));
+        }
+        else
+        {
+            Assert.That(info.Note, Is.EqualTo("A thief must spy on this race to gain information about it."));
+            Assert.That(info.Grid.Units, Is.Empty);
+        }
+
+        prompt.PlanAnotherPathCommand.Execute(null);
+        await FinishAsync(setup, task);
     }
 
     [Test]

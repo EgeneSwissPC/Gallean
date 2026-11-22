@@ -318,8 +318,8 @@ internal sealed partial class WorldScreenViewModel
     {
         FocusStack(stack);
 
-        (AssetSpriteKey.UnitEventPortrait? portrait, string targetName, bool isKnown) = ResolveOrderTarget(target);
-        MoveOrderPromptViewModel prompt = new(portrait, ResolveLeaderName(stack), targetName, isKnown);
+        (WorldPositionInfoViewModel? info, string targetName, bool isKnown) = ResolveOrderTarget(target);
+        MoveOrderPromptViewModel prompt = new(info, ResolveLeaderName(stack), targetName, isKnown);
 
         Game.OpenScreen(prompt);
 
@@ -371,8 +371,9 @@ internal sealed partial class WorldScreenViewModel
             : null;
     }
 
-    // Same portrait and name as the game's own attack prompt (CreateAttackPrompt).
-    private (AssetSpriteKey.UnitEventPortrait? Portrait, string Name, bool IsKnown) ResolveOrderTarget(WorldPosition position)
+    // Same name as the game's own attack prompt (CreateAttackPrompt), plus the info the world's
+    // right-click popup shows for that army or city (units only when the player may see them).
+    private (WorldPositionInfoViewModel? Info, string Name, bool IsKnown) ResolveOrderTarget(WorldPosition position)
     {
         WorldPlan plan = WorldPlan.For(WorldState);
         WorldVisibility visibility = WorldVisibility.Create(WorldState, ViewPlayerId, FogEnabled);
@@ -381,14 +382,14 @@ internal sealed partial class WorldScreenViewModel
         {
             (WorldUnit leader, GridPosition _, UnitDefinition _) = enemy.GetLeader(GameModel.Definitions);
 
-            return (new AssetSpriteKey.UnitEventPortrait(ScenarioEventPortraitId.Unit(leader.DefinitionId)),
+            return (CreateStackInfo(enemy.Id),
                     UnitNameResolver.Resolve(leader, GameModel.Definitions, GameModel.Texts),
                     true);
         }
 
         if (visibility.GetFortificationAt(plan, position) is { } fortification)
         {
-            return (null, GameModel.Texts.GetScenarioText(fortification.NameTextId), true);
+            return (CreatePositionInfo(position, plan, visibility), GameModel.Texts.GetScenarioText(fortification.NameTextId), true);
         }
 
         return (null, Tr("an unknown enemy"), false);

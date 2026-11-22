@@ -85,11 +85,15 @@ public sealed partial class VisualTests
 
         await WaitForWorldAsync(window);
 
-        WorldStack hero = Assert.NotNull(WorldPlan.For(gameModel.Snapshot.WorldState).GetStackAt(new WorldPosition(10, 14)));
-        (WorldUnit leader, GridPosition _, UnitDefinition _) = hero.GetLeader(gameModel.Definitions);
-        AssetSpriteKey.UnitEventPortrait portrait = new(ScenarioEventPortraitId.Unit(leader.DefinitionId));
+        // The hero's army stands in for the target: its own player sees the units, another player
+        // that hasn't spied on it gets the thief note.
+        WorldState state = gameModel.Snapshot.WorldState;
+        WorldStack hero = Assert.NotNull(WorldPlan.For(state).GetStackAt(new WorldPosition(10, 14)));
+        WorldPlayerId stranger = state.Players.Keys.First(id => id != hero.OwnerId && state.Players[id].Race != WorldRace.Neutral);
+        WorldStackInfoViewModel known = WorldStackInfoViewModel.Create(state, hero.OwnerId, hero, gameModel.Definitions, gameModel.Texts, gameModel.Stats);
+        WorldStackInfoViewModel unknown = WorldStackInfoViewModel.Create(state, stranger, hero, gameModel.Definitions, gameModel.Texts, gameModel.Stats);
 
-        MoveOrderPromptViewModel prompt = new(portrait, "Pegasus Knight", "Orc Warband", isTargetKnown: true);
+        MoveOrderPromptViewModel prompt = new(known, "Pegasus Knight", "Orc Warband", isTargetKnown: true);
         gameViewModel.OpenScreen(prompt);
         await SkipFramesAsync(30);
 
@@ -100,7 +104,7 @@ public sealed partial class VisualTests
         SettingsScreenViewModel settings = new(gameViewModel);
         settings.Language = Language.Russian;
 
-        MoveOrderPromptViewModel russian = new(portrait, "Рыцарь на пегасе", "Отряд орков", isTargetKnown: true);
+        MoveOrderPromptViewModel russian = new(known, "Рыцарь на пегасе", "Отряд орков", isTargetKnown: true);
         gameViewModel.OpenScreen(russian);
         await SkipFramesAsync(30);
 
@@ -108,6 +112,26 @@ public sealed partial class VisualTests
 
         russian.CloseCommand.Execute(null);
         settings.Language = Language.English;
+
+        MoveOrderPromptViewModel hidden = new(unknown, "Pegasus Knight", "Orc Warband", isTargetKnown: true);
+        gameViewModel.OpenScreen(hidden);
+        await SkipFramesAsync(30);
+
+        await CaptureAsync(window, "3-not-spied");
+
+        hidden.CloseCommand.Execute(null);
+
+        // A city as the target: the game's city info (garrison and visiting party).
+        WorldCapital capital = Assert.NotNull(WorldPlan.For(state).GetCapital(hero.OwnerId));
+        WorldFortificationInfoViewModel city = WorldFortificationInfoViewModel.CreateCapital(
+            state, hero.OwnerId, capital, WorldPlan.For(state).GetStackAt(capital.Entrance), gameModel.Definitions, gameModel.Texts, gameModel.Stats);
+        MoveOrderPromptViewModel cityPrompt = new(city, "Pegasus Knight", "Capital", isTargetKnown: true);
+        gameViewModel.OpenScreen(cityPrompt);
+        await SkipFramesAsync(30);
+
+        await CaptureAsync(window, "4-city");
+
+        cityPrompt.CloseCommand.Execute(null);
     }
 
     // A revealed tile the hero reaches in two or three turns without any encounter on the way.
