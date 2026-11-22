@@ -1681,6 +1681,9 @@
     "Spend when rich": "Spend when rich",
     "When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this.": "When gold or a mana reaches that share of the 9999 cap, it spends more: more spells and research, units without the one-per-turn limit, extra leaders, city upgrades. Without this block: 70 %. Classic never does this.",
     "Spend more above": "Spend more above",
-    "% of the cap": "% of the cap"
+    "% of the cap": "% of the cap",
+    "Cancel order": "Cancel order",
+    "Tab skips armies with orders": "Tab skips armies with orders",
+    "When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.": "When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last."
   }
 }

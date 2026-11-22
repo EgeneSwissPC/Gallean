@@ -17,6 +17,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
     private UiSize uiSize;
     private bool lockCursor;
     private bool showPathOnHover;
+    private bool tabSkipsOrders;
     private Language? language;
     private string worldAi;
     private string battleAi;
@@ -35,6 +36,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         uiSize = gameViewModel.Settings.UiSize;
         lockCursor = gameViewModel.Settings.LockCursor;
         showPathOnHover = gameViewModel.Settings.ShowPathOnHover;
+        tabSkipsOrders = gameViewModel.Settings.TabSkipsOrders;
         language = gameViewModel.Settings.Language;
         worldAi = KnownOrClassic(gameViewModel.Settings.WorldAi, WorldAis);
         battleAi = KnownOrClassic(gameViewModel.Settings.BattleAi, BattleAis);
@@ -207,6 +209,18 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         }
     }
 
+    public bool TabSkipsOrders
+    {
+        get => tabSkipsOrders;
+        set
+        {
+            if (SetProperty(ref tabSkipsOrders, value))
+            {
+                Apply();
+            }
+        }
+    }
+
     public Language Language
     {
         get => language ?? gameViewModel.Settings.EffectiveLanguage;
@@ -244,6 +258,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         gameViewModel.UpdateSettings(GameSettings.Create(soundVolume, musicVolume, gameViewModel.IsWindowed, renderResolution, autoSaveInterval, autoSaveLimit, battleSpeed, uiSize, lockCursor, movementSpeed, language) with
         {
             ShowPathOnHover = showPathOnHover,
+            TabSkipsOrders = tabSkipsOrders,
             WorldAi = worldAi == AiBrainRegistry.ClassicId ? null : worldAi,
             BattleAi = battleAi == AiBrainRegistry.ClassicId ? null : battleAi
         });
