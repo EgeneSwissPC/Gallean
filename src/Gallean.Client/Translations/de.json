@@ -1690,6 +1690,14 @@
     "+{0} (next level +{1})": "+{0} (next level +{1})",
     "Towns bring gold every turn": "Towns bring gold every turn",
     "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.": "Gold per turn a town of each level brings its owner. A capital pays the level 5 amount; a rioting town pays nothing.",
+    "{0} stopped: something is in its way.": "{0} stopped: something is in its way.",
+    "{0} could not continue its path.": "{0} could not continue its path.",
+    "{0} reached {1}.": "{0} reached {1}.",
+    "{0} arrived with {1} move points left.": "{0} arrived with {1} move points left.",
+    "{0} stopped with {1} move points left.": "{0} stopped with {1} move points left.",
+    "An army with an order needs you": "An army with an order needs you",
+    "{0} armies with orders need you": "{0} armies with orders need you",
+    "End the turn again to continue.": "End the turn again to continue.",
     "Starting gold of each neutral side": "Starting gold of each neutral side",
     "Neutral towns bring {0} gold a turn in all.": "Neutral towns bring {0} gold a turn in all."
   }

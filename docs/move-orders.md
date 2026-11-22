@@ -1,6 +1,6 @@
 # Move orders (armies that keep walking on their own)
 
-Status: phase 1 merged (bb2ed500); phases 2-3 to build.
+Status: phases 1 (bb2ed500) and 2 (54e66f09) merged; phase 3 to build.
 
 Gallean Upgrade only. Human players only; the AI is not touched.
 
@@ -21,6 +21,9 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **Cancel and wait (question J: J1).** X or a Stop button next to Continue on the selected card deletes the order (army stays, becomes a normal army). A new path replaces the order. Finish (Enter) = wait this turn: the army does not walk on E this turn but keeps its order for the next turn (covers the wait button the prompt doesn't have).
 - **Arrival with moves left (question K: K2).** User: move points are valuable, never waste them silently. After the walks, every army that arrived with move points left joins the end-of-turn queue: the camera goes to it, it is selected, and a short message says it arrived with N moves left. The turn stays open; pressing E again ends it (those armies are not asked again this turn unless they get a new order).
 - **When a move becomes an order (decided while building phase 1).** A confirmed move becomes an order only once the army stops short of its stored destination (or at once when it has no move points left to start walking). A move that arrives this turn never flips the card to the order look, so cards don't jump to the end of the bar and back during ordinary moves (an upstream test, `StackItemMovementTest`, checks the cards stay the same objects). With the hover path off, the first click only selects a path as before; it becomes an order after the confirming click and the walk.
+- **Settings layout (user correction after phase 1).** Both world-map checkboxes, "Show the army path under the cursor" and "Tab skips armies with orders" under it, sit in the panel footer left of Close (merged cef5bbb9). The panel had no free row; the footer row was half empty. RU label back to "Tab пропускает армии с приказом".
+- **Bags on the way (found while building phase 2).** Paths never cross a bag tile, so a walk meets a bag only as its destination: the army picks it up from the next tile (the game's own treasure popup when it holds items) and walks on onto the tile. Decision H's "pick up and continue" is therefore in phase 2 already.
+- **Space during the walks (decided while building phase 2).** Space switches on the game's own fast-forward (2x, as during computer turns) for the rest of the walks instead of skipping one walk; the fast-forward ends with the walks.
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
 ## The problem today
@@ -70,7 +73,7 @@ Client only (decision I: orders are not saved).
 ## Phases (estimates)
 
 1. ~~**Visible orders** (~1.5 days): bar colour, turns-left number and order, Tab skip + setting, O key, End turn highlight, order path stays put while the mouse moves (first click enters re-plan mode), X / Stop. No automatic walking yet; M still walks.~~ Done, see "Phase 1 — done".
-2. **Orders walk on End turn** (~1-2 days): the guarded walk for orders without any battle this turn, one by one in bar order with the camera following and Space skipping, the retry pass, Finish = wait this turn; anything unexpected stops the army and blocks End turn with a short message until the player handles it.
+2. ~~**Orders walk on End turn** (~1-2 days): the guarded walk for orders without any battle this turn, one by one in bar order with the camera following and Space skipping, the retry pass, Finish = wait this turn; anything unexpected stops the army and blocks End turn with a short message until the player handles it.~~ Done, see "Phase 2 — done".
 3. **End-of-turn queue** (~2-2.5 days): arrivals with moves left (decision K), the confirm queue with the attack prompt, accepted-this-turn memory, surprises after the walk, treasure popup, sites and thief actions asked this turn.
 
 ## Phase 1 — done
@@ -91,6 +94,24 @@ Real client (AOT build, The War of the Ring as Empire): far hover click -> the P
 Findings: none blocking. The 5th Column quest's revealed area is too small to give a multi-turn order on turn 1 (paths don't cross the fog), so the real-client check used the 1024 map.
 
 Known limits: orders still need M (or E in phase 2) to walk; no turns label on the map path itself.
+
+## Phase 2 — done
+
+Feature commit fe717a1a, merged in 54e66f09 (gallean-upgrade, on top of town income phase 2; the 7 translation catalogs conflicted and were rebuilt from gallean-upgrade's plus our strings). The settings layout fix (4080558c) went in first, merged in cef5bbb9.
+
+What was built (client only, `Screens/World/WorldScreenViewModel.MoveOrderWalk.cs` plus small edits):
+- `EndTurnAsync` first runs `WalkMoveOrdersAsync`: the ordered cards in bar order; skipped are armies without move points, finished ones (Finish = wait, decision J) and armies already reported this turn.
+- Each walk is the game's own step loop with a guard (`ActiveMove.Guarded`): before every step the path is checked again and the walk stops when the next step would start a battle (an army, a city, an interception: the engine resolves an encounter at the end of the approach) or a thief already stands next to its target. Errors stay quiet (no error popup for a blocked army).
+- Retry pass: an army whose first step failed for any reason but missing move points walks again after all others.
+- A bag pick-up ends the game's move; the walk then goes on (up to 4 moves per army).
+- After the walks, armies that need the player keep the turn open: stopped before an encounter, still blocked after the retry, reached a site, arrived with move points left, or stopped by something else (a scenario event) with move points left. One info alert lists them ("An army with an order needs you" + one line each + "End the turn again to continue."), the first is selected and centred. They are not reported again this turn (unless they get a new order), so the next End turn ends the turn.
+- While walking, the screen counts as busy (no hover path, no clicks); Space fast-forwards.
+
+Tests: `WorldMoveOrdersTests` +7 (walks over three End turns and arrives, arrival with moves left keeps the turn once, Finish waits a turn, stops at (7,0) before an enemy that intercepts at (8,0), picks up an ordered bag and walks onto its tile, a destination taken by an own army is reported after the retry, Space fast-forwards). Mutation checks: guard switched off -> the enemy test fails (a battle starts); one move per walk -> the bag test fails. Suite 5482 (5475 on gallean-upgrade + 7).
+
+Real client (AOT build, The War of the Ring as Empire): the Pegasus Knight with an order 2 tiles away walked on E and the alert "Pegasus Knight arrived with 19 move points left. End the turn again to continue." kept turn 2 open; an order 10 points away from 0 move points: E ended the turn without moving, on turn 4 E walked it along the path (camera following) and reported 13 points left; the settings show both checkboxes stacked left of Close. The stop before an enemy and the bag pick-up were checked by tests only (no enemy near the start on that map).
+
+Known limits (phase 3): the alert is a short message, not the per-army prompt; armies stopped before a battle aren't asked Attack / Plan another path / Cancel order yet; sites aren't opened; the walk order of armies with the same leader level follows the army ID.
 
 ## Open questions
 
