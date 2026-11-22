@@ -25,6 +25,7 @@ Status: phases 1-3 done (merges ee232a30, 9f1a4423, 1d6c92ce); phase 4 waits for
 - H2 (user): H2b, to try first and revisit if it plays badly. A level-N village sells the cheapest N/5 (rounded up, at least one) of its kind's soldiers, and of its kind's leaders, by gold price at level 1; ties keep the data order.
 - J (user): J2. Each neutral side makes at most one purchase per village it owns per turn (a soldier, a leader or a village upgrade); while its gold is above the spending line (70 % of the cap, `WorldAiSpending.DefaultSpendAbovePercent`) the limit is lifted, so piled-up gold gets spent.
 - K (user): random for now. When gold doesn't reach every village, the villages take their turn in a random order (the engine's random provider, so a seeded headless run repeats exactly); threatened-first can come later if random plays badly.
+- L (user): random, weighted by the side's gold: the more gold, the more likely an expensive unit, but any allowed, affordable unit that fits can come up. Formula taken unless the user objects (tuned after the measurement): weight = price ^ t with t = clamp(gold / 2000 - 1, -1, 1), so cheap units are favoured below 2000 gold, all equally likely at 2000, dear ones favoured above. Level-3 Greenskin village: with 300 gold Goblin 45 %, Goblin Archer 45 %, Orc 10 %; with 900 gold 35 / 35 / 13 / Goblin Elder 9 / Orc Champion 7 %; with 2000 gold each of the six 17 %; with 4000 gold Goblin 2, Goblin Archer 2, Orc 10, Goblin Elder 22, Orc Champion 29, Cyclops 34 %. The same draw picks the leader when a leader is hired.
 - I (user): The War of the Ring's scripted neutral life is out of scope here; the user will rework it separately later.
 - Taken while building phase 1: `CustomMap.Create` starts with the rule off. The editor's new-map path turns it on with `CustomMap.DefaultTownIncome` (phase 2), and MapFromPlan sets it for The War of the Ring (phase 2). Maps built in code (tests, the battle bench, AI designer test maps) keep their economy, so no existing measurement changes.
 - Taken while building phase 3: neutral income follows the town income rule (no separate switch): with town income on, every neutral side earns from its own towns. Their starting gold is one value for all neutral sides (`CustomMap.NeutralStartingGold`, gold only, 0 by default); per-side banks would need the writer's kind split in the editor. The War of the Ring keeps 0 for now (its neutral life gets reworked later, decision I).
@@ -128,7 +129,7 @@ Facts they build on (counted from the data and a generated War of the Ring):
 
 ~~K. Which village first.~~ Answered: random for now (Decisions).
 
-L. Which unit. L1: the most expensive soldier that is allowed, affordable and fits. L2: random among those. L3: the best value (hit points per gold). Recommendation: L1.
+~~L. Which unit.~~ Answered: weighted random, richer sides lean to dearer units (Decisions).
 
 M. When it applies. M1: whenever a neutral side has gold (original campaigns give neutrals none, so they stay as they are; no extra switch). M2: a separate map rule "neutrals buy units". Recommendation: M1.
 
