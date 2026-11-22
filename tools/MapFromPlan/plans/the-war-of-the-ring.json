@@ -4806,6 +4806,76 @@
     650,
     -205
    ]
+  },
+  {
+   "type": "RuneMana",
+   "at": [
+    773,
+    -620
+   ]
+  },
+  {
+   "type": "RuneMana",
+   "at": [
+    717,
+    -620
+   ]
+  },
+  {
+   "type": "LifeMana",
+   "at": [
+    448,
+    14
+   ]
+  },
+  {
+   "type": "LifeMana",
+   "at": [
+    392,
+    14
+   ]
+  },
+  {
+   "type": "LifeMana",
+   "at": [
+    900,
+    284
+   ]
+  },
+  {
+   "type": "LifeMana",
+   "at": [
+    844,
+    284
+   ]
+  },
+  {
+   "type": "DeathMana",
+   "at": [
+    1018,
+    -543
+   ]
+  },
+  {
+   "type": "DeathMana",
+   "at": [
+    962,
+    -543
+   ]
+  },
+  {
+   "type": "InfernalMana",
+   "at": [
+    698,
+    -158
+   ]
+  },
+  {
+   "type": "InfernalMana",
+   "at": [
+    642,
+    -158
+   ]
   }
  ],
  "resourceScatter": [
