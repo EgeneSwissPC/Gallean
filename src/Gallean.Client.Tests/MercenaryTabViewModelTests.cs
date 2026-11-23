@@ -430,8 +430,8 @@ public sealed class MercenaryTabViewModelTests
         MercenaryTabViewModel screen = Assert.IsOfType<MercenaryTabViewModel>(management.Tabs[0]);
 
         Assert.That(FormatMercenaries(screen.Mercenaries), Is.EqualTo([
-            "scout | name | description | Level 1 | Cost: 45 gold | available | not selected",
-            "knight | name | description | Level 1 | Cost: 450 gold (unaffordable) | unavailable | not selected"
+            "knight | name | description | Level 1 | Cost: 450 gold (unaffordable) | unavailable | not selected",
+            "scout | name | description | Level 1 | Cost: 45 gold | available | not selected"
         ]));
     }
 
@@ -567,7 +567,7 @@ public sealed class MercenaryTabViewModelTests
             false,
             false,
             false,
-            new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor)),
+            new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor), false),
             new StatValueViewModel(TextSpans.FromText("21"), 0),
             null,
             null,
@@ -581,6 +581,8 @@ public sealed class MercenaryTabViewModelTests
             null,
             null,
             [],
-            [])));
+            [],
+            Summons: null,
+            GrantedWards: null)));
     }
 }

@@ -184,7 +184,7 @@ internal sealed partial class AiEditorMenuScreenViewModel : AbstractScreenViewMo
         }
 
         Game.OpenScreen(new ConfirmPromptViewModel(
-            Tr("Delete AI"),
+            TrSpans("Delete AI"),
             IsBattle
                 ? TrSpans("Delete \"{0}\"? Games and settings that use it play Classic instead. This cannot be undone.", selected.Name)
                 : TrSpans("Delete \"{0}\"? Games and settings that use it play Classic+ instead. This cannot be undone.", selected.Name),

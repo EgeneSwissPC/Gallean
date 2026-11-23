@@ -5,12 +5,14 @@ namespace Gallean.Client;
 
 internal sealed class AudioPlayer : IAudioPlayer
 {
+    private const float MusicMixLevel = 0.8f;
+
     private readonly IAssetProvider assets;
     private readonly ILog log;
     private readonly MixingSampleProvider sounds = CreateMixer();
     private readonly MixingSampleProvider music = CreateMixer();
-    private readonly VolumeSampleProvider soundsVolume;
-    private readonly VolumeSampleProvider musicVolume;
+    private readonly CubicVolumeSampleProvider soundsVolume;
+    private readonly CubicVolumeSampleProvider musicVolume;
     private readonly AudioOutput output;
 
     public AudioPlayer(IAssetProvider assets, AudioOutput output, ILog log, float initialSoundVolume, float initialMusicVolume)
@@ -19,14 +21,8 @@ internal sealed class AudioPlayer : IAudioPlayer
         this.output = output;
         this.log = log;
 
-        soundsVolume = new VolumeSampleProvider(sounds)
-        {
-            Volume = initialSoundVolume
-        };
-        musicVolume = new VolumeSampleProvider(music)
-        {
-            Volume = initialMusicVolume
-        };
+        soundsVolume = new CubicVolumeSampleProvider(sounds, initialSoundVolume);
+        musicVolume = new CubicVolumeSampleProvider(new VolumeSampleProvider(music) { Volume = MusicMixLevel }, initialMusicVolume);
 
         output.AddInput(soundsVolume);
         output.AddInput(musicVolume);
@@ -91,7 +87,7 @@ internal sealed class AudioPlayer : IAudioPlayer
 
         MusicQueueSampleProvider samples = new(assets, MusicQueue.Create([key], isLooping: false), MusicPosition.Start);
 
-        if (TryAddMixerInput(sounds, samples))
+        if (TryAddMixerInput(music, samples))
         {
             return samples;
         }

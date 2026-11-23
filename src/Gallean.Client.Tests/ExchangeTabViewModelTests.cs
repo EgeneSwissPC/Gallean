@@ -409,7 +409,7 @@ public sealed class ExchangeTabViewModelTests
         ManagementScreenViewModel management = new(gameModel, gameViewModel, ScreenMusic.Keep, null, owner => [new ExchangeTabViewModel(gameModel, gameViewModel, owner, stack.Id, otherStack.Id)]);
         ExchangeTabViewModel screen = Assert.IsOfType<ExchangeTabViewModel>(management.Tabs[0]);
 
-        Assert.That(screen.TabHeader, Is.EqualTo("Exchange"));
+        Assert.That(screen.TabHeader, Is.EqualTo("Exchange: name"));
         Assert.That(screen.Leader, Is.EqualTo(new StackLeaderViewModel(
             new AssetSpriteKey.UnitEventPortrait(ScenarioEventPortraitId.Unit(leaderDefinition.Id)),
             "name",
@@ -432,7 +432,7 @@ public sealed class ExchangeTabViewModelTests
                 false,
                 false,
                 false,
-                new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor)),
+                new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor), false),
                 new StatValueViewModel(TextSpans.FromText("10"), 0),
                 null,
                 null,
@@ -446,7 +446,9 @@ public sealed class ExchangeTabViewModelTests
                 null,
                 new StatRowViewModel(IconMoniker.Leadership, "Leadership", new StatValueViewModel(TextSpans.FromText("3"), 0), null),
                 [],
-                []))));
+                [],
+                Summons: null,
+                GrantedWards: null))));
         Assert.That(screen.OtherLeader, Is.EqualTo(new StackLeaderViewModel(
             new AssetSpriteKey.UnitEventPortrait(ScenarioEventPortraitId.Unit(leaderDefinition.Id)),
             "name",
@@ -469,7 +471,7 @@ public sealed class ExchangeTabViewModelTests
                 false,
                 false,
                 false,
-                new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor)),
+                new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor), false),
                 new StatValueViewModel(TextSpans.FromText("10"), 0),
                 null,
                 null,
@@ -483,7 +485,9 @@ public sealed class ExchangeTabViewModelTests
                 null,
                 new StatRowViewModel(IconMoniker.Leadership, "Leadership", new StatValueViewModel(TextSpans.FromText("3"), 0), null),
                 [],
-                []))));
+                [],
+                Summons: null,
+                GrantedWards: null))));
         Assert.That(FindSlot(screen.StackGrid, GridPosition.FrontBottom).HasUnit, Is.True);
         Assert.That(FindSlot(screen.StackGrid, GridPosition.FrontCenter).HasUnit, Is.True);
         Assert.That(FindSlot(screen.OtherStackGrid, GridPosition.FrontBottom).HasUnit, Is.True);

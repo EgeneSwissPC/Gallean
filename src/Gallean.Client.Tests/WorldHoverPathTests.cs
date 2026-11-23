@@ -129,6 +129,62 @@ public sealed class WorldHoverPathTests
         Assert.That(GetSelectedPath(world), Is.Null);
     }
 
+    // Upstream 0.17 (651e4200): a tile next to the entrance counts as the site. One click on a site walks the army to
+    // the nearest such tile and opens the site screen, like upstream's second click does.
+    [Test]
+    public async Task SingleClickEntersSiteTest()
+    {
+        WorldMap map = TestHelpers.SimpleMap(8, 8);
+        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map);
+        WorldMerchantSite site = new(
+            Id: new WorldSiteId("merchant"),
+            Footprint: new WorldFootprint(new WorldPosition(2, 2), 3, 3),
+            Variant: new WorldObjectVariant(0),
+            TitleTextId: new ScenarioTextId("Title"),
+            GreetingTextId: new ScenarioTextId("Greeting"),
+            Items: [],
+            VisitorIds: [],
+            AiPriority: 3);
+        WorldStack stack = TestHelpers.SimpleStack(
+            new WorldStackId("Stack1"),
+            player.Id,
+            new WorldPosition(7, 7),
+            TestHelpers.SingleUnitGrid(new WorldUnitId("leader"), Leader),
+            movementPoints: 24);
+
+        (GameSession session, _) = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(Leader)
+            .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
+            .WithPlayer(player)
+            .WithSite(site)
+            .WithSubrace(TestHelpers.NeutralSubrace)
+            .WithStack(stack)
+            .BuildSession();
+
+        GameModel gameModel = new(session, TestGameTextProvider.Instance, NullLog.Instance, SynchronousTaskScheduler.Instance);
+        GameViewModel gameViewModel = new TestGameViewModelBuilder()
+            .WithSettings(GameSettings.Default with { ShowPathOnHover = true })
+            .Build();
+        WorldScreenViewModel world = new(gameModel, gameViewModel, new RandomProvider(0));
+        gameViewModel.ShowScreen(world);
+        world.CompleteGameStart();
+
+        await world.HandleMapClickAsync(stack.Position, null, 1);
+        world.UpdateHover(new WorldPosition(3, 3), null);
+        await world.HandleMapClickAsync(new WorldPosition(3, 3), null, 1);
+
+        for (int i = 0; i < 20 && gameViewModel.TopScreen is WorldScreenViewModel; i++)
+        {
+            world.CompleteAnimation();
+        }
+
+        Assert.That(gameViewModel.TopScreen, Is.InstanceOf<ManagementScreenViewModel>());
+        WorldPosition position = gameModel.Snapshot.WorldState.Stacks[stack.Id].Position;
+        Assert.That(position.GetDistance(site.Entrance), Is.LessThanOrEqualTo(1));
+        Assert.That(position, Is.Not.EqualTo(site.Entrance), "it stops next to the entrance");
+    }
+
     [Test]
     public async Task PartialMoveKeepsDestinationTest()
     {

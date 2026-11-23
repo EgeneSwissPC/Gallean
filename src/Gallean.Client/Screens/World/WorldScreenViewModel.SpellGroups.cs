@@ -95,7 +95,8 @@ internal sealed partial class WorldScreenViewModel
                 Game.ShowError(WorldCommandErrorFormatter.Format(result.Error.Value));
             }
 
-            if (CanCastSpellNow(spell.SpellId))
+            // After an error the spell stays selected, as in upstream (385a887a); after a cast while it can be cast again.
+            if (result.Failed || CanCastSpellNow(spell.SpellId))
             {
                 SelectAction(action);
             }
@@ -105,12 +106,6 @@ internal sealed partial class WorldScreenViewModel
     // The next spell may be cast while the last one's animation still plays (the click isn't lost): only the
     // engine work and the turn matter, not the queue of map animations.
     private bool CanCastDuringAnimations => !base.IsBusy && Snapshot.IsViewPlayerTurn && activeMove is null;
-
-    // The spellbook opens while a spell animation still plays (B or the button), like the next cast can.
-    private bool CanOpenSpellbook()
-    {
-        return !IsBusy || CanCastDuringAnimations;
-    }
 
     // A new cast cuts the spell animations still playing or waiting (from an earlier spell or group) short, so
     // the new spell shows at once instead of after the old ones. Other animations (moves, battles) stay.

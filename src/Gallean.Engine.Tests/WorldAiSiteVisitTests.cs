@@ -84,6 +84,16 @@ public sealed class WorldAiSiteVisitTests
         Assert.That(FirstPlan(AiPersonalities.ClassicPlusId, Mercenaries(), Entrance, 2000).Command, Is.InstanceOf<WorldPurchaseMercenaryCommand>());
     }
 
+    // Upstream 0.17 (651e4200): a tile next to the entrance counts as the site, so our AIs shop from there.
+    [Test]
+    public void MercenaryNextToEntranceTest()
+    {
+        WorldPosition next = new(Entrance.X + 1, Entrance.Y + 1);
+
+        Assert.That(FirstPlan(AiBrainRegistry.ClassicId, Mercenaries(), next, 2000).Command, Is.Not.InstanceOf<WorldPurchaseMercenaryCommand>());
+        Assert.That(FirstPlan(AiPersonalities.ClassicPlusId, Mercenaries(), next, 2000).Command, Is.InstanceOf<WorldPurchaseMercenaryCommand>());
+    }
+
     [Test]
     public void TrainerAtSiteTest()
     {

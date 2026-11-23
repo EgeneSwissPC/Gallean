@@ -31,7 +31,7 @@ internal sealed partial class BattleScreenViewModel
     private void OpenNoFleeResolvePrompt()
     {
         Game.OpenScreen(new ConfirmPromptViewModel(
-            Tr("Instant resolve"),
+            TrSpans("Instant resolve"),
             TrSpans("Would you like to resolve the rest of the battle automatically, without your army fleeing?"),
             Tr("Resolve"),
             ConfirmPromptType.Primary,

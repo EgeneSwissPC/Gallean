@@ -434,6 +434,10 @@ Phase 5 — done (merged as `6fdf1a8c`): army templates (screen from the events 
 order) and the army blocks (create, attack, move, move next to, remove, change sides, five order blocks), plus the
 ambush recipe. Tests: `TemplateSaveAndLoadTest`, `AmbushPlayTest`, `AmbushBattleTest`, `EventArmiesTest`; suite
 5229. Real client: moving into the pass showed the ambush message and opened the battle.
+Follow-up with the upstream v0.17.1 merge: a template's leader gets a hero name ("Hero name" button in the row, the
+game's own hero name prompt, max 20 letters; empty = random name as before). Saved in the events file and written as
+the template's NAME_TXT, which the game reads since upstream e8c3f48d. Test: `TemplateLeaderNameTest` (saved,
+written, the created army's leader carries it).
 
 Phase 6 — done (merged as `1fe6e210`): every condition and effect kind of the game (items, spells, diplomacy,
 alliances, land share, sites, certain armies in zones and cities, items brought to zones, terrain, mountains,

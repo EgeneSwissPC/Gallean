@@ -890,7 +890,7 @@ public sealed class CityTabViewModelTests
                     false,
                     false,
                     false,
-                    new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor)),
+                    new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor), false),
                     new StatValueViewModel(TextSpans.FromText("10"), 0),
                     null,
                     null,
@@ -904,7 +904,9 @@ public sealed class CityTabViewModelTests
                     null,
                     new StatRowViewModel(IconMoniker.Leadership, "Leadership", new StatValueViewModel(TextSpans.FromText("3"), 0), null),
                     [],
-                    [new UnitPermanentModifierViewModel(UnitPermanentModifierType.Common, IconMoniker.Armor, "+20 armor", "From city", null, 1, [])]))));
+                    [new UnitPermanentModifierViewModel(UnitPermanentModifierType.Common, IconMoniker.Armor, "+20 armor", "From city", null, 1, [])],
+                    Summons: null,
+                    GrantedWards: null))));
             Assert.That(screen.StackGridTitle, Is.EqualTo("name's party"));
             Assert.That(screen.StackLeadership, Is.EqualTo("2 / 3"));
             Assert.That(screen.GarrisonCapacity, Is.EqualTo("0 / 3"));
@@ -926,7 +928,7 @@ public sealed class CityTabViewModelTests
             false,
             false,
             false,
-            new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor)),
+            new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor), false),
             new StatValueViewModel(TextSpans.FromText("10"), 0),
             null,
             null,
@@ -940,7 +942,9 @@ public sealed class CityTabViewModelTests
             null,
             null,
             [],
-            [new UnitPermanentModifierViewModel(UnitPermanentModifierType.Common, IconMoniker.Armor, "+20 armor", "From city", null, 1, [])])));
+            [new UnitPermanentModifierViewModel(UnitPermanentModifierType.Common, IconMoniker.Armor, "+20 armor", "From city", null, 1, [])],
+            Summons: null,
+            GrantedWards: null)));
 
         await soldierSlot.SelectCommand.ExecuteAsync(null);
 
@@ -966,7 +970,7 @@ public sealed class CityTabViewModelTests
                 false,
                 false,
                 false,
-                new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor)),
+                new UnitAttackViewModel("Damage", new UnitAttackSourceViewModel(IconMoniker.AttackSourceWeapon, "Weapon", Theme.AttackSource.WeaponColor), false),
                 new StatValueViewModel(TextSpans.FromText("10"), 0),
                 null,
                 null,
@@ -980,7 +984,9 @@ public sealed class CityTabViewModelTests
                 null,
                 new StatRowViewModel(IconMoniker.Leadership, "Leadership", new StatValueViewModel(TextSpans.FromText("3"), 0), null),
                 [],
-                [new UnitPermanentModifierViewModel(UnitPermanentModifierType.Common, IconMoniker.Armor, "+20 armor", "From city", null, 1, [])]))));
+                [new UnitPermanentModifierViewModel(UnitPermanentModifierType.Common, IconMoniker.Armor, "+20 armor", "From city", null, 1, [])],
+                Summons: null,
+                GrantedWards: null))));
     }
 
     [Test]
@@ -1056,6 +1062,11 @@ public sealed class CityTabViewModelTests
     {
         WorldMap map = TestHelpers.SimpleMap(8, 8);
 
+        UnitDefinition leaderDefinition = TestHelpers.SimpleLeaderDefinition(
+            TestHelpers.SimpleUnitDefinition("leader", maxHitpoints: 100, initiative: 50, damage: 10),
+            movementPoints: 20, leadership: 3);
+        UnitDefinition soldierDefinition = TestHelpers.SimpleUnitDefinition("soldier", maxHitpoints: 35, initiative: 50, damage: 10);
+
         WorldPlayerBuildingDefinition tower = new(
             Id: new WorldPlayerBuildingDefinitionId("G000BB0012"),
             NameTextId: new GlobalTextId("Tower"),
@@ -1075,18 +1086,13 @@ public sealed class CityTabViewModelTests
             UnitBranch: null,
             Level: 1,
             Cost: WorldResourceSet.Empty,
-            UnitIds: []);
+            UnitIds: [soldierDefinition.Id]);
 
         WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map) with
         {
             Resources = new WorldResourceSet(100, 0, 0, 0, 0, 0),
             Buildings = new WorldPlayerBuildings([], [tower.Id, hall.Id])
         };
-
-        UnitDefinition leaderDefinition = TestHelpers.SimpleLeaderDefinition(
-            TestHelpers.SimpleUnitDefinition("leader", maxHitpoints: 100, initiative: 50, damage: 10),
-            movementPoints: 20, leadership: 3);
-        UnitDefinition soldierDefinition = TestHelpers.SimpleUnitDefinition("soldier", maxHitpoints: 35, initiative: 50, damage: 10);
 
         WorldUnit soldier = new(new WorldUnitId("soldier"), soldierDefinition.Id, 35, 0, soldierDefinition.Level, [], null, false);
 
@@ -1139,30 +1145,41 @@ public sealed class CityTabViewModelTests
             new(
                 new AssetSpriteKey.CapitalBackground(WorldRace.Human, 0),
                 AnimationKey: null,
+                Building: null,
                 IsConstructed: false),
             new(
                 new AssetSpriteKey.CapitalBackground(WorldRace.Human, 1),
                 AnimationKey: null,
+                Building: null,
                 IsConstructed: false),
             new(
                 SpriteKey: null,
                 AnimationKey: new AssetAnimationKey.CapitalBackgroundOverlay(WorldRace.Human, 0),
+                Building: null,
                 IsConstructed: false),
             new(
                 SpriteKey: null,
                 AnimationKey: new AssetAnimationKey.CapitalBuilding(new WorldPlayerBuildingDefinitionId("G000BB0012")),
+                Building: new CapitalBuildingViewModel(new AssetSpriteKey.BuildingIcon(new WorldPlayerBuildingDefinitionId("G000BB0012")), "Tower", "Tower description", []),
                 IsConstructed: false),
             new(
                 new AssetSpriteKey.CapitalBackground(WorldRace.Human, 2),
                 AnimationKey: null,
+                Building: null,
                 IsConstructed: false),
             new(
                 SpriteKey: null,
                 AnimationKey: new AssetAnimationKey.CapitalBackgroundOverlay(WorldRace.Human, 1),
+                Building: null,
                 IsConstructed: false),
             new(
                 SpriteKey: null,
                 AnimationKey: new AssetAnimationKey.CapitalBuilding(new WorldPlayerBuildingDefinitionId("G000BB0023")),
+                Building: new CapitalBuildingViewModel(
+                    new AssetSpriteKey.BuildingIcon(new WorldPlayerBuildingDefinitionId("G000BB0023")),
+                    "Hall",
+                    "Hall description",
+                    [new CapitalBuildingUnitViewModel(new AssetSpriteKey.UnitPortrait(new UnitDefinitionId("soldier")), "name")]),
                 IsConstructed: false)
         ];
 
@@ -1831,7 +1848,8 @@ public sealed class CityTabViewModelTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(prompt.Message, Is.EqualTo(new TextSpans([new TextSpan("Upgrade the city to ", TextStyle.None), new TextSpan("level 2", TextStyle.Highlight), new TextSpan("? This will increase garrison capacity, regeneration and armor bonus.", TextStyle.None)])));
+            Assert.That(prompt.Title, Is.EqualTo(new TextSpans([new TextSpan("Upgrade city to ", TextStyle.None), new TextSpan("level 2", TextStyle.Highlight)])));
+            Assert.That(prompt.Message, Is.EqualTo(new TextSpans([new TextSpan("This will increase garrison capacity, regeneration and armor bonus.", TextStyle.None)])));
             Assert.That(prompt.ConfirmPrice, Is.EqualTo(new ResourceSetViewModel(new WorldResourceSet(150, 0, 0, 0, 0, 0), ResourceSetProjection.All)));
         }
 
@@ -1916,7 +1934,8 @@ public sealed class CityTabViewModelTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(prompt.Message, Is.EqualTo(new TextSpans([new TextSpan("Upgrade the city to ", TextStyle.None), new TextSpan("level 2", TextStyle.Highlight), new TextSpan("? This will increase garrison capacity, regeneration and armor bonus.", TextStyle.None)])));
+            Assert.That(prompt.Title, Is.EqualTo(new TextSpans([new TextSpan("Upgrade city to ", TextStyle.None), new TextSpan("level 2", TextStyle.Highlight)])));
+            Assert.That(prompt.Message, Is.EqualTo(new TextSpans([new TextSpan("This will increase garrison capacity, regeneration and armor bonus.", TextStyle.None)])));
             Assert.That(prompt.ConfirmPrice, Is.EqualTo(new ResourceSetViewModel(new WorldResourceSet(75, 0, 0, 0, 0, 0), ResourceSetProjection.All)));
         }
 
@@ -2215,7 +2234,7 @@ public sealed class CityTabViewModelTests
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(prompt.Title, Is.EqualTo("Dismiss unit"));
+            Assert.That(prompt.Title, Is.EqualTo(new TextSpans([new TextSpan("Dismiss unit", TextStyle.None)])));
             Assert.That(prompt.Message, Is.EqualTo(new TextSpans([new TextSpan("Are you sure you want to dismiss ", TextStyle.None), new TextSpan("name", TextStyle.Highlight), new TextSpan("?", TextStyle.None)])));
             Assert.That(prompt.ConfirmLabel, Is.EqualTo("Dismiss"));
         }
@@ -2308,17 +2327,20 @@ public sealed class CityTabViewModelTests
     }
 
     [Test]
-    public async Task LockTypeTargetTest()
+    public async Task DismissTargetTest()
     {
         WorldMap map = TestHelpers.SimpleMap(8, 8);
 
         WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map);
 
         UnitDefinition squireDefinition = TestHelpers.SimpleUnitDefinition("squire", maxHitpoints: 100, initiative: 40, damage: 10);
-        UnitDefinition knightDefinition = TestHelpers.SimpleUnitDefinition("knight", maxHitpoints: 200, initiative: 50, damage: 20);
+        UnitDefinition guardianDefinition = TestHelpers.SimpleUnitDefinition("guardian", maxHitpoints: 200, initiative: 50, damage: 20) with
+        {
+            Category = UnitCategory.Guardian
+        };
 
         WorldUnit squire = TestHelpers.SimpleUnit(new WorldUnitId("squire"), squireDefinition);
-        WorldUnit knight = TestHelpers.SimpleUnit(new WorldUnitId("knight"), knightDefinition);
+        WorldUnit guardian = TestHelpers.SimpleUnit(new WorldUnitId("guardian"), guardianDefinition);
 
         WorldCityDefinition cityDefinition = TestHelpers.SimpleCityDefinition(new WorldCityDefinitionId(WorldRace.Human, 1), WorldResourceSet.Empty);
 
@@ -2329,7 +2351,7 @@ public sealed class CityTabViewModelTests
             new WorldPosition(4, 4),
             new UnitGrid<WorldUnit>.Builder()
                 .Place(squire, GridPosition.FrontBottom, false)
-                .Place(knight, GridPosition.FrontCenter, false)
+                .Place(guardian, GridPosition.FrontCenter, false)
                 .Build());
 
         (GameSession session, _) = new TestWorldEngineBuilder()
@@ -2337,8 +2359,7 @@ public sealed class CityTabViewModelTests
             .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
             .WithPlayer(player)
             .WithDefinition(squireDefinition)
-            .WithDefinition(knightDefinition)
-            .WithUnitUpgrade(new UnitUpgradeDefinition(squireDefinition.Id, knightDefinition.Id, RequiredBuildingId: null))
+            .WithDefinition(guardianDefinition)
             .WithDefinition(cityDefinition)
             .WithCity(city)
             .WithSubrace(TestHelpers.NeutralSubrace)
@@ -2352,19 +2373,40 @@ public sealed class CityTabViewModelTests
         ManagementScreenViewModel management = new(gameModel, gameViewModel, ScreenMusic.Keep, null, owner => [new CityTabViewModel(gameModel, gameViewModel, owner, city.Id)]);
         CityTabViewModel screen = Assert.IsOfType<CityTabViewModel>(management.Tabs[0]);
 
-        screen.LockTypeCommand.Execute(null);
+        screen.DismissCommand.Execute(null);
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(screen.TargetedAction, Is.EqualTo(CityTabViewModel.UnitActionType.LockType));
-            Assert.That(screen.TargetingPromptText, Is.EqualTo("Select a unit to lock its type."));
+            Assert.That(screen.TargetedAction, Is.EqualTo(CityTabViewModel.UnitActionType.Dismiss));
+            Assert.That(screen.TargetingPromptText, Is.EqualTo("Select a unit to dismiss it."));
             Assert.That(screen.GarrisonGrid.Slots.Select(slot => slot.IsHighlighted), Is.EqualTo([true, false, false, false, false, false]));
         }
+
+        await FindSlot(screen.GarrisonGrid, GridPosition.FrontCenter).SelectCommand.ExecuteAsync(null);
+
+        Assert.That(session.World.State, Is.EqualTo(initialState));
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(gameViewModel.TopScreen, Is.Null);
+            Assert.That(screen.TargetedAction, Is.EqualTo(CityTabViewModel.UnitActionType.Dismiss));
+            Assert.That(screen.Game.Alert.Current, Is.EqualTo(new Alert(AlertType.Error, IconMoniker.Warning, "The guardian cannot be dismissed", Details: null)));
+        }
+
+        screen.Game.Alert.Dismiss();
 
         UnitGridSlotViewModel slot = FindSlot(screen.GarrisonGrid, GridPosition.FrontBottom);
         await slot.SelectCommand.ExecuteAsync(null);
 
         ConfirmPromptViewModel prompt = Assert.IsOfType<ConfirmPromptViewModel>(gameViewModel.TopScreen);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(prompt.Title, Is.EqualTo(new TextSpans([new TextSpan("Dismiss unit", TextStyle.None)])));
+            Assert.That(prompt.Message, Is.EqualTo(new TextSpans([new TextSpan("Are you sure you want to dismiss ", TextStyle.None), new TextSpan("name", TextStyle.Highlight), new TextSpan("?", TextStyle.None)])));
+            Assert.That(prompt.ConfirmLabel, Is.EqualTo("Dismiss"));
+        }
+
         await prompt.ConfirmCommand.ExecuteAsync(null);
 
         Assert.That(session.World.State, Is.EqualTo(initialState with
@@ -2372,16 +2414,15 @@ public sealed class CityTabViewModelTests
             Fortifications = initialState.Fortifications.SetItem(city.Id, initialState.Fortifications[city.Id] with
             {
                 Garrison = new UnitGrid<WorldUnit>.Builder()
-                    .Place(squire with { IsTypeLocked = true }, GridPosition.FrontBottom, false)
-                    .Place(knight, GridPosition.FrontCenter, false)
+                    .Place(guardian, GridPosition.FrontCenter, false)
                     .Build()
             })
         }));
 
         using (Assert.EnterMultipleScope())
         {
-            Assert.That(screen.TargetedAction, Is.EqualTo(CityTabViewModel.UnitActionType.LockType));
-            Assert.That(screen.TargetingPromptText, Is.EqualTo("Select a unit to lock its type."));
+            Assert.That(screen.TargetedAction, Is.EqualTo(CityTabViewModel.UnitActionType.Dismiss));
+            Assert.That(screen.TargetingPromptText, Is.EqualTo("Select a unit to dismiss it."));
             Assert.That(screen.GarrisonGrid.Slots.Select(slot => slot.IsHighlighted), Is.EqualTo([false, false, false, false, false, false]));
         }
 
@@ -2394,13 +2435,13 @@ public sealed class CityTabViewModelTests
             Assert.That(screen.Game.Alert.Current, Is.Null);
         }
 
-        screen.LockTypeCommand.Execute(null);
+        screen.DismissCommand.Execute(null);
 
         using (Assert.EnterMultipleScope())
         {
             Assert.That(screen.TargetedAction, Is.Null);
             Assert.That(screen.TargetingPromptText, Is.Null);
-            Assert.That(screen.Game.Alert.Current, Is.EqualTo(new Alert(AlertType.Info, IconMoniker.Locked, "No units can have their type locked", Details: null)));
+            Assert.That(screen.Game.Alert.Current, Is.EqualTo(new Alert(AlertType.Info, IconMoniker.Delete, "No units can be dismissed", Details: null)));
         }
     }
 

@@ -296,7 +296,7 @@ public sealed class ManagementScreenViewModelTests
 
         Assert.That(FormatTabs(screen.Tabs), Is.EqualTo([
             "Party | selected",
-            "Exchange | not selected"
+            "Exchange: name | not selected"
         ]));
     }
 
@@ -626,7 +626,7 @@ public sealed class ManagementScreenViewModelTests
 
         Assert.That(audioPlayer.Actions, Is.EqualTo([
             "Sound:interface-open",
-            "Music:capital-music/human/0,capital-music/human/1,capital-music/human/2"
+            "Music:capital-music/human/0,capital-music/human/1,capital-music/human/2,capital-music/human/3,capital-music/human/4,capital-music/human/5"
         ]));
     }
 
@@ -788,7 +788,7 @@ public sealed class ManagementScreenViewModelTests
 
         Assert.That(audioPlayer.Actions, Is.EqualTo([
             "Sound:interface-open",
-            "Music:capital-music/human/0,capital-music/human/1,capital-music/human/2",
+            "Music:capital-music/human/0,capital-music/human/1,capital-music/human/2,capital-music/human/3,capital-music/human/4,capital-music/human/5",
             "Sound:book-open",
             "Sound:book-close"
         ]));

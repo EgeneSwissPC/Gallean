@@ -3,6 +3,7 @@
              xmlns:local="clr-namespace:Gallean.Client"
              xmlns:texts="clr-namespace:Gallean.Client.Texts;assembly=Gallean.Client.Texts"
              x:Class="Gallean.Client.MapEditorScreenView"
+             x:Name="EditorScreen"
              x:DataType="local:MapEditorScreenViewModel">
 
   <!-- Copied from WorldScreenView: used by the right-click info templates below. -->
@@ -227,20 +228,20 @@
                                 ClipToBounds="False" />
                 <Grid ColumnDefinitions="Auto,*"
                       ColumnSpacing="12"
-                      IsVisible="{Binding Item, Converter={x:Static ObjectConverters.IsNotNull}}">
+                      IsVisible="{Binding #EditorScreen.((local:MapEditorScreenViewModel)DataContext).PositionRuinContents.ItemName, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}">
                   <Panel Grid.Column="0" Classes="inventory-slot">
                     <local:PlateChrome Classes="socket" />
-                    <local:SpriteVisual SpriteKey="{Binding Item.SpriteKey, FallbackValue={x:Null}}" Stretch="Uniform" />
+                    <local:SpriteVisual SpriteKey="{Binding #EditorScreen.((local:MapEditorScreenViewModel)DataContext).PositionRuinContents.ItemSpriteKey, FallbackValue={x:Null}}" Stretch="Uniform" />
                   </Panel>
                   <local:OutlinedTextBlock Grid.Column="1"
-                                           Text="{Binding Item.Name, FallbackValue=''}"
+                                           Text="{Binding #EditorScreen.((local:MapEditorScreenViewModel)DataContext).PositionRuinContents.ItemName, FallbackValue=''}"
                                            Classes="object-name row"
                                            VerticalAlignment="Center"
                                            TextWrapping="Wrap" />
                 </Grid>
-                <ContentControl Content="{Binding Reward}"
+                <ContentControl Content="{Binding #EditorScreen.((local:MapEditorScreenViewModel)DataContext).PositionRuinContents.Reward, FallbackValue={x:Null}}"
                                 Classes="body"
-                                IsVisible="{Binding Reward, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                IsVisible="{Binding #EditorScreen.((local:MapEditorScreenViewModel)DataContext).PositionRuinContents.Reward, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue=False}"
                                 HorizontalAlignment="Center"
                                 Foreground="{StaticResource PrimaryTextBrush}" />
                 <StackPanel Orientation="Horizontal"

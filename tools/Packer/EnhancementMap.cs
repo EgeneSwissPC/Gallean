@@ -57,6 +57,8 @@ internal static class EnhancementMap
             AssetSpriteKey.BuildingIcon => [EnhancementType.Upscale],
             AssetSpriteKey.CapitalBackground background when RefineMap.CanRefine(background) => [EnhancementType.Upscale, EnhancementType.Refine, EnhancementType.Alpha],
             AssetSpriteKey.CapitalBackground => [EnhancementType.Upscale],
+            AssetSpriteKey.CapitalBackgroundV2 background when RefineMap.CanRefine(background) => [EnhancementType.Upscale, EnhancementType.Refine, EnhancementType.Alpha],
+            AssetSpriteKey.CapitalBackgroundV2 => [EnhancementType.Upscale],
             AssetSpriteKey.CityShield => [EnhancementType.Upscale],
             AssetSpriteKey.Ground => [EnhancementType.Upscale],
             AssetSpriteKey.GroundBorder border => border.Set switch
@@ -118,6 +120,7 @@ internal static class EnhancementMap
             AssetAnimationKey.BattleUnitAura aura when RefineMap.CanRefine(aura) => [EnhancementType.Upscale, EnhancementType.Refine, EnhancementType.Alpha],
             AssetAnimationKey.BattleUnitAura => [EnhancementType.Upscale],
             AssetAnimationKey.BattleUnitShadow => [EnhancementType.Upscale],
+            AssetAnimationKey.BriefingVideo => [EnhancementType.Upscale],
             AssetAnimationKey.Capital => [EnhancementType.Upscale],
             AssetAnimationKey.BattleBackgroundOverlay => [],
             AssetAnimationKey.CapitalBackgroundOverlay overlay when RefineMap.CanRefine(overlay) => [EnhancementType.Upscale, EnhancementType.Refine, EnhancementType.Alpha],

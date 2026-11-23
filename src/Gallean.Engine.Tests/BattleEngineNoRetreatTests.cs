@@ -7,8 +7,9 @@ public sealed class BattleEngineNoRetreatTests
     private static readonly BattleUnitId AllyId = new(1);
     private static readonly BattleUnitId EnemyId = new(2);
 
-    // A leader and an ally against an enemy far too strong for them: the AI flees with the leader.
-    private static BattleEngine StrongEnemyBattle(int leaderDamage = 10, int enemyDamage = 100, int enemyHitpoints = 600)
+    // A leader and an ally against an enemy far too strong for them: the AI flees with the leader. The enemy hits
+    // for less than the leader's hitpoints, so the retreat is safe (upstream 0.17: no retreat that ends in death).
+    private static BattleEngine StrongEnemyBattle(int leaderDamage = 10, int enemyDamage = 90, int enemyHitpoints = 600)
     {
         UnitDefinition leaderDefinition = TestHelpers.SimpleUnitDefinition("leader", maxHitpoints: 100, initiative: 50, damage: leaderDamage) with
         {
@@ -42,7 +43,7 @@ public sealed class BattleEngineNoRetreatTests
     {
         IReadOnlyList<BattleEvent> events = Dispatch(StrongEnemyBattle(), new BattleAiActionCommand(CanUseItems: false));
 
-        Assert.That(events, Does.Contain(new BattleUnitRetreatingEvent(LeaderId)));
+        Assert.That(events.OfType<BattleUnitRetreatingEvent>().Select(ev => ev.UnitId), Does.Contain(LeaderId));
     }
 
     [Test]
@@ -104,5 +105,44 @@ public sealed class BattleEngineNoRetreatTests
         Assert.That(events.OfType<BattleUnitRetreatingEvent>(), Is.Not.Empty);
         Assert.That(engine.State.Outcome, Is.Not.Null);
         Assert.That(engine.State.RoundNumber, Is.GreaterThan(45));
+    }
+
+    // Upstream 0.17 (609292b6): a unit that waited and then retreats needs one more turn to escape, so Wait then
+    // Retreat is its own path. The leader waits; when its turn comes back, Refuse to flee must still never retreat it.
+    [TestCase(true)]
+    [TestCase(false)]
+    public void WaitThenRetreatTest(bool canRetreat)
+    {
+        // The enemy hits for 40, so a leader hit while waiting can still retreat safely.
+        BattleEngine engine = StrongEnemyBattle(enemyDamage: 40);
+        Assert.That(engine.State.CurrentUnitId, Is.EqualTo(LeaderId));
+        Dispatch(engine, new BattleWaitCommand(LeaderId));
+
+        List<BattleEvent> leaderEvents = [];
+
+        for (int i = 0; i < 10 && engine.State.Outcome is null && leaderEvents.Count == 0; i++)
+        {
+            bool isLeader = engine.State.CurrentUnitId == LeaderId;
+            bool isAttacker = engine.State.CurrentUnit.Side == BattleSide.Attacker;
+            IReadOnlyList<BattleEvent> events = Dispatch(engine, new BattleAiActionCommand(CanUseItems: false, CanRetreat: !isAttacker || canRetreat));
+
+            if (isLeader)
+            {
+                leaderEvents.AddRange(events);
+            }
+        }
+
+        Assert.That(leaderEvents, Is.Not.Empty, "the leader's turn came back after the wait");
+
+        if (canRetreat)
+        {
+            // Control: Classic retreats here, and the wait costs the extra turn.
+            Assert.That(leaderEvents.OfType<BattleUnitRetreatingEvent>().Select(ev => (ev.UnitId, ev.RemainingTurns)), Does.Contain((LeaderId, 2)));
+        }
+        else
+        {
+            Assert.That(leaderEvents.OfType<BattleUnitRetreatingEvent>(), Is.Empty);
+            Assert.That(engine.State.GetUnit(LeaderId).StatusEffects.OfType<BattleRetreatStatusEffect>(), Is.Empty);
+        }
     }
 }

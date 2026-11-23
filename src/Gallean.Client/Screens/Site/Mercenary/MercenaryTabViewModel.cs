@@ -160,7 +160,7 @@ internal sealed partial class MercenaryTabViewModel
 
         if (!WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) ||
             stack.OwnerId != ViewPlayerId ||
-            stack.Position != site.Entrance)
+            !site.IsEntranceAt(stack.Position))
         {
             Screen.Close();
             return;
@@ -175,7 +175,7 @@ internal sealed partial class MercenaryTabViewModel
 
         SiteTitle = GameModel.Texts.GetScenarioText(site.TitleTextId);
         SiteGreeting = GameModel.Texts.GetScenarioText(site.GreetingTextId);
-        Stack.Update(stack, showsPurchaseHints: true, BuildUnitHighlight(stack));
+        Stack.Update(stack, ResolveStackInfo(), showsPurchaseHints: true, BuildUnitHighlight(stack));
 
         Mercenaries = BuildMercenaries(info);
         Offer = BuildOffer(info);
@@ -248,6 +248,21 @@ internal sealed partial class MercenaryTabViewModel
         return null;
     }
 
+    private WorldGetStackInfoCommand.Result ResolveStackInfo()
+    {
+        ICommandResult<WorldCommandError, WorldEvent, WorldGetStackInfoCommand.Result> result =
+            GameModel.World.DryRunCommand(new WorldGetStackInfoCommand(stackId));
+
+        if (result.Failed)
+        {
+            return new WorldGetStackInfoCommand.Result([], OccupiedLeadership: 0, TotalLeadership: 0);
+        }
+        else
+        {
+            return result.Data;
+        }
+    }
+
     private WorldGetMercenaryInfoCommand.Result ResolveMercenaryInfo()
     {
         ICommandResult<WorldCommandError, WorldEvent, WorldGetMercenaryInfoCommand.Result> result =
@@ -282,8 +297,9 @@ internal sealed partial class MercenaryTabViewModel
     {
         WorldResourceSet resources = WorldState.Players[ViewPlayerId].Resources;
         List<MercenaryItemViewModel> result = [];
+        IEnumerable<WorldGetMercenaryInfoCommand.Mercenary> mercenaries = info.Mercenaries.OrderBy(mercenary => mercenary.Cost, OfferPriceComparer.Descending);
 
-        foreach (WorldGetMercenaryInfoCommand.Mercenary mercenary in info.Mercenaries)
+        foreach (WorldGetMercenaryInfoCommand.Mercenary mercenary in mercenaries)
         {
             UnitDefinition definition = GameModel.Definitions.GetUnit(mercenary.DefinitionId);
 

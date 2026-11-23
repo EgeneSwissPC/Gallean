@@ -304,7 +304,7 @@ internal sealed partial class WorldRenderContentProvider
             }
 
             SKImageInfo info = new(imageWidth, imageHeight, SKColorType.Alpha8, SKAlphaType.Premul);
-            SKImage image = SKImage.FromPixelCopy(info, chunkPixels.AsSpan(0, imageWidth * imageHeight), imageWidth);
+            using SKImage image = SKImage.FromPixelCopy(info, chunkPixels.AsSpan(0, imageWidth * imageHeight), imageWidth);
             SkiaMemoryPressure.TrackImage(image);
 
             float halfWidth = (float)WorldTransform.TileHalfWidth / SamplesPerTile;

@@ -26,7 +26,9 @@ internal sealed record UnitDetailsViewModel(
     UnitWardGridViewModel? Wards,
     StatRowViewModel? Leadership,
     IReadOnlyList<UnitStatusViewModel> Statuses,
-    IReadOnlyList<UnitPermanentModifierViewModel> PermanentModifiers)
+    IReadOnlyList<UnitPermanentModifierViewModel> PermanentModifiers,
+    UnitSummonsViewModel? Summons,
+    UnitWardGridViewModel? GrantedWards)
 {
     private sealed record AttackDetails(UnitAttackDefinition Attack, UnitAttackStats BaseStats, UnitAttackStats Stats);
 
@@ -81,7 +83,9 @@ internal sealed record UnitDetailsViewModel(
                Wards == other.Wards &&
                Leadership == other.Leadership &&
                Statuses.SequenceEqual(other.Statuses) &&
-               PermanentModifiers.SequenceEqual(other.PermanentModifiers);
+               PermanentModifiers.SequenceEqual(other.PermanentModifiers) &&
+               Summons == other.Summons &&
+               GrantedWards == other.GrantedWards;
     }
 
     public static UnitDetailsViewModel CreateFromBattle(
@@ -125,6 +129,7 @@ internal sealed record UnitDetailsViewModel(
         IReadOnlyList<UnitPermanentModifierViewModel> permanentModifiers = UnitPermanentModifierBuilder.Build(
             stats.GetWorldUnitAbilities(baseUnit),
             definition.MoveAbility,
+            definition.Attack,
             unit.Modifiers,
             GetLeaderUpgrades(owner, definitions),
             definitions,
@@ -157,6 +162,7 @@ internal sealed record UnitDetailsViewModel(
             experience,
             isUpgradeBlocked,
             unit.IsTypeLocked,
+            definitions,
             texts,
             unit.Wards,
             stats.GetBattleUnitLeadership(state, unitId),
@@ -187,6 +193,7 @@ internal sealed record UnitDetailsViewModel(
         IReadOnlyList<UnitPermanentModifierViewModel> permanentModifiers = UnitPermanentModifierBuilder.Build(
             stats.GetWorldUnitAbilities(baseUnit),
             definition.MoveAbility,
+            definition.Attack,
             unit.Modifiers,
             GetLeaderUpgrades(owner, definitions),
             definitions,
@@ -218,6 +225,7 @@ internal sealed record UnitDetailsViewModel(
             experience,
             isUpgradeBlocked,
             unit.IsTypeLocked,
+            definitions,
             texts,
             stats.GetWorldUnitWards(unit),
             stats.GetWorldUnitLeadership(unit),
@@ -255,6 +263,7 @@ internal sealed record UnitDetailsViewModel(
         UnitExperience experience,
         bool isUpgradeBlocked,
         bool isTypeLocked,
+        IGameDefinitionProvider definitions,
         IGameTextProvider texts,
         ImmutableArray<UnitWard> wards,
         int leadership,
@@ -269,6 +278,10 @@ internal sealed record UnitDetailsViewModel(
         else if (attackDetails.BaseStats.Damage > 0 && attackDetails.Stats.Damage > 0)
         {
             damage = new StatValueViewModel(TextSpans.FromText(attackDetails.BaseStats.Damage.ToString()), attackDetails.Stats.Damage - attackDetails.BaseStats.Damage);
+        }
+        else if (attackDetails.BaseStats.IncreaseDamagePercent > 0)
+        {
+            damage = new StatValueViewModel(TextSpans.FromText($"+{attackDetails.BaseStats.IncreaseDamagePercent}%"), attackDetails.Stats.IncreaseDamagePercent - attackDetails.BaseStats.IncreaseDamagePercent);
         }
         else if (secondaryAttackDetails is not null && secondaryAttackDetails.BaseStats.Heal > 0)
         {
@@ -347,7 +360,23 @@ internal sealed record UnitDetailsViewModel(
             CreateWardGrid(wards, UnitWardCategory.Once),
             leadershipRow,
             statuses,
-            permanentModifiers);
+            permanentModifiers,
+            UnitSummonsViewModel.Create(attackDetails.Attack, definitions, texts),
+            CreateWardGrid(GetGrantedWards(attackDetails.Attack, definitions), UnitWardCategory.Once));
+    }
+
+    private static ImmutableArray<UnitWard> GetGrantedWards(UnitAttackDefinition attack, IGameDefinitionProvider definitions)
+    {
+        ImmutableArray<UnitWard>.Builder wards = ImmutableArray.CreateBuilder<UnitWard>();
+
+        foreach (UnitModifierDefinitionId modifierId in attack.WardModifierIds)
+        {
+            UnitModifierDefinition modifier = definitions.GetUnitModifier(modifierId);
+
+            wards.AddRange(modifier.Wards);
+        }
+
+        return wards.ToImmutable();
     }
 
     private static UnitWardGridViewModel? CreateWardGrid(ImmutableArray<UnitWard> wards, UnitWardCategory category)
@@ -445,6 +474,8 @@ internal sealed record UnitDetailsViewModel(
         hash.Add(Leadership);
         hash.AddSequence(Statuses);
         hash.AddSequence(PermanentModifiers);
+        hash.Add(Summons);
+        hash.Add(GrantedWards);
 
         return hash.ToHashCode();
     }

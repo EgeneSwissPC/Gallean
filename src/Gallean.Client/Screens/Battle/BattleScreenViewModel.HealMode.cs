@@ -92,7 +92,7 @@ internal sealed partial class BattleScreenViewModel
     private void OpenHealModeResolvePrompt()
     {
         Game.OpenScreen(new ConfirmPromptViewModel(
-            Tr("Instant resolve"),
+            TrSpans("Instant resolve"),
             TrSpans("Would you like to heal the army instantly and then resolve the rest of the battle automatically?"),
             Tr("Resolve"),
             ConfirmPromptType.Primary,

@@ -647,8 +647,9 @@ public sealed class WorldMoveOrdersTests
             await Task.Yield();
         }
 
-        // The army walked onto the site and the site screen opened during End turn.
-        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(5, 0)));
+        // The site screen opened during End turn. Since upstream 0.17 a tile next to the entrance counts as the
+        // site (651e4200), so the army opens it from where it stopped last turn instead of stepping onto it.
+        Assert.That(PositionOf(setup, First), Is.EqualTo(new WorldPosition(4, 0)));
         ManagementScreenViewModel site = Assert.IsOfType<ManagementScreenViewModel>(setup.GameViewModel.TopScreen);
         Assert.That(task.IsCompleted, Is.False);
 

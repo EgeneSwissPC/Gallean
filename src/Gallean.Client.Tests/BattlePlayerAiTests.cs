@@ -24,7 +24,7 @@ public sealed class BattlePlayerAiTests
 
     private static Task<BattleHealModeTests.Setup> CreateBattleAsync()
     {
-        return BattleHealModeTests.CreateBattleAsync(enemyDamage: 300, enemyHitpoints: 5000, fighterIsLeader: true);
+        return BattleHealModeTests.CreateBattleAsync(enemyDamage: 50, enemyHitpoints: 5000, fighterIsLeader: true);
     }
 
     private static void DriveToEnd(BattleHealModeTests.Setup setup)
@@ -73,7 +73,7 @@ public sealed class BattlePlayerAiTests
         await BattleHealModeTests.FinishAsync(setup, autoTask);
 
         Assert.That(setup.GameViewModel.TopScreen, Is.Not.InstanceOf<ErrorScreenViewModel>());
-        bool fled = Events(setup).Contains(new BattleUnitRetreatingEvent(BattleHealModeTests.FighterId));
+        bool fled = Events(setup).OfType<BattleUnitRetreatingEvent>().Any(ev => ev.UnitId == BattleHealModeTests.FighterId);
         Assert.That(fled, Is.EqualTo(!pick), pick ? "the picked AI never flees" : "control: Classic flees");
     }
 
@@ -91,7 +91,7 @@ public sealed class BattlePlayerAiTests
         setup.ViewModel.AutoResolveCommand.Execute(null);
         await Assert.IsOfType<ConfirmPromptViewModel>(setup.GameViewModel.TopScreen).ConfirmCommand.ExecuteAsync(null);
 
-        bool fled = Events(setup).Contains(new BattleUnitRetreatingEvent(BattleHealModeTests.FighterId));
+        bool fled = Events(setup).OfType<BattleUnitRetreatingEvent>().Any(ev => ev.UnitId == BattleHealModeTests.FighterId);
         Assert.That(fled, Is.EqualTo(!pick), pick ? "the picked AI never flees" : "control: Classic flees");
     }
 }

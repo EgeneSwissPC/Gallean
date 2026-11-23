@@ -68,6 +68,7 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
     }
 
     public IAssetPreloader AssetPreloader { get; }
+    public IAssetMetadataProvider AssetMetadata => assets;
     public IReadOnlyList<AbstractScreenViewModel> Screens => screens.Screens;
     public AbstractScreenViewModel? RootScreen => screens.Root;
     public AbstractScreenViewModel? TopScreen => screens.Top;
@@ -101,7 +102,8 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
                     Settings.UiSize,
                     Settings.LockCursor,
                     Settings.MovementSpeed,
-                    Settings.Language) with { ShowPathOnHover = Settings.ShowPathOnHover, WorldAi = Settings.WorldAi, BattleAi = Settings.BattleAi, TabSkipsOrders = Settings.TabSkipsOrders });
+                    Settings.Language,
+                    Settings.BattlePosition) with { ShowPathOnHover = Settings.ShowPathOnHover, WorldAi = Settings.WorldAi, BattleAi = Settings.BattleAi, TabSkipsOrders = Settings.TabSkipsOrders });
             }
         }
     }
@@ -366,13 +368,27 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
 
         if (briefingId is not null)
         {
+            AssetAnimationKey? video = TryGetBriefingVideo(gameModel);
+            AssetSoundKey? voice = TryGetBriefingVoice(gameModel);
+            MenuBackgroundViewModel? background;
+
+            if (video is null)
+            {
+                background = MenuBackgroundViewModel.TryCreateRaceSelection(GetViewPlayerRace(gameModel));
+            }
+            else
+            {
+                background = null;
+            }
+
             BriefingScreenViewModel briefingViewModel = new(
                 gameModel.Texts.GetScenarioText(nameId),
                 gameModel.Texts.GetScenarioText(briefingId.Value),
                 new ScenarioTextFormatter(gameModel.Texts.Names),
                 gameModel.Texts.GetScenarioText(objectiveId),
-                MenuBackgroundViewModel.TryCreateRaceSelection(GetViewPlayerRace(gameModel)),
-                TryGetBriefingVoice(gameModel),
+                background,
+                video,
+                voice,
                 audioPlayer,
                 () => BeginGameAsync(gameModel, worldScreen));
 
@@ -484,11 +500,25 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
         WorldPlayer player = snapshot.WorldState.Players[snapshot.ViewPlayerId];
         LordDefinition lord = gameModel.Definitions.GetLord(player.LordId);
         ScenarioConfiguration configuration = new(
-            [new ScenarioPlayerConfiguration(player.Race, lord.Category, player.FaceVariant, null, LeaderName: null)],
+            [new ScenarioPlayerConfiguration(player.Race, lord.Category, player.FaceVariant, null, LeaderName: "")],
             snapshot.WorldState.Difficulty,
             scenarioLeader);
 
         await StartGameCommand.ExecuteAsync(new GameConfiguration(scenarioId.Value, configuration));
+    }
+
+    private AssetAnimationKey? TryGetBriefingVideo(GameModel gameModel)
+    {
+        AssetAnimationKey key = new AssetAnimationKey.BriefingVideo(new ScenarioId(gameModel.ScenarioId));
+
+        if (assets.GetOptionalAnimationMetadata(key) is not null)
+        {
+            return key;
+        }
+        else
+        {
+            return null;
+        }
     }
 
     private AssetSoundKey? TryGetBriefingVoice(GameModel gameModel)
@@ -553,10 +583,12 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
             return;
         }
 
-        if (activeGame is not null && activeGame.Snapshot.WorldState != savedState)
+        if (activeGame is not null &&
+            activeGame.Snapshot.WorldState != savedState &&
+            !activeGame.Snapshot.IsGameEnded)
         {
             OpenScreen(new ConfirmPromptViewModel(
-                Tr("Load game"),
+                TrSpans("Load game"),
                 TrSpans("Do you want to load \"{0}\"? Unsaved progress will be lost.", entry.Metadata.Value.Name),
                 Tr("Load"),
                 ConfirmPromptType.Primary,
@@ -716,7 +748,7 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task QuickLoadAsync()
     {
-        if (TopScreen is LoadingScreenViewModel)
+        if (TopScreen is LoadingScreenViewModel or ConfirmPromptViewModel)
         {
             return;
         }
@@ -833,7 +865,13 @@ internal sealed partial class GameViewModel : ObservableObject, IDisposable
                 WorldRenderComposer renderComposer = new(gameModel.Definitions, gameModel.Scenario, assets);
                 WorldRenderState renderState = renderComposer.Compose(renderRequest);
                 WorldPlayer viewPlayer = snapshot.WorldState.Players[snapshot.ViewPlayerId];
-                CapitalSceneViewModel? capitalScene = CapitalSceneViewModel.Create(viewPlayer.Race, viewPlayer.Buildings.Acquired, constructedBuildingId: null);
+                CapitalSceneViewModel? capitalScene = CapitalSceneViewModel.Create(
+                    assets,
+                    viewPlayer.Race,
+                    viewPlayer.Buildings.Acquired,
+                    constructedBuildingId: null,
+                    gameModel.Definitions,
+                    gameModel.Texts);
 
                 return WorldAssetPreloadPlan.BuildWorld(renderState, capitalScene);
             });

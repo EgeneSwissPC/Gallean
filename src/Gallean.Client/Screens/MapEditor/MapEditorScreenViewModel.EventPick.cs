@@ -146,7 +146,7 @@ internal sealed partial class MapEditorScreenViewModel
 
         string names = string.Join(", ", users.Select(ev => ev.Name));
         Game.OpenScreen(new ConfirmPromptViewModel(
-            Tr("Delete {0}", name),
+            TrSpans("Delete {0}", name),
             users.Count == 1
                 ? TrSpans("\"{0}\" is used by the event {1}. Delete it anyway? That block turns red, and the event is left out of the saved map until you fix it.", name, names)
                 : TrSpans("\"{0}\" is used by {1} events: {2}. Delete it anyway? Their blocks turn red, and the events are left out of the saved map until you fix them.", name, users.Count, names),

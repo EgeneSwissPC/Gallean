@@ -10,27 +10,14 @@ internal sealed class LtxLora(Dictionary<string, LtxLoraEntry> entries, double s
         {
             foreach ((string name, torch.Tensor weight) in weights)
             {
-                if (!entries.TryGetValue(prefix + name, out LtxLoraEntry? entry))
+                if (entries.TryGetValue(prefix + name, out LtxLoraEntry? entry))
                 {
-                    continue;
+                    using torch.Tensor delta = Delta(weight, entry.Down, entry.Up, strength);
+
+                    weight.add_(delta);
                 }
-
-                using torch.Tensor delta = Delta(weight, entry.Down, entry.Up, strength);
-
-                weight.add_(delta);
             }
         }
-    }
-
-    public static torch.Tensor Delta(torch.Tensor weight, torch.Tensor down, torch.Tensor up, double strength)
-    {
-        using IDisposable scope = torch.NewDisposeScope();
-
-        using torch.Tensor castDown = down.to(weight.dtype, weight.device);
-        using torch.Tensor castUp = up.to(weight.dtype, weight.device);
-        using torch.Tensor scaledUp = castUp.mul(strength);
-
-        return torch.matmul(scaledUp, castDown).MoveToOuterDisposeScope();
     }
 
     public static torch.Tensor Fuse(torch.Tensor weight, torch.Tensor down, torch.Tensor up, double strength)
@@ -50,5 +37,16 @@ internal sealed class LtxLora(Dictionary<string, LtxLoraEntry> entries, double s
         }
 
         entries.Clear();
+    }
+
+    private static torch.Tensor Delta(torch.Tensor weight, torch.Tensor down, torch.Tensor up, double strength)
+    {
+        using IDisposable scope = torch.NewDisposeScope();
+
+        using torch.Tensor castDown = down.to(weight.dtype, weight.device);
+        using torch.Tensor castUp = up.to(weight.dtype, weight.device);
+        using torch.Tensor scaledUp = castUp.mul(strength);
+
+        return torch.matmul(scaledUp, castDown).MoveToOuterDisposeScope();
     }
 }

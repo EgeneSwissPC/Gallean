@@ -37,6 +37,12 @@ difficulty, with the diagnostic harness logging every AI action.
 | Capital army set in the editor (leader + soldier) | turn 1 |
 | One-line fix below, lone leader | Empire turn 3, Undead turn 4 |
 
+## Update: fixed upstream (v0.16.5)
+
+Upstream applied fix 1 below as 8b60959d ("Block the purchase leader world AI action when the entrance is occupied").
+Since the v0.17.1 merge, Classic's lone capital leader leaves on a fresh custom map too
+(`CustomMapTests.CapitalLeaderLeavesWithClassicPlusTest` now expects that for Classic as well).
+
 ## Possible fixes
 
 1. **AI fix (one line, tested, not applied):** in `WorldAiPlanner.PurchaseLeaderAction`, only return the

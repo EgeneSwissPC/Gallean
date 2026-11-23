@@ -24,7 +24,7 @@ public sealed record GlobalVariables
     internal int AiObjectiveTurnAverage { get; init; } = 50;
     internal int AiObjectiveTurnHard { get; init; } = 40;
     internal int AiObjectiveTurnVeryHard { get; init; } = 30;
-    internal int AiRandomCastChance { get; init; } = 2;
+    internal int AiRandomCastChance { get; init; } = 1;
     internal int AiStackDefendRange { get; init; } = 5;
     internal int AiStackGuardRange { get; init; } = 5;
     internal int AiThiefExtendedActionPercentEasy { get; init; } = 10;
@@ -105,6 +105,7 @@ public sealed record GlobalVariables
     internal int MaxAttackDamage { get; init; } = 300;
     internal int MaxAttackInitiative { get; init; } = 150;
     internal int MaxLeaderAbilities { get; init; } = 15;
+    internal int MaxLeaderNameLength { get; init; } = 20;
     internal int MaxModifiedAttackDamage { get; init; } = 400;
     internal int MaxStackMovement { get; init; } = 100;
     internal int MaxStackVisionRadius { get; init; } = 8;
@@ -128,6 +129,7 @@ public sealed record GlobalVariables
     internal int ReduceLevelEffectDurationTurns { get; init; } = 1;
     internal int ResourceNodeIncome { get; init; } = 50;
     internal int ResurrectionHitpoints { get; init; } = 1;
+    internal int RetreatDurationTurns { get; init; } = 1;
     internal int ReviveHitpointsPercent { get; init; } = 50;
     internal int RiotDamagePercent { get; init; } = 20;
     internal int RiotMaxTurns { get; init; } = 4;

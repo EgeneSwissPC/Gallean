@@ -180,12 +180,19 @@ public static class ScenarioLoader
                     stacks = ImportLeader(stacks, capitalStack, leader, definitions, globals);
                 }
 
-                if (player.LeaderName is not null)
+                string leaderName = player.LeaderName.Trim();
+
+                if (leaderName.Length > globals.MaxLeaderNameLength)
+                {
+                    throw new InvalidOperationException($"Leader name '{leaderName}' is too long.");
+                }
+
+                if (leaderName.Length > 0)
                 {
                     WorldPlayer owner = FindPlayer(players, player.Race);
                     WorldStack capitalStack = FindCapitalStack(stacks, fortifications, owner.Id);
 
-                    stacks = SetLeaderName(stacks, capitalStack, player.LeaderName, definitions);
+                    stacks = SetLeaderName(stacks, capitalStack, new LiteralUnitName(leaderName), definitions);
                 }
             }
         }
@@ -1980,10 +1987,13 @@ public static class ScenarioLoader
 
         ILookup<Db.Id, Db.ScenarioStackTemplateModifier> templateModifiers =
             GetScenarioObjectsLookup(scenarioDb.ScenarioStackTemplateModifiersByScenarioAndTemplateId, scenarioId);
+        ILookup<Db.Id, Db.TextScenario> templateNames =
+            GetScenarioTextsLookup(scenarioDb, scenarioId, Db.TextScenario.NameTextId);
 
         foreach (Db.ScenarioStackTemplate template in scenarioDb.ScenarioStackTemplatesByScenario[scenarioId])
         {
-            UnitGrid<ScenarioStackTemplateUnit> units = LoadStackTemplateUnits(template, templateModifiers[template.Id], definitions, globals);
+            UnitName? leaderName = LoadUnitName(templateNames, template.Id);
+            UnitGrid<ScenarioStackTemplateUnit> units = LoadStackTemplateUnits(template, templateModifiers[template.Id], leaderName, definitions, globals);
 
             WorldStackDirection? direction = null;
             if (template.UseFacing)
@@ -2007,6 +2017,7 @@ public static class ScenarioLoader
     private static UnitGrid<ScenarioStackTemplateUnit> LoadStackTemplateUnits(
         Db.ScenarioStackTemplate template,
         IEnumerable<Db.ScenarioStackTemplateModifier> templateModifiers,
+        UnitName? leaderName,
         IGameDefinitionProvider definitions,
         GlobalVariables globals)
     {
@@ -2014,34 +2025,35 @@ public static class ScenarioLoader
         int[] unitLevels = [template.Unit0Level, template.Unit1Level, template.Unit2Level, template.Unit3Level, template.Unit4Level, template.Unit5Level];
         int[] positions = [template.Position0, template.Position1, template.Position2, template.Position3, template.Position4, template.Position5];
         ILookup<int, Db.ScenarioStackTemplateModifier> modifiersByPosition = templateModifiers.ToLookup(modifier => modifier.UnitPos);
+        int leaderIndex = Array.IndexOf(unitIds, template.Leader);
 
         UnitGrid<ScenarioStackTemplateUnit>.Builder builder = new();
-        HashSet<int> placedUnits = [];
 
         for (int position = 0; position < GridPosition.Count; position++)
         {
             int unitIndex = positions[position];
 
-            if (unitIndex < 0 || unitIndex >= GridPosition.Count || !placedUnits.Add(unitIndex))
+            if (unitIndex is >= 0 and < GridPosition.Count && unitIds[unitIndex] is { } unitId)
             {
-                continue;
+                UnitDefinitionId definitionId = new(unitId);
+                UnitDefinition definition = definitions.GetUnit(definitionId);
+                GridPosition gridPosition = new(position % 2, position / 2);
+
+                if (definition.IsLarge && gridPosition.IsBackLine)
+                {
+                    continue;
+                }
+                else
+                {
+                    ImmutableArray<UnitModifier> modifiers = LoadStackTemplateUnitModifiers(modifiersByPosition[position], definitions);
+                    int level = unitLevels[unitIndex];
+                    int hitpoints = UnitStatsCalculator.GetStats(definition, level, modifiers, definitions, globals).MaxHitpoints;
+                    UnitName? name = unitIndex == leaderIndex ? leaderName : null;
+                    ScenarioStackTemplateUnit templateUnit = new(definitionId, hitpoints, level, modifiers, name);
+
+                    builder.Place(templateUnit, gridPosition, definition.IsLarge);
+                }
             }
-
-            if (unitIds[unitIndex] is not { } unitId)
-            {
-                continue;
-            }
-
-            UnitDefinitionId definitionId = new(unitId);
-            UnitDefinition definition = definitions.GetUnit(definitionId);
-            ImmutableArray<UnitModifier> modifiers = LoadStackTemplateUnitModifiers(modifiersByPosition[position], definitions);
-            int level = unitLevels[unitIndex];
-            int hitpoints = UnitStatsCalculator.GetStats(definition, level, modifiers, definitions, globals).MaxHitpoints;
-
-            builder.Place(
-                new ScenarioStackTemplateUnit(definitionId, hitpoints, level, modifiers),
-                new GridPosition(position % 2, position / 2),
-                definition.IsLarge);
         }
 
         return builder.Build();

@@ -5,8 +5,6 @@ namespace Gallean.Configuration;
 
 public sealed record GameSettings(
     [property: JsonPropertyOrder(-1)] int FormatVersion,
-    int SoundVolume,
-    int MusicVolume,
     bool Windowed,
     int RenderResolution,
     int AutoSaveInterval = GameSettings.DefaultAutoSaveInterval,
@@ -16,6 +14,9 @@ public sealed record GameSettings(
     bool LockCursor = true,
     MovementSpeed MovementSpeed = GameSettings.DefaultMovementSpeed,
     Language? Language = null,
+    BattlePosition BattlePosition = GameSettings.DefaultBattlePosition,
+    int SoundVolume = GameSettings.DefaultSoundVolume,
+    int MusicVolume = GameSettings.DefaultMusicVolume,
     bool ShowPathOnHover = true,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? WorldAi = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? BattleAi = null,
@@ -24,6 +25,8 @@ public sealed record GameSettings(
     public const int CurrentFormatVersion = 6;
     public const int MinVolume = 0;
     public const int MaxVolume = 100;
+    public const int DefaultSoundVolume = 70;
+    public const int DefaultMusicVolume = 70;
     public const int MinRenderResolution = 50;
     public const int MaxRenderResolution = 100;
     public const int DefaultAutoSaveInterval = 5;
@@ -32,10 +35,11 @@ public sealed record GameSettings(
     public const BattleSpeed DefaultBattleSpeed = BattleSpeed.Normal;
     public const MovementSpeed DefaultMovementSpeed = MovementSpeed.Normal;
     public const UiSize DefaultUiSize = UiSize.Normal;
+    public const BattlePosition DefaultBattlePosition = BattlePosition.Left;
 
     public static GameSettings Default { get; } = Create(
-        MaxVolume,
-        MaxVolume,
+        DefaultSoundVolume,
+        DefaultMusicVolume,
         false,
         MaxRenderResolution,
         DefaultAutoSaveInterval,
@@ -44,10 +48,15 @@ public sealed record GameSettings(
         DefaultUiSize,
         true,
         DefaultMovementSpeed,
-        null);
+        null,
+        DefaultBattlePosition);
 
+    [JsonPropertyName("soundVolume2")]
     public int SoundVolume { get; } = Math.Clamp(SoundVolume, MinVolume, MaxVolume);
+
+    [JsonPropertyName("musicVolume2")]
     public int MusicVolume { get; } = Math.Clamp(MusicVolume, MinVolume, MaxVolume);
+
     public int RenderResolution { get; } = Math.Clamp(RenderResolution, MinRenderResolution, MaxRenderResolution);
     public int AutoSaveInterval { get; } = Math.Max(AutoSaveInterval, 0);
     public int AutoSaveLimit { get; } = Math.Max(AutoSaveLimit, MinAutoSaveLimit);
@@ -63,12 +72,11 @@ public sealed record GameSettings(
         UiSize uiSize,
         bool lockCursor,
         MovementSpeed movementSpeed,
-        Language? language)
+        Language? language,
+        BattlePosition battlePosition)
     {
         return new GameSettings(
             CurrentFormatVersion,
-            soundVolume,
-            musicVolume,
             windowed,
             renderResolution,
             autoSaveInterval,
@@ -77,6 +85,9 @@ public sealed record GameSettings(
             uiSize,
             lockCursor,
             movementSpeed,
-            language);
+            language,
+            battlePosition,
+            soundVolume,
+            musicVolume);
     }
 }

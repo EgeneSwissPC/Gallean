@@ -74,8 +74,9 @@ internal sealed partial class WorldAiPlanner
 
             WorldPlan plan = WorldPlan.For(state);
 
-            // At a site: buy the most useful thing there, one purchase per decision.
-            if (plan.GetSiteAt(stack.Position) is { } here && here.Entrance == stack.Position &&
+            // At a site: buy the most useful thing there, one purchase per decision. Since upstream 0.17 a tile next
+            // to the entrance counts as the site (651e4200), so the army shops from there without the last step.
+            if (plan.GetSiteEntranceAt(stack.Position) is { } here &&
                 FindPurchase(state, stack, here) is { } purchase)
             {
                 return MakePlan(MaxScore, purchase, context.Memory);
@@ -154,7 +155,7 @@ internal sealed partial class WorldAiPlanner
 
             bool Keeps(WorldResourceSet cost) => spending || player.Resources.Gold - cost.Gold >= GoldKept;
 
-            WorldStack atEntrance = stack with { Position = site.Entrance };
+            WorldStack atEntrance = site.IsEntranceAt(stack.Position) ? stack : stack with { Position = site.Entrance };
 
             switch (site)
             {
@@ -174,7 +175,7 @@ internal sealed partial class WorldAiPlanner
                             {
                                 WorldPurchaseMercenaryCommand command = new(stack.Id, site.Id, unit.DefinitionId, unit.Level, position);
 
-                                if (stack.Position != site.Entrance || !command.Execute(state, Context.Engine).Failed)
+                                if (!site.IsEntranceAt(stack.Position) || !command.Execute(state, Context.Engine).Failed)
                                 {
                                     best = command;
                                     bestGold = info.Cost.Gold;

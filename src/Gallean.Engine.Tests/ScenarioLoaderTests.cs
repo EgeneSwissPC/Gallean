@@ -364,7 +364,7 @@ public sealed class ScenarioLoaderTests
     public void Load_S137SC0000_ConfigurationTest()
     {
         ScenarioId scenarioId = new("S137SC0000");
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Mage, new WorldObjectVariant(2), null, LeaderName: null)], WorldDifficulty.Hard, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Mage, new WorldObjectVariant(2), null, LeaderName: "")], WorldDifficulty.Hard, Leader: null);
         Scenario scenario = ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals, configuration);
 
         WorldPlayer expectedNeutral = new(
@@ -2483,9 +2483,11 @@ public sealed class ScenarioLoaderTests
         UnitDefinitionId u5354 = new("G000UU5354");
 
         UnitGrid<ScenarioStackTemplateUnit> expectedUnits = new UnitGrid<ScenarioStackTemplateUnit>.Builder()
-            .Place(new ScenarioStackTemplateUnit(u5003, 140, 1, []), GridPosition.FrontBottom, false)
-            .Place(new ScenarioStackTemplateUnit(u0006, 45, 1, []), GridPosition.BackBottom, false)
-            .Place(new ScenarioStackTemplateUnit(u5354, 135, 1, []), GridPosition.BackCenter, false)
+            .Place(new ScenarioStackTemplateUnit(u5003, 140, 1, [], null), GridPosition.FrontBottom, false)
+            .Place(new ScenarioStackTemplateUnit(u0006, 45, 1, [], null), GridPosition.BackBottom, false)
+            .Place(new ScenarioStackTemplateUnit(u5354, 135, 1, [], new ScenarioUnitName(new ScenarioTextId("S095TM0001:NAME_TXT:0"))), GridPosition.BackCenter, false)
+            .Place(new ScenarioStackTemplateUnit(u5003, 140, 1, [], null), GridPosition.FrontTop, false)
+            .Place(new ScenarioStackTemplateUnit(u0006, 45, 1, [], null), GridPosition.BackTop, false)
             .Build();
 
         Assert.That(scenario.Provider.GetStackTemplate(new ScenarioStackTemplateId("S095TM0001")), Is.EqualTo(
@@ -2512,13 +2514,13 @@ public sealed class ScenarioLoaderTests
         UnitModifierDefinitionId leadershipModifier = new("G000UM9031");
 
         UnitGrid<ScenarioStackTemplateUnit> expectedUnits = new UnitGrid<ScenarioStackTemplateUnit>.Builder()
-            .Place(new ScenarioStackTemplateUnit(u0159, 500, 4, []), GridPosition.FrontBottom, true)
-            .Place(new ScenarioStackTemplateUnit(u0040, 275, 4, []), GridPosition.FrontCenter, false)
+            .Place(new ScenarioStackTemplateUnit(u0159, 500, 4, [], null), GridPosition.FrontBottom, true)
+            .Place(new ScenarioStackTemplateUnit(u0040, 275, 4, [], null), GridPosition.FrontCenter, false)
             .Place(
-                new ScenarioStackTemplateUnit(u0046, 215, 16, [UnitModifier.FromScenario(leadershipModifier), UnitModifier.FromScenario(leadershipModifier)]),
+                new ScenarioStackTemplateUnit(u0046, 215, 16, [UnitModifier.FromScenario(leadershipModifier), UnitModifier.FromScenario(leadershipModifier)], new ScenarioUnitName(new ScenarioTextId("S142TM000d:NAME_TXT:0"))),
                 GridPosition.BackCenter,
                 false)
-            .Place(new ScenarioStackTemplateUnit(u0158, 400, 4, []), GridPosition.FrontTop, true)
+            .Place(new ScenarioStackTemplateUnit(u0158, 400, 4, [], null), GridPosition.FrontTop, true)
             .Build();
 
         Assert.That(scenario.Provider.GetStackTemplate(new ScenarioStackTemplateId("S142TM000d")), Is.EqualTo(
@@ -3217,7 +3219,7 @@ public sealed class ScenarioLoaderTests
             new WorldInventory([gem]),
             PendingLeaderUpgrades: 1,
             BattlesWon: 7);
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, scenarioLeader);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, scenarioLeader);
         Scenario scenario = ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals, configuration);
 
         UnitGrid<WorldUnit> expectedUnits = new UnitGrid<WorldUnit>.Builder()
@@ -3402,7 +3404,7 @@ public sealed class ScenarioLoaderTests
     public void Load_S217SC0000_ConfiguredRaceTest()
     {
         ScenarioId scenarioId = new("S217SC0000");
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Guildmaster, new WorldObjectVariant(3), null, LeaderName: null)], WorldDifficulty.Hard, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Guildmaster, new WorldObjectVariant(3), null, LeaderName: "")], WorldDifficulty.Hard, Leader: null);
         Scenario scenario = ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals, configuration);
 
         Assert.That(FormatPlayers(scenarioId, scenario.State), Is.EqualTo([
@@ -3416,7 +3418,7 @@ public sealed class ScenarioLoaderTests
     public void Load_S217SC0000_NeutralRaceTest()
     {
         ScenarioId scenarioId = new("S217SC0000");
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Neutral, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Neutral, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, Leader: null);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals, configuration));
 
@@ -3427,7 +3429,7 @@ public sealed class ScenarioLoaderTests
     public void Load_S217SC0000_MissingRaceTest()
     {
         ScenarioId scenarioId = new("S217SC0000");
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Undead, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Undead, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, Leader: null);
 
         InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals, configuration));
 
@@ -3440,8 +3442,8 @@ public sealed class ScenarioLoaderTests
         ScenarioId scenarioId = new("S217SC0000");
         ScenarioConfiguration configuration = new(
             [
-                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Mage, new WorldObjectVariant(2), null, LeaderName: null),
-                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Guildmaster, new WorldObjectVariant(1), null, LeaderName: null)
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Mage, new WorldObjectVariant(2), null, LeaderName: ""),
+                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Guildmaster, new WorldObjectVariant(1), null, LeaderName: "")
             ],
             WorldDifficulty.Easy,
             Leader: null);
@@ -3464,8 +3466,8 @@ public sealed class ScenarioLoaderTests
         ScenarioId scenarioId = new("S217SC0000");
         ScenarioConfiguration configuration = new(
             [
-                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null),
-                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Mage, new WorldObjectVariant(1), null, LeaderName: null)
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: ""),
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Mage, new WorldObjectVariant(1), null, LeaderName: "")
             ],
             WorldDifficulty.Average,
             Leader: null);
@@ -4079,7 +4081,7 @@ public sealed class ScenarioLoaderTests
     [Test]
     public void StartingLeaderTest()
     {
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), new UnitDefinitionId("G000UU0019"), LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), new UnitDefinitionId("G000UU0019"), LeaderName: "")], WorldDifficulty.Average, Leader: null);
         Scenario scenario = ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, new ScenarioId("S201SC0000"), definitions, globals, configuration);
 
         UnitGrid<WorldUnit> expectedUnits = new UnitGrid<WorldUnit>.Builder()
@@ -4120,7 +4122,7 @@ public sealed class ScenarioLoaderTests
     [Test]
     public void LeaderNameTest()
     {
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), new UnitDefinitionId("G000UU0019"), new LiteralUnitName("Aldric"))], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), new UnitDefinitionId("G000UU0019"), "  Aldric ")], WorldDifficulty.Average, Leader: null);
         Scenario scenario = ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, new ScenarioId("S201SC0000"), definitions, globals, configuration);
 
         UnitGrid<WorldUnit> expectedUnits = new UnitGrid<WorldUnit>.Builder()
@@ -4159,6 +4161,16 @@ public sealed class ScenarioLoaderTests
     }
 
     [Test]
+    public void LeaderNameTooLongTest()
+    {
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), new UnitDefinitionId("G000UU0019"), "Aldric the Unyielding")], WorldDifficulty.Average, Leader: null);
+
+        InvalidOperationException ex = Assert.Throws<InvalidOperationException>(() => ScenarioLoader.Create(globalDb, scenarioDb, campaignDb, new ScenarioId("S201SC0000"), definitions, globals, configuration));
+
+        Assert.That(ex.Message, Is.EqualTo("Leader name 'Aldric the Unyielding' is too long."));
+    }
+
+    [Test]
     public void ChangeOwnerTriggererEventTest()
     {
         ScenarioId scenarioId = new("S236SC0000");
@@ -4188,5 +4200,83 @@ public sealed class ScenarioLoaderTests
             OccurOnce: true,
             Chance: 100,
             Order: 0)));
+    }
+
+    [Test]
+    public void Load_S132SC0000_StackTemplate_S132TM0000_Test()
+    {
+        ScenarioId scenarioId = new("S132SC0000");
+        Scenario scenario = ScenarioLoader.Load(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals);
+
+        UnitDefinitionId u0080 = new("G000UU0080");
+        UnitDefinitionId u0087 = new("G000UU0087");
+        UnitDefinitionId u5283 = new("G000UU5283");
+
+        UnitGrid<ScenarioStackTemplateUnit> expectedUnits = new UnitGrid<ScenarioStackTemplateUnit>.Builder()
+            .Place(new ScenarioStackTemplateUnit(u0087, 170, 2, [], null), GridPosition.FrontBottom, false)
+            .Place(new ScenarioStackTemplateUnit(u0080, 45, 1, [], null), GridPosition.BackBottom, false)
+            .Place(new ScenarioStackTemplateUnit(u5283, 325, 8, [], new ScenarioUnitName(new ScenarioTextId("S132TM0000:NAME_TXT:0"))), GridPosition.BackCenter, false)
+            .Place(new ScenarioStackTemplateUnit(u0087, 170, 2, [], null), GridPosition.FrontTop, false)
+            .Place(new ScenarioStackTemplateUnit(u0080, 45, 1, [], null), GridPosition.BackTop, false)
+            .Build();
+
+        Assert.That(scenario.Provider.GetStackTemplate(new ScenarioStackTemplateId("S132TM0000")), Is.EqualTo(
+            new ScenarioStackTemplateDefinition(
+                new ScenarioStackTemplateId("S132TM0000"),
+                new WorldPlayerId(1),
+                new WorldSubraceId("S132SR0000"),
+                expectedUnits,
+                WorldStackOrder.Stand.Instance,
+                Direction: null,
+                AiPriority: 3)));
+    }
+
+    [Test]
+    public void Load_S132SC0000_StackTemplate_S132TM0002_Test()
+    {
+        ScenarioId scenarioId = new("S132SC0000");
+        Scenario scenario = ScenarioLoader.Load(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals);
+
+        UnitDefinitionId u8005 = new("G000UU8005");
+        UnitDefinitionId u8105 = new("G000UU8105");
+
+        UnitGrid<ScenarioStackTemplateUnit> expectedUnits = new UnitGrid<ScenarioStackTemplateUnit>.Builder()
+            .Place(new ScenarioStackTemplateUnit(u8005, 200, 1, [], null), GridPosition.FrontBottom, false)
+            .Place(new ScenarioStackTemplateUnit(u8105, 200, 1, [], new ScenarioUnitName(new ScenarioTextId("S132TM0002:NAME_TXT:0"))), GridPosition.FrontCenter, false)
+            .Place(new ScenarioStackTemplateUnit(u8005, 200, 1, [], null), GridPosition.FrontTop, false)
+            .Build();
+
+        Assert.That(scenario.Provider.GetStackTemplate(new ScenarioStackTemplateId("S132TM0002")), Is.EqualTo(
+            new ScenarioStackTemplateDefinition(
+                new ScenarioStackTemplateId("S132TM0002"),
+                new WorldPlayerId(3),
+                new WorldSubraceId("S132SR0002"),
+                expectedUnits,
+                WorldStackOrder.Normal.Instance,
+                Direction: null,
+                AiPriority: 3)));
+    }
+
+    [Test]
+    public void Load_S107SC0000_StackTemplate_S107TM0001_Test()
+    {
+        ScenarioId scenarioId = new("S107SC0000");
+        Scenario scenario = ScenarioLoader.Load(globalDb, scenarioDb, campaignDb, scenarioId, definitions, globals);
+
+        UnitDefinitionId u0020 = new("G000UU0020");
+
+        UnitGrid<ScenarioStackTemplateUnit> expectedUnits = new UnitGrid<ScenarioStackTemplateUnit>.Builder()
+            .Place(new ScenarioStackTemplateUnit(u0020, 90, 1, [], new ScenarioUnitName(new ScenarioTextId("S107TM0001:NAME_TXT:0"))), GridPosition.BackCenter, false)
+            .Build();
+
+        Assert.That(scenario.Provider.GetStackTemplate(new ScenarioStackTemplateId("S107TM0001")), Is.EqualTo(
+            new ScenarioStackTemplateDefinition(
+                new ScenarioStackTemplateId("S107TM0001"),
+                new WorldPlayerId(1),
+                new WorldSubraceId("S107SR0000"),
+                expectedUnits,
+                WorldStackOrder.Normal.Instance,
+                Direction: null,
+                AiPriority: 3)));
     }
 }

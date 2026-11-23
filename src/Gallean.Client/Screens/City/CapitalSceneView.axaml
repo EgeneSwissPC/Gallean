@@ -2,18 +2,67 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:Gallean.Client"
              x:Class="Gallean.Client.CapitalSceneView"
-             x:DataType="local:CapitalSceneViewModel"
-             IsHitTestVisible="False">
+             x:DataType="local:CapitalSceneViewModel">
 
   <UserControl.Resources>
+    <Size x:Key="CapitalSceneCanvasSize">640,600</Size>
+
     <ControlTheme x:Key="CapitalSceneLayerContainerTheme" TargetType="ContentPresenter" x:DataType="local:CapitalSceneLayerViewModel">
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="VerticalAlignment" Value="Stretch" />
     </ControlTheme>
 
+    <DataTemplate x:Key="CapitalBuildingUnitTemplate" x:DataType="local:CapitalBuildingUnitViewModel">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <local:UnitIcon Width="40" Height="40" SpriteKey="{Binding PortraitKey}" />
+        <TextBlock Text="{Binding Name}"
+                   Classes="body"
+                   VerticalAlignment="Center"
+                   Foreground="{StaticResource PrimaryTextBrush}" />
+      </StackPanel>
+    </DataTemplate>
+
+    <DataTemplate x:Key="CapitalBuildingTooltipTemplate" x:DataType="local:CapitalBuildingViewModel">
+      <StackPanel Spacing="8">
+        <Grid ColumnDefinitions="Auto,*">
+          <Border Grid.Column="0" Classes="icon-frame" Width="64" Height="64" VerticalAlignment="Top">
+            <local:SpriteVisual SpriteKey="{Binding IconKey}" Stretch="UniformToFill" />
+          </Border>
+          <StackPanel Grid.Column="1" Margin="14,0,0,0" Spacing="4" VerticalAlignment="Center">
+            <local:OutlinedTextBlock Text="{Binding Name}" Classes="object-name" TextWrapping="Wrap" />
+            <TextBlock Text="{local:Text 'Building'}" Classes="body" Foreground="{StaticResource SecondaryTextBrush}" />
+          </StackPanel>
+        </Grid>
+
+        <local:OrnamentDivider Classes="section" />
+
+        <TextBlock Text="{Binding Description}"
+                   Classes="body"
+                   TextWrapping="Wrap"
+                   Foreground="{StaticResource PrimaryTextBrush}" />
+
+        <StackPanel Spacing="8" IsVisible="{Binding HasUnits}">
+          <local:OrnamentDivider Classes="section" />
+          <local:OutlinedTextBlock Text="{local:Text 'Unlocks'}" Classes="label" />
+          <ItemsControl ItemsSource="{Binding Units}" ItemTemplate="{StaticResource CapitalBuildingUnitTemplate}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Spacing="6" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+          </ItemsControl>
+        </StackPanel>
+      </StackPanel>
+    </DataTemplate>
+
     <DataTemplate x:Key="CapitalSceneLayerTemplate" x:DataType="local:CapitalSceneLayerViewModel">
-      <Grid Classes.constructed="{Binding IsConstructed}">
-        <local:SpriteVisual SpriteKey="{Binding SpriteKey}" Stretch="Uniform" />
+      <Grid Classes.constructed="{Binding IsConstructed}" ToolTip.ShowDelay="150">
+        <ToolTip.Tip>
+          <ToolTip Classes="capital-building"
+                   Content="{Binding Building}"
+                   ContentTemplate="{StaticResource CapitalBuildingTooltipTemplate}" />
+        </ToolTip.Tip>
+        <local:SpriteVisual SpriteKey="{Binding SpriteKey}" Stretch="Uniform" CanvasSize="{StaticResource CapitalSceneCanvasSize}" ClipToBounds="False" />
         <local:AnimationVisual AnimationKey="{Binding AnimationKey}" Stretch="Uniform" />
       </Grid>
     </DataTemplate>
@@ -51,6 +100,10 @@
       </Style.Animations>
     </Style>
 
+    <Style Selector="ToolTip.capital-building">
+      <Setter Property="MaxWidth" Value="380" />
+    </Style>
+
     <Style Selector=":is(Control).capital-scene-frame">
       <Setter Property="Margin" Value="0,-60" />
     </Style>
@@ -59,7 +112,7 @@
   <Panel>
     <Panel ClipToBounds="True">
       <ItemsControl Classes="capital-scene-frame cached"
-                    HorizontalAlignment="Center"
+                    HorizontalAlignment="Stretch"
                     VerticalAlignment="Center"
                     ItemsSource="{Binding Layers}"
                     ItemTemplate="{StaticResource CapitalSceneLayerTemplate}"
@@ -72,8 +125,8 @@
       </ItemsControl>
     </Panel>
 
-    <Panel Classes="cached" ClipToBounds="True">
-      <local:CapitalBackdropVisual Classes="capital-scene-frame" SpriteKey="{Binding BackdropKey}" />
+    <Panel Classes="cached" ClipToBounds="True" IsHitTestVisible="False">
+      <local:CapitalBackdropVisual Classes="capital-scene-frame" SpriteKey="{Binding BackdropKey}" CanvasSize="{StaticResource CapitalSceneCanvasSize}" />
     </Panel>
   </Panel>
 

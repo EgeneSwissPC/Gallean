@@ -12,7 +12,7 @@ public sealed class BattleNoFleeModeTests
 {
     private static Task<BattleHealModeTests.Setup> CreateBattleAsync()
     {
-        return BattleHealModeTests.CreateBattleAsync(enemyDamage: 300, enemyHitpoints: 5000, fighterIsLeader: true);
+        return BattleHealModeTests.CreateBattleAsync(enemyDamage: 50, enemyHitpoints: 5000, fighterIsLeader: true);
     }
 
     // GameModel.Snapshot drops the battle state when the battle ends, so read the battle model.
@@ -48,7 +48,7 @@ public sealed class BattleNoFleeModeTests
         await BattleHealModeTests.FinishAsync(setup, autoTask);
 
         AssertNoError(setup);
-        Assert.That(Events(setup), Does.Contain(new BattleUnitRetreatingEvent(BattleHealModeTests.FighterId)));
+        Assert.That(Events(setup).OfType<BattleUnitRetreatingEvent>().Select(ev => ev.UnitId), Does.Contain(BattleHealModeTests.FighterId));
     }
 
     [Test]

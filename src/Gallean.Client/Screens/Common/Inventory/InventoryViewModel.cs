@@ -2,10 +2,11 @@ using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Gallean.Common;
+using Gallean.Engine;
 
 namespace Gallean.Client;
 
-internal sealed partial class InventoryViewModel(GameModel gameModel) : ObservableObject, IDropTarget
+internal sealed partial class InventoryViewModel(GameModel gameModel, IInventoryProvider provider) : ObservableObject, IDropTarget
 {
     private ImmutableArray<ItemGroup> slots = [];
 
@@ -42,6 +43,11 @@ internal sealed partial class InventoryViewModel(GameModel gameModel) : Observab
         }
     }
 
+    public async Task InvokeItemAsync(InventorySlotReference source)
+    {
+        await provider.InvokeItemAsync(source);
+    }
+
     public void Update(WorldInventory newInventory, WorldResourceSet resources, bool isHighlighted)
     {
         IsHighlighted = isHighlighted;
@@ -54,6 +60,7 @@ internal sealed partial class InventoryViewModel(GameModel gameModel) : Observab
         {
             ItemGroup slot = slots[slotIndex];
             WorldItem item = slot.Items[^1];
+            ItemDefinition definition = gameModel.Definitions.GetItem(item.DefinitionId);
 
             ItemDetailsViewModel details = ItemDetailsViewModel.Create(
                 item.DefinitionId,
@@ -66,6 +73,7 @@ internal sealed partial class InventoryViewModel(GameModel gameModel) : Observab
                 slotIndex,
                 item.Id,
                 slot.Items.Length,
+                InventoryItemTypeResolver.Resolve(definition.Category),
                 ItemIconResolver.Resolve(gameModel.Definitions, item.DefinitionId),
                 ItemFormatter.FormatName(gameModel.Definitions, gameModel.Texts, item.DefinitionId, item.Charges),
                 ItemFormatter.FormatDescription(gameModel.Definitions, gameModel.Texts, item.DefinitionId),

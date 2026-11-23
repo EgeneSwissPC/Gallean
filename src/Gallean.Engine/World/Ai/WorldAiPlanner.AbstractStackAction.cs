@@ -19,6 +19,7 @@ internal sealed partial class WorldAiPlanner
             WorldAiTarget Target,
             WorldPosition TargetPosition,
             WorldPosition BattlePosition,
+            WorldAiTarget BattleTarget,
             BattleState BattleState,
             WorldPlayerId? DefenderId,
             WorldAiEstimator.PowerEstimate Power,
@@ -28,7 +29,7 @@ internal sealed partial class WorldAiPlanner
         {
             public sealed record Context(WorldState State, WorldStack Stack, IEngineContext Engine);
 
-            public sealed record Battle(BattleState State, WorldPlayerId? DefenderId);
+            public sealed record Battle(BattleState State, WorldAiTarget Target, WorldPlayerId? DefenderId);
 
             public static readonly BattleStateVisitor Instance = new();
 
@@ -42,18 +43,23 @@ internal sealed partial class WorldAiPlanner
                 return null;
             }
 
+            public Battle? Visit(PathTraversalCalculator.Encounter.Site encounter, Context context)
+            {
+                return null;
+            }
+
             public Battle? Visit(PathTraversalCalculator.Encounter.StackBattle encounter, Context context)
             {
                 BattleState state = WorldCommandHelpers.CreateStackBattleState(context.State, context.Stack, encounter.Stack, context.Engine);
 
-                return new Battle(state, encounter.Stack.OwnerId);
+                return new Battle(state, new WorldAiTarget.Stack(encounter.Stack.Id), encounter.Stack.OwnerId);
             }
 
             public Battle? Visit(PathTraversalCalculator.Encounter.FortificationBattle encounter, Context context)
             {
                 BattleState state = WorldCommandHelpers.CreateGarrisonBattleState(context.State, context.Stack, encounter.Fortification, context.Engine);
 
-                return new Battle(state, FortificationCalculator.GetOwner(encounter.Fortification));
+                return new Battle(state, new WorldAiTarget.Fortification(encounter.Fortification.Id), FortificationCalculator.GetOwner(encounter.Fortification));
             }
         }
 
@@ -118,7 +124,7 @@ internal sealed partial class WorldAiPlanner
                 requiredPowerPercent = requiredPowerPercent * aiContext.Profile.AttackPowerPercent / 100;
             }
 
-            return new BattleInfo(target, targetPosition, encounter.Position, battle.State, battle.DefenderId, power, requiredPowerPercent);
+            return new BattleInfo(target, targetPosition, encounter.Position, battle.Target, battle.State, battle.DefenderId, power, requiredPowerPercent);
         }
 
         private static WorldAiAttackPowerPercent GetAttackPowerPercent(WorldDifficulty difficulty, GlobalVariables globals)

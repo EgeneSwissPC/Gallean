@@ -30,6 +30,10 @@ Gallean Upgrade only. Human players only; the AI is not touched.
 - **The prompt shows what the player knows about the target (user request after phase 3, merged 846837c7).** Instead of the large portrait, the prompt shows the target like the world's right-click info (`WorldStackInfoViewModel` / `WorldFortificationInfoViewModel`, templates copied from `WorldScreenView`): an army's leader with its units when the player may see them (`WorldVisibility.KnowsPlayerContents`: own, neutral, or a race a thief has spied on), otherwise the leader with the game's "A thief must spy on this race to gain information about it."; a city shows its level, owner, garrison and visiting party the same way (or the city thief note). Tests: `PromptShowsEnemyUnitsWhenKnownTest` (spied: 1 unit, not spied: the note), visual `WorldMoveOrderPromptTest` shots 1-4 (army with units, Russian, not spied, capital with garrison). Suite 5495. The game's own attack prompt (when you click) is unchanged.
 - **Tab (question C: C1 + C3, with a setting).** By default Tab/N skips armies with orders and End turn lights up once the others are done. A new key **O** cycles only through armies with orders (Shift+O backwards). A Settings checkbox ("Tab skips armies with orders", default on) decides what Tab does: on = C1; off = Tab visits every army as today, ordered ones last since they sit at the end of the bar. O and clicking a card work either way. (Transcript read as "O button" for the review key; tell me if it meant something else.)
 
+- Upstream v0.17.1 merge (2026-11-23): a tile next to a site's entrance counts as the site (upstream 651e4200). An
+  order to a site stops on the first such tile and opens the site screen there (`OrderStop.Site` from the path's site
+  encounter); `ReachedSiteOpensTest` follows that.
+
 ## The problem today
 
 On big maps (512, 1024) a player ends up with many armies that spend most turns walking across empty land. Each one needs a click or an M press every turn.

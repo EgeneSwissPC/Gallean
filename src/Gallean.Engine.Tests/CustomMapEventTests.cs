@@ -1,4 +1,4 @@
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
 using Gallean.Common;
 using Gallean.Entities.GameData;
 
@@ -340,8 +340,8 @@ public sealed class CustomMapEventTests
 
         ScenarioConfiguration configuration = new(
             [
-                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null),
-                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: ""),
+                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")
             ],
             WorldDifficulty.Average,
             Leader: null);
@@ -466,6 +466,167 @@ public sealed class CustomMapEventTests
     }
 
     // Raiders: neutral leader + soldier, defending South Gate when created.
+    // Upstream 0.17 (7c5ae171): a race that loses its capital keeps its armies (they go berserk) instead of them
+    // turning neutral, and a defeated computer player keeps its turns. So the race's own events still see them: an
+    // elven army entering North Gate after the elven capital falls fires the elves' event.
+    [Test]
+    public void DefeatedRaceArmyKeepsItsEventsTest()
+    {
+        CustomMap map = CreateMap();
+        CustomMapUnit elfLeader = CustomMapUnit.From(Store.ListUnits(definitions)
+            .Where(unit => unit is { Category: UnitCategory.Leader, Race: WorldRace.Elf, IsLarge: false })
+            .OrderBy(unit => unit.Id.Value, StringComparer.Ordinal)
+            .First());
+        Assert.That(map.PlaceStack(new WorldPosition(16, 10), WorldRace.Elf, Slots(elfLeader)).Error, Is.Null);
+        map.AddEvent(CustomMapEvent.Create("Elves at the gate", WorldRace.Elf) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapMessageEffect(CustomMapText.Of("The elves reach the gate."), CustomMapMessageAudience.AllPlayers, null, false)]
+        });
+        // A win event of its own keeps the Empire from winning by elimination, so the game goes on after the capture.
+        map.AddEvent(CustomMapEvent.Create("Empire wins late", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapTurnCondition(99, Repeat: false)]],
+            Effects = [new CustomMapWinEffect(WorldRace.Human)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        WorldState state = scenario.State;
+        WorldPlayerId empire = state.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldPlayerId elves = state.Players.Values.Single(player => player.Race == WorldRace.Elf).Id;
+        WorldCapital elvenCapital = state.Fortifications.Values.OfType<WorldCapital>().Single(capital => capital.OwnerId == elves);
+        WorldStackId empireArmy = new(CustomMapWriter.GetArmyStackId(MapId, 1));
+        WorldStackId elvenArmy = new(CustomMapWriter.GetArmyStackId(MapId, 3));
+        Assert.That(state.Stacks[elvenArmy].OwnerId, Is.EqualTo(elves));
+
+        // An empty elven capital (no guardians, its leader gone) with the Empire army right next to its entrance.
+        WorldPosition start = new(elvenCapital.Entrance.X + 1, elvenCapital.Entrance.Y + 1);
+        Assert.That(WorldPlan.For(state).GetFortificationAt(start), Is.Null);
+        WorldStackId capitalLeader = WorldPlan.For(state).GetStackAt(elvenCapital.Entrance)!.Id;
+        state = state with
+        {
+            Players = state.Players.SetItem(elves, state.Players[elves] with { IsAi = true }),
+            Fortifications = state.Fortifications.SetItem(elvenCapital.Id, elvenCapital with { Garrison = UnitGrid<WorldUnit>.Empty }),
+            Stacks = state.Stacks.Remove(capitalLeader).SetItem(empireArmy, state.Stacks[empireArmy] with { Position = start, MovementPoints = 20 })
+        };
+
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, state);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+
+        var capture = session.World.DispatchCommand(new WorldMoveStackCommand(empireArmy, elvenCapital.Entrance));
+        Assert.That(capture.Error, Is.Null);
+        Assert.That(capture.Events, Does.Contain(new WorldPlayerDefeatedEvent(elves)));
+
+        // The elven army stays elven and goes berserk.
+        Assert.That(session.World.State.Stacks[elvenArmy].OwnerId, Is.EqualTo(elves));
+        Assert.That(session.World.State.Stacks[elvenArmy].Order, Is.EqualTo(WorldStackOrder.Berserk.Instance));
+
+        // The defeated computer player still gets its turn; its army walks into North Gate and its event fires.
+        while (session.World.State.TurnInfo.CurrentPlayerId != elves)
+        {
+            Assert.That(session.World.DispatchCommand(new WorldEndTurnCommand()).Error, Is.Null);
+        }
+
+        var step = session.World.DispatchCommand(new WorldStepStackCommand(elvenArmy, new WorldPosition(15, 10)));
+        Assert.That(step.Error, Is.Null);
+        Assert.That(step.Events.OfType<WorldScenarioPopupEvent>().Select(popup => popup.EventId.Value), Is.EqualTo(new[] { Id("EV", 1) }));
+    }
+
+    // Upstream 0.17 (f04f995b): beating the last defenders of a city with no garrison walks the army in and captures
+    // it at once. That walk is a normal step, so the map's "owns the village" event fires right after the battle.
+    [Test]
+    public void AutoCaptureAfterBattleFiresCityEventTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddEvent(CustomMapEvent.Create("Northgate taken", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapOwnCityCondition(new CustomMapCity.Village(1))]],
+            Effects = [new CustomMapMessageEffect(CustomMapText.Of("Northgate is ours."), CustomMapMessageAudience.AllPlayers, null, false)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        WorldState state = scenario.State;
+        WorldPlayerId empire = state.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldCity village = state.Fortifications.Values.OfType<WorldCity>().Single();
+        WorldStackId empireArmy = new(CustomMapWriter.GetArmyStackId(MapId, 1));
+        WorldStackId neutralArmy = new(CustomMapWriter.GetArmyStackId(MapId, 2));
+
+        // The village has no garrison; a nearly dead neutral army stands in it and the Empire army is next to it.
+        WorldStack visitor = state.Stacks[neutralArmy];
+        UnitGrid<WorldUnit>.Builder weak = new();
+
+        foreach ((WorldUnit unit, GridPosition position) in visitor.Units.GetUnits())
+        {
+            weak.Place(unit with { Hitpoints = 1 }, position, definitions.GetUnit(unit.DefinitionId).IsLarge);
+        }
+
+        WorldPosition start = new(village.Entrance.X + 1, village.Entrance.Y + 1);
+        Assert.That(WorldPlan.For(state).GetFortificationAt(start), Is.Null);
+        state = state with
+        {
+            Fortifications = state.Fortifications.SetItem(village.Id, village with { Garrison = UnitGrid<WorldUnit>.Empty }),
+            Stacks = state.Stacks
+                .SetItem(neutralArmy, visitor with { Position = village.Entrance, Units = weak.Build() })
+                .SetItem(empireArmy, state.Stacks[empireArmy] with { Position = start, MovementPoints = 20 })
+        };
+
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, state);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        Assert.That(session.World.DispatchCommand(new WorldMoveStackCommand(empireArmy, village.Entrance)).Error, Is.Null);
+
+        BattleSession battle = session.Battle!;
+        Assert.That(battle.DispatchCommand(new BattleAutoResolveCommand()).Error, Is.Null);
+        Assert.That(battle.State.Outcome, Is.EqualTo(new BattleOutcome(BattleSide.Attacker)));
+
+        WorldState after = session.World.State;
+        Assert.That(after.Stacks[empireArmy].Position, Is.EqualTo(village.Entrance), "walked in");
+        Assert.That(((WorldCity)after.Fortifications[village.Id]).OwnerId, Is.EqualTo(empire), "captured");
+        Assert.That(after.ScenarioState.EventStates.GetValueOrDefault(new ScenarioEventId(Id("EV", 1)), true), Is.False, "the village event fired");
+    }
+
+    // A template's leader name: saved with the map, written as the template's NAME_TXT and given to the leader of the
+    // army an event creates (upstream 0.17 reads template names, e8c3f48d). Without one the game picks a random name.
+    [Test]
+    public void TemplateLeaderNameTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddTemplate(Raiders() with { LeaderName = "Gorbag" });
+        map.AddEvent(CustomMapEvent.Create("Ambush", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapCreateArmyEffect(1, 2)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+
+        Assert.That(store.Open(MapId, definitions).Templates.Single().LeaderName, Is.EqualTo("Gorbag"));
+
+        ScenarioDatabase database = store.LoadDatabase(MapId);
+        Assert.That(database.TextScenariosByScenario[new Db.ScenarioId(MapId)].Where(text => text.IdObject.Value == Id("TM", 1)).Select(text => (text.IdString, text.Text)),
+            Is.EqualTo(new[] { (Db.TextScenario.NameTextId, "Gorbag") }));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(MapId), definitions, globals);
+        ScenarioUnitName expected = new(new ScenarioTextId($"{Id("TM", 1)}:NAME_TXT:0"));
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        Assert.That(session.World.DispatchCommand(new WorldStepStackCommand(new WorldStackId(CustomMapWriter.GetArmyStackId(MapId, 1)), new WorldPosition(13, 10))).Error, Is.Null);
+
+        WorldStack created = session.World.State.Stacks.Values.Single(stack => stack.SourceTemplateId is not null);
+        (WorldUnit leader, _, _) = created.GetLeader(definitions);
+        Assert.That(leader.Name, Is.EqualTo(expected));
+        Assert.That(new GameTextProvider(globalDb, database, database.TextScenarios, LanguageDatabase.Empty).GetUnitName(expected), Is.EqualTo("Gorbag"));
+    }
+
     private CustomMapArmyTemplate Raiders()
     {
         CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
@@ -573,8 +734,8 @@ public sealed class CustomMapEventTests
         store.Save(map);
         ScenarioConfiguration configuration = new(
             [
-                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null),
-                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: ""),
+                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")
             ],
             WorldDifficulty.Average,
             Leader: null);
@@ -647,7 +808,7 @@ public sealed class CustomMapEventTests
         Assert.That(store.Open(MapId, definitions).Templates.Single().Order, Is.EqualTo(retakers.Order));
 
         ScenarioConfiguration configuration = new(
-            [new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)],
+            [new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")],
             WorldDifficulty.Average,
             Leader: null);
         GlobalVariables globals = new();

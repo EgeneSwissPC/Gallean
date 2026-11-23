@@ -31,6 +31,9 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
     [ObservableProperty]
     public partial bool IsFinished { get; private set; }
 
+    [ObservableProperty]
+    public partial bool IsInFortification { get; private set; }
+
     // Gallean Upgrade: move orders (docs/move-orders.md).
     [ObservableProperty]
     public partial bool HasMoveOrder { get; private set; }
@@ -40,6 +43,7 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
 
     public void Update(
         WorldStack stack,
+        WorldPlan plan,
         bool isSelected,
         bool isFinished,
         bool hasMoveOrder,
@@ -50,6 +54,7 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
     {
         (WorldUnit leader, GridPosition _, UnitDefinition _) = stack.GetLeader(definitions);
         StackStats stackStats = stats.GetWorldStackStats(stack);
+        WorldFortification? fortification = plan.GetFortificationAt(stack.Position);
 
         Position = stack.Position;
         PortraitKey = new AssetSpriteKey.UnitEventPortrait(ScenarioEventPortraitId.Unit(leader.DefinitionId));
@@ -59,6 +64,7 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
         MaxMovementPoints = stackStats.MaxMovementPoints;
         IsSelected = isSelected;
         IsFinished = isFinished;
+        IsInFortification = fortification is not null && fortification.Owner == stack.OwnerId;
         HasMoveOrder = hasMoveOrder;
         OrderTurns = orderTurns;
     }

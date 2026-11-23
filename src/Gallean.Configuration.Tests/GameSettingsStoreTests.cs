@@ -12,10 +12,10 @@ public sealed class GameSettingsStoreTests
 
         GameSettingsStore store = new(sb.GetPath("config"));
 
-        store.Save(GameSettings.Create(40, 25, false, 100, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English));
-        store.Save(GameSettings.Create(70, 0, false, 100, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English));
+        store.Save(GameSettings.Create(40, 25, false, 100, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left));
+        store.Save(GameSettings.Create(70, 0, false, 100, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left));
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(70, 0, false, 100, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(70, 0, false, 100, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left)));
         Assert.That(sb.GetTree(), Is.EquivalentTo(["config/", "config/settings.json"]));
     }
 
@@ -26,12 +26,12 @@ public sealed class GameSettingsStoreTests
 
         GameSettingsStore store = new(sb.RootPath);
 
-        store.Save(GameSettings.Create(40, 25, false, 50, 10, 20, BattleSpeed.Fast, UiSize.Large, true, MovementSpeed.Fast, Language.English));
+        store.Save(GameSettings.Create(40, 25, false, 50, 10, 20, BattleSpeed.Fast, UiSize.Large, true, MovementSpeed.Fast, Language.English, BattlePosition.Left));
 
         Assert.That(
             sb.ReadTextFile("settings.json").ReplaceLineEndings("\n"),
             Is.EqualTo(
-                "{\n  \"formatVersion\": 6,\n  \"windowed\": false,\n  \"battleSpeed\": \"Fast\",\n  \"uiSize\": \"Large\",\n  \"lockCursor\": true,\n  \"movementSpeed\": \"Fast\",\n  \"language\": \"English\",\n  \"showPathOnHover\": true,\n  \"tabSkipsOrders\": true,\n  \"soundVolume\": 40,\n  \"musicVolume\": 25,\n  \"renderResolution\": 50,\n  \"autoSaveInterval\": 10,\n  \"autoSaveLimit\": 20\n}"));
+                "{\n  \"formatVersion\": 6,\n  \"windowed\": false,\n  \"battleSpeed\": \"Fast\",\n  \"uiSize\": \"Large\",\n  \"lockCursor\": true,\n  \"movementSpeed\": \"Fast\",\n  \"language\": \"English\",\n  \"battlePosition\": \"Left\",\n  \"showPathOnHover\": true,\n  \"tabSkipsOrders\": true,\n  \"soundVolume2\": 40,\n  \"musicVolume2\": 25,\n  \"renderResolution\": 50,\n  \"autoSaveInterval\": 10,\n  \"autoSaveLimit\": 20\n}"));
     }
 
     [Test]
@@ -84,7 +84,7 @@ public sealed class GameSettingsStoreTests
     {
         using Sandbox sb = Sandbox.Create();
 
-        sb.WriteTextFile("settings.json", "{\"soundVolume\": 40, \"musicVolume\": 25}");
+        sb.WriteTextFile("settings.json", "{\"soundVolume2\": 40, \"musicVolume2\": 25}");
 
         GameSettingsStore store = new(sb.RootPath);
 
@@ -102,7 +102,7 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 7, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": false, \"renderResolution\": 100, \"autoSaveInterval\": 5}");
+            "{\"formatVersion\": 7, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": false, \"renderResolution\": 100, \"autoSaveInterval\": 5}");
 
         GameSettingsStore store = new(sb.RootPath);
 
@@ -120,7 +120,7 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 5, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 100}");
+            "{\"formatVersion\": 5, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 100}");
 
         GameSettingsStore store = new(sb.RootPath);
 
@@ -138,11 +138,11 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 900, \"musicVolume\": -3, \"windowed\": true, \"renderResolution\": 0, \"autoSaveInterval\": -2}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 900, \"musicVolume2\": -3, \"windowed\": true, \"renderResolution\": 0, \"autoSaveInterval\": -2}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(100, 0, true, 50, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(100, 0, true, 50, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left)));
     }
 
     [Test]
@@ -150,7 +150,7 @@ public sealed class GameSettingsStoreTests
     {
         using Sandbox sb = Sandbox.Create();
 
-        sb.WriteTextFile("settings.json", "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": false, \"renderResolution\": 100, \"autoSaveInterval\": 5}");
+        sb.WriteTextFile("settings.json", "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": false, \"renderResolution\": 100, \"autoSaveInterval\": 5}");
 
         GameSettingsStore store = new(sb.RootPath);
 
@@ -172,11 +172,11 @@ public sealed class GameSettingsStoreTests
     {
         using Sandbox sb = Sandbox.Create();
 
-        sb.WriteTextFile("settings.json", "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75}");
+        sb.WriteTextFile("settings.json", "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left)));
     }
 
     [Test]
@@ -186,11 +186,11 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"theme\": \"dark\", \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"keys\": {\"endTurn\": \"Enter\"}}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"theme\": \"dark\", \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"keys\": {\"endTurn\": \"Enter\"}}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left)));
     }
 
     [Test]
@@ -198,7 +198,7 @@ public sealed class GameSettingsStoreTests
     {
         using Sandbox sb = Sandbox.Create();
 
-        sb.WriteTextFile("settings.json", "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"autoSaveInterval\": 3}");
+        sb.WriteTextFile("settings.json", "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"autoSaveInterval\": 3}");
 
         GameSettingsStore store = new(sb.RootPath);
 
@@ -216,11 +216,11 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"battleSpeed\": \"Fast\"}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"battleSpeed\": \"Fast\"}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Fast, UiSize.Normal, true, MovementSpeed.Normal, null)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Fast, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left)));
     }
 
     [Test]
@@ -230,11 +230,11 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"movementSpeed\": \"Fast\"}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"movementSpeed\": \"Fast\"}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Fast, null)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Fast, null, BattlePosition.Left)));
     }
 
     [Test]
@@ -244,11 +244,11 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"showPathOnHover\": false}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"showPathOnHover\": false}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null) with { ShowPathOnHover = false }));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left) with { ShowPathOnHover = false }));
     }
 
     [Test]
@@ -258,11 +258,11 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"tabSkipsOrders\": false}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"tabSkipsOrders\": false}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null) with { TabSkipsOrders = false }));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left) with { TabSkipsOrders = false }));
         Assert.That(GameSettings.Default.TabSkipsOrders, Is.True);
     }
 
@@ -273,11 +273,11 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"worldAi\": \"builder\", \"battleAi\": \"ruthless\"}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"worldAi\": \"builder\", \"battleAi\": \"ruthless\"}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null) with { WorldAi = "builder", BattleAi = "ruthless" }));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left) with { WorldAi = "builder", BattleAi = "ruthless" }));
     }
 
     [Test]
@@ -287,11 +287,25 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"uiSize\": \"Large\"}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"uiSize\": \"Large\"}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Large, true, MovementSpeed.Normal, null)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Large, true, MovementSpeed.Normal, null, BattlePosition.Left)));
+    }
+
+    [Test]
+    public async Task LoadBattlePositionTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        sb.WriteTextFile(
+            "settings.json",
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"battlePosition\": \"Right\"}");
+
+        GameSettingsStore store = new(sb.RootPath);
+
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Right)));
     }
 
     [Test]
@@ -301,10 +315,24 @@ public sealed class GameSettingsStoreTests
 
         sb.WriteTextFile(
             "settings.json",
-            "{\"formatVersion\": 6, \"soundVolume\": 40, \"musicVolume\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"uiScale\": 150}");
+            "{\"formatVersion\": 6, \"soundVolume2\": 40, \"musicVolume2\": 25, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3, \"uiScale\": 150}");
 
         GameSettingsStore store = new(sb.RootPath);
 
-        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null)));
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(40, 25, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left)));
+    }
+
+    [Test]
+    public async Task LoadLegacyVolumeTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        sb.WriteTextFile(
+            "settings.json",
+            "{\"formatVersion\": 6, \"soundVolume\": 15, \"musicVolume\": 15, \"windowed\": true, \"renderResolution\": 75, \"autoSaveInterval\": 3}");
+
+        GameSettingsStore store = new(sb.RootPath);
+
+        Assert.That(await store.TryLoadAsync(), Is.EqualTo(GameSettings.Create(70, 70, true, 75, 3, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, null, BattlePosition.Left)));
     }
 }

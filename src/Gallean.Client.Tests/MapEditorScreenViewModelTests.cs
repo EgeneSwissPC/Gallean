@@ -1,4 +1,4 @@
-using Gallean.Common;
+﻿using Gallean.Common;
 using Gallean.Configuration;
 using Gallean.Engine;
 using Gallean.Tests.Common;
@@ -2045,6 +2045,23 @@ public sealed class MapEditorScreenViewModelTests
         Assert.That((row.HasTarget, row.SelectedTarget?.Label), Is.EqualTo((true, "North Gate")));
         row.SelectedTarget = row.TargetOptions.Single(option => option.Label == "South Gate");
         Assert.That(editor.Map.GetTemplate(2), Is.EqualTo(new CustomMapArmyTemplate(2, "Riders", WorldRace.Neutral, ambushers.Slots, new CustomMapArmyOrder(CustomMapOrderKind.DefendZone, LocationId: 2))));
+
+        // The leader's name, through the game's hero name prompt; an empty name gives the random name back.
+        row = templates.Rows.Single(r => r.Id == 2);
+        Assert.That(row.LeaderNameLabel, Is.EqualTo("Hero name"));
+        row.EditLeaderNameCommand.Execute(null);
+        TextPromptViewModel namePrompt = Assert.IsOfType<TextPromptViewModel>(game.TopScreen);
+        Assert.That((namePrompt.Text, namePrompt.MaxLength), Is.EqualTo((string.Empty, 20)));
+        namePrompt.Text = "  Gorbag ";
+        await namePrompt.ConfirmCommand.ExecuteAsync(null);
+        Assert.That(editor.Map.GetTemplate(2)!.LeaderName, Is.EqualTo("Gorbag"));
+        Assert.That(templates.Rows.Single(r => r.Id == 2).LeaderNameLabel, Is.EqualTo("Gorbag"));
+        templates.Rows.Single(r => r.Id == 2).EditLeaderNameCommand.Execute(null);
+        namePrompt = Assert.IsOfType<TextPromptViewModel>(game.TopScreen);
+        Assert.That(namePrompt.Text, Is.EqualTo("Gorbag"));
+        namePrompt.Text = " ";
+        await namePrompt.ConfirmCommand.ExecuteAsync(null);
+        Assert.That(editor.Map.GetTemplate(2)!.LeaderName, Is.Null);
         templates.Close();
 
         // Army blocks: create Riders at South Gate, order every Riders army to go to North Gate, move the army that

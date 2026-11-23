@@ -107,9 +107,14 @@ public sealed record CustomMapArmyOrder(CustomMapOrderKind Kind, int LocationId 
 // An army template. Slots are indexed like CustomMapStack's (GridPosition.ToIndex()).
 public sealed record CustomMapArmyTemplate(int Id, string Name, WorldRace Owner, ImmutableArray<CustomMapUnit?> Slots, CustomMapArmyOrder Order)
 {
+    // The name the leader of every army made from this template gets (saved as the template's NAME_TXT, read by the
+    // game since upstream 0.17, e8c3f48d). Null: the game picks a random name, as before.
+    public string? LeaderName { get; init; }
+
     public bool Equals(CustomMapArmyTemplate? other)
     {
-        return other is not null && Id == other.Id && Name == other.Name && Owner == other.Owner && Slots.SequenceEqual(other.Slots) && Order == other.Order;
+        return other is not null && Id == other.Id && Name == other.Name && Owner == other.Owner && Slots.SequenceEqual(other.Slots) && Order == other.Order &&
+               LeaderName == other.LeaderName;
     }
 
     public override int GetHashCode()
@@ -120,6 +125,7 @@ public sealed record CustomMapArmyTemplate(int Id, string Name, WorldRace Owner,
         hash.Add(Owner);
         hash.AddSequence(Slots);
         hash.Add(Order);
+        hash.Add(LeaderName);
 
         return hash.ToHashCode();
     }
