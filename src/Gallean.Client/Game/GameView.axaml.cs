@@ -149,6 +149,11 @@ internal sealed partial class GameView : Window
                     {
                         foreach (KeyBinding binding in element.KeyBindings)
                         {
+                            if (IsTypedIntoTextBox(binding))
+                            {
+                                continue;
+                            }
+
                             binding.TryHandle(e);
 
                             if (e.Handled)
