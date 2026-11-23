@@ -21,7 +21,7 @@
               <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="local:MapEditorTemplateRowViewModel">
                   <Border Classes="row" Padding="8,6" Margin="0,2" Background="#22000000" CornerRadius="4">
-                    <Grid ColumnDefinitions="220,130,170,180,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
+                    <Grid ColumnDefinitions="190,120,160,170,Auto" RowDefinitions="Auto,Auto" ColumnSpacing="8">
                       <TextBox Grid.Column="0" Text="{Binding Name, UpdateSourceTrigger=LostFocus}" MaxLength="60" KeyDown="OnNameKeyDown" />
                       <ComboBox Grid.Column="1" HorizontalAlignment="Stretch" ItemsSource="{Binding OwnerOptions}" SelectedItem="{Binding SelectedOwner}" ToolTip.Tip="{local:Text 'Owner'}">
                         <ComboBox.ItemTemplate>
@@ -45,6 +45,9 @@
                         </ComboBox.ItemTemplate>
                       </ComboBox>
                       <StackPanel Grid.Column="4" Orientation="Horizontal" Spacing="4">
+                        <Button Classes="pill" Height="28" Padding="10,0" Width="120" Command="{Binding EditLeaderNameCommand}" ToolTip.Tip="{local:Text 'Hero name'}">
+                          <TextBlock Text="{Binding LeaderNameLabel}" TextTrimming="CharacterEllipsis" />
+                        </Button>
                         <Button Classes="pill" Height="28" Padding="10,0" Content="{local:Text 'Units'}" Command="{Binding EditUnitsCommand}" />
                         <Button Classes="pill" Width="28" Height="28" Padding="0" Content="×" ToolTip.Tip="{local:Text 'Delete'}" Command="{Binding DeleteCommand}" />
                       </StackPanel>

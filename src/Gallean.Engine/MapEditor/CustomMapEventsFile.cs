@@ -45,7 +45,7 @@ public static class CustomMapEventsFile
 
         foreach (CustomMapArmyTemplate template in (templates ?? []).OrderBy(template => template.Id))
         {
-            templateArray.Add((JsonNode)new JsonObject
+            JsonObject templateNode = new()
             {
                 ["id"] = template.Id,
                 ["name"] = template.Name,
@@ -62,7 +62,14 @@ public static class CustomMapEventsFile
                     ["waterOnly"] = unit.IsWaterOnly
                 })]),
                 ["order"] = WriteOrder(template.Order)
-            });
+            };
+
+            if (!string.IsNullOrWhiteSpace(template.LeaderName))
+            {
+                templateNode["leaderName"] = template.LeaderName;
+            }
+
+            templateArray.Add((JsonNode)templateNode);
         }
 
         JsonArray variableArray = [.. (variables ?? []).OrderBy(variable => variable.Id).Select(variable => (JsonNode)new JsonObject { ["id"] = variable.Id, ["name"] = variable.Name, ["initial"] = variable.Initial })];
@@ -99,7 +106,10 @@ public static class CustomMapEventsFile
                     Int(unit, "movement"),
                     Bool(unit, "guardian"),
                     unit["waterOnly"]?.GetValue<bool>() ?? false))],
-                ReadOrder(node["order"])));
+                ReadOrder(node["order"]))
+            {
+                LeaderName = node["leaderName"]?.GetValue<string>()
+            });
         }
 
         return result;

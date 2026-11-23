@@ -592,6 +592,41 @@ public sealed class CustomMapEventTests
         Assert.That(after.ScenarioState.EventStates.GetValueOrDefault(new ScenarioEventId(Id("EV", 1)), true), Is.False, "the village event fired");
     }
 
+    // A template's leader name: saved with the map, written as the template's NAME_TXT and given to the leader of the
+    // army an event creates (upstream 0.17 reads template names, e8c3f48d). Without one the game picks a random name.
+    [Test]
+    public void TemplateLeaderNameTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddTemplate(Raiders() with { LeaderName = "Gorbag" });
+        map.AddEvent(CustomMapEvent.Create("Ambush", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapEnterZoneCondition(1)]],
+            Effects = [new CustomMapCreateArmyEffect(1, 2)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+
+        Assert.That(store.Open(MapId, definitions).Templates.Single().LeaderName, Is.EqualTo("Gorbag"));
+
+        ScenarioDatabase database = store.LoadDatabase(MapId);
+        Assert.That(database.TextScenariosByScenario[new Db.ScenarioId(MapId)].Where(text => text.IdObject.Value == Id("TM", 1)).Select(text => (text.IdString, text.Text)),
+            Is.EqualTo(new[] { (Db.TextScenario.NameTextId, "Gorbag") }));
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, database, campaignDb, new ScenarioId(MapId), definitions, globals);
+        ScenarioUnitName expected = new(new ScenarioTextId($"{Id("TM", 1)}:NAME_TXT:0"));
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, scenario.State);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        Assert.That(session.World.DispatchCommand(new WorldStepStackCommand(new WorldStackId(CustomMapWriter.GetArmyStackId(MapId, 1)), new WorldPosition(13, 10))).Error, Is.Null);
+
+        WorldStack created = session.World.State.Stacks.Values.Single(stack => stack.SourceTemplateId is not null);
+        (WorldUnit leader, _, _) = created.GetLeader(definitions);
+        Assert.That(leader.Name, Is.EqualTo(expected));
+        Assert.That(new GameTextProvider(globalDb, database, database.TextScenarios, LanguageDatabase.Empty).GetUnitName(expected), Is.EqualTo("Gorbag"));
+    }
+
     private CustomMapArmyTemplate Raiders()
     {
         CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];

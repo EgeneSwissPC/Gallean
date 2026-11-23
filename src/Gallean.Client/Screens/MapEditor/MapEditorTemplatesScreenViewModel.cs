@@ -1,4 +1,4 @@
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Gallean.Engine;
@@ -142,6 +142,34 @@ internal sealed partial class MapEditorTemplateRowViewModel : ObservableObject
             Commit(Template with { Order = MapEditorOrders.Make(Template.Order.Kind, value.Value) });
         }
     }
+
+    // The leader's name, set with the game's own hero name prompt (the in-game rename). Empty: a random name.
+    public string LeaderNameLabel => string.IsNullOrWhiteSpace(Template.LeaderName) ? Tr("Hero name") : Template.LeaderName;
+
+    [RelayCommand]
+    private void EditLeaderName()
+    {
+        screen.Game.OpenScreen(new TextPromptViewModel(
+            TrSpans("Hero name"),
+            Tr("Enter a new name for your hero."),
+            Template.LeaderName ?? string.Empty,
+            Tr("Hero name"),
+            MaxLeaderNameLength,
+            name =>
+            {
+                string? trimmed = string.IsNullOrWhiteSpace(name) ? null : name.Trim();
+
+                if (trimmed != Template.LeaderName)
+                {
+                    Commit(Template with { LeaderName = trimmed });
+                }
+
+                return Task.CompletedTask;
+            }));
+    }
+
+    // The game's limit (GlobalVariables.MaxLeaderNameLength; the in-game rename uses the same 20).
+    private const int MaxLeaderNameLength = 20;
 
     [RelayCommand]
     private void EditUnits() => editor.EditTemplateUnits(Id);

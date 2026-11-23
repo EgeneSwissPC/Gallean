@@ -75,10 +75,11 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
         WriteTable(stagingDirectory, "SEvCond.json", events.Conditions);
         WriteTable(stagingDirectory, "SEvEffec.json", events.Effects);
         WriteTable(stagingDirectory, "SEvUnfog.json", events.Unfogs);
+        List<Db.ScenarioStackTemplate> templates = BuildTemplates(map, scenarioId, prefix, sides, rows.Texts);
         WriteTable(stagingDirectory, "Tscen.json", rows.Texts);
         CustomMapEventsFile.Write(Path.Combine(stagingDirectory, CustomMapEventsFile.FileName), map.Events, map.Templates, map.Variables);
         WriteTable(stagingDirectory, "SVars.json", BuildVariables(map, scenarioId));
-        WriteTable(stagingDirectory, "SStkTemp.json", BuildTemplates(map, scenarioId, prefix, sides));
+        WriteTable(stagingDirectory, "SStkTemp.json", templates);
         WriteTable(stagingDirectory, "SRules.json", new List<Db.ScenarioRules> { new(scenarioId, MakeId(prefix, "RL", 1), map.ForeignSpellMarkup, map.NeutralKinds, TownIncomeCalculator.Format(map.TownIncome), map.NeutralBuying, map.NeutralUnitFactor, map.NeutralArmyRadius, map.NeutralTownRadius, map.NeutralAttackMargin) });
 
         if (Directory.Exists(scenarioDirectory))
@@ -1406,7 +1407,8 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
     }
 
     // Templates: SStkTemp rows TM + id, slots laid out like an army's unit group (POS p = line p % 2, flank p / 2).
-    private static List<Db.ScenarioStackTemplate> BuildTemplates(CustomMap map, Db.ScenarioId scenarioId, string prefix, NeutralSides sides)
+    // A template's leader name is its NAME_TXT text (upstream 0.17 reads it for armies events create).
+    private static List<Db.ScenarioStackTemplate> BuildTemplates(CustomMap map, Db.ScenarioId scenarioId, string prefix, NeutralSides sides, List<Db.TextScenario> texts)
     {
         List<Db.ScenarioStackTemplate> rows = [];
 
@@ -1432,6 +1434,11 @@ public sealed class CustomMapWriter(GlobalDatabase globalDb)
             Db.Id? Unit(int index) => index < units.Count ? new Db.Id(units[index].TypeId.Value) : null;
             int Level(int index) => index < units.Count ? units[index].Level : 0;
             int playerIndex = sides.GetIndex(map, template.Owner, 'T', template.Id);
+
+            if (!string.IsNullOrWhiteSpace(template.LeaderName))
+            {
+                texts.Add(Text(scenarioId, MakeId(prefix, "TM", template.Id), Db.TextScenario.NameTextId, template.LeaderName.Trim()));
+            }
 
             rows.Add(new Db.ScenarioStackTemplate(
                 scenarioId,
