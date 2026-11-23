@@ -106,4 +106,43 @@ public sealed class BattleEngineNoRetreatTests
         Assert.That(engine.State.Outcome, Is.Not.Null);
         Assert.That(engine.State.RoundNumber, Is.GreaterThan(45));
     }
+
+    // Upstream 0.17 (609292b6): a unit that waited and then retreats needs one more turn to escape, so Wait then
+    // Retreat is its own path. The leader waits; when its turn comes back, Refuse to flee must still never retreat it.
+    [TestCase(true)]
+    [TestCase(false)]
+    public void WaitThenRetreatTest(bool canRetreat)
+    {
+        // The enemy hits for 40, so a leader hit while waiting can still retreat safely.
+        BattleEngine engine = StrongEnemyBattle(enemyDamage: 40);
+        Assert.That(engine.State.CurrentUnitId, Is.EqualTo(LeaderId));
+        Dispatch(engine, new BattleWaitCommand(LeaderId));
+
+        List<BattleEvent> leaderEvents = [];
+
+        for (int i = 0; i < 10 && engine.State.Outcome is null && leaderEvents.Count == 0; i++)
+        {
+            bool isLeader = engine.State.CurrentUnitId == LeaderId;
+            bool isAttacker = engine.State.CurrentUnit.Side == BattleSide.Attacker;
+            IReadOnlyList<BattleEvent> events = Dispatch(engine, new BattleAiActionCommand(CanUseItems: false, CanRetreat: !isAttacker || canRetreat));
+
+            if (isLeader)
+            {
+                leaderEvents.AddRange(events);
+            }
+        }
+
+        Assert.That(leaderEvents, Is.Not.Empty, "the leader's turn came back after the wait");
+
+        if (canRetreat)
+        {
+            // Control: Classic retreats here, and the wait costs the extra turn.
+            Assert.That(leaderEvents.OfType<BattleUnitRetreatingEvent>().Select(ev => (ev.UnitId, ev.RemainingTurns)), Does.Contain((LeaderId, 2)));
+        }
+        else
+        {
+            Assert.That(leaderEvents.OfType<BattleUnitRetreatingEvent>(), Is.Empty);
+            Assert.That(engine.State.GetUnit(LeaderId).StatusEffects.OfType<BattleRetreatStatusEffect>(), Is.Empty);
+        }
+    }
 }
