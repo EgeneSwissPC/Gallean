@@ -20,6 +20,8 @@ gallean-upgrade only. Spec for the battle AI designer, the separate project spli
   the real battle screen, and then presses "Run 10 / 20 / 30 battles" to get the outcomes from the headless bench.
   It comes right after the bench (phase 2) and before the designer, so the designer's Test panel becomes "the
   sandbox with the designed AI selected". See section 3a.
+- Upstream v0.17.1 merge (2026-11-23): upstream's Battle position setting (your army left or right) applies to Watch
+  too. Watch has no viewer side, so army A (the attacker) stands on the side the setting picks.
 - Phase 6 decision (2026-11-21): Watch plays the battle with the auto-resolve rules, one unit action at a time
   (`BattleAutoResolveCommand { SingleStep = true, StartRoundNumber }`), not with the player-style AI that uses
   potions and orbs. Reason: then a watched seed is exactly the battle Run fought with that seed (proved by test),
