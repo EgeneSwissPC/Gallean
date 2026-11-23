@@ -394,14 +394,20 @@
                     local:PlateChrome.TextureSeed="4"
                     Command="{Binding ToggleHealModeCommand}"
                     ToolTip.Tip="{local:Text 'Healers heal the army and all other units defend, until you press it again'}">
-              <local:HotkeyLabel Text="{local:Text 'Heal and defend'}" Hotkey="H" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <local:IconVisual Moniker="Heal" Foreground="{Binding $parent[Button].Foreground}" />
+                <local:HotkeyLabel Text="{local:Text 'Heal and defend'}" Hotkey="H" />
+              </StackPanel>
             </Button>
             <Button Classes="pill"
                     Classes.selected="{Binding IsNoFleeMode}"
                     local:PlateChrome.TextureSeed="5"
                     Command="{Binding ToggleNoFleeModeCommand}"
                     ToolTip.Tip="{local:Text 'The computer takes your turns, but your army never flees, until you press it again'}">
-              <local:HotkeyLabel Text="{local:Text 'Refuse to flee'}" Hotkey="F" />
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <local:IconVisual Moniker="Defend" Foreground="{Binding $parent[Button].Foreground}" />
+                <local:HotkeyLabel Text="{local:Text 'Refuse to flee'}" Hotkey="F" />
+              </StackPanel>
             </Button>
             <Button Classes="pill"
                     local:PlateChrome.TextureSeed="2"
