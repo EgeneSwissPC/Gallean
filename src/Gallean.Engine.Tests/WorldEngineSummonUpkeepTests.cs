@@ -221,4 +221,58 @@ public sealed class WorldEngineSummonUpkeepTests
         Assert.That(actual.Stacks[summon.Id].SummonUpkeep, Is.EqualTo(Upkeep));
         Assert.That(actual, Is.EqualTo(engine.State));
     }
+
+    // Upstream 0.17 (7c5ae171): a race that lost its capital keeps its armies (berserk), and a defeated computer
+    // player keeps its turns. Its summons keep costing upkeep on those turns until it can't pay.
+    [Test]
+    public void DefeatedComputerRaceSummonUpkeepTest()
+    {
+        UnitDefinition unit = SpellUnit("spellunit", UnitCategory.Summon, 1);
+        WorldStack[] summons =
+        [
+            UpkeepStack("Stack0001", new WorldPlayerId(1), unit, new WorldPosition(1, 1)),
+            UpkeepStack("Stack0002", new WorldPlayerId(1), unit, new WorldPosition(3, 3))
+        ];
+        WorldCapital capital = TestHelpers.SimpleCapital(new WorldFortificationId("capital"), new WorldPlayerId(1), new WorldPosition(10, 10), UnitGrid<WorldUnit>.Empty) with
+        {
+            CapturedById = new WorldPlayerId(2)
+        };
+        WorldMap map = TestHelpers.SimpleMap(LargeMapRules.MinMapSize, LargeMapRules.MinMapSize);
+        WorldPlayer player1 = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Undead, map) with
+        {
+            IsAi = true,
+            Resources = new WorldResourceSet(0, 100, 0, 0, 0, 0)
+        };
+        WorldPlayer player2 = TestHelpers.SimplePlayer(new WorldPlayerId(2), WorldRace.Heretic, map);
+        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(unit)
+            .WithDefinition(TestHelpers.SimpleLord(player1.LordId, player1.Race, LordCategory.Warrior))
+            .WithPlayer(player1)
+            .WithDefinition(TestHelpers.SimpleLord(player2.LordId, player2.Race, LordCategory.Warrior))
+            .WithPlayer(player2)
+            .WithCapital(capital)
+            .WithSubrace(TestHelpers.NeutralSubrace);
+
+        foreach (WorldStack summon in summons)
+        {
+            builder = builder.WithStack(summon);
+        }
+
+        WorldEngine engine = builder.Build();
+        Assert.That(WorldPlan.For(engine.State).IsPlayerDefeated(player1.Id), Is.True);
+
+        // It still gets its 25 death mana a turn: 100 + 25 pays both (80); then 45 + 25 pays one, the other goes;
+        // then 30 + 25 and 15 + 25 keep the last one.
+        (int Mana, int Summons)[] expected = [(45, 2), (30, 1), (15, 1), (0, 1)];
+
+        foreach ((int mana, int count) in expected)
+        {
+            List<WorldEvent> events = PlayRound(engine);
+
+            Assert.That(events.OfType<WorldSummonUpkeepPaidEvent>().Select(ev => ev.PlayerId), Does.Contain(player1.Id));
+            Assert.That(engine.State.Players[player1.Id].Resources.DeathMana, Is.EqualTo(mana));
+            Assert.That(engine.State.Stacks.Values.Count(stack => stack.OwnerId == player1.Id), Is.EqualTo(count));
+        }
+    }
 }
