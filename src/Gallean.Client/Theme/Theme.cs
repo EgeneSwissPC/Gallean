@@ -275,6 +275,7 @@ internal static class Theme
         public static Color SmokeColor { get; } = Color.FromArgb(160, 200, 196, 206);
         public static Color BackdropColor { get; } = Color.FromArgb(150, 0, 0, 0);
         public static Color BackdropFadeColor { get; } = Color.FromArgb(0, 0, 0, 0);
+        public static Color VideoBorderColor { get; } = Color.FromArgb(210, 8, 7, 6);
         public static Color ObjectiveShadowColor { get; } = Color.FromArgb(150, 255, 176, 88);
     }
 
@@ -560,6 +561,42 @@ internal static class Theme
         public static Color KeyLightColor { get; } = Color.FromRgb(255, 170, 90);
         public static Color FillLightColor { get; } = Color.FromRgb(140, 170, 255);
         public static Color PointerLightColor { get; } = Color.FromRgb(255, 230, 190);
+    }
+
+    public static class InventorySlot
+    {
+        public static class Equipment
+        {
+            public static Color BorderLightColor { get; } = Color.FromRgb(255, 186, 120);
+            public static Color BorderColor { get; } = Color.FromRgb(232, 120, 40);
+            public static Color BorderDarkColor { get; } = Color.FromRgb(130, 58, 16);
+            public static Color FaceTopColor { get; } = Color.FromArgb(0, 220, 110, 40);
+            public static Color FaceBottomColor { get; } = Color.FromArgb(120, 220, 110, 40);
+            public static Color HoverFaceTopColor { get; } = Color.FromArgb(24, 220, 110, 40);
+            public static Color HoverFaceBottomColor { get; } = Color.FromArgb(170, 220, 110, 40);
+        }
+
+        public static class Valuable
+        {
+            public static Color BorderLightColor { get; } = Color.FromRgb(255, 232, 150);
+            public static Color BorderColor { get; } = Color.FromRgb(222, 182, 70);
+            public static Color BorderDarkColor { get; } = Color.FromRgb(120, 92, 28);
+            public static Color FaceTopColor { get; } = Color.FromArgb(0, 210, 170, 60);
+            public static Color FaceBottomColor { get; } = Color.FromArgb(120, 210, 170, 60);
+            public static Color HoverFaceTopColor { get; } = Color.FromArgb(24, 210, 170, 60);
+            public static Color HoverFaceBottomColor { get; } = Color.FromArgb(170, 210, 170, 60);
+        }
+
+        public static class Special
+        {
+            public static Color BorderLightColor { get; } = Color.FromRgb(154, 187, 165);
+            public static Color BorderColor { get; } = Color.FromRgb(103, 116, 101);
+            public static Color BorderDarkColor { get; } = Color.FromRgb(68, 74, 66);
+            public static Color FaceTopColor { get; } = Color.FromArgb(0, 38, 89, 91);
+            public static Color FaceBottomColor { get; } = Color.FromArgb(160, 38, 89, 91);
+            public static Color HoverFaceTopColor { get; } = Color.FromArgb(24, 38, 89, 91);
+            public static Color HoverFaceBottomColor { get; } = Color.FromArgb(230, 38, 89, 91);
+        }
     }
 
     public static class Slider
@@ -895,6 +932,15 @@ internal static class Theme
         public static Color ViewportColor { get; } = Color.FromRgb(243, 217, 147);
         public static Color MarkerOutlineColor { get; } = Color.FromArgb(230, 12, 10, 8);
         public static Color CapitalInsetColor { get; } = Color.FromRgb(240, 214, 150);
+        public static Color SiteColor { get; } = Color.FromRgb(238, 226, 190);
+        public static Color RuinColor { get; } = Color.FromRgb(204, 188, 160);
+        public static Color LootedRuinColor { get; } = Color.FromRgb(112, 102, 90);
+        public static Color GoldColor { get; } = Color.FromRgb(255, 206, 52);
+        public static Color DeathManaColor { get; } = Color.FromRgb(196, 186, 236);
+        public static Color RuneManaColor { get; } = Color.FromRgb(240, 242, 250);
+        public static Color LifeManaColor { get; } = Color.FromRgb(112, 228, 244);
+        public static Color InfernalManaColor { get; } = Color.FromRgb(255, 76, 28);
+        public static Color GroveManaColor { get; } = Color.FromRgb(96, 210, 64);
         public static Color PortraitHoverOverlayColor { get; } = Color.FromArgb(48, 255, 236, 200);
         public static Color DirectionTextColor { get; } = Color.FromRgb(34, 20, 8);
     }

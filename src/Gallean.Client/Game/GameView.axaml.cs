@@ -104,6 +104,15 @@ internal sealed partial class GameView : Window
         Close();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        ScalingChanged -= OnScalingChanged;
+        PositionChanged -= OnPositionChanged;
+        Resized -= OnResized;
+
+        base.OnClosed(e);
+    }
+
     protected override void OnGotFocus(FocusChangedEventArgs e)
     {
         base.OnGotFocus(e);
@@ -134,14 +143,20 @@ internal sealed partial class GameView : Window
 
             if (container is ContentPresenter { Child: not null } presenter)
             {
-                foreach (KeyBinding binding in presenter.Child.KeyBindings)
+                foreach (Visual visual in presenter.Child.GetSelfAndVisualDescendants())
                 {
-                    if (e.Handled)
+                    if (visual is InputElement { IsEffectivelyVisible: true } element)
                     {
-                        break;
-                    }
+                        foreach (KeyBinding binding in element.KeyBindings)
+                        {
+                            binding.TryHandle(e);
 
-                    binding.TryHandle(e);
+                            if (e.Handled)
+                            {
+                                return;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -274,12 +289,24 @@ internal sealed partial class GameView : Window
     {
         Screen? screen = Screens.ScreenFromWindow(this);
 
-        if (screen is null)
+        if (screen is not null)
         {
-            return;
-        }
+            if (WindowState != WindowState.FullScreen)
+            {
+                FitToWorkingArea(screen.WorkingArea);
+            }
+            else
+            {
+                MinWidth = 0;
+                MinHeight = 0;
+            }
 
-        PixelRect area = WindowState == WindowState.FullScreen ? screen.Bounds : screen.WorkingArea;
+            UpdateAssetPixelScale(screen);
+        }
+    }
+
+    private void FitToWorkingArea(PixelRect area)
+    {
         PixelSize areaPixels = area.Size;
         Size areaSize = areaPixels.ToSize(DesktopScaling);
         Size frameSize = FrameSize ?? ClientSize;
@@ -305,8 +332,6 @@ internal sealed partial class GameView : Window
                     Math.Max(area.Y, Math.Min(Position.Y, area.Bottom - pixelSize.Height)));
             }
         }
-
-        UpdateAssetPixelScale(screen);
     }
 
     private void UpdateAssetPixelScale(Screen screen)

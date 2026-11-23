@@ -874,12 +874,12 @@ public sealed partial class VisualTests
 
         (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
 
-        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian));
+        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian, BattlePosition.Left));
         gameViewModel.ShowScreen(new ScenarioSelectScreenViewModel(gameViewModel, NullAssetPreloader.Instance, texts, definitions, campaigns));
 
         await CaptureAsync(window);
 
-        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English));
+        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left));
     }
 
     [AvaloniaTest]
@@ -1051,6 +1051,7 @@ public sealed partial class VisualTests
             ]),
             "Destroy Hubert de Lalye",
             MenuBackgroundViewModel.TryCreateRaceSelection(WorldRace.Human),
+            video: null,
             new AssetSoundKey.BriefingVoice(new ScenarioId("S095SC0000")),
             new NullAudioPlayer(),
             async () => { }));
@@ -2549,7 +2550,7 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
-    public async Task CityLockTypeTargetTest()
+    public async Task CityDismissTargetTest()
     {
         using Sandbox sb = Sandbox.Create();
 
@@ -2563,7 +2564,7 @@ public sealed partial class VisualTests
         gameViewModel.OpenScreen(management);
 
         CityTabViewModel tab = Assert.IsOfType<CityTabViewModel>(management.SelectedTab);
-        tab.LockTypeCommand.Execute(null);
+        tab.DismissCommand.Execute(null);
 
         await CaptureAsync(window);
     }
@@ -2891,98 +2892,50 @@ public sealed partial class VisualTests
     {
         using Sandbox sb = Sandbox.Create();
 
-        GameModel scenarioModel = LoadScenario(null);
-        WorldRaceDefinition humans = scenarioModel.Definitions.GetRace(WorldRace.Human);
-        UnitDefinition leaderDefinition = scenarioModel.Definitions.GetUnit(humans.Leaders[0]);
-        UnitDefinition soldierDefinition = scenarioModel.Definitions.GetUnit(humans.Units[0]);
+        GameModel scenario = LoadScenario(null);
 
-        ItemDefinition[] itemDefinitions =
+        ItemDefinitionId[] itemIds =
         [
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0002")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0004")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0005")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG1001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG2001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG3001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG4001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG7101")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG6001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG7001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG9001"))
+            new("G000IG0001"),
+            new("G000IG0002"),
+            new("G000IG0004"),
+            new("G000IG0005"),
+            new("G000IG1001"),
+            new("G000IG2001"),
+            new("G000IG3001"),
+            new("G000IG4001"),
+            new("G000IG7101"),
+            new("G000IG6001"),
+            new("G000IG7001"),
+            new("G000IG9001")
         ];
-
-        WorldMap map = TestHelpers.SimpleMap(8, 8);
-
-        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map);
-
-        WorldUnit leader = new(new WorldUnitId("leader"), leaderDefinition.Id, leaderDefinition.MaxHitpoints, 0, leaderDefinition.Level, [], null, false);
-        WorldUnit garrisonSoldier = new(new WorldUnitId("garrisonSoldier"), soldierDefinition.Id, soldierDefinition.MaxHitpoints, 0, soldierDefinition.Level, [], null, false);
 
         List<WorldItem> partyItems = [];
         List<WorldItem> cityItems = [];
 
         for (int index = 0; index < 40; index++)
         {
-            partyItems.Add(new WorldItem(new WorldItemId($"PartyItem{index:D2}"), itemDefinitions[index % itemDefinitions.Length].Id, Charges: null));
-            cityItems.Add(new WorldItem(new WorldItemId($"CityItem{index:D2}"), itemDefinitions[(index + 6) % itemDefinitions.Length].Id, Charges: null));
+            partyItems.Add(new WorldItem(new WorldItemId($"PartyItem{index:D2}"), itemIds[index % itemIds.Length], Charges: null));
+            cityItems.Add(new WorldItem(new WorldItemId($"CityItem{index:D2}"), itemIds[(index + 6) % itemIds.Length], Charges: null));
         }
 
-        WorldCityDefinition cityDefinition = TestHelpers.SimpleCityDefinition(
-                new WorldCityDefinitionId(WorldRace.Human, 3),
-                WorldResourceSet.Empty) with
-            {
-                VisionRadius = 5
-            };
+        WorldState state = scenario.World.State;
+        WorldStack hero = state.Stacks[new WorldStackId("S107KC0000")];
+        WorldFortification capital = state.Fortifications[new WorldFortificationId("S107FT0000")];
+        WorldStack loadedHero = hero with { Inventory = new WorldInventory([.. partyItems]) };
+        WorldFortification loadedCapital = capital with { Inventory = new WorldInventory([.. cityItems]) };
 
-        WorldState scenarioState = scenarioModel.Snapshot.WorldState;
-        WorldFortification scenarioCity = scenarioState.Fortifications[new WorldFortificationId("S107FT0000")];
+        GameModel gameModel = LoadScenario(state with
+        {
+            Stacks = state.Stacks.SetItem(hero.Id, loadedHero),
+            Fortifications = state.Fortifications.SetItem(capital.Id, loadedCapital)
+        });
 
-        WorldCity city = TestHelpers.SimpleCity(
-                new WorldFortificationId("city"),
-                cityDefinition,
-                player.Id,
-                new WorldPosition(4, 4),
-                new UnitGrid<WorldUnit>.Builder()
-                    .Place(garrisonSoldier, GridPosition.FrontBottom, false)
-                    .Build()) with
-            {
-                NameTextId = scenarioCity.NameTextId,
-                Inventory = new WorldInventory([.. cityItems])
-            };
-
-        WorldStack stack = TestHelpers.SimpleStack(
-                new WorldStackId("visitors"),
-                player.Id,
-                city.Entrance,
-                new UnitGrid<WorldUnit>.Builder()
-                    .Place(leader, GridPosition.FrontBottom, false)
-                    .Build(),
-                movementPoints: 20) with
-            {
-                Inventory = new WorldInventory([.. partyItems])
-            };
-
-        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
-            .WithMap(map)
-            .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
-            .WithPlayer(player)
-            .WithDefinition(leaderDefinition)
-            .WithDefinition(soldierDefinition)
-            .WithDefinition(cityDefinition)
-            .WithCity(city)
-            .WithStack(stack)
-            .WithSubrace(TestHelpers.NeutralSubrace);
-
-        AddItemDefinitions(builder, itemDefinitions, scenarioModel.Definitions);
-
-        (GameSession session, _) = builder.BuildSession();
-
-        session.World.DispatchCommand(new WorldStartGameCommand());
-
-        GameModel gameModel = new(session, scenarioModel.Texts, NullLog.Instance, SynchronousTaskScheduler.Instance);
         (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
-        gameViewModel.OpenScreen(ManagementScreenViewModel.CreateForFortification(gameModel, gameViewModel, city.Id));
+
+        await gameModel.World.DispatchCommandAsync(new WorldStartGameCommand());
+
+        gameViewModel.OpenScreen(ManagementScreenViewModel.CreateForFortification(gameModel, gameViewModel, capital.Id));
 
         await CaptureAsync(window);
 
@@ -3757,85 +3710,59 @@ public sealed partial class VisualTests
     {
         using Sandbox sb = Sandbox.Create();
 
-        GameModel scenarioModel = LoadScenario(null);
-        WorldRaceDefinition humans = scenarioModel.Definitions.GetRace(WorldRace.Human);
-        UnitDefinition leaderDefinition = scenarioModel.Definitions.GetUnit(humans.Leaders[0]);
+        GameModel scenario = LoadScenario(null);
 
-        ItemDefinition[] itemDefinitions =
+        ItemDefinitionId[] itemIds =
         [
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0002")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0004")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0005")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG1001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG2001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG3001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG4001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG7101")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG6001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG7001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG9001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0003")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0006")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0007")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0008")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG1002")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG1003")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG1004")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG2002")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG2003")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG3002")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG3003")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG4002"))
+            new("G000IG0001"),
+            new("G000IG0002"),
+            new("G000IG0004"),
+            new("G000IG0005"),
+            new("G000IG1001"),
+            new("G000IG2001"),
+            new("G000IG3001"),
+            new("G000IG4001"),
+            new("G000IG7101"),
+            new("G000IG6001"),
+            new("G000IG7001"),
+            new("G000IG9001"),
+            new("G000IG0003"),
+            new("G000IG0006"),
+            new("G000IG0007"),
+            new("G000IG0008"),
+            new("G000IG1002"),
+            new("G000IG1003"),
+            new("G000IG1004"),
+            new("G000IG2002"),
+            new("G000IG2003"),
+            new("G000IG3002"),
+            new("G000IG3003"),
+            new("G000IG4002")
         ];
-
-        WorldMap map = TestHelpers.SimpleMap(8, 8);
-
-        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map);
-
-        WorldUnit leader = new(new WorldUnitId("leader"), leaderDefinition.Id, leaderDefinition.MaxHitpoints, 0, leaderDefinition.Level, [], null, false);
 
         List<WorldItem> items = [];
 
         for (int index = 0; index < 40; index++)
         {
-            items.Add(new WorldItem(new WorldItemId($"Item{index:D3}"), itemDefinitions[index % itemDefinitions.Length].Id, Charges: null));
+            items.Add(new WorldItem(new WorldItemId($"Item{index:D3}"), itemIds[index % itemIds.Length], Charges: null));
         }
 
         for (int index = 40; index < 137; index++)
         {
-            items.Add(new WorldItem(new WorldItemId($"Item{index:D3}"), itemDefinitions[0].Id, Charges: null));
+            items.Add(new WorldItem(new WorldItemId($"Item{index:D3}"), itemIds[0], Charges: null));
         }
 
-        WorldStack stack = TestHelpers.SimpleStack(
-                new WorldStackId("stack"),
-                player.Id,
-                new WorldPosition(4, 4),
-                new UnitGrid<WorldUnit>.Builder()
-                    .Place(leader, GridPosition.FrontBottom, false)
-                    .Build(),
-                movementPoints: 20) with
-            {
-                Inventory = new WorldInventory([.. items])
-            };
+        WorldState state = scenario.World.State;
+        WorldStack hero = state.Stacks[new WorldStackId("S107KC0000")];
+        WorldStack loadedHero = hero with { Inventory = new WorldInventory([.. items]) };
 
-        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
-            .WithMap(map)
-            .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
-            .WithPlayer(player)
-            .WithDefinition(leaderDefinition)
-            .WithStack(stack)
-            .WithSubrace(TestHelpers.NeutralSubrace);
+        GameModel gameModel = LoadScenario(state with { Stacks = state.Stacks.SetItem(hero.Id, loadedHero) });
 
-        AddItemDefinitions(builder, itemDefinitions, scenarioModel.Definitions);
-
-        (GameSession session, _) = builder.BuildSession();
-
-        session.World.DispatchCommand(new WorldStartGameCommand());
-
-        GameModel gameModel = new(session, scenarioModel.Texts, NullLog.Instance, SynchronousTaskScheduler.Instance);
         (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
-        gameViewModel.OpenScreen(ManagementScreenViewModel.CreateForStack(gameModel, gameViewModel, stack.Id));
+
+        await gameModel.World.DispatchCommandAsync(new WorldStartGameCommand());
+
+        gameViewModel.OpenScreen(ManagementScreenViewModel.CreateForStack(gameModel, gameViewModel, hero.Id));
 
         await CaptureAsync(window);
 
@@ -4049,85 +3976,45 @@ public sealed partial class VisualTests
     {
         using Sandbox sb = Sandbox.Create();
 
-        GameModel scenarioModel = LoadScenario(null);
-        WorldRaceDefinition humans = scenarioModel.Definitions.GetRace(WorldRace.Human);
-        UnitDefinition leaderDefinition = scenarioModel.Definitions.GetUnit(humans.Leaders[0]);
+        GameModel scenario = LoadScenario(null);
 
-        ItemDefinition[] itemDefinitions =
+        ItemDefinitionId[] itemIds =
         [
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0002")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0004")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG0005")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG1001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG2001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG3001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG4001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG7101")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG6001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG7001")),
-            scenarioModel.Definitions.GetItem(new ItemDefinitionId("G000IG9001"))
+            new("G000IG0001"),
+            new("G000IG0002"),
+            new("G000IG0004"),
+            new("G000IG0005"),
+            new("G000IG1001"),
+            new("G000IG2001"),
+            new("G000IG3001"),
+            new("G000IG4001"),
+            new("G000IG7101"),
+            new("G000IG6001"),
+            new("G000IG7001"),
+            new("G000IG9001")
         ];
-
-        WorldMap map = TestHelpers.SimpleMap(8, 8);
-
-        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map);
-
-        WorldUnit leader = new(new WorldUnitId("leader"), leaderDefinition.Id, leaderDefinition.MaxHitpoints, 0, leaderDefinition.Level, [], null, false);
-        WorldUnit otherLeader = new(new WorldUnitId("otherLeader"), leaderDefinition.Id, leaderDefinition.MaxHitpoints, 0, leaderDefinition.Level, [], null, false);
 
         List<WorldItem> items = [];
         List<WorldItem> otherItems = [];
 
         for (int index = 0; index < 40; index++)
         {
-            items.Add(new WorldItem(new WorldItemId($"Item{index:D2}"), itemDefinitions[index % itemDefinitions.Length].Id, Charges: null));
-            otherItems.Add(new WorldItem(new WorldItemId($"OtherItem{index:D2}"), itemDefinitions[(index + 6) % itemDefinitions.Length].Id, Charges: null));
+            items.Add(new WorldItem(new WorldItemId($"Item{index:D2}"), itemIds[index % itemIds.Length], Charges: null));
+            otherItems.Add(new WorldItem(new WorldItemId($"OtherItem{index:D2}"), itemIds[(index + 6) % itemIds.Length], Charges: null));
         }
 
-        WorldStack stack = TestHelpers.SimpleStack(
-                new WorldStackId("stack"),
-                player.Id,
-                new WorldPosition(4, 4),
-                new UnitGrid<WorldUnit>.Builder()
-                    .Place(leader, GridPosition.FrontBottom, false)
-                    .Build(),
-                movementPoints: 20) with
-            {
-                Inventory = new WorldInventory([.. items])
-            };
+        WorldState state = scenario.World.State;
+        WorldStack hero = state.Stacks[new WorldStackId("S107KC0000")];
+        WorldStack loadedHero = hero with { Position = new WorldPosition(13, 18), Inventory = new WorldInventory([.. items]) };
+        WorldStack escort = hero with { Id = new WorldStackId("Escort"), Position = new WorldPosition(14, 18), Inventory = new WorldInventory([.. otherItems]) };
 
-        WorldStack otherStack = TestHelpers.SimpleStack(
-                new WorldStackId("other-stack"),
-                player.Id,
-                new WorldPosition(5, 4),
-                new UnitGrid<WorldUnit>.Builder()
-                    .Place(otherLeader, GridPosition.FrontBottom, false)
-                    .Build(),
-                movementPoints: 20) with
-            {
-                Inventory = new WorldInventory([.. otherItems])
-            };
+        GameModel gameModel = LoadScenario(state with { Stacks = state.Stacks.SetItem(hero.Id, loadedHero).Add(escort.Id, escort) });
 
-        TestWorldEngineBuilder builder = new TestWorldEngineBuilder()
-            .WithMap(map)
-            .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
-            .WithPlayer(player)
-            .WithDefinition(leaderDefinition)
-            .WithStack(stack)
-            .WithStack(otherStack)
-            .WithSubrace(TestHelpers.NeutralSubrace);
-
-        AddItemDefinitions(builder, itemDefinitions, scenarioModel.Definitions);
-
-        (GameSession session, _) = builder.BuildSession();
-
-        session.World.DispatchCommand(new WorldStartGameCommand());
-
-        GameModel gameModel = new(session, scenarioModel.Texts, NullLog.Instance, SynchronousTaskScheduler.Instance);
         (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
 
-        ManagementScreenViewModel screen = ManagementScreenViewModel.CreateForStack(gameModel, gameViewModel, stack.Id);
+        await gameModel.World.DispatchCommandAsync(new WorldStartGameCommand());
+
+        ManagementScreenViewModel screen = ManagementScreenViewModel.CreateForStack(gameModel, gameViewModel, hero.Id);
         screen.SelectTabCommand.Execute(screen.Tabs[1]);
         gameViewModel.OpenScreen(screen);
 
@@ -5513,6 +5400,47 @@ public sealed partial class VisualTests
     }
 
     [AvaloniaTest]
+    public async Task DetailsGrantedWardsTest()
+    {
+        GameModel gameModel = LoadScenario(null);
+
+        Window window = new()
+        {
+            WindowState = WindowState.Normal,
+            SizeToContent = SizeToContent.Manual,
+            Width = BaseWidth,
+            Height = BaseHeight,
+            Background = new SolidColorBrush(Theme.Common.WindowBackgroundColor)
+        };
+
+        AssetScope.SetAssets(window, assets);
+        RegisterWindow(window);
+        window.Show();
+
+        foreach ((string step, UnitDefinitionId definitionId) in new[]
+            {
+                ("sylph", new UnitDefinitionId("G000UU8035")),
+                ("sun-dancer", new UnitDefinitionId("G000UU8034")),
+                ("grovemaiden", new UnitDefinitionId("G000UU8033"))
+            })
+        {
+            UnitDefinition definition = gameModel.Definitions.GetUnit(definitionId);
+            WorldUnit unit = new(new WorldUnitId(step), definition.Id, definition.MaxHitpoints, 0, definition.Level, [], null, false);
+            UnitDetailsViewModel unitDetails = UnitDetailsViewModel.CreateFromWorld(unit, null, gameModel.Definitions, gameModel.Texts, gameModel.Stats);
+
+            window.Content = new ContentControl
+            {
+                Content = unitDetails,
+                ClipToBounds = false,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
+
+            await CaptureAsync(window, step);
+        }
+    }
+
+    [AvaloniaTest]
     public async Task DetailsUnitUpgradeBlockedTest()
     {
         GameModel gameModel = LoadScenario(null);
@@ -6092,7 +6020,7 @@ public sealed partial class VisualTests
 
         (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
 
-        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 50, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English));
+        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 50, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left));
         gameViewModel.ShowScreen(new BattleScreenViewModel(gameModel, battle, gameViewModel, assets, NullAssetPreloader.Instance, new RandomProvider(0)));
 
         await WaitForBattleAsync(window);
@@ -6729,7 +6657,7 @@ public sealed partial class VisualTests
         });
         builder.Add(MakeBattleUnit(2, attackers.Units[1], BattleSide.Attacker, gameModel) with
         {
-            StatusEffects = [new BattleRetreatStatusEffect()]
+            StatusEffects = [new BattleRetreatStatusEffect(1)]
         });
 
         builder.Add(MakeBattleUnit(3, defenders.Leaders[0], BattleSide.Defender, gameModel) with

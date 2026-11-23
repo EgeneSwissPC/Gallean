@@ -182,7 +182,7 @@ public sealed class DesignedBattleAiTests
         UnitDefinition leader = Unit("lead", 100, initiative: 90) with { Category = UnitCategory.Leader, LeaderCategory = UnitLeaderCategory.Fighter, Leadership = 2 };
         UnitDefinition ally = Unit("ally", 50, initiative: 20);
         BattleEngine engine = new TestBattleEngineBuilder()
-            .WithDefinition(leader).WithDefinition(ally).WithDefinition(Unit("giant", 600, damage: 100))
+            .WithDefinition(leader).WithDefinition(ally).WithDefinition(Unit("giant", 600, damage: 90))
             .WithAttacker(TestHelpers.SimpleBattleUnit(Attacker, null, leader.Id, BattleSide.Attacker, 100), GridPosition.FrontCenter)
             .WithAttacker(TestHelpers.SimpleBattleUnit(new BattleUnitId(7), null, ally.Id, BattleSide.Attacker, 50), GridPosition.FrontBottom)
             .WithDefender(TestHelpers.SimpleBattleUnit(First, null, new UnitDefinitionId("giant"), BattleSide.Defender, 600), GridPosition.FrontCenter)

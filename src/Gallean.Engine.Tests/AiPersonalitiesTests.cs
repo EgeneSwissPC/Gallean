@@ -92,9 +92,9 @@ public sealed class AiPersonalitiesTests
     [Test]
     public void RuthlessAttacksWhereClassicFleesTest()
     {
-        Assert.That(Act(AiBrainRegistry.ClassicId, 100).OfType<BattleUnitRetreatingEvent>(), Is.Not.Empty);
+        Assert.That(Act(AiBrainRegistry.ClassicId, 90).OfType<BattleUnitRetreatingEvent>(), Is.Not.Empty);
 
-        IReadOnlyList<BattleEvent> ruthless = Act(AiPersonalities.RuthlessId, 100);
+        IReadOnlyList<BattleEvent> ruthless = Act(AiPersonalities.RuthlessId, 90);
         Assert.That(ruthless.OfType<BattleUnitRetreatingEvent>(), Is.Empty);
         Assert.That(ruthless.OfType<BattleUnitAttackEvent>(), Is.Not.Empty);
     }

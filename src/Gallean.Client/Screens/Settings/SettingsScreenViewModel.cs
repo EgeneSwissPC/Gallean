@@ -19,6 +19,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
     private bool showPathOnHover;
     private bool tabSkipsOrders;
     private Language? language;
+    private BattlePosition battlePosition;
     private string worldAi;
     private string battleAi;
 
@@ -38,6 +39,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         showPathOnHover = gameViewModel.Settings.ShowPathOnHover;
         tabSkipsOrders = gameViewModel.Settings.TabSkipsOrders;
         language = gameViewModel.Settings.Language;
+        battlePosition = gameViewModel.Settings.BattlePosition;
         worldAi = KnownOrClassic(gameViewModel.Settings.WorldAi, WorldAis);
         battleAi = KnownOrClassic(gameViewModel.Settings.BattleAi, BattleAis);
 
@@ -54,6 +56,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
     public IReadOnlyList<BattleSpeed> BattleSpeeds => Enum.GetValues<BattleSpeed>();
     public IReadOnlyList<MovementSpeed> MovementSpeeds => Enum.GetValues<MovementSpeed>();
     public IReadOnlyList<Language> Languages { get; } = Enum.GetValues<Language>();
+    public IReadOnlyList<BattlePosition> BattlePositions => Enum.GetValues<BattlePosition>();
     public IReadOnlyList<string> WorldAis { get; } = [.. AiBrainRegistry.WorldBrains.Select(brain => brain.Id)];
     public IReadOnlyList<string> BattleAis { get; } = [.. AiBrainRegistry.BattleBrains.Select(brain => brain.Id)];
 
@@ -233,6 +236,18 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         }
     }
 
+    public BattlePosition BattlePosition
+    {
+        get => battlePosition;
+        set
+        {
+            if (SetProperty(ref battlePosition, value))
+            {
+                Apply();
+            }
+        }
+    }
+
     public bool Windowed
     {
         get => gameViewModel.IsWindowed;
@@ -255,7 +270,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
 
     private void Apply()
     {
-        gameViewModel.UpdateSettings(GameSettings.Create(soundVolume, musicVolume, gameViewModel.IsWindowed, renderResolution, autoSaveInterval, autoSaveLimit, battleSpeed, uiSize, lockCursor, movementSpeed, language) with
+        gameViewModel.UpdateSettings(GameSettings.Create(soundVolume, musicVolume, gameViewModel.IsWindowed, renderResolution, autoSaveInterval, autoSaveLimit, battleSpeed, uiSize, lockCursor, movementSpeed, language, battlePosition) with
         {
             ShowPathOnHover = showPathOnHover,
             TabSkipsOrders = tabSkipsOrders,
@@ -290,7 +305,7 @@ internal sealed class SettingsScreenViewModel : AbstractScreenViewModel
         };
 
         gameViewModel.OpenScreen(new ConfirmPromptViewModel(
-            Tr("AI players"),
+            TrSpans("AI players"),
             message,
             Tr("Switch everyone"),
             ConfirmPromptType.Primary,

@@ -47,6 +47,7 @@ internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUs
                 new RetreatAction(context, Priority: 3) { PowerShare = profile.RetreatPowerShare },
                 new HealItemAction(context, Priority: 3),
                 new AttackAction(context, Priority: 3) { Profile = profile },
+                new WaitAction(context, Priority: 3),
                 new DefendAction(context, Priority: 3) { Profile = profile },
                 new SkipAction(context, Priority: 1)
             ];
@@ -57,6 +58,7 @@ internal sealed partial class BattleAiPlanner(IEngineContext context, bool canUs
             [
                 new RetreatAction(context, Priority: 3) { PowerShare = profile.RetreatPowerShare },
                 new AttackAction(context, Priority: 3) { Profile = profile },
+                new WaitAction(context, Priority: 3),
                 new DefendAction(context, Priority: 3) { Profile = profile },
                 new SkipAction(context, Priority: 1)
             ];

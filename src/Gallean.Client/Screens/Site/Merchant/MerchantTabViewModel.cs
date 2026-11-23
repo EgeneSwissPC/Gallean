@@ -27,7 +27,7 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
 
         RefreshView();
 
-        RegisterSnapshotGatedCommands(TradeCommand);
+        RegisterSnapshotGatedCommands(TradeCommand, SellAllCommand, SellValuablesCommand);
     }
 
     public ManagementScreenViewModel Screen { get; }
@@ -118,6 +118,56 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
         return Offer is { Status.IsAvailable: true };
     }
 
+    [RelayCommand(CanExecute = nameof(CanSellAll))]
+    private void SellAll()
+    {
+        WorldResourceSet value = GetValue(EnumerateSellableItems());
+
+        Game.OpenScreen(new ConfirmPromptViewModel(
+            TrSpans("Sell all items"),
+            TrSpans("The merchant offers {0:*} for {1:b}.", WorldResourceFormatter.Format(value), Tr("all your items")),
+            Tr("Sell all"),
+            ConfirmPromptType.Danger,
+            () => SellItemsAsync(EnumerateSellableItems())));
+    }
+
+    private bool CanSellAll()
+    {
+        if (IsBusy)
+        {
+            return false;
+        }
+
+        List<WorldGetMerchantInfoCommand.SellItem> sellItems = [.. EnumerateSellableItems()];
+
+        return sellItems.Count > 0;
+    }
+
+    [RelayCommand(CanExecute = nameof(CanSellValuables))]
+    private void SellValuables()
+    {
+        WorldResourceSet value = GetValue(EnumerateSellableValuables());
+
+        Game.OpenScreen(new ConfirmPromptViewModel(
+            TrSpans("Sell all valuables"),
+            TrSpans("The merchant offers {0:*} for {1:b}.", WorldResourceFormatter.Format(value), Tr("all your valuables")),
+            Tr("Sell"),
+            ConfirmPromptType.Success,
+            () => SellItemsAsync(EnumerateSellableValuables())));
+    }
+
+    private bool CanSellValuables()
+    {
+        if (IsBusy)
+        {
+            return false;
+        }
+
+        List<WorldGetMerchantInfoCommand.SellItem> sellItems = [.. EnumerateSellableValuables()];
+
+        return sellItems.Count > 0;
+    }
+
     async Task IDragDropProvider.DropAsync(IDragSourceReference source, IDragTargetReference target)
     {
         switch (source, target)
@@ -159,6 +209,17 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
         RefreshView();
     }
 
+    private async Task SellItemsAsync(IEnumerable<WorldGetMerchantInfoCommand.SellItem> sellItems)
+    {
+        foreach (WorldGetMerchantInfoCommand.SellItem sellItem in sellItems)
+        {
+            await TryDispatchWorldActionAsync(new WorldSellItemCommand(stackId, siteId, sellItem.Item.Id));
+        }
+
+        Game.PlaySound(new AssetSoundKey.SitePurchase());
+        RefreshView();
+    }
+
     protected override void OnSnapshotChanged(GameSnapshot current)
     {
         RefreshView();
@@ -174,7 +235,7 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
 
         if (!WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) ||
             stack.OwnerId != ViewPlayerId ||
-            stack.Position != site.Entrance)
+            !site.IsEntranceAt(stack.Position))
         {
             Screen.Close();
             return;
@@ -203,6 +264,8 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
         UpdateSellZone(info, DragDrop.Dragged);
 
         TradeCommand.NotifyCanExecuteChanged();
+        SellAllCommand.NotifyCanExecuteChanged();
+        SellValuablesCommand.NotifyCanExecuteChanged();
     }
 
     private WorldGetMerchantInfoCommand.Result ResolveMerchantInfo()
@@ -218,6 +281,82 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
         {
             return result.Data;
         }
+    }
+
+    private IEnumerable<WorldGetMerchantInfoCommand.SellItem> EnumerateSellableItems()
+    {
+        WorldGetMerchantInfoCommand.Result info = ResolveMerchantInfo();
+
+        foreach (WorldGetMerchantInfoCommand.SellItem sellItem in info.SellItems)
+        {
+            if (CanSell(sellItem.Item))
+            {
+                yield return sellItem;
+            }
+        }
+    }
+
+    private IEnumerable<WorldGetMerchantInfoCommand.SellItem> EnumerateSellableValuables()
+    {
+        WorldGetMerchantInfoCommand.Result info = ResolveMerchantInfo();
+
+        foreach (WorldGetMerchantInfoCommand.SellItem sellItem in info.SellItems)
+        {
+            if (IsValuable(sellItem.Item) && CanSell(sellItem.Item))
+            {
+                yield return sellItem;
+            }
+        }
+    }
+
+    private bool CanSell(WorldItem item)
+    {
+        WorldSellItemCommand command = new(stackId, siteId, item.Id);
+        WorldCommandResult commandResult = GameModel.World.DryRunCommand(command);
+
+        return !commandResult.Failed;
+    }
+
+    private bool IsValuable(WorldItem item)
+    {
+        ItemDefinition definition = GameModel.Definitions.GetItem(item.DefinitionId);
+
+        return definition.Category switch
+        {
+            ItemCategory.Armor => false,
+            ItemCategory.Jewel => false,
+            ItemCategory.Weapon => false,
+            ItemCategory.Banner => false,
+            ItemCategory.PotionTemporaryBoost => false,
+            ItemCategory.PotionHeal => false,
+            ItemCategory.PotionRevive => false,
+            ItemCategory.PotionPermanentBoost => false,
+            ItemCategory.Scroll => false,
+            ItemCategory.Wand => false,
+            ItemCategory.Valuable => true,
+            ItemCategory.Orb => false,
+            ItemCategory.Talisman => false,
+            ItemCategory.TravelItem => false,
+            ItemCategory.Special => false
+        };
+    }
+
+    private static WorldResourceSet GetValue(IEnumerable<WorldGetMerchantInfoCommand.SellItem> sellItems)
+    {
+        WorldResourceSet value = WorldResourceSet.Empty;
+
+        foreach (WorldGetMerchantInfoCommand.SellItem sellItem in sellItems)
+        {
+            value = new WorldResourceSet(
+                value.Gold + sellItem.Value.Gold,
+                value.DeathMana + sellItem.Value.DeathMana,
+                value.RuneMana + sellItem.Value.RuneMana,
+                value.LifeMana + sellItem.Value.LifeMana,
+                value.InfernalMana + sellItem.Value.InfernalMana,
+                value.GroveMana + sellItem.Value.GroveMana);
+        }
+
+        return value;
     }
 
     private static WorldGetMerchantInfoCommand.PurchaseItem? FindPurchaseItem(
@@ -282,8 +421,9 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
     {
         WorldResourceSet resources = WorldState.Players[ViewPlayerId].Resources;
         List<MerchantPurchaseItemViewModel> result = [];
+        IEnumerable<WorldGetMerchantInfoCommand.PurchaseItem> purchaseItems = info.PurchaseItems.OrderBy(purchaseItem => purchaseItem.Cost, OfferPriceComparer.Descending);
 
-        foreach (WorldGetMerchantInfoCommand.PurchaseItem purchaseItem in info.PurchaseItems)
+        foreach (WorldGetMerchantInfoCommand.PurchaseItem purchaseItem in purchaseItems)
         {
             string name = ItemFormatter.FormatName(GameModel.Definitions, GameModel.Texts, purchaseItem.ItemId, charges: null);
             string description = ItemFormatter.FormatDescription(GameModel.Definitions, GameModel.Texts, purchaseItem.ItemId);
@@ -330,8 +470,9 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
     {
         WorldResourceSet resources = WorldState.Players[ViewPlayerId].Resources;
         List<MerchantSellItemViewModel> result = [];
+        IEnumerable<WorldGetMerchantInfoCommand.SellItem> sellItems = info.SellItems.OrderBy(sellItem => sellItem.Value, OfferPriceComparer.Descending);
 
-        foreach (ItemGroup group in ItemGroup.Build([.. info.SellItems.Select(sellItem => sellItem.Item)]))
+        foreach (ItemGroup group in ItemGroup.Build([.. sellItems.Select(sellItem => sellItem.Item)]))
         {
             MerchantSellItemReference reference = new(group.DefinitionId, group.Charges);
             WorldGetMerchantInfoCommand.SellItem? sellItem = FindSellItem(info, reference);
@@ -342,6 +483,8 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
                 string name = ItemFormatter.FormatName(GameModel.Definitions, GameModel.Texts, worldItem.DefinitionId, worldItem.Charges);
                 string description = ItemFormatter.FormatDescription(GameModel.Definitions, GameModel.Texts, worldItem.DefinitionId);
                 AssetSpriteKey.ItemIcon icon = ItemIconResolver.Resolve(GameModel.Definitions, worldItem.DefinitionId);
+                ItemDefinition definition = GameModel.Definitions.GetItem(worldItem.DefinitionId);
+                InventoryItemType itemType = InventoryItemTypeResolver.Resolve(definition.Category);
 
                 ItemDetailsViewModel details = ItemDetailsViewModel.Create(
                     worldItem.DefinitionId,
@@ -355,6 +498,7 @@ internal sealed partial class MerchantTabViewModel : ManagementTabViewModel, IDr
                     reference.ItemId,
                     reference.Charges,
                     group.Items.Length,
+                    itemType,
                     icon,
                     name,
                     description,

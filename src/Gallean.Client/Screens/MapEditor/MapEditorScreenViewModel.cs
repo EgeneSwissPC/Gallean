@@ -215,6 +215,10 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     [ObservableProperty]
     public partial WorldPositionInfoViewModel? PositionInfo { get; private set; }
 
+    // A ruin's item and gold, shown under the ruin's right-click info (the game itself no longer shows them).
+    [ObservableProperty]
+    public partial MapEditorRuinContentsViewModel? PositionRuinContents { get; private set; }
+
     [ObservableProperty]
     public partial int BrushRadius { get; set; }
 
@@ -909,6 +913,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public void ShowPositionInfo(WorldPosition tile)
     {
         WorldState shown = state;
+        PositionRuinContents = null;
 
         if (!shown.Map.IsValidPosition(tile))
         {
@@ -942,6 +947,11 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
             else
             {
                 PositionInfo = WorldTileInfoViewModel.TryCreate(shown, ViewPlayerId, tile, visibility, GetResourceNodeInfo(tile, plan), editorGame.Definitions, editorGame.Texts, editorGame.Stats);
+
+                if (plan.GetFortificationAt(tile) is WorldRuin ruin)
+                {
+                    PositionRuinContents = MapEditorRuinContentsViewModel.TryCreate(ruin, editorGame.Definitions, editorGame.Texts);
+                }
             }
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidDataException)
@@ -969,6 +979,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
     public void HidePositionInfo()
     {
         PositionInfo = null;
+        PositionRuinContents = null;
     }
 
     [RelayCommand(CanExecute = nameof(CanUndo))]
@@ -1072,7 +1083,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
 
         WorldRace race = map.Players[0].Race;
         ScenarioConfiguration configuration = new(
-            [new ScenarioPlayerConfiguration(race, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)],
+            [new ScenarioPlayerConfiguration(race, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")],
             WorldDifficulty.Average,
             Leader: null);
         GameConfiguration game = new(map.Id, configuration);
@@ -1098,7 +1109,7 @@ internal sealed partial class MapEditorScreenViewModel : AbstractScreenViewModel
         }
 
         Game.OpenScreen(new ConfirmPromptViewModel(
-            Tr("Leave the editor"),
+            TrSpans("Leave the editor"),
             TrSpans("Discard unsaved changes to \"{0}\"?", Name),
             Tr("Discard"),
             ConfirmPromptType.Danger,

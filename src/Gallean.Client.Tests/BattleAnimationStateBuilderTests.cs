@@ -1,5 +1,6 @@
 using System.Globalization;
 using Gallean.Common;
+using Gallean.Configuration;
 using Gallean.Engine;
 using Gallean.Engine.Tests;
 using Gallean.Tests.Common;
@@ -132,11 +133,11 @@ public sealed class BattleAnimationStateBuilderTests
 
     private static string FormatPlacement(AnimationPlacement placement)
     {
-        foreach (BattleSide gridSide in Enum.GetValues<BattleSide>())
+        foreach (BattlePosition gridPosition in Enum.GetValues<BattlePosition>())
         {
-            if (BattleRenderLayout.GetGridPlacement(gridSide) == placement)
+            if (BattleRenderLayout.GetGridPlacement(gridPosition) == placement)
             {
-                return $"{gridSide.ToString().ToLowerInvariant()} grid";
+                return $"{gridPosition.ToString().ToLowerInvariant()} grid";
             }
         }
 
@@ -169,7 +170,7 @@ public sealed class BattleAnimationStateBuilderTests
                 break;
         }
 
-        return $"{footprint.Side.ToString().ToLowerInvariant()} {line}-{flank} {FormatSize(footprint.IsLarge)}";
+        return $"{footprint.BattlePosition.ToString().ToLowerInvariant()} {line}-{flank} {FormatSize(footprint.IsLarge)}";
     }
 
     private static IReadOnlyList<string> FormatAnimation(BattleAnimationState animation)
@@ -330,7 +331,7 @@ public sealed class BattleAnimationStateBuilderTests
 
         for (int i = 0; i < 300; i++)
         {
-            BattleAnimationStateBuilder builder = new(assets, definitions, random, BattleViewerSide.Defender, 1);
+            BattleAnimationStateBuilder builder = new(assets, definitions, random, BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
             BattleAnimationState animation = Assert.NotNull(builder.Build(baseState, events));
 
             JoinStringBuilder animations = new(" + ");
@@ -354,7 +355,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -371,7 +372,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -407,7 +408,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -436,7 +437,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -453,7 +454,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -489,7 +490,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -518,7 +519,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -535,7 +536,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -571,7 +572,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -602,7 +603,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -619,7 +620,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -655,7 +656,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -685,7 +686,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -702,7 +703,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -738,7 +739,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -768,7 +769,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -785,7 +786,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -821,7 +822,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -850,7 +851,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -867,7 +868,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -900,7 +901,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
 
         Assert.That(
             () => builder.Build(
@@ -920,7 +921,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -937,7 +938,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -970,7 +971,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
 
         Assert.That(
             () => builder.Build(
@@ -990,7 +991,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1007,7 +1008,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1042,7 +1043,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1071,7 +1072,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1088,7 +1089,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1126,7 +1127,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1145,7 +1146,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive",
-            "@16 clip battle-effect-death/human/small for 12 frames at defender front-center small",
+            "@16 clip battle-effect-death/human/small for 12 frames at right front-center small",
             "@16 sound battle-effect-sound-death",
             "@22 unit 2 body Idle Dead for 6 frames",
             "@22 unit 2 opacity 0 -> 1 over 4 frames Smooth"
@@ -1160,7 +1161,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1177,7 +1178,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Dwarf,
             DeathAnimation: UnitDeathAnimation.Dwarf,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1215,7 +1216,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("ATK", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1234,7 +1235,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive",
-            "@16 clip battle-effect-death/dwarf/small for 12 frames at defender front-center small",
+            "@16 clip battle-effect-death/dwarf/small for 12 frames at right front-center small",
             "@16 sound battle-effect-sound-death",
             "@26 unit 2 body Idle Dead for 2 frames",
             "@26 unit 2 opacity 0 -> 1 over 2 frames Smooth"
@@ -1249,7 +1250,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1266,7 +1267,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1298,7 +1299,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PAR", UnitAttackType.Paralyze, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1325,7 +1326,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1342,7 +1343,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("IMP"),
             Race: WorldRace.Heretic,
             DeathAnimation: UnitDeathAnimation.Heretic,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1385,7 +1386,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddUnit(summonDefinition)
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1407,7 +1408,7 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 17 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 10 frames at attacker front-top small",
+            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 10 frames at left front-top small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 2 body Idle Alive",
             "@16 unit 1 body Idle Alive"
@@ -1422,7 +1423,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1439,7 +1440,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1456,7 +1457,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("IMP"),
             Race: WorldRace.Heretic,
             DeathAnimation: UnitDeathAnimation.Heretic,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1505,7 +1506,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddUnit(summonDefinition)
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1534,14 +1535,14 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 36 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 10 frames at attacker front-top small",
+            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 10 frames at left front-top small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 3 body Idle Alive",
             "@16 unit 1 body Idle Alive",
             "@17 unit 2 body Hit Alive for 9 frames",
             "@17 unit 2 feedback +15 Damage -6",
             "@17 unit 2 hitpoints 40 -> 34 over 12 frames Decelerate",
-            "@17 clip battle-effect-status/blister/small for 14 frames at defender front-center small",
+            "@17 clip battle-effect-status/blister/small for 14 frames at right front-center small",
             "@17 sound battle-effect-sound-status/blister",
             "@26 unit 2 body Idle Alive"
         ]));
@@ -1555,7 +1556,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1572,7 +1573,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("VET"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1615,7 +1616,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("RED", UnitAttackType.ReduceLevel, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1635,10 +1636,10 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 30 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 12 frames at defender front-center small",
+            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 12 frames at right front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 2 feedback +15 Effect Level drained",
-            "@8 clip battle-effect-status/reduce-level/small for 20 frames at defender front-center small",
+            "@8 clip battle-effect-status/reduce-level/small for 20 frames at right front-center small",
             "@8 sound battle-effect-sound-status/transform",
             "@16 unit 1 body Idle Alive",
             "@18 unit 2 form REC facing Defender",
@@ -1655,7 +1656,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1672,7 +1673,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1718,7 +1719,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("TRA", UnitAttackType.TransformEnemy, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1738,10 +1739,10 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 30 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 12 frames at defender front-center small",
+            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 12 frames at right front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 2 feedback +15 Effect Transformed",
-            "@8 clip battle-effect-status/transform/small for 20 frames at defender front-center small",
+            "@8 clip battle-effect-status/transform/small for 20 frames at right front-center small",
             "@8 sound battle-effect-sound-status/transform",
             "@16 unit 1 body Idle Alive",
             "@18 unit 2 form NEW facing Defender auras [battle-unit-aura/new/idle/defender]",
@@ -1758,7 +1759,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1775,7 +1776,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1810,7 +1811,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("DOP", UnitAttackType.Doppelganger, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1831,7 +1832,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
             "@7 unit 1 feedback +15 Effect Transformed",
-            "@7 clip battle-effect-status/doppelganger/small for 20 frames at attacker front-center small",
+            "@7 clip battle-effect-status/doppelganger/small for 20 frames at left front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@7 sound battle-effect-sound-status/transform",
             "@16 unit 1 body Idle Alive",
@@ -1848,7 +1849,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1865,7 +1866,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1908,7 +1909,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("TRS", UnitAttackType.TransformSelf, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -1928,10 +1929,10 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 30 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 12 frames at attacker front-center small",
+            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 12 frames at left front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 1 feedback +15 Effect Transformed",
-            "@8 clip battle-effect-status/transform/small for 20 frames at attacker front-center small",
+            "@8 clip battle-effect-status/transform/small for 20 frames at left front-center small",
             "@8 sound battle-effect-sound-status/transform",
             "@16 unit 1 body Idle Alive",
             "@18 unit 1 form NEW facing Attacker",
@@ -1948,7 +1949,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -1965,7 +1966,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("TRA"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -1996,7 +1997,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 20, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2007,7 +2008,7 @@ public sealed class BattleAnimationStateBuilderTests
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 22 frames",
             "@0 unit 2 feedback +15 Effect Restored",
-            "@0 clip battle-effect-status/untransform/small for 20 frames at defender front-center small",
+            "@0 clip battle-effect-status/untransform/small for 20 frames at right front-center small",
             "@0 sound battle-effect-sound-status/transform",
             "@10 unit 2 form ORIG facing Defender auras [battle-unit-aura/orig/idle/defender]",
             "@10 unit 2 hitpoints 60 -> 90 over 12 frames Decelerate",
@@ -2023,7 +2024,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2040,7 +2041,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("TRA"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2083,7 +2084,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("CURE", UnitAttackType.Cure, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2096,11 +2097,11 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 30 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 10 frames at attacker front-top small",
+            "@7 clip battle-effect-attack/atk/touch/body/attack/0 for 10 frames at left front-top small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 2 feedback +15 Effect Restored",
             "@8 unit 2 feedback +15 Heal Cured",
-            "@8 clip battle-effect-status/untransform/small for 20 frames at attacker front-top small",
+            "@8 clip battle-effect-status/untransform/small for 20 frames at left front-top small",
             "@8 sound battle-effect-sound-status/transform",
             "@16 unit 1 body Idle Alive",
             "@18 unit 2 form ORIG facing Attacker",
@@ -2117,7 +2118,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("WEAK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2145,7 +2146,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 24, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2156,7 +2157,7 @@ public sealed class BattleAnimationStateBuilderTests
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 24 frames",
             "@0 unit 1 feedback +15 Effect Level restored",
-            "@0 clip battle-effect-status/restore-level/small for 24 frames at defender front-center small",
+            "@0 clip battle-effect-status/restore-level/small for 24 frames at right front-center small",
             "@0 sound battle-effect-sound-status/transform",
             "@12 unit 1 form VETERAN facing Defender",
             "@12 unit 1 hitpoints 60 -> 90 over 12 frames Decelerate",
@@ -2172,7 +2173,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("COPY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2200,7 +2201,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 20, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2211,7 +2212,7 @@ public sealed class BattleAnimationStateBuilderTests
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 22 frames",
             "@0 unit 1 feedback +15 Effect Restored",
-            "@0 clip battle-effect-status/undoppelganger/small for 20 frames at attacker front-center small",
+            "@0 clip battle-effect-status/undoppelganger/small for 20 frames at left front-center small",
             "@0 sound battle-effect-sound-status/transform",
             "@10 unit 1 form ORIG facing Attacker",
             "@10 unit 1 hitpoints 60 -> 90 over 12 frames Decelerate",
@@ -2227,7 +2228,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2244,7 +2245,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2276,7 +2277,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("SHATTER", UnitAttackType.ReduceArmor, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2306,7 +2307,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2323,7 +2324,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2355,7 +2356,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("BOOST", UnitAttackType.IncreaseDamage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2387,7 +2388,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2404,7 +2405,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2436,7 +2437,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PROT", UnitAttackType.GiveProtection, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2474,7 +2475,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2491,7 +2492,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2523,7 +2524,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("GIVE", UnitAttackType.GiveAdditionalAttack, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2549,7 +2550,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2566,7 +2567,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2602,7 +2603,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PSN", UnitAttackType.Poison, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2643,7 +2644,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2660,7 +2661,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2696,7 +2697,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("EQP", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2735,7 +2736,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2752,7 +2753,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2788,7 +2789,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PSN", UnitAttackType.Poison, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2823,7 +2824,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2840,7 +2841,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2872,7 +2873,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("HEAL", UnitAttackType.Heal, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2887,7 +2888,6 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 unit 2 feedback +15 Heal Healed",
             "@7 unit 2 hitpoints 20 -> 40 over 12 frames Decelerate",
             "@7 sound battle-unit-touch/atk/4",
-            "@7 sound battle-effect-sound-heal",
             "@16 unit 1 body Idle Alive"
         ]));
     }
@@ -2900,7 +2900,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -2917,7 +2917,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -2955,7 +2955,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("DRAIN", UnitAttackType.DrainLife, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -2977,7 +2977,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 unit 2 feedback +15 Damage -20",
             "@7 unit 1 hitpoints 40 -> 60 over 12 frames Decelerate",
             "@7 unit 2 hitpoints 40 -> 20 over 12 frames Decelerate",
-            "@7 clip battle-effect-heal for 14 frames at attacker front-center small",
+            "@7 clip battle-effect-heal for 14 frames at left front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive"
@@ -2992,7 +2992,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3009,7 +3009,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3041,7 +3041,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("CURE", UnitAttackType.Cure, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3067,7 +3067,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3084,7 +3084,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3119,7 +3119,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("REVIVE", UnitAttackType.Revive, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3136,7 +3136,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 sound battle-unit-attack/atk/4",
             "@7 unit 2 feedback +15 Heal Revived",
             "@7 unit 2 hitpoints 0 -> 40 over 12 frames Decelerate",
-            "@7 clip battle-effect-status/revive/small for 18 frames at attacker front-top small",
+            "@7 clip battle-effect-status/revive/small for 18 frames at left front-top small",
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive"
@@ -3151,7 +3151,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3183,7 +3183,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("POTION", ItemCategory.PotionHeal, animationUnitId: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3201,7 +3201,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 1 feedback +15 Action Item",
             "@0 unit 1 feedback +15 Heal Healed",
             "@0 unit 1 hitpoints 40 -> 60 over 12 frames Decelerate",
-            "@0 clip battle-effect-item/potion for 31 frames at attacker front-center small",
+            "@0 clip battle-effect-item/potion for 31 frames at left front-center small",
             "@0 sound battle-effect-sound-potion/heal",
             "@0 sound battle-effect-sound-heal"
         ]));
@@ -3215,7 +3215,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3232,7 +3232,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3267,7 +3267,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("POTION", ItemCategory.PotionRevive, animationUnitId: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3285,8 +3285,8 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 1 feedback +15 Action Item",
             "@0 unit 2 feedback +15 Heal Revived",
             "@0 unit 2 hitpoints 0 -> 30 over 12 frames Decelerate",
-            "@0 clip battle-effect-status/revive/small for 18 frames at attacker front-top small",
-            "@0 clip battle-effect-item/potion for 31 frames at attacker front-center small",
+            "@0 clip battle-effect-status/revive/small for 18 frames at left front-top small",
+            "@0 clip battle-effect-item/potion for 31 frames at left front-center small",
             "@0 sound battle-effect-sound-potion/revive",
             "@9 unit 2 body Idle Alive"
         ]));
@@ -3300,7 +3300,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3333,7 +3333,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("PERMANENT", ItemCategory.PotionPermanentBoost, animationUnitId: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3356,10 +3356,10 @@ public sealed class BattleAnimationStateBuilderTests
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 62 frames",
             "@0 unit 1 feedback +15 Action Item",
-            "@0 clip battle-effect-item/potion for 31 frames at attacker front-center small",
+            "@0 clip battle-effect-item/potion for 31 frames at left front-center small",
             "@0 sound battle-effect-sound-potion/boost",
             "@31 unit 1 feedback +15 Action Item",
-            "@31 clip battle-effect-item/potion for 31 frames at attacker front-center small",
+            "@31 clip battle-effect-item/potion for 31 frames at left front-center small",
             "@31 sound battle-effect-sound-potion/boost"
         ]));
     }
@@ -3372,7 +3372,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3389,7 +3389,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: true),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: true),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3429,7 +3429,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("POTION", ItemCategory.PotionHeal, new UnitDefinitionId("PRIEST")))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3444,14 +3444,13 @@ public sealed class BattleAnimationStateBuilderTests
             ]);
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 31 frames",
-            "@0 clip battle-effect-attack/priest/touch/body/attack/0 for 10 frames at attacker front-top large",
-            "@0 clip battle-effect-item/potion for 31 frames at attacker front-center small",
+            "@0 clip battle-effect-attack/priest/touch/body/attack/0 for 10 frames at left front-top large",
+            "@0 clip battle-effect-item/potion for 31 frames at left front-center small",
             "@0 sound battle-effect-sound-potion/heal",
             "@0 sound battle-unit-touch/priest/3",
             "@1 unit 1 feedback +15 Action Item",
             "@1 unit 2 feedback +15 Heal Healed",
-            "@1 unit 2 hitpoints 20 -> 70 over 12 frames Decelerate",
-            "@1 sound battle-effect-sound-heal"
+            "@1 unit 2 hitpoints 20 -> 70 over 12 frames Decelerate"
         ]));
     }
 
@@ -3463,7 +3462,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3480,7 +3479,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontBottom, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontBottom, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3512,7 +3511,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("TALISMAN", ItemCategory.Talisman, animationUnitId: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3527,7 +3526,7 @@ public sealed class BattleAnimationStateBuilderTests
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 31 frames",
             "@0 unit 1 feedback +15 Action Item",
-            "@0 clip battle-effect-item/talisman for 31 frames at attacker front-center small"
+            "@0 clip battle-effect-item/talisman for 31 frames at left front-center small"
         ]));
     }
 
@@ -3539,7 +3538,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3556,7 +3555,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontBottom, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontBottom, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3608,7 +3607,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("SPHERE", ItemCategory.Orb, new UnitDefinitionId("MAGE")))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3618,17 +3617,17 @@ public sealed class BattleAnimationStateBuilderTests
                     new ItemDefinitionId("SPHERE"),
                     new BattleUnitId(1),
                     new BattleAttackUnitTarget(new BattleUnitId(2))),
-                new BattleUnitAttackStepEvent(new BattleUnitId(1), new BattleUnitId(2), [new UnitAttackDefinitionId("ORB")], AccuracyReduction: 0),
+                new BattleUnitAttackStepEvent(new BattleUnitId(1), [new UnitAttackDefinitionId("ORB")], [new BattleUnitId(2)], TargetIndex: 0, [], AccuracyReduction: 0),
                 new BattleUnitAttackHitEvent(new BattleUnitId(1), new BattleUnitId(2), new UnitAttackDefinitionId("ORB"), 20),
                 new BattleUnitTurnEndingEvent(new BattleUnitId(1)),
                 new BattleUnitTurnStartedEvent(new BattleUnitTurn(new BattleUnitId(2), BattleUnitTurnType.Normal))
             ]);
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 31 frames",
-            "@0 clip battle-effect-item/orb for 31 frames at attacker front-center small",
-            "@0 clip battle-effect-attack/mage/hit/body/both/0 for 20 frames at defender grid",
+            "@0 clip battle-effect-item/orb for 31 frames at left front-center small",
+            "@0 clip battle-effect-attack/mage/hit/body/both/0 for 20 frames at right grid",
             "@0 sound battle-unit-hit/mage/4",
-            "@6 clip battle-effect-attack/mage/touch/body/defend/0 for 10 frames at defender front-bottom small",
+            "@6 clip battle-effect-attack/mage/touch/body/defend/0 for 10 frames at right front-bottom small",
             "@6 sound battle-unit-touch/mage/3",
             "@7 unit 2 body Hit Alive for 9 frames",
             "@7 unit 1 feedback +15 Action Item",
@@ -3646,7 +3645,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3663,7 +3662,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontBottom, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontBottom, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3704,7 +3703,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("SPHERE", ItemCategory.Orb, new UnitDefinitionId("GHOST")))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3720,8 +3719,8 @@ public sealed class BattleAnimationStateBuilderTests
             ]);
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 31 frames",
-            "@0 clip battle-effect-item/orb for 31 frames at attacker front-center small",
-            "@0 clip battle-effect-attack/ghost/touch/body/both/0 for 12 frames at defender front-bottom small",
+            "@0 clip battle-effect-item/orb for 31 frames at left front-center small",
+            "@0 clip battle-effect-attack/ghost/touch/body/both/0 for 12 frames at right front-bottom small",
             "@0 sound battle-unit-touch/ghost/3",
             "@4 unit 1 feedback +15 Action Item",
             "@4 unit 2 feedback +15 Effect Paralyzed",
@@ -3737,7 +3736,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3764,11 +3763,12 @@ public sealed class BattleAnimationStateBuilderTests
             TestGameDefinitionProvider.Empty,
             new RandomProvider(0),
             BattleViewerSide.Defender,
+            new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right),
             1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
-                new BattleUnitRetreatingEvent(new BattleUnitId(1)),
+                new BattleUnitRetreatingEvent(new BattleUnitId(1), 1),
                 new BattleUnitTurnStartedEvent(new BattleUnitTurn(new BattleUnitId(1), BattleUnitTurnType.Normal))
             ]);
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
@@ -3786,7 +3786,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3813,6 +3813,7 @@ public sealed class BattleAnimationStateBuilderTests
             TestGameDefinitionProvider.Empty,
             new RandomProvider(0),
             BattleViewerSide.Defender,
+            new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right),
             1);
         BattleAnimationState? animation = builder.Build(
             baseState,
@@ -3834,7 +3835,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("WARRIOR"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3851,7 +3852,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -3883,12 +3884,12 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("FEAR", UnitAttackType.Fear, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
                 new BattleUnitAttackEvent(new BattleUnitId(2), new BattleAttackUnitTarget(new BattleUnitId(1)), [new UnitAttackDefinitionId("FEAR")]),
-                new BattleUnitRetreatingEvent(new BattleUnitId(1)),
+                new BattleUnitRetreatingEvent(new BattleUnitId(1), 1),
                 new BattleUnitTurnStartedEvent(new BattleUnitTurn(new BattleUnitId(1), BattleUnitTurnType.Normal))
             ]);
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
@@ -3910,7 +3911,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3941,7 +3942,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 15, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -3957,7 +3958,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 1 body Hit Alive for 9 frames",
             "@0 unit 1 feedback +15 Damage -5",
             "@0 unit 1 hitpoints 60 -> 55 over 12 frames Decelerate",
-            "@0 clip battle-effect-status/poison/small for 15 frames at defender front-center small",
+            "@0 clip battle-effect-status/poison/small for 15 frames at right front-center small",
             "@0 sound battle-effect-sound-status/poison",
             "@9 unit 1 body Idle Alive"
         ]));
@@ -3971,7 +3972,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -3998,6 +3999,7 @@ public sealed class BattleAnimationStateBuilderTests
             TestGameDefinitionProvider.Empty,
             new RandomProvider(0),
             BattleViewerSide.Defender,
+            new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right),
             1);
         BattleAnimationState? animation = builder.Build(
             baseState,
@@ -4016,7 +4018,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4043,6 +4045,7 @@ public sealed class BattleAnimationStateBuilderTests
             TestGameDefinitionProvider.Empty,
             new RandomProvider(0),
             BattleViewerSide.Defender,
+            new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right),
             1);
         BattleAnimationState? animation = builder.Build(
             baseState,
@@ -4064,7 +4067,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4091,6 +4094,7 @@ public sealed class BattleAnimationStateBuilderTests
             TestGameDefinitionProvider.Empty,
             new RandomProvider(0),
             BattleViewerSide.Defender,
+            new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right),
             1);
         BattleAnimationState? animation = builder.Build(
             baseState,
@@ -4112,7 +4116,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4139,6 +4143,7 @@ public sealed class BattleAnimationStateBuilderTests
             TestGameDefinitionProvider.Empty,
             new RandomProvider(0),
             BattleViewerSide.Defender,
+            new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right),
             1);
         BattleAnimationState? animation = builder.Build(
             baseState,
@@ -4160,7 +4165,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4187,6 +4192,7 @@ public sealed class BattleAnimationStateBuilderTests
             TestGameDefinitionProvider.Empty,
             new RandomProvider(0),
             BattleViewerSide.Defender,
+            new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right),
             1);
         BattleAnimationState? animation = builder.Build(
             baseState,
@@ -4207,7 +4213,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4224,7 +4230,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4262,7 +4268,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("REVIVE", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4282,7 +4288,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive",
-            "@16 clip battle-effect-death/human/small for 12 frames at defender front-center small",
+            "@16 clip battle-effect-death/human/small for 12 frames at right front-center small",
             "@16 sound battle-effect-sound-death",
             "@22 unit 2 body Idle Dead for 6 frames",
             "@22 unit 2 opacity 0 -> 1 over 4 frames Smooth"
@@ -4297,7 +4303,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4314,7 +4320,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4352,7 +4358,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("REVIVE", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4374,7 +4380,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive",
-            "@16 clip battle-effect-death/human/small for 12 frames at defender front-center small",
+            "@16 clip battle-effect-death/human/small for 12 frames at right front-center small",
             "@16 sound battle-effect-sound-death",
             "@22 unit 2 body Idle Dead for 6 frames",
             "@22 unit 2 opacity 0 -> 1 over 4 frames Smooth",
@@ -4390,7 +4396,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4407,7 +4413,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4448,7 +4454,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("REVIVE", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4470,12 +4476,12 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive",
-            "@16 clip battle-effect-death/human/small for 12 frames at defender front-center small",
+            "@16 clip battle-effect-death/human/small for 12 frames at right front-center small",
             "@16 sound battle-effect-sound-death",
             "@22 unit 2 body Idle Dead for 6 frames",
             "@22 unit 2 opacity 0 -> 1 over 4 frames Smooth",
             "@28 unit 1 feedback +15 Effect Restored",
-            "@28 clip battle-effect-status/untransform/small for 20 frames at attacker front-center small",
+            "@28 clip battle-effect-status/untransform/small for 20 frames at left front-center small",
             "@28 sound battle-effect-sound-status/transform",
             "@38 unit 1 form HERO facing Attacker",
             "@38 unit 1 hitpoints 60 -> 120 over 12 frames Decelerate",
@@ -4491,7 +4497,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4525,7 +4531,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 12, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4546,13 +4552,13 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 1 body Hit Alive for 9 frames",
             "@0 unit 1 feedback +15 Damage -5",
             "@0 unit 1 hitpoints 60 -> 55 over 12 frames Decelerate",
-            "@0 clip battle-effect-status/poison/small for 15 frames at defender front-center small",
+            "@0 clip battle-effect-status/poison/small for 15 frames at right front-center small",
             "@0 sound battle-effect-sound-status/poison",
             "@9 unit 1 body Idle Alive",
             "@19 unit 1 body Hit Alive for 9 frames",
             "@19 unit 1 feedback +15 Damage -4",
             "@19 unit 1 hitpoints 55 -> 51 over 12 frames Decelerate",
-            "@19 clip battle-effect-status/frostbite/small for 12 frames at defender front-center small",
+            "@19 clip battle-effect-status/frostbite/small for 12 frames at right front-center small",
             "@19 sound battle-effect-sound-status/frostbite",
             "@28 unit 1 body Idle Alive"
         ]));
@@ -4566,7 +4572,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4583,7 +4589,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4621,7 +4627,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("REVIVE", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4647,7 +4653,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@26 unit 2 body Hit Alive for 9 frames",
             "@26 unit 2 feedback +15 Damage -5",
             "@26 unit 2 hitpoints 30 -> 25 over 12 frames Decelerate",
-            "@26 clip battle-effect-status/poison/small for 15 frames at defender front-center small",
+            "@26 clip battle-effect-status/poison/small for 15 frames at right front-center small",
             "@26 sound battle-effect-sound-status/poison",
             "@35 unit 2 body Idle Alive"
         ]));
@@ -4661,7 +4667,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4678,7 +4684,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4724,7 +4730,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("REVIVE", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4736,7 +4742,7 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 29 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 6 frames at defender front-center small",
+            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 6 frames at right front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 2 body Hit Alive for 9 frames",
             "@8 unit 2 feedback +15 Damage -40",
@@ -4744,7 +4750,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@8 sound battle-unit-damaged/def/2",
             "@16 unit 1 body Idle Alive",
             "@17 unit 2 body Idle Alive",
-            "@17 clip battle-effect-death/human/small for 12 frames at defender front-center small",
+            "@17 clip battle-effect-death/human/small for 12 frames at right front-center small",
             "@17 sound battle-effect-sound-death",
             "@23 unit 2 body Idle Dead for 6 frames",
             "@23 unit 2 opacity 0 -> 1 over 4 frames Smooth"
@@ -4759,7 +4765,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4776,7 +4782,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("IMP"),
             Race: WorldRace.Heretic,
             DeathAnimation: UnitDeathAnimation.Heretic,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4802,7 +4808,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("SCROLL", ItemCategory.Scroll, animationUnitId: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(NullAssetProvider.Instance, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(NullAssetProvider.Instance, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4836,7 +4842,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4853,7 +4859,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4884,7 +4890,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 12, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: 6, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4897,7 +4903,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 2 feedback +15 Action Defending",
             "@19 unit 1 body Hit Alive for 9 frames",
             "@28 unit 1 body Idle Alive",
-            "@28 clip battle-effect-death/human/small for 12 frames at defender front-center small",
+            "@28 clip battle-effect-death/human/small for 12 frames at right front-center small",
             "@28 sound battle-effect-sound-death",
             "@34 unit 1 body Idle Dead for 6 frames",
             "@34 unit 1 opacity 0 -> 1 over 4 frames Smooth"
@@ -4912,7 +4918,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -4929,7 +4935,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -4961,7 +4967,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PAR", UnitAttackType.Paralyze, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -4998,7 +5004,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5015,7 +5021,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5074,7 +5080,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PAR", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -5087,9 +5093,9 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 27 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/touch/shadow/defend/0 for 8 frames at defender front-center small",
-            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 10 frames at defender front-center small",
-            "@7 clip battle-effect-attack/atk/touch/aura/both/0 for 12 frames at defender front-center small",
+            "@7 clip battle-effect-attack/atk/touch/shadow/defend/0 for 8 frames at right front-center small",
+            "@7 clip battle-effect-attack/atk/touch/body/defend/0 for 10 frames at right front-center small",
+            "@7 clip battle-effect-attack/atk/touch/aura/both/0 for 12 frames at right front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@8 unit 2 body Hit Alive for 9 frames",
             "@8 unit 2 feedback +15 Damage -10",
@@ -5108,7 +5114,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5125,7 +5131,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5233,7 +5239,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5250,7 +5256,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5325,7 +5331,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5342,7 +5348,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5432,7 +5438,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5449,7 +5455,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5484,7 +5490,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("BLI", UnitAttackType.Blister, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -5500,7 +5506,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
             "@7 unit 2 feedback +15 Effect Blistered",
-            "@7 clip battle-effect-blister for 14 frames at defender front-center small",
+            "@7 clip battle-effect-blister for 14 frames at right front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@7 sound battle-effect-sound-status/blister",
             "@16 unit 1 body Idle Alive"
@@ -5515,7 +5521,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5532,7 +5538,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: true),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: true),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5567,7 +5573,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("TRA", UnitAttackType.TransformEnemy, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -5588,7 +5594,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
             "@7 unit 2 feedback +15 Effect Transformed",
-            "@7 clip battle-effect-status/transform/large for 20 frames at defender front-center large",
+            "@7 clip battle-effect-status/transform/large for 20 frames at right front-center large",
             "@7 sound battle-unit-touch/atk/4",
             "@7 sound battle-effect-sound-status/transform",
             "@16 unit 1 body Idle Alive",
@@ -5606,7 +5612,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5623,7 +5629,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("IMP"),
             Race: WorldRace.Heretic,
             DeathAnimation: UnitDeathAnimation.Heretic,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5664,7 +5670,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("TRA", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -5683,7 +5689,7 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive",
-            "@16 clip battle-effect-death/heretic/small for 12 frames at defender front-center small",
+            "@16 clip battle-effect-death/heretic/small for 12 frames at right front-center small",
             "@16 sound battle-effect-sound-death",
             "@22 unit 2 body Idle Absent for 6 frames"
         ]));
@@ -5697,7 +5703,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("IMP"),
             Race: WorldRace.Heretic,
             DeathAnimation: UnitDeathAnimation.Heretic,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5725,7 +5731,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 16, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -5733,7 +5739,7 @@ public sealed class BattleAnimationStateBuilderTests
             ]);
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 16 frames",
-            "@0 clip battle-effect-status/unsummon/small for 16 frames at defender front-center small",
+            "@0 clip battle-effect-status/unsummon/small for 16 frames at right front-center small",
             "@0 sound battle-effect-sound-status/unsummon",
             "@8 unit 1 body Idle Absent"
         ]));
@@ -5747,7 +5753,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5764,7 +5770,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontBottom, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontBottom, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5781,7 +5787,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.BackTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.BackTop, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5824,7 +5830,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("TRA", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -5839,7 +5845,7 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 31 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/hit/body/both/0 for 20 frames at defender grid",
+            "@7 clip battle-effect-attack/atk/hit/body/both/0 for 20 frames at right grid",
             "@7 sound battle-unit-hit/atk/4",
             "@12 unit 2 body Hit Alive for 9 frames",
             "@12 unit 3 body Hit Alive for 9 frames",
@@ -5862,7 +5868,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -5879,7 +5885,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontBottom, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontBottom, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5896,7 +5902,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.BackTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.BackTop, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -5947,7 +5953,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("TRA", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -5962,10 +5968,10 @@ public sealed class BattleAnimationStateBuilderTests
             "sequence 32 frames",
             "@0 unit 1 body Attack Alive for 16 frames",
             "@0 sound battle-unit-attack/atk/4",
-            "@7 clip battle-effect-attack/atk/hit/body/defend/0 for 20 frames at defender grid",
+            "@7 clip battle-effect-attack/atk/hit/body/defend/0 for 20 frames at right grid",
             "@7 sound battle-unit-hit/atk/4",
-            "@12 clip battle-effect-attack/atk/touch/body/defend/0 for 10 frames at defender back-top small",
-            "@12 clip battle-effect-attack/atk/touch/body/defend/0 for 10 frames at defender front-bottom small",
+            "@12 clip battle-effect-attack/atk/touch/body/defend/0 for 10 frames at right back-top small",
+            "@12 clip battle-effect-attack/atk/touch/body/defend/0 for 10 frames at right front-bottom small",
             "@12 sound battle-unit-touch/atk/2",
             "@13 unit 2 body Hit Alive for 9 frames",
             "@13 unit 3 body Hit Alive for 9 frames",
@@ -5988,7 +5994,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6005,7 +6011,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6037,7 +6043,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("HIT", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6066,7 +6072,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6083,7 +6089,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6117,7 +6123,7 @@ public sealed class BattleAnimationStateBuilderTests
 
         UnitWard ward = new UnitAttackSourceWard(UnitAttackSource.Fire, UnitWardCategory.Once);
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6143,7 +6149,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6160,7 +6166,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6196,7 +6202,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6225,7 +6231,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6242,7 +6248,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6280,7 +6286,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6306,7 +6312,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6323,7 +6329,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6358,7 +6364,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 2);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 2);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6383,7 +6389,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6400,7 +6406,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6436,7 +6442,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6461,7 +6467,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6478,7 +6484,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6514,7 +6520,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6540,7 +6546,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6557,7 +6563,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6593,7 +6599,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6625,7 +6631,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6642,7 +6648,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6677,7 +6683,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6703,7 +6709,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6720,7 +6726,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6755,7 +6761,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Attacker, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Attacker, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6780,7 +6786,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.BackCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.BackCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6797,7 +6803,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6832,7 +6838,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("BOW", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6855,7 +6861,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6872,7 +6878,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6907,7 +6913,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("BOLT", UnitAttackType.Damage, UnitAttackReach.All))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -6933,7 +6939,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -6950,7 +6956,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -6982,7 +6988,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PAR", UnitAttackType.Paralyze, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7004,7 +7010,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7021,7 +7027,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7064,10 +7070,10 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PAR", UnitAttackType.Damage, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder silentBuilder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder silentBuilder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? silentAnimation = silentBuilder.Build(baseState, events);
 
-        BattleAnimationStateBuilder audibleBuilder = new(assets, definitions, new RandomProvider(3), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder audibleBuilder = new(assets, definitions, new RandomProvider(3), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? audibleAnimation = audibleBuilder.Build(baseState, events);
 
         Assert.That(FormatAnimation(Assert.NotNull(silentAnimation)), Is.EqualTo([
@@ -7103,7 +7109,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7120,7 +7126,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7137,7 +7143,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7173,7 +7179,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PSN", UnitAttackType.Poison, UnitAttackReach.All))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7215,7 +7221,6 @@ public sealed class BattleAnimationStateBuilderTests
             "@16 unit 3 body Idle Alive",
             "@26 unit 2 feedback +15 Effect Poisoned",
             "@26 unit 3 feedback +15 Effect Poisoned",
-            "@26 sound battle-effect-sound-status/poison",
             "@26 sound battle-effect-sound-status/poison"
         ]));
     }
@@ -7228,7 +7233,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7245,7 +7250,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: true),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: true),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7280,7 +7285,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7305,7 +7310,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7322,7 +7327,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.BackCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.BackCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7357,7 +7362,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("MELEE", UnitAttackType.Damage, UnitAttackReach.Adjacent))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7380,7 +7385,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7397,7 +7402,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ALLY"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.BackBottom, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.BackBottom, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7437,7 +7442,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddItem(Item("POTION", ItemCategory.PotionTemporaryBoost, new UnitDefinitionId("ALCHEMIST")))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7452,8 +7457,8 @@ public sealed class BattleAnimationStateBuilderTests
             ]);
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 31 frames",
-            "@0 clip battle-effect-item/potion for 31 frames at attacker front-center small",
-            "@0 clip battle-effect-attack/alchemist/touch/body/attack/0 for 12 frames at attacker back-bottom small",
+            "@0 clip battle-effect-item/potion for 31 frames at left front-center small",
+            "@0 clip battle-effect-attack/alchemist/touch/body/attack/0 for 12 frames at left back-bottom small",
             "@0 sound battle-effect-sound-potion/boost",
             "@0 sound battle-unit-touch/alchemist/3",
             "@2 unit 1 feedback +15 Action Item"
@@ -7468,7 +7473,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7485,7 +7490,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7521,7 +7526,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("PAR", UnitAttackType.Paralyze, UnitAttackReach.Any))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7562,7 +7567,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("ATK"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7579,7 +7584,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7596,7 +7601,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("DEF"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Defender, GridPosition.FrontTop, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontTop, IsLarge: false),
             Facing: BattleSide.Defender,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 0,
@@ -7634,7 +7639,7 @@ public sealed class BattleAnimationStateBuilderTests
             .AddAttack(Attack("DRAIN", UnitAttackType.DrainLife, UnitAttackReach.All))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, 1);
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7663,8 +7668,8 @@ public sealed class BattleAnimationStateBuilderTests
             "@7 unit 1 hitpoints 40 -> 60 over 12 frames Decelerate",
             "@7 unit 2 hitpoints 40 -> 20 over 12 frames Decelerate",
             "@7 unit 3 hitpoints 40 -> 20 over 12 frames Decelerate",
-            "@7 clip battle-effect-heal for 14 frames at attacker front-center small",
-            "@7 clip battle-effect-heal for 14 frames at attacker front-center small",
+            "@7 clip battle-effect-heal for 14 frames at left front-center small",
+            "@7 clip battle-effect-heal for 14 frames at left front-center small",
             "@7 sound battle-unit-touch/atk/4",
             "@16 unit 1 body Idle Alive",
             "@16 unit 2 body Idle Alive",
@@ -7680,7 +7685,7 @@ public sealed class BattleAnimationStateBuilderTests
             DefinitionId: new UnitDefinitionId("SQUIRE"),
             Race: WorldRace.Human,
             DeathAnimation: UnitDeathAnimation.Human,
-            Footprint: new BattleGridFootprint(BattleSide.Attacker, GridPosition.FrontCenter, IsLarge: false),
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
             Facing: BattleSide.Attacker,
             IdleOffset: TimeSpan.Zero,
             CorpseVariant: 1,
@@ -7708,7 +7713,7 @@ public sealed class BattleAnimationStateBuilderTests
                 new AssetAnimationMetadata(FrameCount: 20, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
             .Build();
 
-        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Attacker, 1);
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Attacker, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
         BattleAnimationState? animation = builder.Build(
             baseState,
             [
@@ -7717,10 +7722,293 @@ public sealed class BattleAnimationStateBuilderTests
         Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
             "sequence 22 frames",
             "@0 unit 1 feedback +15 Heal Level up!",
-            "@0 clip battle-effect-level-up/human/small for 20 frames at attacker front-center small",
+            "@0 clip battle-effect-level-up/human/small for 20 frames at left front-center small",
             "@10 unit 1 form KNIGHT facing Attacker",
             "@10 unit 1 hitpoints 60 -> 150 over 12 frames Decelerate",
             "@10 unit 1 max hitpoints 90 -> 150 over 12 frames Decelerate"
+        ]));
+    }
+
+    [Test]
+    public void UnitUpgradeMultipleTest()
+    {
+        BattleRenderState.Unit squire = new(
+            Id: new BattleUnitId(1),
+            DefinitionId: new UnitDefinitionId("SQUIRE"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
+            Facing: BattleSide.Attacker,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 1,
+            Hitpoints: 60,
+            MaxHitpoints: 90,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState.Unit archer = new(
+            Id: new BattleUnitId(2),
+            DefinitionId: new UnitDefinitionId("ARCHER"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.BackCenter, IsLarge: false),
+            Facing: BattleSide.Attacker,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 1,
+            Hitpoints: 30,
+            MaxHitpoints: 45,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState.Unit acolyte = new(
+            Id: new BattleUnitId(3),
+            DefinitionId: new UnitDefinitionId("ACOLYTE"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.BackTop, IsLarge: false),
+            Facing: BattleSide.Attacker,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 1,
+            Hitpoints: 20,
+            MaxHitpoints: 50,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState baseState = new(
+            new AssetSpriteKey.BattleBackground(new AssetSpriteKey.BattleLocation.Terrain(WorldMapTerrain.Human), 0),
+            [squire, archer, acolyte],
+            Placeholders: [],
+            HitTargets: [],
+            BattleLightConfiguration.MakeMidday([]),
+            FluidConfigurations: [],
+            RainConfiguration: null,
+            AnimationRate.Sprites);
+
+        IAssetMetadataProvider assets = new TestMetadataProviderBuilder()
+            .WithAnimation(
+                new AssetAnimationKey.BattleEffect.LevelUp(WorldRace.Human, IsLarge: false),
+                new AssetAnimationMetadata(FrameCount: 20, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
+            .Build();
+
+        BattleAnimationStateBuilder builder = new(assets, TestGameDefinitionProvider.Empty, new RandomProvider(0), BattleViewerSide.Attacker, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
+        BattleAnimationState? animation = builder.Build(
+            baseState,
+            [
+                new BattleEndedEvent(BattleSide.Attacker),
+                new BattleUnitUpgradedEvent(new BattleUnitId(1), new UnitDefinitionId("SQUIRE"), new UnitDefinitionId("KNIGHT"), Level: 1, Hitpoints: 150, MaxHitpoints: 150),
+                new BattleUnitExperienceGainedEvent(new BattleUnitId(3), ExperienceGained: 30),
+                new BattleUnitUpgradedEvent(new BattleUnitId(2), new UnitDefinitionId("ARCHER"), new UnitDefinitionId("MARKSMAN"), Level: 1, Hitpoints: 65, MaxHitpoints: 65)
+            ]);
+        Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
+            "sequence 22 frames",
+            "@0 unit 1 feedback +15 Heal Level up!",
+            "@0 unit 2 feedback +15 Heal Level up!",
+            "@0 unit 3 feedback +15 Heal +30 XP",
+            "@0 clip battle-effect-level-up/human/small for 20 frames at left back-center small",
+            "@0 clip battle-effect-level-up/human/small for 20 frames at left front-center small",
+            "@10 unit 1 form KNIGHT facing Attacker",
+            "@10 unit 2 form MARKSMAN facing Attacker",
+            "@10 unit 1 hitpoints 60 -> 150 over 12 frames Decelerate",
+            "@10 unit 1 max hitpoints 90 -> 150 over 12 frames Decelerate",
+            "@10 unit 2 hitpoints 30 -> 65 over 12 frames Decelerate",
+            "@10 unit 2 max hitpoints 45 -> 65 over 12 frames Decelerate"
+        ]));
+    }
+
+    [Test]
+    public void MassHealTest()
+    {
+        BattleRenderState.Unit healer = new(
+            Id: new BattleUnitId(1),
+            DefinitionId: new UnitDefinitionId("ATK"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
+            Facing: BattleSide.Attacker,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 1,
+            Hitpoints: 60,
+            MaxHitpoints: 60,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState.Unit ally = new(
+            Id: new BattleUnitId(2),
+            DefinitionId: new UnitDefinitionId("ALLY"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontTop, IsLarge: false),
+            Facing: BattleSide.Attacker,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 0,
+            Hitpoints: 20,
+            MaxHitpoints: 20,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState.Unit secondAlly = new(
+            Id: new BattleUnitId(3),
+            DefinitionId: new UnitDefinitionId("ALLY"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontBottom, IsLarge: false),
+            Facing: BattleSide.Attacker,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 0,
+            Hitpoints: 30,
+            MaxHitpoints: 30,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState baseState = new(
+            new AssetSpriteKey.BattleBackground(new AssetSpriteKey.BattleLocation.Terrain(WorldMapTerrain.Human), 0),
+            [healer, ally, secondAlly],
+            Placeholders: [],
+            HitTargets: [],
+            BattleLightConfiguration.MakeMidday([]),
+            FluidConfigurations: [],
+            RainConfiguration: null,
+            AnimationRate.Sprites);
+
+        IAssetMetadataProvider assets = new TestMetadataProviderBuilder()
+            .WithAnimation(
+                new AssetAnimationKey.BattleUnit(new UnitDefinitionId("ATK"), AssetAnimationKey.BattleUnitPose.Attack, BattleSide.Attacker),
+                new AssetAnimationMetadata(FrameCount: 16, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: 7, SecondTriggerFrame: 0))
+            .Build();
+
+        IGameDefinitionProvider definitions = new TestGameDefinitionProviderBuilder()
+            .AddAttack(Attack("HEAL", UnitAttackType.Heal, UnitAttackReach.All))
+            .Build();
+
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
+        BattleAnimationState? animation = builder.Build(
+            baseState,
+            [
+                new BattleUnitAttackEvent(new BattleUnitId(1), new BattleAttackUnitTarget(new BattleUnitId(2)), [new UnitAttackDefinitionId("HEAL")]),
+                new BattleUnitHealedEvent(new BattleUnitId(2), HitpointsAfter: 40),
+                new BattleUnitHealedEvent(new BattleUnitId(3), HitpointsAfter: 50),
+                new BattleUnitTurnStartedEvent(new BattleUnitTurn(new BattleUnitId(2), BattleUnitTurnType.Normal))
+            ]);
+        Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
+            "sequence 26 frames",
+            "@0 unit 1 body Attack Alive for 16 frames",
+            "@0 sound battle-unit-attack/atk/4",
+            "@7 unit 2 feedback +15 Heal Healed",
+            "@7 unit 3 feedback +15 Heal Healed",
+            "@7 unit 2 hitpoints 20 -> 40 over 12 frames Decelerate",
+            "@7 unit 3 hitpoints 30 -> 50 over 12 frames Decelerate",
+            "@7 sound battle-unit-touch/atk/4",
+            "@16 unit 1 body Idle Alive"
+        ]));
+    }
+
+    [Test]
+    public void DrainModifierHealTest()
+    {
+        BattleRenderState.Unit attacker = new(
+            Id: new BattleUnitId(1),
+            DefinitionId: new UnitDefinitionId("ATK"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Left, GridPosition.FrontCenter, IsLarge: false),
+            Facing: BattleSide.Attacker,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 1,
+            Hitpoints: 40,
+            MaxHitpoints: 40,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState.Unit defender = new(
+            Id: new BattleUnitId(2),
+            DefinitionId: new UnitDefinitionId("DEF"),
+            Race: WorldRace.Human,
+            DeathAnimation: UnitDeathAnimation.Human,
+            Footprint: new BattleGridFootprint(BattlePosition.Right, GridPosition.FrontCenter, IsLarge: false),
+            Facing: BattleSide.Defender,
+            IdleOffset: TimeSpan.Zero,
+            CorpseVariant: 0,
+            Hitpoints: 40,
+            MaxHitpoints: 40,
+            Presence: BattleUnitState.Presence.Alive,
+            Marker: null,
+            Highlight: null,
+            Auras: BattleUnitState.Auras.None,
+            Frozen: false);
+
+        BattleRenderState baseState = new(
+            new AssetSpriteKey.BattleBackground(new AssetSpriteKey.BattleLocation.Terrain(WorldMapTerrain.Human), 0),
+            [attacker, defender],
+            Placeholders: [],
+            HitTargets: [],
+            BattleLightConfiguration.MakeMidday([]),
+            FluidConfigurations: [],
+            RainConfiguration: null,
+            AnimationRate.Sprites);
+
+        IAssetMetadataProvider assets = new TestMetadataProviderBuilder()
+            .WithAnimation(
+                new AssetAnimationKey.BattleUnit(new UnitDefinitionId("ATK"), AssetAnimationKey.BattleUnitPose.Attack, BattleSide.Attacker),
+                new AssetAnimationMetadata(FrameCount: 16, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: 7, SecondTriggerFrame: 0))
+            .WithAnimation(
+                new AssetAnimationKey.BattleUnit(new UnitDefinitionId("DEF"), AssetAnimationKey.BattleUnitPose.Hit, BattleSide.Defender),
+                new AssetAnimationMetadata(FrameCount: 9, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
+            .WithAnimation(
+                new AssetAnimationKey.BattleEffect.Heal(),
+                new AssetAnimationMetadata(FrameCount: 14, Width: 4, Height: 4, OffsetX: 0, OffsetY: 0, TriggerFrame: null, SecondTriggerFrame: null))
+            .Build();
+
+        IGameDefinitionProvider definitions = new TestGameDefinitionProviderBuilder()
+            .AddAttack(Attack("HIT", UnitAttackType.Damage, UnitAttackReach.Any))
+            .Build();
+
+        BattleAnimationStateBuilder builder = new(assets, definitions, new RandomProvider(0), BattleViewerSide.Defender, new BattlePositions(Attacker: BattlePosition.Left, Defender: BattlePosition.Right), 1);
+        BattleAnimationState? animation = builder.Build(
+            baseState,
+            [
+                new BattleUnitAttackEvent(
+                    new BattleUnitId(1),
+                    new BattleAttackUnitTarget(new BattleUnitId(2)),
+                    [new UnitAttackDefinitionId("HIT")]),
+                new BattleUnitAttackedEvent(new BattleUnitId(1), new BattleUnitId(2), new UnitAttackDefinitionId("HIT")),
+                new BattleUnitAttackHitEvent(new BattleUnitId(1), new BattleUnitId(2), new UnitAttackDefinitionId("HIT"), 20),
+                new BattleUnitHealedEvent(new BattleUnitId(1), HitpointsAfter: 60),
+                new BattleUnitTurnStartedEvent(new BattleUnitTurn(new BattleUnitId(2), BattleUnitTurnType.Normal))
+            ]);
+        Assert.That(FormatAnimation(Assert.NotNull(animation)), Is.EqualTo([
+            "sequence 26 frames",
+            "@0 unit 1 body Attack Alive for 16 frames",
+            "@0 sound battle-unit-attack/atk/4",
+            "@7 unit 2 body Hit Alive for 9 frames",
+            "@7 unit 1 feedback +15 Heal Healed",
+            "@7 unit 2 feedback +15 Damage -20",
+            "@7 unit 1 hitpoints 40 -> 60 over 12 frames Decelerate",
+            "@7 unit 2 hitpoints 40 -> 20 over 12 frames Decelerate",
+            "@7 clip battle-effect-heal for 14 frames at left front-center small",
+            "@7 sound battle-unit-touch/atk/4",
+            "@16 unit 1 body Idle Alive",
+            "@16 unit 2 body Idle Alive"
         ]));
     }
 }

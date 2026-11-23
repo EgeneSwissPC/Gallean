@@ -340,8 +340,8 @@ public sealed class CustomMapEventTests
 
         ScenarioConfiguration configuration = new(
             [
-                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null),
-                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: ""),
+                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")
             ],
             WorldDifficulty.Average,
             Leader: null);
@@ -573,8 +573,8 @@ public sealed class CustomMapEventTests
         store.Save(map);
         ScenarioConfiguration configuration = new(
             [
-                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null),
-                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)
+                new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: ""),
+                new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")
             ],
             WorldDifficulty.Average,
             Leader: null);
@@ -647,7 +647,7 @@ public sealed class CustomMapEventTests
         Assert.That(store.Open(MapId, definitions).Templates.Single().Order, Is.EqualTo(retakers.Order));
 
         ScenarioConfiguration configuration = new(
-            [new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)],
+            [new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")],
             WorldDifficulty.Average,
             Leader: null);
         GlobalVariables globals = new();

@@ -157,7 +157,7 @@ internal sealed partial class MapEditorMenuScreenViewModel : AbstractScreenViewM
         }
 
         Game.OpenScreen(new ConfirmPromptViewModel(
-            Tr("Delete map"),
+            TrSpans("Delete map"),
             TrSpans("Delete \"{0}\"? This cannot be undone.", selected.Name),
             Tr("Delete"),
             ConfirmPromptType.Danger,

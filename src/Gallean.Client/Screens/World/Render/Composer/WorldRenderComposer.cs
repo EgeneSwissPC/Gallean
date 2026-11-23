@@ -66,7 +66,7 @@ internal sealed partial class WorldRenderComposer(
         IReadOnlyList<ObjectiveMarker> objectiveMarkers = objectivesPart.Resolve(new Objectives.Input(objectives, visibility, animatedStackId));
         IReadOnlyList<AmbientSound> ambientSounds = ambientSoundsPart.Resolve(new AmbientSounds.Input(state.Fortifications, state.Landmarks, state.Sites, state.ResourceNodes, playerRaces, visibility));
         IReadOnlyList<WorldPosition> minimapHidden = minimapHiddenPart.Resolve(new Minimap.HiddenInput(visibility, request.FogEnabled));
-        MinimapState minimap = minimapPart.Resolve(new Minimap.Input(state.Map, minimapHidden, state.Fortifications, state.Stacks, playerRaces, visibility, request.ViewPlayerId));
+        MinimapState minimap = minimapPart.Resolve(new Minimap.Input(state.Map, minimapHidden, state.Fortifications, state.Sites, state.ResourceNodes, state.Stacks, playerRaces, visibility, request.ViewPlayerId));
 
         ReachOverlay? reach = null;
         List<Highlight> highlights = [];
@@ -323,6 +323,27 @@ internal sealed partial class WorldRenderComposer(
                 GetCursorScale(hoverStack, definitions)));
         }
 
+        if (selected is not null &&
+            selected.OwnerId == request.ViewPlayerId &&
+            request.Cursor.HoverTarget is { } hoverTarget &&
+            request.State.Map.IsValidPosition(hoverTarget) &&
+            visibility.IsRevealed(hoverTarget) &&
+            !plan.IsObstacleAt(hoverTarget) &&
+            hoverTarget != selected.Position &&
+            hoverTarget != destination?.Position &&
+            hoverTarget != request.Cursor.HoverObject)
+        {
+            WorldStack? targetStack = plan.GetStackAt(hoverTarget);
+            Layer layer = targetStack is null ? Layer.TileHighlight : Layer.SymbolStackHighlight;
+
+            cursors.Add(new Cursor(
+                hoverTarget,
+                GetDepth(hoverTarget, layer),
+                Theme.World.HoverCursorInnerColor,
+                Theme.World.HoverCursorOuterColor,
+                GetCursorScale(targetStack, definitions)));
+        }
+
         if (destination is not null && visibility.IsRevealed(destination.Position))
         {
             WorldStack? stack = plan.GetStackAt(destination.Position);
@@ -538,6 +559,10 @@ internal sealed partial class WorldRenderComposer(
             if (segment.End == hostileTarget)
             {
                 steps.Add(new PathStep(segment.End, Theme.World.Path.AttackInnerColor, Theme.World.Path.AttackOuterColor, FormatCost(totalCost)));
+            }
+            else if (selection.Encounter is WorldPathEncounter.Site && segment.End == selection.Destination)
+            {
+                steps.Add(new PathStep(segment.End, Theme.World.Path.ValidInnerColor, Theme.World.Path.ValidOuterColor, FormatCost(totalCost)));
             }
             else
             {

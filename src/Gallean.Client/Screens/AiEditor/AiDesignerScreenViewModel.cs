@@ -600,7 +600,7 @@ internal sealed partial class AiDesignerScreenViewModel : AbstractScreenViewMode
         if (HasChanges)
         {
             Game.OpenScreen(new ConfirmPromptViewModel(
-                Tr("Unsaved changes"),
+                TrSpans("Unsaved changes"),
                 TrSpans("Leave the designer without saving your changes?"),
                 Tr("Leave"),
                 ConfirmPromptType.Danger,

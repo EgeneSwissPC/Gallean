@@ -213,7 +213,7 @@ internal sealed partial class WorldScreenViewModel
 
         if (FindAutoWalkStop(stackId, destination) is { } stop)
         {
-            return guarded ? stop : OrderStop.Other;
+            return guarded || stop == OrderStop.Site ? stop : OrderStop.Other;
         }
 
         ICommandResult<WorldCommandError, WorldEvent, Common.Empty> next =
@@ -278,7 +278,7 @@ internal sealed partial class WorldScreenViewModel
             {
                 reportedOrders.Add(stackId);
 
-                if (WorldPlan.For(WorldState).GetSiteAt(stack.Position) is { } site)
+                if (WorldPlan.For(WorldState).GetSiteEntranceAt(stack.Position) is { } site)
                 {
                     FocusStack(stack);
                     EnqueueEntry(new WorldEventQueue.Entry.SiteEnter(WorldState, stackId, site.Id));
@@ -424,6 +424,8 @@ internal sealed partial class WorldScreenViewModel
         {
             WorldPathEncounter.Battle when path.Path.Segments.Length <= 1 => OrderStop.Battle,
             WorldPathEncounter.Thief when path.Path.Segments.IsEmpty => OrderStop.Thief,
+            // Since upstream 0.17 a tile next to the entrance counts as the site (651e4200): stop there and open it.
+            WorldPathEncounter.Site when path.Path.Segments.IsEmpty => OrderStop.Site,
             _ => null
         };
     }

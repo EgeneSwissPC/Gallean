@@ -9,6 +9,12 @@ namespace Gallean.Client.Tests;
 [NonParallelizable]
 public sealed class TextExtensionTests
 {
+    [SetUp]
+    public void SetUp()
+    {
+        new TextCatalog([]).MakeCurrent();
+    }
+
     [TearDown]
     public void TearDown()
     {
@@ -84,7 +90,7 @@ public sealed class TextExtensionTests
         Assert.That(settings.UiSize, Is.EqualTo(UiSize.Normal));
         Assert.That(
             gameViewModel.Settings,
-            Is.EqualTo(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian) with { ShowPathOnHover = false }));
+            Is.EqualTo(GameSettings.Create(70, 70, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian, BattlePosition.Left) with { ShowPathOnHover = false }));
         Assert.That(await settingsStore.TryLoadAsync(), Is.EqualTo(gameViewModel.Settings));
 
         window.Close();

@@ -144,7 +144,7 @@ internal sealed partial class TrainerTabViewModel
 
         if (!WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) ||
             stack.OwnerId != ViewPlayerId ||
-            plan.GetSiteAt(stack.Position) is not WorldTrainerSite site)
+            plan.GetSiteEntranceAt(stack.Position) is not WorldTrainerSite site)
         {
             Screen.Close();
 
@@ -157,10 +157,25 @@ internal sealed partial class TrainerTabViewModel
 
         SiteTitle = GameModel.Texts.GetScenarioText(site.TitleTextId);
         SiteGreeting = GameModel.Texts.GetScenarioText(site.GreetingTextId);
-        Stack.Update(stack, showsPurchaseHints: false, BuildUnitHighlight(stack, info));
+        Stack.Update(stack, ResolveStackInfo(), showsPurchaseHints: false, BuildUnitHighlight(stack, info));
 
         UpdateTrainingDetails(stack, info);
         TrainCommand.NotifyCanExecuteChanged();
+    }
+
+    private WorldGetStackInfoCommand.Result ResolveStackInfo()
+    {
+        ICommandResult<WorldCommandError, WorldEvent, WorldGetStackInfoCommand.Result> result =
+            GameModel.World.DryRunCommand(new WorldGetStackInfoCommand(stackId));
+
+        if (result.Failed)
+        {
+            return new WorldGetStackInfoCommand.Result([], OccupiedLeadership: 0, TotalLeadership: 0);
+        }
+        else
+        {
+            return result.Data;
+        }
     }
 
     private WorldGetTrainerInfoCommand.Result ResolveTrainerInfo()

@@ -13,6 +13,7 @@ public sealed class ClientTextIndexTests
         Assert.That(settings, Is.EquivalentTo([
             "Autosave limit",
             "Autosave interval",
+            "Battle position",
             "Battle speed",
             "Battle AI",
             "Close",
@@ -31,6 +32,7 @@ public sealed class ClientTextIndexTests
             "Sound and music",
             "Tab skips armies with orders",
             "When this is on, Tab skips armies with a move order; use O to go through them. When it is off, Tab visits every army, ordered ones last.",
+            "The side of the battlefield your units stand on.",
             "Windowed mode (F11)"
         ]));
     }

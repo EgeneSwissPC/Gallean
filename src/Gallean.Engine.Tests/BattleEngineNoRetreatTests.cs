@@ -7,8 +7,9 @@ public sealed class BattleEngineNoRetreatTests
     private static readonly BattleUnitId AllyId = new(1);
     private static readonly BattleUnitId EnemyId = new(2);
 
-    // A leader and an ally against an enemy far too strong for them: the AI flees with the leader.
-    private static BattleEngine StrongEnemyBattle(int leaderDamage = 10, int enemyDamage = 100, int enemyHitpoints = 600)
+    // A leader and an ally against an enemy far too strong for them: the AI flees with the leader. The enemy hits
+    // for less than the leader's hitpoints, so the retreat is safe (upstream 0.17: no retreat that ends in death).
+    private static BattleEngine StrongEnemyBattle(int leaderDamage = 10, int enemyDamage = 90, int enemyHitpoints = 600)
     {
         UnitDefinition leaderDefinition = TestHelpers.SimpleUnitDefinition("leader", maxHitpoints: 100, initiative: 50, damage: leaderDamage) with
         {
@@ -42,7 +43,7 @@ public sealed class BattleEngineNoRetreatTests
     {
         IReadOnlyList<BattleEvent> events = Dispatch(StrongEnemyBattle(), new BattleAiActionCommand(CanUseItems: false));
 
-        Assert.That(events, Does.Contain(new BattleUnitRetreatingEvent(LeaderId)));
+        Assert.That(events.OfType<BattleUnitRetreatingEvent>().Select(ev => ev.UnitId), Does.Contain(LeaderId));
     }
 
     [Test]

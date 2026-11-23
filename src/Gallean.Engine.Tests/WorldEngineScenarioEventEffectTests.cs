@@ -2723,14 +2723,128 @@ public sealed class WorldEngineScenarioEventEffectTests
             .WithScenarioEvent(scenarioEvent)
             .Build();
 
-        _ = engine.DispatchCommand(new WorldStartGameCommand());
+        engine.CheckCommand(new WorldStartGameCommand(), [
+            new WorldTurnStartingEvent(player.Id),
+            new WorldTurnStartedEvent(player.Id),
+            new WorldTurnResourcesGeneratedEvent(player.Id, new WorldResourceSet(100, 0, 0, 25, 0, 0)),
+            new WorldScenarioEventTriggeringEvent(scenarioEvent.Id, player.Id, new ScenarioEventTurnStartedTrigger(player.Id)),
+            new WorldItemsReceivedEvent(
+                player.Id,
+                new WorldUnitGroup.Fortification(capital.Id),
+                [new WorldItem(new WorldItemId("Item0001"), itemDefinition.Id, Charges: null)]),
+            new WorldScenarioEventTriggeredEvent(scenarioEvent.Id, player.Id, new ScenarioEventTurnStartedTrigger(player.Id))
+        ]);
 
         Assert.That(engine.State, Is.EqualTo(
             engine.State with
             {
+                Fortifications = engine.State.Fortifications.SetItem(
+                    capital.Id,
+                    capital with { Inventory = new WorldInventory([new WorldItem(new WorldItemId("Item0001"), itemDefinition.Id, Charges: null)]) }),
                 ScenarioState = WorldScenarioState.Empty with
                 {
                     EventStates = ImmutableSortedDictionary<ScenarioEventId, bool>.Empty.Add(scenarioEvent.Id, false)
+                }
+            }));
+    }
+
+    [Test]
+    public void GiveItemToTriggererCapitalTest()
+    {
+        WorldMap map = TestHelpers.SimpleMap(10, 10);
+
+        WorldPlayer neutral = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Neutral, map);
+        WorldPlayer dwarf = TestHelpers.SimplePlayer(new WorldPlayerId(2), WorldRace.Dwarf, map);
+        WorldPlayer elf = TestHelpers.SimplePlayer(new WorldPlayerId(3), WorldRace.Elf, map);
+        UnitDefinition leader = TestHelpers.SimpleLeaderDefinition(
+            TestHelpers.SimpleUnitDefinition("leader", maxHitpoints: 100, initiative: 50, damage: 10),
+            movementPoints: 6, leadership: 6);
+
+        WorldStack queen = TestHelpers.SimpleStack(
+            new WorldStackId("Queen"),
+            neutral.Id,
+            new WorldPosition(4, 4),
+            TestHelpers.SingleUnitGrid(new WorldUnitId("leader"), leader),
+            movementPoints: 6);
+
+        WorldCityDefinition cityDefinition = TestHelpers.SimpleCityDefinition(new WorldCityDefinitionId(WorldRace.Dwarf, 1), WorldResourceSet.Empty);
+        WorldCity city = TestHelpers.SimpleCity(
+            new WorldFortificationId("City1"),
+            cityDefinition,
+            dwarf.Id,
+            new WorldPosition(3, 3),
+            TestHelpers.SingleUnitGrid(new WorldUnitId("leader2"), leader));
+
+        WorldCapital capital = TestHelpers.SimpleCapital(
+            new WorldFortificationId("Capital"),
+            elf.Id,
+            new WorldPosition(9, 9),
+            UnitGrid<WorldUnit>.Empty);
+
+        ItemDefinition itemDefinition = TestHelpers.SimpleItemDefinition(new ItemDefinitionId("Item"), ItemCategory.Valuable);
+
+        ScenarioEventDefinition scenarioEvent = new(
+            new ScenarioEventId("Event1"),
+            [WorldRace.Elf],
+            [WorldRace.Elf],
+            [new ScenarioEventStackExistenceCondition(new ScenarioStackReference.Stack(queen.Id), MustExist: false)],
+            [new ScenarioEventGiveItemEffect(itemDefinition.Id, ScenarioEventGiveItemTarget.Triggerer)],
+            Enabled: true,
+            OccurOnce: true,
+            Chance: 100,
+            Order: 0);
+
+        WorldEngine engine = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(leader)
+            .WithDefinition(cityDefinition)
+            .WithDefinition(itemDefinition)
+            .WithDefinition(TestHelpers.SimpleLord(neutral.LordId, neutral.Race, LordCategory.Warrior))
+            .WithPlayer(neutral)
+            .WithDefinition(TestHelpers.SimpleLord(dwarf.LordId, dwarf.Race, LordCategory.Warrior))
+            .WithPlayer(dwarf)
+            .WithDefinition(TestHelpers.SimpleLord(elf.LordId, elf.Race, LordCategory.Warrior))
+            .WithPlayer(elf)
+            .WithStack(queen)
+            .WithCity(city)
+            .WithCapital(capital)
+            .WithScenarioEvent(scenarioEvent)
+            .Build();
+
+        _ = engine.DispatchCommand(new WorldStartGameCommand());
+
+        BattleState finalBattleState = new BattleStateBuilder(new TestGameDefinitionProviderBuilder().AddUnit(leader).Build())
+                .Add(TestHelpers.SimpleBattleUnit(new BattleUnitId(0), new WorldUnitId("leader"), leader.Id, BattleSide.Defender, hitpoints: leader.MaxHitpoints), GridPosition.FrontBottom)
+                .Build(new BattleModifiers(
+                        Attacker: BattleSideModifiers.None,
+                        Defender: new BattleSideModifiers(ExperiencePercent: 0, AccuracyBonus: 0, RandomDamageBonus: 0, CanRetreat: false)),
+                    TestHelpers.SimpleBattleInfo()) with
+            {
+                Outcome = new BattleOutcome(BattleSide.Defender)
+            };
+
+        engine.CheckCommand(new WorldResolveFortificationBattleCommand(queen.Id, city.Id, finalBattleState), [
+            new WorldFortificationBattleEndedEvent(queen.Id, city.Id, BattleSide.Defender, UnitGrid<WorldUnit>.Empty, TestHelpers.SingleUnitGrid(new WorldUnitId("leader"), leader)),
+            new WorldStackDestroyedEvent(queen.Id, new WorldUnitGroup.Fortification(city.Id), dwarf.Id),
+            new WorldScenarioEventTriggeringEvent(scenarioEvent.Id, elf.Id, new ScenarioEventStackDestroyedTrigger(new WorldUnitGroup.Fortification(city.Id))),
+            new WorldItemsReceivedEvent(
+                elf.Id,
+                new WorldUnitGroup.Fortification(capital.Id),
+                [new WorldItem(new WorldItemId("Item0001"), itemDefinition.Id, Charges: null)]),
+            new WorldScenarioEventTriggeredEvent(scenarioEvent.Id, elf.Id, new ScenarioEventStackDestroyedTrigger(new WorldUnitGroup.Fortification(city.Id)))
+        ]);
+
+        Assert.That(engine.State, Is.EqualTo(
+            engine.State with
+            {
+                Stacks = ImmutableSortedDictionary<WorldStackId, WorldStack>.Empty,
+                Fortifications = engine.State.Fortifications.SetItem(
+                    capital.Id,
+                    capital with { Inventory = new WorldInventory([new WorldItem(new WorldItemId("Item0001"), itemDefinition.Id, Charges: null)]) }),
+                ScenarioState = WorldScenarioState.Empty with
+                {
+                    EventStates = ImmutableSortedDictionary<ScenarioEventId, bool>.Empty.Add(scenarioEvent.Id, false),
+                    DestroyedStacks = [new ScenarioDestroyedStack(queen.Id, dwarf.Id, SourceTemplateId: null)]
                 }
             }));
     }
@@ -7118,24 +7232,24 @@ public sealed class WorldEngineScenarioEventEffectTests
             movementPoints: 6, leadership: 6);
 
         WorldStack stack = TestHelpers.SimpleStack(
-            new WorldStackId("Stack1"),
-            player.Id,
-            new WorldPosition(0, 0),
-            TestHelpers.SingleUnitGrid(new WorldUnitId("leader"), leader),
-            movementPoints: 6) with
-        {
-            SubraceId = playerSubrace.Id
-        };
+                new WorldStackId("Stack1"),
+                player.Id,
+                new WorldPosition(0, 0),
+                TestHelpers.SingleUnitGrid(new WorldUnitId("leader"), leader),
+                movementPoints: 6) with
+            {
+                SubraceId = playerSubrace.Id
+            };
 
         WorldStack ally = TestHelpers.SimpleStack(
-            new WorldStackId("Ally"),
-            enemy.Id,
-            new WorldPosition(4, 2),
-            TestHelpers.SingleUnitGrid(new WorldUnitId("leader2"), leader),
-            movementPoints: 6) with
-        {
-            SubraceId = enemySubrace.Id
-        };
+                new WorldStackId("Ally"),
+                enemy.Id,
+                new WorldPosition(4, 2),
+                TestHelpers.SingleUnitGrid(new WorldUnitId("leader2"), leader),
+                movementPoints: 6) with
+            {
+                SubraceId = enemySubrace.Id
+            };
 
         ScenarioLocationDefinition zone = new(new ScenarioLocationId("Zone1"), new ScenarioTextId("Camp"), new WorldPosition(0, 1), 0);
 
@@ -7253,6 +7367,77 @@ public sealed class WorldEngineScenarioEventEffectTests
             engine.State with
             {
                 Stacks = engine.State.Stacks.SetItem(ally.Id, ally),
+                ScenarioState = WorldScenarioState.Empty with
+                {
+                    EventStates = ImmutableSortedDictionary<ScenarioEventId, bool>.Empty.Add(scenarioEvent.Id, false)
+                }
+            }));
+    }
+
+    [Test]
+    public void CreateStackEffectTemplateLeaderNameTest()
+    {
+        WorldMap map = TestHelpers.SimpleMap(1, 1);
+
+        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map);
+        UnitDefinition leader = TestHelpers.SimpleLeaderDefinition(
+            TestHelpers.SimpleUnitDefinition("leader", maxHitpoints: 100, initiative: 50, damage: 10),
+            movementPoints: 6, leadership: 6);
+        ScenarioStackTemplateId templateId = new("Template1");
+        ScenarioUnitName leaderName = new(new ScenarioTextId("Wolfgar"));
+
+        ScenarioStackTemplateDefinition template = new(
+            templateId,
+            player.Id,
+            TestHelpers.NeutralSubrace.Id,
+            new UnitGrid<ScenarioStackTemplateUnit>.Builder()
+                .Place(new ScenarioStackTemplateUnit(leader.Id, 100, 1, [], leaderName), GridPosition.FrontBottom, leader.IsLarge)
+                .Build(),
+            WorldStackOrder.Normal.Instance,
+            Direction: null,
+            AiPriority: 3);
+
+        ScenarioLocationDefinition location = new(new ScenarioLocationId("Camp"), new ScenarioTextId("Camp"), new WorldPosition(0, 0), 0);
+
+        ScenarioEventDefinition scenarioEvent = new(
+            new ScenarioEventId("Event1"),
+            [WorldRace.Human],
+            [WorldRace.Human],
+            [new ScenarioEventFrequencyCondition(1)],
+            [new ScenarioEventCreateStackEffect(templateId, location.Id)],
+            Enabled: true,
+            OccurOnce: true,
+            Chance: 100,
+            Order: 0);
+
+        WorldEngine engine = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(leader)
+            .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
+            .WithPlayer(player)
+            .WithScenarioLocation(location)
+            .WithScenarioStackTemplate(template)
+            .WithScenarioEvent(scenarioEvent)
+            .Build();
+
+        _ = engine.DispatchCommand(new WorldStartGameCommand());
+
+        WorldStack created = TestHelpers.SimpleStack(
+                new WorldStackId("Stack0001"),
+                player.Id,
+                new WorldPosition(0, 0),
+                new UnitGrid<WorldUnit>.Builder()
+                    .Place(TestHelpers.SimpleUnit(new WorldUnitId("Unit0001"), leader) with { Name = new ScenarioUnitName(new ScenarioTextId("Wolfgar")) }, GridPosition.FrontBottom, leader.IsLarge)
+                    .Build(),
+                movementPoints: 6) with
+            {
+                SourceTemplateId = templateId
+            };
+
+        Assert.That(engine.State, Is.EqualTo(
+            engine.State with
+            {
+                Stacks = engine.State.Stacks.SetItem(created.Id, created),
                 ScenarioState = WorldScenarioState.Empty with
                 {
                     EventStates = ImmutableSortedDictionary<ScenarioEventId, bool>.Empty.Add(scenarioEvent.Id, false)

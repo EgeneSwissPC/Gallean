@@ -133,7 +133,7 @@ internal sealed partial class ScenarioConfigurationScreenViewModel : AbstractScr
 
         foreach (ScenarioRace race in humanRaces)
         {
-            ScenarioPlayerConfiguration playerConfiguration = new(race.Race, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null);
+            ScenarioPlayerConfiguration playerConfiguration = new(race.Race, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "");
 
             humanPlayers.Add(playerConfiguration);
         }
@@ -217,7 +217,7 @@ internal sealed partial class ScenarioConfigurationScreenViewModel : AbstractScr
             importedLeader = configuration.Leader;
         }
 
-        ScenarioPlayerConfiguration player = new(race, SelectedLordCategory, new WorldObjectVariant(LordFaceVariant), startingLeaderId, BuildLeaderName());
+        ScenarioPlayerConfiguration player = new(race, SelectedLordCategory, new WorldObjectVariant(LordFaceVariant), startingLeaderId, LeaderName);
 
         return configuration with
         {
@@ -227,42 +227,30 @@ internal sealed partial class ScenarioConfigurationScreenViewModel : AbstractScr
         };
     }
 
-    private UnitName? BuildLeaderName()
-    {
-        string name = LeaderName.Trim();
-
-        if (name.Length > 0)
-        {
-            return new LiteralUnitName(name);
-        }
-        else
-        {
-            return null;
-        }
-    }
-
     [RelayCommand]
     private void EditLeaderName()
     {
         Game.OpenScreen(new TextPromptViewModel(
-            Tr("Hero name"),
+            TrSpans("Hero name"),
             Tr("Enter a name for your starting hero."),
             LeaderName,
             Tr("Default name"),
             MaxLeaderNameLength,
-            name => LeaderName = name.Trim()));
+            async name => LeaderName = name));
     }
 
     [RelayCommand]
     private void PreviousLordFace()
     {
         LordFaceVariant = (LordFaceVariant - 1).Mod(AssetSpriteKey.LordFace.GetVariantCount(race));
+        Game.PlaySound(new AssetSoundKey.BookOpen());
     }
 
     [RelayCommand]
     private void NextLordFace()
     {
         LordFaceVariant = (LordFaceVariant + 1).Mod(AssetSpriteKey.LordFace.GetVariantCount(race));
+        Game.PlaySound(new AssetSoundKey.BookOpen());
     }
 
     [RelayCommand]

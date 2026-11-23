@@ -178,9 +178,9 @@ public sealed class GameViewModelTests
         Assert.That(world.ObjectiveText, Is.EqualTo("Destroy Hubert de Lalye"));
         Assert.That(world.Status.TurnText, Is.EqualTo("Turn 2"));
 
-        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian));
+        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian, BattlePosition.Left));
 
-        Assert.That(settingsSource.Current, Is.EqualTo(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian)));
+        Assert.That(settingsSource.Current, Is.EqualTo(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.Russian, BattlePosition.Left)));
         Assert.That(gameViewModel.Language, Is.EqualTo(Language.Russian));
         Assert.That(world.GameModel.ScenarioName, Is.EqualTo("Противостояние"));
         Assert.That(world.GameModel.Texts.GetGlobalText(new GlobalTextId("x000tg0000")).Text, Is.EqualTo("Империя"));
@@ -188,7 +188,7 @@ public sealed class GameViewModelTests
         Assert.That(world.ObjectiveText, Is.EqualTo("Уничтожить Юбера де Лали"));
         Assert.That(world.Status.TurnText, Is.EqualTo("Ход 2"));
 
-        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English));
+        gameViewModel.UpdateSettings(GameSettings.Create(100, 100, false, 100, 5, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left));
 
         Assert.That(gameViewModel.Language, Is.EqualTo(Language.English));
         Assert.That(world.GameModel.ScenarioName, Is.EqualTo("Antagonists"));
@@ -493,7 +493,7 @@ public sealed class GameViewModelTests
         using Sandbox sb = Sandbox.Create();
 
         GameLoader gameLoader = new(new RandomProvider(0));
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Mage, new WorldObjectVariant(2), null, LeaderName: null)], WorldDifficulty.Hard, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Elf, LordCategory.Mage, new WorldObjectVariant(2), null, LeaderName: "")], WorldDifficulty.Hard, Leader: null);
         (GameSession session, _) = gameLoader.CreateScenario("S137SC0000", configuration, Language.English);
         WorldState savedState = session.World.State with
         {
@@ -654,7 +654,7 @@ public sealed class GameViewModelTests
         using (Assert.EnterMultipleScope())
         {
             Assert.That(gameViewModel.Screens, Is.EqualTo(new AbstractScreenViewModel[] { firstWorld, menu, loadScreen, prompt }));
-            Assert.That(prompt.Title, Is.EqualTo("Load game"));
+            Assert.That(prompt.Title, Is.EqualTo(new TextSpans([new TextSpan("Load game", TextStyle.None)])));
             Assert.That(prompt.Message, Is.EqualTo(TextSpans.FromText("Do you want to load \"Second save\"? Unsaved progress will be lost.")));
             Assert.That(prompt.ConfirmLabel, Is.EqualTo("Load"));
         }
@@ -1879,7 +1879,7 @@ public sealed class GameViewModelTests
 
         using GameViewModel gameViewModel = new TestGameViewModelBuilder()
             .WithSaveStore(saveStore)
-            .WithSettings(GameSettings.Create(100, 100, false, 100, 3, 2, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English))
+            .WithSettings(GameSettings.Create(100, 100, false, 100, 3, 2, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left))
             .Build();
         WorldScreenViewModel world = new(gameModel, gameViewModel, new RandomProvider(0));
         gameViewModel.ShowScreen(world);
@@ -1949,7 +1949,7 @@ public sealed class GameViewModelTests
         GameModel gameModel = new(session, TestGameTextProvider.Instance, NullLog.Instance, SynchronousTaskScheduler.Instance);
         using GameViewModel gameViewModel = new TestGameViewModelBuilder()
             .WithSaveStore(new GameSaveStore(sb.GetPath("saves"), 10))
-            .WithSettings(GameSettings.Create(100, 100, false, 100, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English))
+            .WithSettings(GameSettings.Create(100, 100, false, 100, 0, 10, BattleSpeed.Normal, UiSize.Normal, true, MovementSpeed.Normal, Language.English, BattlePosition.Left))
             .Build();
         WorldScreenViewModel world = new(gameModel, gameViewModel, new RandomProvider(0));
         gameViewModel.ShowScreen(world);

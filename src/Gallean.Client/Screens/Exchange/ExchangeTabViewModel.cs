@@ -6,7 +6,7 @@ using Gallean.Engine;
 namespace Gallean.Client;
 
 internal sealed partial class ExchangeTabViewModel
-    : ManagementTabViewModel, IUnitGridSelectionProvider, IInventoryTransferProvider, IDragDropProvider, IDragDropHost
+    : ManagementTabViewModel, IUnitGridSelectionProvider, IInventoryTransferProvider, IInventoryProvider, IDragDropProvider, IDragDropHost
 {
     private readonly ManagementScreenViewModel screen;
     private readonly WorldStackId stackId;
@@ -27,7 +27,7 @@ internal sealed partial class ExchangeTabViewModel
         unitSelection = new UnitGridSelectionViewModel(gameModel, this);
         StackGrid = new UnitGridViewModel(gameModel, unitSelection, isFacingLeft: false);
         OtherStackGrid = new UnitGridViewModel(gameModel, unitSelection, isFacingLeft: true);
-        InventoryTransfer = new InventoryTransferViewModel(gameModel, this);
+        InventoryTransfer = new InventoryTransferViewModel(gameModel, this, this);
         DragDrop = new DragDropViewModel(gameModel, this);
         DropZones = [DismissDropZone];
 
@@ -36,7 +36,20 @@ internal sealed partial class ExchangeTabViewModel
         RegisterSnapshotGatedCommands(TransferAllCommand);
     }
 
-    public override string TabHeader => Tr("Exchange");
+    public override string TabHeader
+    {
+        get
+        {
+            if (OtherLeader is not null)
+            {
+                return Tr("Exchange: {0}", OtherLeader.Title);
+            }
+            else
+            {
+                return Tr("Exchange");
+            }
+        }
+    }
 
     public UnitGridViewModel StackGrid { get; }
     public UnitGridViewModel OtherStackGrid { get; }
@@ -49,6 +62,7 @@ internal sealed partial class ExchangeTabViewModel
     public partial StackLeaderViewModel? Leader { get; private set; }
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(TabHeader))]
     public partial StackLeaderViewModel? OtherLeader { get; private set; }
 
     [ObservableProperty]
@@ -135,7 +149,7 @@ internal sealed partial class ExchangeTabViewModel
             WorldDisbandUnitCommand command = new(new WorldUnitGroup.Stack(slotStack.Id), unit.Id);
 
             Game.OpenScreen(new ConfirmPromptViewModel(
-                Tr("Dismiss unit"),
+                TrSpans("Dismiss unit"),
                 TrSpans("Are you sure you want to dismiss {0:*}?", UnitNameResolver.Resolve(unit, GameModel.Definitions, GameModel.Texts)),
                 Tr("Dismiss"),
                 ConfirmPromptType.Danger,

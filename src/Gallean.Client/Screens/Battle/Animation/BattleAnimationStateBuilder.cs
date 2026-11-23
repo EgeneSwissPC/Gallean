@@ -1,4 +1,5 @@
 using Gallean.Common;
+using Gallean.Configuration;
 using Gallean.Engine;
 using static Gallean.Client.BattleRenderState;
 using static Gallean.Client.BattleUnitState;
@@ -10,6 +11,7 @@ internal sealed partial class BattleAnimationStateBuilder(
     IGameDefinitionProvider definitions,
     IRandomProvider random,
     BattleViewerSide viewerSide,
+    BattlePositions positions,
     double speedFactor)
     : IBattleEventVisitor<Empty, Empty>
 {
@@ -237,9 +239,9 @@ internal sealed partial class BattleAnimationStateBuilder(
         {
             ItemDefinition item = definitions.GetItem(ev.ItemId);
 
-            BattleSide targetSide = GetTargetSide(ev.Target);
+            BattlePosition targetPosition = GetTargetPosition(ev.Target);
 
-            BeginItem(timeline, item, targetSide);
+            BeginItem(timeline, item, targetPosition);
         }
 
         return Empty.Value;
@@ -263,9 +265,9 @@ internal sealed partial class BattleAnimationStateBuilder(
     {
         if (timelines.TryGetValue(ev.AttackerId, out UnitTimeline? attacker))
         {
-            BattleSide targetSide = GetTargetSide(ev.Target);
+            BattlePosition targetPosition = GetTargetPosition(ev.Target);
 
-            BeginAttack(attacker, definitions.GetAttack(ev.AttackIds[0]), targetSide);
+            BeginAttack(attacker, definitions.GetAttack(ev.AttackIds[0]), targetPosition);
         }
 
         return Empty.Value;
@@ -277,7 +279,7 @@ internal sealed partial class BattleAnimationStateBuilder(
             timelines.TryGetValue(ev.AttackerId, out UnitTimeline? attacker) &&
             timelines.TryGetValue(ev.TargetId, out UnitTimeline? target))
         {
-            Attack attack = BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.Side);
+            Attack attack = BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.BattlePosition);
             double severity = ResolveHitSeverity(ev.Damage, target.CurrentHitpoints);
 
             AddStrike(target);
@@ -311,7 +313,7 @@ internal sealed partial class BattleAnimationStateBuilder(
         if (timelines.TryGetValue(ev.AttackerId, out UnitTimeline? attacker) &&
             timelines.TryGetValue(ev.TargetId, out UnitTimeline? target))
         {
-            BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.Side);
+            BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.BattlePosition);
         }
 
         return Empty.Value;
@@ -322,7 +324,7 @@ internal sealed partial class BattleAnimationStateBuilder(
         if (timelines.TryGetValue(ev.AttackerId, out UnitTimeline? attacker) &&
             timelines.TryGetValue(ev.TargetId, out UnitTimeline? target))
         {
-            BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.Side);
+            BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.BattlePosition);
         }
 
         return Empty.Value;
@@ -343,7 +345,7 @@ internal sealed partial class BattleAnimationStateBuilder(
         if (timelines.TryGetValue(ev.AttackerId, out UnitTimeline? attacker) &&
             timelines.TryGetValue(ev.TargetId, out UnitTimeline? target))
         {
-            BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.Side);
+            BeginAttack(attacker, definitions.GetAttack(ev.AttackId), target.Unit.Footprint.BattlePosition);
         }
 
         return Empty.Value;
@@ -522,14 +524,18 @@ internal sealed partial class BattleAnimationStateBuilder(
 
             if (currentAttack is { } attack)
             {
-                if (attack.Definition?.Type is UnitAttackType.DrainLife or UnitAttackType.DrainLifeOverflow)
+                if (attack.Definition is null || attack.Definition.Type is UnitAttackType.Heal)
                 {
-                    AddEffectClip(timeline.Unit.Footprint, attack.Strike, new AssetAnimationKey.BattleEffect.Heal());
+                    AddStrike(timeline);
+
+                    if (attack.EffectUnitId is null)
+                    {
+                        AddSound(attack.Strike, new AssetSoundKey.BattleEffect.Heal());
+                    }
                 }
                 else
                 {
-                    AddStrike(timeline);
-                    AddSound(attack.Strike, new AssetSoundKey.BattleEffect.Heal());
+                    AddEffectClip(timeline.Unit.Footprint, attack.Strike, new AssetAnimationKey.BattleEffect.Heal());
                 }
             }
             else
@@ -704,7 +710,7 @@ internal sealed partial class BattleAnimationStateBuilder(
             AssetAnimationKey.BattleEffect effectKey = new AssetAnimationKey.BattleEffect.LevelUp(timeline.Unit.Race, timeline.Unit.Footprint.IsLarge);
             AssetAnimationMetadata effectMetadata = assets.GetRequiredAnimationMetadata(effectKey);
             TimeSpan duration = rate.GetDuration(effectMetadata.FrameCount);
-            Step step = OpenStep(duration);
+            Step step = EnsureStep(duration);
             TimeSpan start = step.Start;
             TimeSpan swap = start + ResolveRevealOffset(effectKey);
 
@@ -751,23 +757,23 @@ internal sealed partial class BattleAnimationStateBuilder(
         return Empty.Value;
     }
 
-    private BattleSide GetTargetSide(BattleAttackTarget target)
+    private BattlePosition GetTargetPosition(BattleAttackTarget target)
     {
         return target switch
         {
-            BattleAttackUnitTarget unitTarget => GetUnitSide(unitTarget.UnitId),
-            BattleAttackTileTarget tileTarget => tileTarget.Side
+            BattleAttackUnitTarget unitTarget => GetUnitPosition(unitTarget.UnitId),
+            BattleAttackTileTarget tileTarget => positions.GetPosition(tileTarget.Side)
         };
     }
 
-    private BattleSide GetUnitSide(BattleUnitId unitId)
+    private BattlePosition GetUnitPosition(BattleUnitId unitId)
     {
         UnitTimeline timeline = timelines[unitId];
 
-        return timeline.Unit.Footprint.Side;
+        return timeline.Unit.Footprint.BattlePosition;
     }
 
-    private Attack BeginAttack(UnitTimeline attacker, UnitAttackDefinition definition, BattleSide targetSide)
+    private Attack BeginAttack(UnitTimeline attacker, UnitAttackDefinition definition, BattlePosition targetPosition)
     {
         Attack? existing = FindAttack(attacker, definition.Id);
 
@@ -787,14 +793,16 @@ internal sealed partial class BattleAnimationStateBuilder(
         }
         else
         {
-            return BeginPrimaryAttack(attacker, definition, targetSide);
+            return BeginPrimaryAttack(attacker, definition, targetPosition);
         }
     }
 
-    private Attack BeginPrimaryAttack(UnitTimeline attacker, UnitAttackDefinition definition, BattleSide targetSide)
+    private Attack BeginPrimaryAttack(UnitTimeline attacker, UnitAttackDefinition definition, BattlePosition targetPosition)
     {
         UnitDefinitionId attackerId = attacker.Unit.DefinitionId;
-        AssetAnimationKey poseKey = new AssetAnimationKey.BattleUnit(attackerId, AssetAnimationKey.BattleUnitPose.Attack, attacker.Unit.Footprint.Side);
+        BattleSide facing = attacker.Unit.Footprint.BattlePosition.GetFacing();
+        BattleSide targetSide = targetPosition.GetFacing();
+        AssetAnimationKey poseKey = new AssetAnimationKey.BattleUnit(attackerId, AssetAnimationKey.BattleUnitPose.Attack, facing);
         AssetAnimationMetadata poseMetadata = assets.GetRequiredAnimationMetadata(poseKey);
         TimeSpan soundOffset = GetSoundOffset(new AssetSoundKey.BattleUnitAttack(attackerId, Variant: 0));
         Step step = OpenStep(TimeSpan.Zero);
@@ -817,7 +825,7 @@ internal sealed partial class BattleAnimationStateBuilder(
         currentAttack = new Attack(attacker.Unit, AttackOrigin.Primary, attackerId, touchTime, strikeTime, secondStrikeTime, definition);
         actionAttacks.Add(currentAttack);
 
-        AddHitEffect(attackerId, hitEffect, targetSide, hitTime);
+        AddHitEffect(attackerId, hitEffect, targetPosition, hitTime);
 
         AddBody(attacker, start, rate.GetDuration(poseMetadata.FrameCount), AssetAnimationKey.BattleUnitPose.Attack, Presence.Alive);
         int soundVariant = random.Next(AssetSoundKey.BattleUnitAttack.VariantCount);
@@ -829,7 +837,7 @@ internal sealed partial class BattleAnimationStateBuilder(
     private void AddHitEffect(
         UnitDefinitionId attackerId,
         IReadOnlyList<AssetAnimationKey.BattleEffect.Attack> effectKeys,
-        BattleSide targetSide,
+        BattlePosition targetPosition,
         TimeSpan at)
     {
         if (effectKeys.Count > 0)
@@ -840,7 +848,7 @@ internal sealed partial class BattleAnimationStateBuilder(
 
                 AddClip(new AnimationClip(
                     effectKey,
-                    BattleRenderLayout.GetGridPlacement(targetSide),
+                    BattleRenderLayout.GetGridPlacement(targetPosition),
                     at,
                     rate.GetDuration(effectMetadata.FrameCount)));
             }
@@ -934,10 +942,11 @@ internal sealed partial class BattleAnimationStateBuilder(
         return null;
     }
 
-    private void BeginItem(UnitTimeline user, ItemDefinition item, BattleSide targetSide)
+    private void BeginItem(UnitTimeline user, ItemDefinition item, BattlePosition targetPosition)
     {
         Step step = OpenStep(rate.GetDuration(ActionGapFrames));
         TimeSpan start = step.Start;
+        BattleSide targetSide = targetPosition.GetFacing();
 
         if (resolver.ResolveItem(item.Category) is { } effect)
         {
@@ -965,7 +974,7 @@ internal sealed partial class BattleAnimationStateBuilder(
 
             currentAttack = new Attack(user.Unit, AttackOrigin.Item, effectUnitId, touchTime, strikeTime, secondStrike: null, definition: null);
 
-            AddHitEffect(effectUnitId, hitEffect, targetSide, start);
+            AddHitEffect(effectUnitId, hitEffect, targetPosition, start);
         }
         else
         {
@@ -1081,8 +1090,10 @@ internal sealed partial class BattleAnimationStateBuilder(
 
     private void AddUnitImpactEffects(Attack attack, UnitDefinitionId effectUnitId, BattleGridFootprint footprint)
     {
+        BattleSide targetSide = footprint.BattlePosition.GetFacing();
+
         IReadOnlyList<AssetAnimationKey.BattleEffect.Attack> effectKeys =
-            ResolveAttackEffect(effectUnitId, AssetAnimationKey.BattleEffect.AttackType.Touch, footprint.Side);
+            ResolveAttackEffect(effectUnitId, AssetAnimationKey.BattleEffect.AttackType.Touch, targetSide);
 
         foreach (AssetAnimationKey.BattleEffect.Attack effectKey in effectKeys)
         {
@@ -1176,7 +1187,8 @@ internal sealed partial class BattleAnimationStateBuilder(
             TimeSpan pauseDuration = ResolvePauseDuration(severity);
             AddPause(at, pauseDuration);
 
-            bool showShake = target.Unit.Footprint.Side switch
+            BattleSide targetSide = positions.GetSide(target.Unit.Footprint.BattlePosition);
+            bool showShake = targetSide switch
             {
                 BattleSide.Attacker => viewerSide is BattleViewerSide.Attacker,
                 BattleSide.Defender => viewerSide is BattleViewerSide.Defender
@@ -1230,11 +1242,13 @@ internal sealed partial class BattleAnimationStateBuilder(
 
     private void AddTurnAround(UnitTimeline timeline, TimeSpan at)
     {
-        BattleSide facing = timeline.Unit.Footprint.Side.GetOpposite();
+        BattlePosition position = timeline.Unit.Footprint.BattlePosition;
+        BattleSide facing = position.GetFacing();
+        BattleSide opposite = facing.GetOpposite();
 
-        if (facing != timeline.CurrentFacing)
+        if (opposite != timeline.CurrentFacing)
         {
-            AddForm(timeline, at, timeline.CurrentDefinitionId, facing);
+            AddForm(timeline, at, timeline.CurrentDefinitionId, opposite);
         }
     }
 
@@ -1272,7 +1286,13 @@ internal sealed partial class BattleAnimationStateBuilder(
 
     private void AddSound(TimeSpan at, AssetSoundKey key)
     {
-        sounds.Add(new AnimationSound(at, key));
+        AnimationSound sound = new(at, key);
+
+        if (!sounds.Contains(sound))
+        {
+            sounds.Add(sound);
+        }
+
         RequireStep().ExtendTo(at);
     }
 
@@ -1433,7 +1453,8 @@ internal sealed partial class BattleAnimationStateBuilder(
 
     private TimeSpan GetPoseDuration(Unit unit, AssetAnimationKey.BattleUnitPose pose)
     {
-        AssetAnimationKey key = new AssetAnimationKey.BattleUnit(unit.DefinitionId, pose, unit.Footprint.Side);
+        BattleSide facing = unit.Footprint.BattlePosition.GetFacing();
+        AssetAnimationKey key = new AssetAnimationKey.BattleUnit(unit.DefinitionId, pose, facing);
         AssetAnimationMetadata metadata = assets.GetRequiredAnimationMetadata(key);
 
         return rate.GetDuration(metadata.FrameCount);

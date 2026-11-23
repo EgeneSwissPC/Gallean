@@ -82,6 +82,7 @@ public sealed class AssetKeyTests
             Assert.That(new Capital(WorldRace.Dwarf, IsCaptured: false).CanonicalId, Is.EqualTo("capital/dwarf"));
             Assert.That(new Capital(WorldRace.Dwarf, IsCaptured: true).CanonicalId, Is.EqualTo("capital/captured/dwarf"));
             Assert.That(new CapitalBackground(WorldRace.Dwarf, 0).CanonicalId, Is.EqualTo("capital-background/dwarf/0"));
+            Assert.That(new CapitalBackgroundV2(WorldRace.Dwarf, 0).CanonicalId, Is.EqualTo("capital-background-v2/dwarf/0"));
             Assert.That(new CapitalBackgroundOverlay(WorldRace.Human, 1).CanonicalId, Is.EqualTo("capital-background-overlay/human/1"));
             Assert.That(new CapitalBuilding(new WorldPlayerBuildingDefinitionId("G000BB0023")).CanonicalId, Is.EqualTo("capital-building/g000bb0023"));
             Assert.That(new MainMenuBackground().CanonicalId, Is.EqualTo("main-menu-background"));
@@ -90,6 +91,7 @@ public sealed class AssetKeyTests
             Assert.That(new MainMenuBackgroundOverlay(3).CanonicalId, Is.EqualTo("main-menu-background-overlay/1"));
             Assert.That(new RaceSelectionBackground(WorldRace.Heretic).CanonicalId, Is.EqualTo("race-selection-background/heretic"));
             Assert.That(new RaceSelectionBackgroundOverlay(WorldRace.Undead, 1).CanonicalId, Is.EqualTo("race-selection-background-overlay/undead/1"));
+            Assert.That(new BriefingVideo(new ScenarioId("S108SC0000")).CanonicalId, Is.EqualTo("briefing-video/s108sc0000"));
             Assert.That(new CityShield(WorldRace.Undead, IsCapital: false).CanonicalId, Is.EqualTo("city-shield/city/undead"));
             Assert.That(new CityShield(WorldRace.Neutral, IsCapital: false).CanonicalId, Is.EqualTo("city-shield/city/neutral"));
             Assert.That(new CityShield(WorldRace.Elf, IsCapital: true).CanonicalId, Is.EqualTo("city-shield/capital/elf"));
@@ -203,7 +205,7 @@ public sealed class AssetKeyTests
             Assert.That(new WorldMusic(10).CanonicalId, Is.EqualTo("world-music/10"));
             Assert.That(new WorldMusic(11).CanonicalId, Is.EqualTo("world-music/0"));
             Assert.That(new AmbientMusic(10).CanonicalId, Is.EqualTo("ambient-music/10"));
-            Assert.That(new CapitalMusic(WorldRace.Human, 10).CanonicalId, Is.EqualTo("capital-music/human/1"));
+            Assert.That(new CapitalMusic(WorldRace.Human, 10).CanonicalId, Is.EqualTo("capital-music/human/4"));
             Assert.That(new BattleUnitAttack(new UnitDefinitionId("G000UU0001"), 6).CanonicalId, Is.EqualTo("battle-unit-attack/g000uu0001/0"));
             Assert.That(new BattleUnitHit(new UnitDefinitionId("G000UU0001"), 2).CanonicalId, Is.EqualTo("battle-unit-hit/g000uu0001/2"));
             Assert.That(new BattleUnitTouch(new UnitDefinitionId("G000UU0001"), 7).CanonicalId, Is.EqualTo("battle-unit-touch/g000uu0001/2"));
@@ -269,6 +271,8 @@ public sealed class AssetKeyTests
             Assert.That(AssetSpriteKey.Parse("mountain/dwarf/5/2", null), Is.EqualTo(new Mountain(WorldRace.Dwarf, 5, 2)));
             Assert.That(AssetSpriteKey.Parse("bag/water/1", null), Is.EqualTo(new Bag(IsWater: true, 1)));
             Assert.That(AssetSpriteKey.Parse("tombstone/land", null), Is.EqualTo(new Tombstone(IsWater: false)));
+            Assert.That(AssetSpriteKey.Parse("capital-background/human/1", null), Is.EqualTo(new CapitalBackground(WorldRace.Human, 1)));
+            Assert.That(AssetSpriteKey.Parse("capital-background-v2/human/1", null), Is.EqualTo(new CapitalBackgroundV2(WorldRace.Human, 1)));
             Assert.That(AssetSpriteKey.Parse("main-menu-background", null), Is.EqualTo(new MainMenuBackground()));
             Assert.That(AssetSpriteKey.Parse("main-menu-background-v2", null), Is.EqualTo(new MainMenuBackgroundV2()));
             Assert.That(AssetSpriteKey.Parse("battle-background/terrain/human/1", null), Is.EqualTo(new BattleBackground(new BattleLocation.Terrain(WorldMapTerrain.Human), 1)));
@@ -317,6 +321,7 @@ public sealed class AssetKeyTests
             Assert.That(AssetAnimationKey.Parse("capital/dwarf", null), Is.EqualTo(new Capital(WorldRace.Dwarf, IsCaptured: false)));
             Assert.That(AssetAnimationKey.Parse("capital/captured/dwarf", null), Is.EqualTo(new Capital(WorldRace.Dwarf, IsCaptured: true)));
             Assert.That(AssetAnimationKey.Parse("capital-building/g000bb0023", null), Is.EqualTo(new CapitalBuilding(new WorldPlayerBuildingDefinitionId("G000BB0023"))));
+            Assert.That(AssetAnimationKey.Parse("briefing-video/s108sc0000", null), Is.EqualTo(new BriefingVideo(new ScenarioId("S108SC0000"))));
             Assert.That(AssetAnimationKey.Parse("ruin/intact/4", null), Is.EqualTo(new Ruin(IsLooted: false, 4)));
             Assert.That(AssetAnimationKey.Parse("water-landmark/g000mg0004", null), Is.EqualTo(new WaterLandmark(new WorldLandmarkDefinitionId("G000MG0004"))));
             Assert.That(AssetAnimationKey.Parse("site-shadow/merchant/1", null), Is.EqualTo(new SiteShadow(SiteType.Merchant, 1)));

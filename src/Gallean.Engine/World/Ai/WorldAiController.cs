@@ -12,11 +12,12 @@ internal sealed class WorldAiController(IEngineContext engine, WorldAiProfile? p
 
         if (memory.Turn.ActionsChosen < MaxActionsPerTurn)
         {
+            WorldPlan plan = WorldPlan.For(state);
             WorldAiPlanner planner = new(new WorldAiContext(engine, trace ?? NullWorldAiTrace.Instance, profile));
             WorldPlayerId playerId = state.TurnInfo.CurrentPlayerId;
             WorldPlayer player = state.Players[playerId];
 
-            if (WorldHelpers.IsRacePlayable(player.Race))
+            if (WorldHelpers.IsRacePlayable(player.Race) && !plan.IsPlayerDefeated(playerId))
             {
                 memory = DecideStackOrders(planner, state, playerId, memory);
 
@@ -27,8 +28,6 @@ internal sealed class WorldAiController(IEngineContext engine, WorldAiProfile? p
                     return FinalizePlan(economyPlan.Value);
                 }
             }
-
-            WorldPlan plan = WorldPlan.For(state);
 
             foreach (WorldStack stack in state.Stacks.Values)
             {

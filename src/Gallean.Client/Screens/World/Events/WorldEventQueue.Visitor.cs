@@ -343,6 +343,11 @@ internal sealed partial class WorldEventQueue
         return Empty.Value;
     }
 
+    Empty IWorldEventVisitor<EngineStep<WorldState, WorldEvent>, Empty>.Visit(WorldLeaderRenamedEvent ev, EngineStep<WorldState, WorldEvent> step)
+    {
+        return Empty.Value;
+    }
+
     Empty IWorldEventVisitor<EngineStep<WorldState, WorldEvent>, Empty>.Visit(WorldLeaderUpgradeGrantedEvent ev, EngineStep<WorldState, WorldEvent> step)
     {
         WorldState state = step.NewState;
@@ -531,7 +536,7 @@ internal sealed partial class WorldEventQueue
 
             if (capital is not null)
             {
-                queue.Add(new Entry.GlobalSpellCast(step.NewState, ev.SpellId, capital.Entrance));
+                queue.Add(new Entry.GlobalSpellCast(step.NewState, ev.CasterId.Value, ev.SpellId, capital.Entrance));
             }
         }
 

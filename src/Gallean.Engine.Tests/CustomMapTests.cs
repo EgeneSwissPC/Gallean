@@ -141,7 +141,7 @@ public sealed class CustomMapTests
         store.Save(map);
 
         // The quest list starts a new game like this: the chosen race becomes the human player.
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, Leader: null);
         GlobalVariables globals = new();
         Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
         EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
@@ -346,7 +346,7 @@ public sealed class CustomMapTests
         map.PlaceStack(new WorldPosition(14, 18), WorldRace.Human, Slots((GridPosition.FrontCenter, HumanLeader)));
         store.Save(map);
 
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, Leader: null);
         GlobalVariables globals = new();
         Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
         EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
@@ -481,7 +481,7 @@ public sealed class CustomMapTests
         Assert.That(reopened.Templates.Single().Slots, Is.EqualTo(map.Templates.Single().Slots), "waterOnly is kept in EditorEvents.json.");
         Assert.That(CustomMapStack.IsLedBySeaCreature(reopened.Templates.Single().Slots), Is.True);
 
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, Leader: null);
         GlobalVariables globals = new();
         Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
         EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
@@ -1201,7 +1201,7 @@ public sealed class CustomMapTests
         Assert.That((map.Stacks.Count, map.Ruins.Count, map.Bags.Count, map.Sites.Count, map.Landmarks.Count), Is.EqualTo((1, 1, 1, 4, 4)));
         store.Save(map);
 
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, Leader: null);
         GlobalVariables globals = new();
         Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
         EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
@@ -1582,9 +1582,10 @@ public sealed class CustomMapTests
         }));
     }
 
-    // Gallean Upgrade (switchable AI): on a fresh custom map Classic's capital leader waits to save up
-    // for a second leader; Classic+ (and every personality) doesn't, so its leader goes out.
-    [TestCase(AiBrainRegistry.ClassicId, false)]
+    // Gallean Upgrade (switchable AI): on a fresh custom map Classic's capital leader used to wait to save up
+    // for a second leader (the custom-map idle loop); Classic+ (and every personality) doesn't, so its leader goes out.
+    // Since upstream 0.16.5 (8b60959d, no leader purchase while the entrance is occupied) Classic's leader leaves too.
+    [TestCase(AiBrainRegistry.ClassicId, true)]
     [TestCase(AiPersonalities.ClassicPlusId, true)]
     public void CapitalLeaderLeavesWithClassicPlusTest(string worldAi, bool leaves)
     {
@@ -1918,7 +1919,7 @@ public sealed class CustomMapTests
         map.PlaceResource(new WorldPosition(20, 43), WorldResourceType.Gold);
         store.Save(map);
 
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Average, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Average, Leader: null);
         GlobalVariables globals = new();
         Scenario scenario = ScenarioLoader.Create(globalDb, store.LoadDatabase(map.Id), campaignDb, new ScenarioId(map.Id), definitions, globals, configuration);
         EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
@@ -2048,7 +2049,7 @@ public sealed class CustomMapTests
         Assert.That(store.Open(map.Id, definitions).Players, Is.EqualTo(map.Players));
 
         // In the game a human player gets it scaled by difficulty (Hard: 50 %), a computer player as it is.
-        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: null)], WorldDifficulty.Hard, Leader: null);
+        ScenarioConfiguration configuration = new([new ScenarioPlayerConfiguration(WorldRace.Human, LordCategory.Warrior, new WorldObjectVariant(0), null, LeaderName: "")], WorldDifficulty.Hard, Leader: null);
         WorldState hard = ScenarioLoader.Create(globalDb, database, campaignDb, new ScenarioId(map.Id), definitions, new GlobalVariables(), configuration).State;
         Assert.That(hard.Players.Values.Single(player => player.Race == WorldRace.Human).Resources, Is.EqualTo(new WorldResourceSet(400, 25, 0, 1000, 4999, 0)));
         Assert.That(hard.Players.Values.Single(player => player.Race == WorldRace.Elf).Resources.GroveMana, Is.EqualTo(1500));
