@@ -536,6 +536,62 @@ public sealed class CustomMapEventTests
         Assert.That(step.Events.OfType<WorldScenarioPopupEvent>().Select(popup => popup.EventId.Value), Is.EqualTo(new[] { Id("EV", 1) }));
     }
 
+    // Upstream 0.17 (f04f995b): beating the last defenders of a city with no garrison walks the army in and captures
+    // it at once. That walk is a normal step, so the map's "owns the village" event fires right after the battle.
+    [Test]
+    public void AutoCaptureAfterBattleFiresCityEventTest()
+    {
+        CustomMap map = CreateMap();
+        map.AddEvent(CustomMapEvent.Create("Northgate taken", WorldRace.Human) with
+        {
+            Groups = [[new CustomMapOwnCityCondition(new CustomMapCity.Village(1))]],
+            Effects = [new CustomMapMessageEffect(CustomMapText.Of("Northgate is ours."), CustomMapMessageAudience.AllPlayers, null, false)]
+        });
+        CustomMapStore store = Store;
+        store.Save(map);
+
+        GlobalVariables globals = new();
+        Scenario scenario = ScenarioLoader.Load(globalDb, store.LoadDatabase(MapId), campaignDb, new ScenarioId(MapId), definitions, globals);
+        WorldState state = scenario.State;
+        WorldPlayerId empire = state.Players.Values.Single(player => player.Race == WorldRace.Human).Id;
+        WorldCity village = state.Fortifications.Values.OfType<WorldCity>().Single();
+        WorldStackId empireArmy = new(CustomMapWriter.GetArmyStackId(MapId, 1));
+        WorldStackId neutralArmy = new(CustomMapWriter.GetArmyStackId(MapId, 2));
+
+        // The village has no garrison; a nearly dead neutral army stands in it and the Empire army is next to it.
+        WorldStack visitor = state.Stacks[neutralArmy];
+        UnitGrid<WorldUnit>.Builder weak = new();
+
+        foreach ((WorldUnit unit, GridPosition position) in visitor.Units.GetUnits())
+        {
+            weak.Place(unit with { Hitpoints = 1 }, position, definitions.GetUnit(unit.DefinitionId).IsLarge);
+        }
+
+        WorldPosition start = new(village.Entrance.X + 1, village.Entrance.Y + 1);
+        Assert.That(WorldPlan.For(state).GetFortificationAt(start), Is.Null);
+        state = state with
+        {
+            Fortifications = state.Fortifications.SetItem(village.Id, village with { Garrison = UnitGrid<WorldUnit>.Empty }),
+            Stacks = state.Stacks
+                .SetItem(neutralArmy, visitor with { Position = village.Entrance, Units = weak.Build() })
+                .SetItem(empireArmy, state.Stacks[empireArmy] with { Position = start, MovementPoints = 20 })
+        };
+
+        EngineContext context = new(new FixedRandomProvider(), definitions, new UnitStatsProvider(definitions, globals, scenario.Provider.Definition), scenario.Provider, globals);
+        GameSession session = new(context, state);
+        Assert.That(session.World.DispatchCommand(new WorldStartGameCommand()).Error, Is.Null);
+        Assert.That(session.World.DispatchCommand(new WorldMoveStackCommand(empireArmy, village.Entrance)).Error, Is.Null);
+
+        BattleSession battle = session.Battle!;
+        Assert.That(battle.DispatchCommand(new BattleAutoResolveCommand()).Error, Is.Null);
+        Assert.That(battle.State.Outcome, Is.EqualTo(new BattleOutcome(BattleSide.Attacker)));
+
+        WorldState after = session.World.State;
+        Assert.That(after.Stacks[empireArmy].Position, Is.EqualTo(village.Entrance), "walked in");
+        Assert.That(((WorldCity)after.Fortifications[village.Id]).OwnerId, Is.EqualTo(empire), "captured");
+        Assert.That(after.ScenarioState.EventStates.GetValueOrDefault(new ScenarioEventId(Id("EV", 1)), true), Is.False, "the village event fired");
+    }
+
     private CustomMapArmyTemplate Raiders()
     {
         CustomMapUnit?[] slots = new CustomMapUnit?[GridPosition.Count];
