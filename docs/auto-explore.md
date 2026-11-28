@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: proposal, open questions B-H below (A answered). Nothing built yet.
+Status: proposal, open questions C-H below (A, B answered). Nothing built yet.
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -10,6 +10,7 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **Most useful land first.** If a road runs nearby (and leads into the unknown) the army follows the road: roads give the most distance per move point and usually lead to towns, sites and treasure. Without an interesting road it goes to the nearest unknown area that it can uncover the most of.
 - **"No more land to explore".** When every tile the army could ever reach is already uncovered (for example the rest is walled off by mountains that are already visible on all sides), the game says so once and the button is disabled for that army.
 - **When it walks (question A: A1).** Right away when Explore is pressed, with the move points the army has left, and then on every End turn together with the move orders (user: "right away and on every end turn").
+- **Roads (question B: B1).** Only roads that lead into the unknown get a score bonus: the seen end of a road that continues into the fog. Roads ending at known places get none. The bonus is a tunable constant, starting at 10 tiles' worth, to be tuned on the 1024 War of the Ring map.
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -80,7 +81,7 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 ## Open questions
 
 - ~~**A. When does an exploring army walk?**~~ Answered: A1 (see Decisions).
-- **B. How strongly to prefer roads?** B1 (recommended): bonus only for roads that lead into the fog (a road ending at a known town gives nothing), tunable constant to start with, measured on 1024. B2: road tiles always get a bonus. B3: no bonus, cheaper road cost alone.
+- ~~**B. How strongly to prefer roads?**~~ Answered: B1, bonus starts at 10 tiles (see Decisions).
 - **C. What stops an explorer?** C1 (recommended): same as move orders: battles in reach ask the prompt, bags are picked up, sites ask on arrival; plus: an enemy army newly seen within N tiles (start with 3) stops it and it shows up in the end-of-turn alert. C2: never stop for sightings, only for battles. C3: stop and drop auto explore entirely at any sighting (Civ V style "enemy in sight").
 - **D. Should it avoid danger?** D1 (recommended): never target a tile next to a known hostile army (interception would start a fight). D2: avoid only tiles where the path ends in battle (the AI's rule).
 - **E. Hotkey and button.** E1 (recommended): L ("look around") + compass button on the card. E2: another free letter (F, G, H, I, K, Q, R, V, Y, Z).
