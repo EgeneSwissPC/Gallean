@@ -771,6 +771,32 @@ public sealed class PathMapCalculatorTests
     }
 
     [Test]
+    public void FortificationLayoutFollowsEachStateTest()
+    {
+        // Gallean Upgrade (engine speed): the tile index of fortifications is kept across states with the same IDs and
+        // footprints. The fortification must still come from each state, and a moved or new footprint must rebuild it.
+        WorldMap map = TestHelpers.SimpleMap(20, 10);
+        WorldCapital capital = TestHelpers.SimpleCapital(new WorldFortificationId("Capital"), new WorldPlayerId(1), new WorldPosition(4, 4), UnitGrid<WorldUnit>.Empty);
+        WorldCapital moved = TestHelpers.SimpleCapital(capital.Id, capital.OwnerId, new WorldPosition(13, 4), UnitGrid<WorldUnit>.Empty);
+        WorldCapital captured = capital with { CapturedById = new WorldPlayerId(2) };
+        WorldCapital other = TestHelpers.SimpleCapital(new WorldFortificationId("Other"), new WorldPlayerId(2), new WorldPosition(13, 4), UnitGrid<WorldUnit>.Empty);
+        WorldState empty = CreateEmptyState(map);
+        WorldState withCapital = empty with { Fortifications = empty.Fortifications.Add(capital.Id, capital) };
+        WorldState withCaptured = empty with { Fortifications = empty.Fortifications.Add(captured.Id, captured) };
+        WorldState withMoved = empty with { Fortifications = empty.Fortifications.Add(moved.Id, moved) };
+        WorldState withBoth = withCapital with { Fortifications = withCapital.Fortifications.Add(other.Id, other) };
+        WorldPosition west = capital.Entrance;
+        WorldPosition east = moved.Entrance;
+
+        Assert.That(WorldPlan.For(withCapital).GetFortificationAt(west), Is.SameAs(capital));
+        Assert.That(WorldPlan.For(withCaptured).GetFortificationAt(west), Is.SameAs(captured), "same layout, object from the new state");
+        Assert.That(WorldPlan.For(withMoved).GetFortificationAt(west), Is.Null, "moved footprint");
+        Assert.That(WorldPlan.For(withMoved).GetFortificationAt(east), Is.SameAs(moved));
+        Assert.That(WorldPlan.For(withBoth).GetFortificationAt(east), Is.SameAs(other), "new fortification");
+        Assert.That(WorldPlan.For(empty).GetFortificationAt(west), Is.Null, "none");
+    }
+
+    [Test]
     public void BoundedMapFallbackTest()
     {
         WorldMap map = TestHelpers.SimpleMap(20, 1);
