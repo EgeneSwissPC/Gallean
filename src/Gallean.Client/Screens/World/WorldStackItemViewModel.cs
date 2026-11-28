@@ -45,6 +45,13 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
     [ObservableProperty]
     public partial bool IsExploring { get; private set; }
 
+    // Gallean Upgrade: auto rod (docs/auto-rod.md).
+    [ObservableProperty]
+    public partial bool IsAutoRodding { get; private set; }
+
+    [ObservableProperty]
+    public partial bool IsRodPlanter { get; private set; }
+
     public void Update(
         WorldStack stack,
         WorldPlan plan,
@@ -55,7 +62,8 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
         IGameDefinitionProvider definitions,
         IGameTextProvider texts,
         IUnitStatsProvider stats,
-        bool isExploring = false)
+        bool isExploring = false,
+        bool isAutoRodding = false)
     {
         (WorldUnit leader, GridPosition _, UnitDefinition _) = stack.GetLeader(definitions);
         StackStats stackStats = stats.GetWorldStackStats(stack);
@@ -72,6 +80,8 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
         IsInFortification = fortification is not null && fortification.Owner == stack.OwnerId;
         HasMoveOrder = hasMoveOrder;
         OrderTurns = orderTurns;
-        IsExploring = isExploring;
+        IsExploring = isExploring && !isAutoRodding;
+        IsAutoRodding = isAutoRodding;
+        IsRodPlanter = leader.IsAlive && stats.GetWorldUnitAbilities(leader).HasFlag(LeaderAbility.Rod);
     }
 }

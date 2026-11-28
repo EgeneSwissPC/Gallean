@@ -72,6 +72,7 @@ internal sealed partial class WorldScreenViewModel :
             SelectNextStackCommand,
             CancelMoveOrderCommand,
             ToggleAutoExploreCommand,
+            ToggleAutoRodCommand,
             SelectNextOrderedStackCommand,
             SelectPreviousOrderedStackCommand,
             OpenCapitalCommand,
@@ -1608,7 +1609,8 @@ internal sealed partial class WorldScreenViewModel :
                 GameModel.Definitions,
                 GameModel.Texts,
                 GameModel.Stats,
-                IsExploring(stack.Id));
+                IsExploring(stack.Id),
+                IsAutoRodding(stack.Id));
 
             newItems.Add(newItem);
         }
@@ -1640,7 +1642,8 @@ internal sealed partial class WorldScreenViewModel :
                     GameModel.Definitions,
                     GameModel.Texts,
                     GameModel.Stats,
-                    IsExploring(stack.Id));
+                    IsExploring(stack.Id),
+                    IsAutoRodding(stack.Id));
 
                 index++;
             }

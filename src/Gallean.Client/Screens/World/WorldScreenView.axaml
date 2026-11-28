@@ -359,6 +359,7 @@
                                              IsVisible="{Binding OrderTurns, Converter={x:Static ObjectConverters.IsNotNull}}"
                                              Text="{Binding OrderTurns, StringFormat='» {0}'}" />
                     <local:IconVisual Classes="explore-mark" Moniker="Vision" IsVisible="{Binding IsExploring}" />
+                    <local:IconVisual Classes="explore-mark" Moniker="PlantRod" IsVisible="{Binding IsAutoRodding}" />
                   </Panel>
                 </Button>
                 <StackPanel Classes="world-stack-card-actions" IsVisible="{Binding IsSelected}">
@@ -405,6 +406,24 @@
                         <local:OutlinedTextBlock Classes="world-caption" Text="{local:Text 'No more land this army can reach'}" IsVisible="{Binding !#ExploreButton.IsEnabled}" />
                         <Border Classes="keycap">
                           <TextBlock Text="{local:Text 'L'}" />
+                        </Border>
+                      </StackPanel>
+                    </local:AnchorPanel>
+                  </Panel>
+                  <!-- Gallean Upgrade: auto rod (docs/auto-rod.md), rod planters only. -->
+                  <Panel IsVisible="{Binding IsRodPlanter}">
+                    <Button x:Name="AutoRodButton"
+                            Classes="socket world card"
+                            Classes.active="{Binding IsAutoRodding}"
+                            Command="{Binding #Screen.((local:WorldScreenViewModel)DataContext).ToggleAutoRodCommand}">
+                      <local:IconVisual Moniker="PlantRod" />
+                    </Button>
+                    <local:AnchorPanel Classes="world-caption-anchor" IsVisible="{Binding #AutoRodButton.IsPointerOver}">
+                      <StackPanel Classes="world-caption">
+                        <local:OutlinedTextBlock Classes="world-caption" Text="{local:Text 'Auto rod'}" IsVisible="{Binding #AutoRodButton.IsEnabled}" />
+                        <local:OutlinedTextBlock Classes="world-caption" Text="{local:Text 'No rod jobs or land left'}" IsVisible="{Binding !#AutoRodButton.IsEnabled}" />
+                        <Border Classes="keycap">
+                          <TextBlock Text="{local:Text 'R'}" />
                         </Border>
                       </StackPanel>
                     </local:AnchorPanel>

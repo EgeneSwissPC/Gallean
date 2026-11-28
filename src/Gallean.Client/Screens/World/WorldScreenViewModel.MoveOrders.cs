@@ -219,6 +219,7 @@ internal sealed partial class WorldScreenViewModel
     {
         CancelMoveOrderCommand.NotifyCanExecuteChanged();
         ToggleAutoExploreCommand.NotifyCanExecuteChanged();
+        ToggleAutoRodCommand.NotifyCanExecuteChanged();
         SelectNextOrderedStackCommand.NotifyCanExecuteChanged();
         SelectPreviousOrderedStackCommand.NotifyCanExecuteChanged();
     }
