@@ -130,6 +130,59 @@ internal sealed partial class WorldEventQueue :
         }
     }
 
+    // Gallean Upgrade: auto explore (docs/auto-explore.md). Replaces the waiting moves of the given armies with one
+    // group entry at the place of the first of them, so they play at the same time. Each army's moves are joined
+    // into one walk. Returns the number of armies in the group.
+    public int GroupStackMoves(IReadOnlySet<WorldStackId> stackIds)
+    {
+        lock (locker)
+        {
+            int first = queue.FindIndex(entry => entry is Entry.StackMove move && stackIds.Contains(move.StackId));
+
+            if (first < 0)
+            {
+                return 0;
+            }
+
+            Dictionary<WorldStackId, Entry.StackMove> walks = [];
+            List<WorldStackId> order = [];
+            WorldState state = queue[first].State;
+            int index = first;
+
+            while (index < queue.Count)
+            {
+                if (queue[index] is Entry.StackMove move && stackIds.Contains(move.StackId))
+                {
+                    if (!walks.TryGetValue(move.StackId, out Entry.StackMove? walk))
+                    {
+                        walks[move.StackId] = move;
+                        order.Add(move.StackId);
+                    }
+                    else if (walk.TryExtend(move) is Entry.StackMove joined)
+                    {
+                        walks[move.StackId] = joined;
+                    }
+                    else
+                    {
+                        // Not a continuation (should not happen): keep the later walk.
+                        walks[move.StackId] = move;
+                    }
+
+                    state = move.State;
+                    queue.RemoveAt(index);
+                }
+                else
+                {
+                    index++;
+                }
+            }
+
+            queue.Insert(first, new Entry.StackMoveGroup(state, [.. order.Select(stackId => walks[stackId])]));
+
+            return order.Count;
+        }
+    }
+
     public void Stop()
     {
         lock (locker)

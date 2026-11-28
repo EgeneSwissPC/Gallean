@@ -15,6 +15,38 @@ internal sealed partial class WorldEventQueue
             public abstract WorldAnimationState CreateAnimation(IGameDefinitionProvider definitions, WorldVisibility visibility, GameSettings settings);
         }
 
+        // Gallean Upgrade: explorers that walked during End turn, played together (docs/auto-explore.md).
+        public sealed record StackMoveGroup(WorldState State, IReadOnlyList<StackMove> Moves) : Animated(State)
+        {
+            public bool Equals(StackMoveGroup? other)
+            {
+                return base.Equals(other) && Moves.SequenceEqual(other.Moves);
+            }
+
+            public override int GetHashCode()
+            {
+                HashCode hash = new();
+
+                hash.Add(base.GetHashCode());
+                hash.AddSequence(Moves);
+
+                return hash.ToHashCode();
+            }
+
+            public override WorldAnimationState CreateAnimation(IGameDefinitionProvider definitions, WorldVisibility visibility, GameSettings settings)
+            {
+                return new WorldAnimationState.StackMoveGroup([.. Moves
+                    .Select(move => move.CreateAnimation(definitions, visibility, settings))
+                    .OfType<WorldAnimationState.StackMove>()]);
+            }
+
+            // No focus: the camera stays where the player left it.
+            public override WorldEventFocus? GetFocus()
+            {
+                return null;
+            }
+        }
+
         public sealed record StackMove(
             WorldState State,
             WorldStackId StackId,

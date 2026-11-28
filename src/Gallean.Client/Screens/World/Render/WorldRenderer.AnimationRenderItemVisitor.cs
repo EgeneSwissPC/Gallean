@@ -34,6 +34,18 @@ internal sealed partial class WorldRenderer
             ];
         }
 
+        public IReadOnlyList<AnimationRenderItem> Visit(StackMoveGroup animation, TimeSpan animationTime)
+        {
+            List<AnimationRenderItem> items = [];
+
+            foreach (StackMove move in animation.Moves)
+            {
+                items.AddRange(Visit(move, animationTime));
+            }
+
+            return items;
+        }
+
         public IReadOnlyList<AnimationRenderItem> Visit(Effect animation, TimeSpan animationTime)
         {
             int frameIndex = AnimationRate.Sprites.GetFrameIndex(animationTime);
