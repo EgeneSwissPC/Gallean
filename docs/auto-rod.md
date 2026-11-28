@@ -1,6 +1,6 @@
 # Auto rod planter (rod planters that find rod jobs on their own)
 
-Status: proposal. Open questions: B, C, D. Answered: A1.
+Status: proposal. Open questions: C, D. Answered: A1, B3.
 
 Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Builds on auto explore (`docs/auto-explore.md`).
 
@@ -8,6 +8,7 @@ Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Buil
 
 - **The user's wish.** Like Explore, but for a rod planter: if rod jobs are known (seen on the map), it walks to the best one and does it; if none are known, it explores until it finds one.
 - **What counts as a rod job (question A: A1).** The same targets as the AI's `RodAction`: (1) free plant spots next to a resource node that is on neutral or hostile land and has no rod next to it yet (needed mana counts double), and (2) hostile rods to pull up. Only seen tiles count (the AI sees through fog; the player's planter must not). User: "same as the current AI".
+- **Plant by itself or ask (question B: B3).** Removing a hostile rod (free) happens automatically on arrival and is logged in the end-of-turn list. Planting (150 gold) asks on arrival: Plant / Skip this spot / Stop. Skip remembers the spot for this auto-rod run so it isn't picked again; Stop ends auto rod. During End-turn walks the planter waits at the spot and goes into the end-of-turn list ("<leader> can plant a rod near <resource>"), like a move-order arrival that needs the player.
 
 ## What the game already does (code read)
 
@@ -19,7 +20,7 @@ Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Buil
 ## The proposal
 
 1. A **Rod** button on a rod planter's card next to Explore (only for leaders with the Rod ability).
-2. Each pick: list rod jobs on seen tiles (A1); if one is reachable and outside the explore safety distance, walk to the best (interest minus path cost, the AI's scoring) and plant / pull up on arrival.
+2. Each pick: list rod jobs on seen tiles (A1); if one is reachable and outside the explore safety distance, walk to the best (interest minus path cost, the AI's scoring). On arrival: pull up a hostile rod automatically; ask before planting (B3).
 3. No job: take one auto explore leg, then check again after every leg, so it turns toward a mine as soon as one is uncovered.
 4. Stops: not enough gold (open question C), nothing to explore and no jobs left, plus Explore's sighting and battle stops.
 5. Not saved, like Explore.
@@ -37,6 +38,6 @@ Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Buil
 ## Open questions
 
 - ~~**A. What counts as a rod job?**~~ Answered: A1 (see Decisions).
-- **B. Plant by itself or ask first?**
-- **C. Gold reserve:** stop when gold would drop below a minimum?
+- ~~**B. Plant by itself or ask first?**~~ Answered: B3 (see Decisions).
+- **C. Not enough gold to plant (under 150):** keep exploring and removing, skip plant jobs, or stop?
 - **D. Hotkey and button.**
