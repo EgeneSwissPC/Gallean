@@ -47,6 +47,8 @@ def main():
     p.add_argument("--base")
     p.add_argument("--portrait")
     p.add_argument("--face")
+    p.add_argument("--event-portrait")
+    p.add_argument("--clone-from", help="new unit: copy this unit's sounds from --base under the new ID")
     a = p.parse_args()
     unit = a.unit.lower()
     info = json.load(open(os.path.join(a.render, "frames.json")))
@@ -87,19 +89,32 @@ def main():
     if a.base:
         blank = empty_webp(a.ffmpeg)
         base = PackReader(a.base)
+        source = (a.clone_from or unit).lower()
+        if a.clone_from:
+            for sound in base.manifest["Sounds"]:
+                parts = sound["Id"].split("/")
+                if len(parts) > 1 and parts[1].lower() == source:
+                    parts[1] = unit
+                    data = base.blob(sound["Offset"], sound["Length"])
+                    offset, length = writer._blob(data)
+                    writer.sounds.append({"Id": "/".join(parts), "Metadata": sound["Metadata"],
+                                          "Offset": offset, "Length": length})
+            print(f"sounds copied from {source}: {len(writer.sounds)}")
         for anim in base.manifest["Animations"]:
             parts = anim["Id"].split("/")
-            if parts[0] in ("battle-unit-shadow", "battle-unit-aura") and parts[1].lower() == unit \
+            if parts[0] in ("battle-unit-shadow", "battle-unit-aura") and parts[1].lower() == source \
                     and not (parts[0] == "battle-unit-shadow" and (parts[2], parts[3]) in shadowed):
                 count = counts.get((parts[2], parts[3]), anim["Metadata"]["FrameCount"])
                 md = {"Width": 1, "Height": 1, "PixelWidth": 1, "PixelHeight": 1, "OffsetX": ANCHOR_X, "OffsetY": ANCHOR_Y,
                       "Additive": False}
                 meta = {"FrameCount": count, "Width": 1, "Height": 1, "OffsetX": ANCHOR_X, "OffsetY": ANCHOR_Y,
                         "TriggerFrame": None, "SecondTriggerFrame": None}
-                writer.add_animation(anim["Id"], meta, [{"Metadata": md, "data": blank}] * count, anim["Transforms"])
+                anim_id = "/".join([parts[0], unit] + parts[2:])
+                writer.add_animation(anim_id, meta, [{"Metadata": md, "data": blank}] * count, anim["Transforms"])
                 print(f"{anim['Id']}: blanked")
 
-    for kind, path, size in (("unit-portrait", a.portrait, (130, 142)), ("unit-face", a.face, (70, 85))):
+    for kind, path, size in (("unit-portrait", a.portrait, (130, 142)), ("unit-face", a.face, (70, 85)),
+                             ("unit-event-portrait", a.event_portrait, (350, 450))):
         if path:
             data = to_webp(a.ffmpeg, path, (size[0] * 2, size[1] * 2))
             writer.add_sprite(f"{kind}/{unit}", {"Width": size[0], "Height": size[1], "PixelWidth": size[0] * 2,
