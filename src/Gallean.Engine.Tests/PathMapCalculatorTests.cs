@@ -669,6 +669,81 @@ public sealed class PathMapCalculatorTests
     }
 
     [Test]
+    public void TargetSearchMatchesFullSearchTest()
+    {
+        // Gallean Upgrade (AI speed): a search that stops once its targets are settled must give the paths of a full
+        // search to every target, on a map with unequal step costs and an unreachable island.
+        WorldMap map = TestHelpers.BuildMap([
+            "..++~~..==..",
+            ".^^+~~.==...",
+            "..++..==.^^.",
+            "~~..==...++.",
+            "~~==....~~+.",
+            "..=..^^.~~..",
+            ".==.++..^.~~",
+            "=....++...~."
+        ]);
+        WorldPosition start = new(0, 0);
+        WorldPosition island = new(11, 7);
+        WorldPathMap full = Assert.NotNull(WorldPlan.For(CreateEmptyState(map)).GetPathMap(start, CreateFullFog(map), DefaultProfile));
+        WorldPosition[][] targetSets =
+        [
+            [new(1, 0)],
+            [new(3, 2), new(7, 1)],
+            [new(11, 0), new(0, 7), new(6, 6)],
+            [new(2, 2), island]
+        ];
+
+        foreach (WorldPosition[] targets in targetSets)
+        {
+            WorldPathMap partial = Assert.NotNull(WorldPlan.For(CreateEmptyState(map)).GetPathMapToTargets(start, CreateFullFog(map), DefaultProfile, targets));
+
+            foreach (WorldPosition target in targets)
+            {
+                bool inFull = full.TryGetPath(target, WorldMovementLimit.Unlimited, out WorldPath? fullPath);
+                bool inPartial = partial.TryGetPath(target, WorldMovementLimit.Unlimited, out WorldPath? partialPath);
+
+                Assert.That(inPartial, Is.EqualTo(inFull), $"{target}");
+                Assert.That(partial.IsSettled(target), Is.True, $"{target}");
+
+                if (inFull)
+                {
+                    Assert.That(partialPath!.Positions, Is.EqualTo(fullPath!.Positions), $"{target}");
+                    Assert.That(partialPath.Cost, Is.EqualTo(fullPath.Cost), $"{target}");
+                }
+            }
+
+            // Stopping early is the point: a set of near targets must not settle the far corner.
+            if (targets.Length == 1)
+            {
+                Assert.That(partial.IsSettled(new WorldPosition(11, 6)), Is.False);
+            }
+        }
+    }
+
+    [Test]
+    public void TargetSearchReusesWiderCachedMapTest()
+    {
+        // Gallean Upgrade (AI speed): a full map cached on the plan answers later target searches, and a narrow target
+        // map never replaces it, so callers that need the whole map still get it.
+        WorldMap map = TestHelpers.SimpleMap(20, 20);
+        WorldPlan plan = WorldPlan.For(CreateEmptyState(map));
+        WorldPosition start = new(0, 0);
+        ImmutableBitmap fog = CreateFullFog(map);
+
+        WorldPathMap full = Assert.NotNull(plan.GetPathMap(start, fog, DefaultProfile));
+        Assert.That(plan.GetPathMapToTargets(start, fog, DefaultProfile, [new WorldPosition(1, 1)]), Is.SameAs(full));
+
+        WorldPlan other = WorldPlan.For(CreateEmptyState(map));
+        WorldPathMap near = Assert.NotNull(other.GetPathMapToTargets(start, fog, DefaultProfile, [new WorldPosition(1, 1)]));
+        Assert.That(near.IsSettled(new WorldPosition(19, 19)), Is.False);
+        WorldPathMap far = Assert.NotNull(other.GetPathMapToTargets(start, fog, DefaultProfile, [new WorldPosition(19, 19)]));
+        Assert.That(far.IsSettled(new WorldPosition(19, 19)), Is.True);
+        Assert.That(other.GetPathMapToTargets(start, fog, DefaultProfile, [new WorldPosition(1, 1)]), Is.SameAs(far));
+        Assert.That(other.GetPathMap(start, fog, DefaultProfile)!.IsSettled(new WorldPosition(19, 19)), Is.True);
+    }
+
+    [Test]
     public void BlockedCellsFollowEachStateTest()
     {
         // Blocked cells are kept across states that share the map and the obstacle collections; the armies standing on

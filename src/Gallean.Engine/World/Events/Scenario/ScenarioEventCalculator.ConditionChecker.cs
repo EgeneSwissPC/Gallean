@@ -168,9 +168,14 @@ internal static partial class ScenarioEventCalculator
             ScenarioLocationId locationId,
             ScenarioEventConditionContext context)
         {
+            // Gallean Upgrade (AI speed): IsStackAt needs the stack inside the location, so that cheap test goes first
+            // (this runs for every army on every step of a move; same result).
+            ScenarioLocationDefinition location = context.Scenario.GetLocation(locationId);
+
             foreach (WorldStack stack in context.State.Stacks.Values)
             {
-                if (IsPlayerStack(stack.Id, playerId, context) &&
+                if (ScenarioLocationCalculator.Contains(location, stack.Position) &&
+                    IsPlayerStack(stack.Id, playerId, context) &&
                     IsReferencedStack(stack.Id, reference, context) &&
                     IsStackAt(stack.Id, locationId, context))
                 {
