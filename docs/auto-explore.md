@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: all open questions answered (A1, B1, C1, D3, E1, F1, G3, H1). Phase 1 merged (c28c0ba1, merge f8548b96); phase 2 is next.
+Status: all open questions answered (A1, B1, C1, D3, E1, F1, G3, H1). Both phases merged: 1 (c28c0ba1, merge f8548b96), 2 (211b099c, merge 75b136fd).
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -19,6 +19,11 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **"No more land" scope (question H: H1).** Per army: the check uses that army's movement profile (a ship and a land army differ). The message names the army, only its button greys out, and it comes back when the map changes. Land blocked only by the D3 safety distance never counts as "no more land".
 - **Score weights (decided while building phase 1).** `score = (revealed + road bonus) x 10 - path cost x 3`, cost in move points. The AI's explore rule uses `hidden x 10 - cost`; with a weight of 1 a far edge that uncovers a few more tiles beats a near one, so explorers would leave holes behind. All four numbers are `AutoExploreSettings` (RevealWeight 10, CostWeight 3, RoadBonusTiles 10, SafetyDistance 3), to be tuned in phase 2.
 - **What "a road leading into the unknown" means (decided while building phase 1).** A road tile at the edge of the fog. The calculator never looks at hidden tiles, so it cannot know whether the road really continues; a road that disappears into the fog is exactly what the player sees.
+- **Eye instead of a compass (decided while building phase 2).** The game's icon set has no compass; the button and the card mark use the game's own Vision (eye) icon. The mark sits where an order shows its turn count.
+- **Explore again = stop (decided while building phase 2).** L or the button on an exploring army ends exploring, like X / Stop.
+- **When the player takes over (decided while building phase 2).** Any new path picked for the army (hover click, two-click path, re-plan) ends exploring; Continue (M) on the explorer's own path doesn't. Arrivals don't end it.
+- **Legs per turn (decided while building phase 2).** With move points left after arriving, the explorer picks the next edge and walks on, up to 64 legs per turn (a loop guard only: each leg is often a tile or two because the next edge is right ahead).
+- **"No more land" during the walks (decided while building phase 2).** It goes into the move orders' end-of-turn list ("<leader> has no more land to explore."), so the turn stays open once, like any other army that needs the player; pressing Explore on such an army shows the same as a popup and doesn't start.
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -83,7 +88,7 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 ## Phases
 
 1. ~~**Engine calculator + tests** (flood fill, frontier, score, NothingLeft/NoTargetNow, a perf bench on 1024). ~1 day. No screen; the visible part is phase 2.~~ Done, see "Phase 1 — done".
-2. **Client: Explore button, walks on End turn and right away, card look, "no more land" message, disabled button.** ~1.5 days. Real-client check on 1024.
+2. ~~**Client: Explore button, walks on End turn and right away, card look, "no more land" message, disabled button.** ~1.5 days. Real-client check on 1024.~~ Done, see "Phase 2 — done".
 
 ## Open questions
 
@@ -126,3 +131,32 @@ Feature commit c28c0ba1, merged into gallean-upgrade as f8548b96. Engine only; n
 - The path check counts hidden armies too (the game's own rule for every move), so a target can be skipped because of an army the player hasn't seen, as with a manual move.
 - Weights are start values; tuning on the real map comes with phase 2, where the walk is visible.
 - The AOT client has no JIT, so its first pick should be closer to the warm numbers; measured in phase 2.
+
+## Phase 2 — done
+
+Feature commit 211b099c, merged into gallean-upgrade as 75b136fd (after merging in cities overview phase 2; the 7 catalogs were rebuilt with our entries).
+
+**What was built** (`Screens/World/WorldScreenViewModel.AutoExplore.cs`, small hooks in the move-order files)
+
+- **Explore button** on the selected army's card, between Continue and Cancel order, with the Vision (eye) icon; caption "Explore" + keycap L, or "No more land this army can reach" when it is greyed. Hotkey **L** (`WorldVisual.GetHotkeyCommands`). The button state is one engine dry run per state and army (cached).
+- **Right away (decision A1):** pressing it asks the engine for a target, sets it as the army's move order and walks with the move points left, picking the next edge on arrival while points remain. Walks use the move-order walk (guarded steps, bag pick-ups, the battle prompt, site stops).
+- **End turn:** `WalkMoveOrdersAsync` first gives every explorer without a destination its next one (`PrepareExplorers`), then walks explorers with `WalkExplorerAsync` (the same leg loop) and orders as before. Explorers don't hold End turn and Tab skips them like orders.
+- **Card look:** explorers count as ordered armies (soft green move points, end of the bar), with the eye under the move points instead of the turn count (styles for both bar sizes in `WorldChrome.axaml`).
+- **Sightings (decision C1):** a hostile army that appears on a seen tile during the walk within 3 tiles stops the explorer for the turn and puts it in the end-of-turn list ("<leader> spotted an enemy army."); it keeps exploring next turn.
+- **No more land (decision H1):** the army becomes a normal army, its button greys, and the message names it (popup when pressing Explore, end-of-turn list during the walks).
+- **Ending it:** X / Stop, Cancel order in the battle prompt, Explore again, or any new path.
+- 6 new strings in all 7 catalogs (ru translated; "Explore" already existed as "Исследовать" and is reused).
+
+**Tests**
+
+- `WorldAutoExploreTests` (11): walks right away (2 tiles with 4 move points; card ordered + eye, end of the bar); walks on End turn; keeps going with move points left (40 points = several edges); greyed when everything is seen; stops itself with "no more land" after uncovering an 8-wide strip; X ends it; Explore again ends it; a player path ends it (and the army moves there); a hidden enemy stops it within 3 tiles with move points left, with a control without the enemy that walks past that point; explorers don't hold the End turn highlight.
+- Visual `WorldAutoExploreTest` (S107 + 2 extra armies, real pack): button, exploring card selected / unselected, Russian; `WorldAutoExploreNothingLeftTest`: every tile seen, the eye button greyed. Screenshots in `~/work/gallean-tools/out/auto-explore/`.
+- Full non-visual suite: 5652 passed (5641 on gallean-upgrade after cities phase 2 + 11 new).
+
+**Real client** (AOT publish in the Debian 12 image, Xvfb, real pack), quest 5th Column, Undead Hordes: Tab selected the starting hero, the card showed the eye button; L gave it an exploring order (path drawn, card soft green with the eye, X shown). Its first step set off the scenario's own story event (a centaur's threat message), and an event that fires stops a moving army in this game, so the walk stopped there; after End turn a computer army attacked at once, so the End-turn walk could not be watched on that map. The End-turn walk, the leg loop and the sighting stop are covered by the client tests above. Recipe to try: New quest -> 5th Column -> Next -> Start game -> Continue -> Later on the level-up popup -> Tab -> L.
+
+**Known limits**
+
+- The weights (10 / 3 / road 10 / distance 3) are still the start values: no tuning run on a big map yet. Watching an explorer for a few turns in a real game is the useful next check; all four are `AutoExploreSettings` and can become per-map settings if needed.
+- Not saved (decision F1): loading a save turns explorers into normal armies.
+- Sighting checks hostile armies on seen tiles, not only those in current vision, so an enemy remembered on a seen tile counts as known.
