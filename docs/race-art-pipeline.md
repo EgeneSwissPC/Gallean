@@ -56,3 +56,11 @@ Status: research, nothing built. First step towards a race creator (a new "water
 - C. First unit: a new soldier made from scratch, or a re-skin/re-pose of the Mermaid to prove the pipeline end-to-end faster? (Recommend the re-skin first, then from scratch.)
 - D. Animation source: hand-keyed in Blender by us, or retargeted motion sets? (Recommend retargeting for walk/idle, hand-keyed attacks.)
 - E. Can phase 1 start now on this server (no GPU needed)?
+
+## First unit — progress (Tide Warden, branch upgrade/race-art)
+- GPU box: Vast.ai, RTX 4090 48 GB, 150 GB disk, ComfyUI template. Setup scripts and job scripts in `tools/RaceArt/gpu/` (setup.sh, setup_h3d.sh, setup_unirig.sh; gen.py FLUX concepts, to3d.py Hunyuan3D, preview.py turntable, animate.py animation + battle render, warden1_bones.json).
+- Timings: 4 FLUX-schnell concepts 20 s; Hunyuan3D-2.1 shape + PBR texture ~220 s (peak 25 GB VRAM); UniRig skeleton + skin ~2 min; 96 battle frames (idle 16, attack 24, hit 8, both sides) ~8 min in Cycles.
+- animate.py writes motion in world axes (converted per bone, so UniRig's bone roll doesn't matter), makes the weapon rigid (weapon bones merged into the hand bone, plus every vertex near the weapon line captured, because the automatic skin gave the lower shaft to the legs), renders attackers from the front and defenders from behind like the original frames.
+- `tools/RaceArt/pack_render.py` packs the frames onto a unit: the foot goes on the game's anchor (bottom centre of the animation box, `SpriteAtlasSource.CreateAnchoredTransform`), the old unit's shadow/aura animations are blanked, portrait and face come from the concept.
+- Real client check (merge-0171 build, overlay on the Pegasus Knight g000uu0019): the Tide Warden stands, attacks and gets hit in the battle sandbox; the leader grid shows the new face.
+- Still to do: figure ~1.5x bigger; a ground shadow; Normal layer (lighting); event portrait (the big battle portrait still shows the Pegasus Knight); animation polish; a real unit ID instead of replacing the Pegasus Knight.
