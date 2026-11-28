@@ -1,0 +1,259 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:Gallean.Client"
+             x:Class="Gallean.Client.CitiesTabView"
+             x:Name="Root"
+             x:DataType="local:CitiesTabViewModel">
+
+  <!-- Gallean Upgrade (docs/cities-overview.md): the player's cities, one row each, in the scenario list's row style. -->
+  <UserControl.Styles>
+    <Style Selector="Button.cities-backdrop">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="VerticalAlignment" Value="Stretch" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <Border Background="Transparent" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.row-button">
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Template">
+        <ControlTemplate>
+          <ContentPresenter Background="Transparent"
+                            Content="{TemplateBinding Content}"
+                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                            HorizontalContentAlignment="Stretch" />
+        </ControlTemplate>
+      </Setter>
+    </Style>
+
+    <Style Selector="Button.pill.sort">
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="16,0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector="Button.pill.row-upgrade">
+      <Setter Property="Height" Value="30" />
+      <Setter Property="Padding" Value="14,0" />
+      <Setter Property="HorizontalAlignment" Value="Left" />
+    </Style>
+
+    <Style Selector="TextBlock.column-header">
+      <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+      <Setter Property="VerticalAlignment" Value="Bottom" />
+      <Setter Property="Margin" Value="0,0,16,4" />
+    </Style>
+
+    <Style Selector="Grid.city-row > :is(Control)">
+      <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <Style Selector="TextBlock.cell">
+      <Setter Property="Margin" Value="0,0,16,0" />
+    </Style>
+
+    <Style Selector="TextBlock.status">
+      <Setter Property="Foreground" Value="{StaticResource SecondaryTextBrush}" />
+    </Style>
+    <Style Selector="TextBlock.status.warning">
+      <Setter Property="Foreground" Value="{StaticResource UnitDetailsWarningBrush}" />
+    </Style>
+
+    <Style Selector="Panel.garrison-face.dead">
+      <Setter Property="Opacity" Value="0.35" />
+    </Style>
+    <Style Selector="Panel.garrison-face Ellipse.wound-ring">
+      <Setter Property="IsVisible" Value="False" />
+    </Style>
+    <Style Selector="Panel.garrison-face.wounded Ellipse.wound-ring">
+      <Setter Property="IsVisible" Value="True" />
+    </Style>
+  </UserControl.Styles>
+
+  <Grid>
+    <Button Classes="cities-backdrop" Command="{Binding Screen.CloseCommand}" />
+
+    <ContentControl Classes="ornament-panel" MaxWidth="1320" Margin="18,18,18,24" VerticalAlignment="Stretch">
+      <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="8,4" Grid.IsSharedSizeScope="True">
+
+        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
+          <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="24" VerticalAlignment="Center">
+            <local:OutlinedTextBlock Text="{Binding CountText}" Classes="h4" VerticalAlignment="Center" />
+            <TextBlock Text="{Binding LevelsText}" Classes="body" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
+            <TextBlock Text="{Binding GoldText}" Classes="body" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" IsVisible="{Binding HasTownIncome}" />
+            <TextBlock Text="{Binding LandText}" Classes="body" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
+          </StackPanel>
+          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+            <TextBlock Text="{local:Text 'Sort by'}" Classes="caption" VerticalAlignment="Center" Foreground="{StaticResource SecondaryTextBrush}" />
+            <Button Classes="pill sort" Classes.primary="{Binding IsNameOrder}" local:PlateChrome.TextureSeed="2"
+                    Command="{Binding SortByCommand}" CommandParameter="{x:Static local:CitySortOrder.Name}">
+              <TextBlock Text="{local:Text 'Name'}" />
+            </Button>
+            <Button Classes="pill sort" Classes.primary="{Binding IsLevelOrder}" local:PlateChrome.TextureSeed="3"
+                    Command="{Binding SortByCommand}" CommandParameter="{x:Static local:CitySortOrder.Level}">
+              <TextBlock Text="{local:Text 'Level'}" />
+            </Button>
+            <Button Classes="pill sort" Classes.primary="{Binding IsGoldOrder}" local:PlateChrome.TextureSeed="4"
+                    Command="{Binding SortByCommand}" CommandParameter="{x:Static local:CitySortOrder.Gold}"
+                    IsVisible="{Binding HasTownIncome}">
+              <TextBlock Text="{local:Text 'Gold'}" />
+            </Button>
+            <Button Classes="pill sort" Classes.primary="{Binding IsDangerOrder}" local:PlateChrome.TextureSeed="5"
+                    Command="{Binding SortByCommand}" CommandParameter="{x:Static local:CitySortOrder.Danger}">
+              <TextBlock Text="{local:Text 'Danger'}" />
+            </Button>
+          </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="16,0,16,0">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityImage" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityName" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityGold" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityLand" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityGarrison" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityArmy" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityUpgrade" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" SharedSizeGroup="CityActions" />
+          </Grid.ColumnDefinitions>
+          <TextBlock Grid.Column="1" Classes="caption column-header" Text="{local:Text 'City'}" />
+          <TextBlock Grid.Column="2" Classes="caption column-header" Text="{local:Text 'Gold'}" IsVisible="{Binding HasTownIncome}" />
+          <TextBlock Grid.Column="3" Classes="caption column-header" Text="{local:Text 'Land growth'}" />
+          <TextBlock Grid.Column="4" Classes="caption column-header" Text="{local:Text 'Garrison'}" />
+          <TextBlock Grid.Column="5" Classes="caption column-header" Text="{local:Text 'Army inside'}" />
+          <TextBlock Grid.Column="6" Classes="caption column-header" Text="{local:Text 'Upgrade'}" />
+          <TextBlock Grid.Column="7" Classes="caption column-header" Text="{local:Text 'Status'}" />
+        </Grid>
+
+        <local:OrnamentDivider Grid.Row="2" Margin="0,0,0,4" Classes="section" />
+
+        <ScrollViewer Grid.Row="3" x:Name="RowsScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+          <ListBox Classes="select-list" ItemsSource="{Binding Rows}" SelectionMode="Single">
+            <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="local:CityRowViewModel">
+                <Border Classes="row">
+                  <Button Classes="row-button"
+                          Command="{Binding #Root.((local:CitiesTabViewModel)DataContext).EnterCityCommand}"
+                          CommandParameter="{Binding}">
+                    <Grid Classes="city-row">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityImage" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityName" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityGold" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityLand" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityGarrison" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityArmy" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityUpgrade" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" SharedSizeGroup="CityActions" />
+                      </Grid.ColumnDefinitions>
+
+                      <Panel Grid.Column="0" Width="56" Height="56" Margin="0,0,12,0">
+                        <local:SpriteVisual SpriteKey="{Binding ImageKey}" Stretch="UniformToFill">
+                          <local:SpriteVisual.Clip>
+                            <EllipseGeometry Rect="0,0,56,56" />
+                          </local:SpriteVisual.Clip>
+                        </local:SpriteVisual>
+                        <Ellipse Stroke="{StaticResource AccentSecondaryBrush}" StrokeThickness="1" />
+                      </Panel>
+
+                      <StackPanel Grid.Column="1" MinWidth="200" MaxWidth="240" Margin="0,0,16,0" Spacing="2">
+                        <local:OutlinedTextBlock Text="{Binding Name}" Classes="object-name row" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding LevelText}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+                      </StackPanel>
+
+                      <TextBlock Grid.Column="2" Classes="body cell" MinWidth="48" Text="{Binding GoldText}"
+                                 IsVisible="{Binding #Root.((local:CitiesTabViewModel)DataContext).HasTownIncome}" />
+                      <TextBlock Grid.Column="3" Classes="body cell" MinWidth="40" Text="{Binding LandText}" />
+
+                      <StackPanel Grid.Column="4" MinWidth="120" Margin="0,0,16,0" Spacing="3">
+                        <TextBlock Text="{Binding GarrisonText}" Classes="body" />
+                        <ItemsControl ItemsSource="{Binding GarrisonFaces}">
+                          <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                              <StackPanel Orientation="Horizontal" Spacing="3" />
+                            </ItemsPanelTemplate>
+                          </ItemsControl.ItemsPanel>
+                          <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="local:CityGarrisonFaceViewModel">
+                              <Panel Classes="garrison-face" Classes.dead="{Binding IsDead}" Classes.wounded="{Binding IsWounded}" Width="26" Height="26">
+                                <local:SpriteVisual SpriteKey="{Binding FaceKey}" Stretch="UniformToFill">
+                                  <local:SpriteVisual.Clip>
+                                    <EllipseGeometry Rect="0,0,26,26" />
+                                  </local:SpriteVisual.Clip>
+                                </local:SpriteVisual>
+                                <Ellipse Stroke="{StaticResource AccentSecondaryBrush}" StrokeThickness="1" />
+                                <Ellipse Classes="wound-ring" Stroke="{StaticResource UnitDetailsWarningBrush}" StrokeThickness="2" />
+                              </Panel>
+                            </DataTemplate>
+                          </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                      </StackPanel>
+
+                      <Panel Grid.Column="5" MinWidth="150" Margin="0,0,16,0">
+                        <StackPanel Orientation="Horizontal" Spacing="8" IsVisible="{Binding HasVisitor}">
+                          <Panel Width="36" Height="36">
+                            <local:SpriteVisual SpriteKey="{Binding VisitorFaceKey}" Stretch="UniformToFill">
+                              <local:SpriteVisual.Clip>
+                                <EllipseGeometry Rect="0,0,36,36" />
+                              </local:SpriteVisual.Clip>
+                            </local:SpriteVisual>
+                            <Ellipse Stroke="{StaticResource AccentSecondaryBrush}" StrokeThickness="1" />
+                          </Panel>
+                          <TextBlock Text="{Binding VisitorName}" Classes="body" MaxWidth="130" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                        </StackPanel>
+                      </Panel>
+
+                      <StackPanel Grid.Column="6" MinWidth="150" Margin="0,0,16,0" Spacing="3">
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <TextBlock Text="{Binding UpgradeText}" Classes="body" VerticalAlignment="Center" />
+                          <ContentControl Content="{Binding UpgradeCost}" Classes="caption" VerticalAlignment="Center" IsVisible="{Binding HasUpgradeCost}" />
+                        </StackPanel>
+                        <Button Classes="pill row-upgrade"
+                                local:PlateChrome.TextureSeed="2"
+                                IsVisible="{Binding HasUpgradeCost}"
+                                IsEnabled="{Binding CanUpgrade}"
+                                Command="{Binding #Root.((local:CitiesTabViewModel)DataContext).UpgradeCityCommand}"
+                                CommandParameter="{Binding}">
+                          <StackPanel Orientation="Horizontal" Spacing="6">
+                            <local:IconVisual Moniker="Fortification" Width="14" Height="14" Foreground="{Binding $parent[Button].Foreground}" />
+                            <TextBlock Text="{local:Text 'Upgrade'}" />
+                          </StackPanel>
+                        </Button>
+                      </StackPanel>
+
+                      <ItemsControl Grid.Column="7" ItemsSource="{Binding Statuses}" Margin="0,0,12,0">
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate x:DataType="local:CityStatusViewModel">
+                            <TextBlock Classes="caption status" Classes.warning="{Binding IsWarning}" Text="{Binding Text}" TextWrapping="Wrap" />
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+
+                      <Button Grid.Column="8"
+                              Classes="icon-button"
+                              ToolTip.Tip="{local:Text 'Show on map'}"
+                              Command="{Binding #Root.((local:CitiesTabViewModel)DataContext).ShowOnMapCommand}"
+                              CommandParameter="{Binding}">
+                        <local:IconVisual Moniker="Vision" />
+                      </Button>
+                    </Grid>
+                  </Button>
+                </Border>
+              </DataTemplate>
+            </ListBox.ItemTemplate>
+          </ListBox>
+        </ScrollViewer>
+      </Grid>
+    </ContentControl>
+  </Grid>
+
+</UserControl>

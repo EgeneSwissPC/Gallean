@@ -131,10 +131,18 @@
             <local:HotkeyLabel Text="{local:Text 'Quest'}" Hotkey="U" />
           </StackPanel>
         </Button>
+        <!-- Gallean Upgrade: cities list (docs/cities-overview.md). -->
+        <Button Classes="pill" local:PlateChrome.TextureSeed="6" Command="{Binding OpenCitiesCommand}">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <local:IconVisual Moniker="Fortification" />
+            <local:HotkeyLabel Text="{local:Text 'Cities'}" Hotkey="I" />
+          </StackPanel>
+        </Button>
       </StackPanel>
 
       <StackPanel x:Name="TopCenter" Spacing="6" VerticalAlignment="Top" Margin="0,10,0,0">
-        <Border Classes="world-plate cached"
+        <Border x:Name="ResourcePlate"
+                Classes="world-plate cached"
                 HorizontalAlignment="Center"
                 ToolTip.Placement="Bottom"
                 ToolTip.VerticalOffset="4"

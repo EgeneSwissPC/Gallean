@@ -28,6 +28,8 @@ internal sealed partial class WorldScreenView : UserControl
         InitializeComponent();
 
         World.AddHandler(PointerPressedEvent, OnWorldPointerPressed, RoutingStrategies.Tunnel);
+        // Gallean Upgrade: keep the resource plate clear of the top-left buttons.
+        LayoutUpdated += KeepResourcePlateClearOfNav;
     }
 
     internal WorldScreenSnapshotWorker? SnapshotWorker { get; private set; }

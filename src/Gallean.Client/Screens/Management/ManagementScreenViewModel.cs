@@ -161,6 +161,17 @@ internal sealed partial class ManagementScreenViewModel : AbstractGameScreenView
             screen => [new QuestTabViewModel(gameModel, gameViewModel, screen)]);
     }
 
+    // Gallean Upgrade (docs/cities-overview.md): the list of the player's cities.
+    public static ManagementScreenViewModel CreateForCities(GameModel gameModel, GameViewModel gameViewModel)
+    {
+        return new ManagementScreenViewModel(
+            gameModel,
+            gameViewModel,
+            ScreenMusic.Keep,
+            new AssetSoundKey.InterfaceOpen(),
+            screen => [new CitiesTabViewModel(gameModel, gameViewModel, screen)]);
+    }
+
     private static ScreenMusic ResolveFortificationMusic(GameModel gameModel, WorldFortificationId fortificationId)
     {
         WorldState world = gameModel.Snapshot.WorldState;
