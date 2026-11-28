@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: all open questions answered (A1, B1, C1, D3, E1, F1, G3, H1). Nothing built yet; phase 1 is next.
+Status: all open questions answered (A1, B1, C1, D3, E1, F1, G3, H1). Phase 1 merged (c28c0ba1, merge f8548b96); phase 2 is next.
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -17,6 +17,8 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **Saving (question F: F1).** Not saved, like move orders: loading a save forgets auto explore and the army becomes a normal army again (user: "do not save it"). The feature stays client-only, no engine or save-format change.
 - **Explore all (question G: G3).** No "explore all" command for now (user's choice); one army at a time with L or the card button.
 - **"No more land" scope (question H: H1).** Per army: the check uses that army's movement profile (a ship and a land army differ). The message names the army, only its button greys out, and it comes back when the map changes. Land blocked only by the D3 safety distance never counts as "no more land".
+- **Score weights (decided while building phase 1).** `score = (revealed + road bonus) x 10 - path cost x 3`, cost in move points. The AI's explore rule uses `hidden x 10 - cost`; with a weight of 1 a far edge that uncovers a few more tiles beats a near one, so explorers would leave holes behind. All four numbers are `AutoExploreSettings` (RevealWeight 10, CostWeight 3, RoadBonusTiles 10, SafetyDistance 3), to be tuned in phase 2.
+- **What "a road leading into the unknown" means (decided while building phase 1).** A road tile at the edge of the fog. The calculator never looks at hidden tiles, so it cannot know whether the road really continues; a road that disappears into the fog is exactly what the player sees.
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -80,7 +82,7 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 
 ## Phases
 
-1. **Engine calculator + tests** (flood fill, frontier, score, NothingLeft/NoTargetNow, a perf bench on 1024). ~1 day. No screen; the visible part is phase 2.
+1. ~~**Engine calculator + tests** (flood fill, frontier, score, NothingLeft/NoTargetNow, a perf bench on 1024). ~1 day. No screen; the visible part is phase 2.~~ Done, see "Phase 1 — done".
 2. **Client: Explore button, walks on End turn and right away, card look, "no more land" message, disabled button.** ~1.5 days. Real-client check on 1024.
 
 ## Open questions
@@ -93,3 +95,34 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 - ~~**F. Saving.**~~ Answered: F1, not saved (see Decisions).
 - ~~**G. Explore all.**~~ Answered: G3, not for now (see Decisions).
 - ~~**H. "No more land" scope.**~~ Answered: H1, per army (see Decisions).
+
+## Phase 1 — done
+
+Feature commit c28c0ba1, merged into gallean-upgrade as f8548b96. Engine only; nothing on screen yet, so the real-client check moves to phase 2.
+
+**What was built**
+
+- `World/AutoExploreCalculator.cs`: `FindTarget(state, stack, context, previousTarget, settings)` returns `AutoExploreResult.Target(Position, RevealedTiles, PathCost, IsRoadIntoFog)`, `NothingLeft` or `NoTargetNow`.
+  1. **No more land:** flood fill from the army over seen tiles it can walk on, hidden tiles counted as passable. Seen mountains, impassable terrain for this army (a ship only sails deep water) and obstacles stop it; city and site entrances can be entered but not walked through; armies don't block (they move). No hidden tile reached = `NothingLeft`. It stops at the first hidden tile, so it is cheap when land is left.
+  2. **Candidates:** every tile in the army's path map (one search over seen tiles, the game's own `WorldPlan.GetPathMap`) that is next to a hidden tile, free to stand on (no army, bag, rod, city, site), and outside the danger zone (decision D3: within `SafetyDistance` of a seen hostile army not in a city and not of the army's own subrace, the same armies that can intercept a path).
+  3. **Score:** hidden tiles in the army's real vision square from there, plus the road bonus for a road tile at the fog edge, times 10, minus path cost times 3. Ties go to the lower tile index (deterministic).
+  4. **Path check:** best candidate first; skipped when the game's path check (`PathTraversalCalculator`, the same check as a manual move) meets a battle or a thief encounter on the way; a bag on the way is fine (it is picked up like on move orders).
+  5. **Keep the target:** a previous target that is still a usable edge is returned again, so the army doesn't change its mind every step.
+  - Hidden land that is reachable but has no usable edge right now (own army in the only pass, enemies at every edge, a battle on every path) is `NoTargetNow`, never "no more land".
+- `World/Commands/WorldGetAutoExploreTargetCommand.cs`: read-only command for the client (current player's army, optional previous target and settings).
+- `WorldPathMap.GetCost(position)`: one small public method so candidates get their cost without rebuilding paths.
+- Hidden-tile count per candidate uses the fog bitmap's 64-bit words (popcount per row) instead of tile-by-tile reads.
+
+**Tests** (`AutoExploreCalculatorTests`, 15): follows the road into the fog / nearest edge when the road bonus is 0 (control); mountain ring seen on all sides = NothingLeft / ring with a gap leads to the gap / own army in the gap = NoTargetNow; hidden land across water reachable for a land army; everything seen = NothingLeft; ship on a lake = NothingLeft while a land army on the same tile still explores (decision H); safety distance from a seen enemy / far enemy changes nothing (control) / enemies covering every edge = NoTargetNow; keeps a previous target that is still an edge / drops one that isn't; the word-based hidden count matches a tile-by-tile count for every tile and radius 1-8 on a 37-wide map. Full non-visual suite: 5636 passed (5621 + 15 new), 7 skipped in Umbra as usual.
+
+**Measured** on the 1024 War of the Ring map (MapFromPlan, `-id S601SC0000 -nochecks`), turn 1, the first player (P2 Human, 2 armies, 44 733 seen tiles, 39 807 tiles in the path map, 1 572 fog-edge candidates), Release, headless bench `~/work/gallean-tools/autoexplore/AutoExploreBenchTests.cs` (copy into Engine.Tests, `BENCH_MAPS=<dir>`, not committed):
+- First pick per army 56-105 ms: includes JIT and the game's per-state caches (WorldPlan, path map).
+- Repeated picks: median 3.3 ms (max 9.9) for one army; the other's 30 repeats still include JIT tier-up (median 19.6, settling at 3-4 ms in an earlier run). Target was under 20 ms per pick. Picks only happen when a target is reached, not per step.
+- The army next to a road picked the road edge into the fog (71 tiles to uncover, cost 36); the other picked an open edge (91 tiles, cost 128).
+- One walk toward the road target (23 move points) moved it 6 tiles and uncovered 10 tiles.
+
+**Known limits**
+
+- The path check counts hidden armies too (the game's own rule for every move), so a target can be skipped because of an army the player hasn't seen, as with a manual move.
+- Weights are start values; tuning on the real map comes with phase 2, where the walk is visible.
+- The AOT client has no JIT, so its first pick should be closer to the warm numbers; measured in phase 2.
