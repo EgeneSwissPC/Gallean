@@ -41,31 +41,7 @@ internal static class TerrainTransformCalculator
         IReadOnlyList<WorldPosition> positions,
         WorldMapTerrain terrain)
     {
-        bool[] visitedCells = new bool[map.Width * map.Height];
-        Queue<WorldPosition> queue = new(positions);
-        List<int> indexes = [];
-
-        while (queue.Count > 0)
-        {
-            WorldPosition position = queue.Dequeue();
-
-            if (map.IsValidPosition(position))
-            {
-                int index = GetIndex(map, position);
-
-                if (!visitedCells[index])
-                {
-                    visitedCells[index] = true;
-
-                    if (IsTransformable(map.GetCellAt(position)))
-                    {
-                        indexes.Add(index);
-                    }
-
-                    EnqueueResourceNode(state, queue, position);
-                }
-            }
-        }
+        List<int> indexes = GetTransformedIndexes(map, new ResourceNodeIndex(state), positions, index => map.Cells[index]);
 
         if (indexes.Count > 0)
         {
@@ -81,17 +57,70 @@ internal static class TerrainTransformCalculator
         return map;
     }
 
-    private static void EnqueueResourceNode(WorldState state, Queue<WorldPosition> queue, WorldPosition position)
+    // The cells the transform changes: the given positions plus, around every resource node next to one of them, the
+    // node and its neighbours (repeated for nodes reached that way), keeping only transformable cells. getCell reads the
+    // current cells, so a caller can transform several times into one working copy.
+    // Gallean Upgrade (engine speed): visited cells in a set and nodes looked up by position, where the original
+    // allocated a map-sized array and looped over every node of the map for every visited cell; same cells.
+    internal static List<int> GetTransformedIndexes(
+        WorldMap map,
+        ResourceNodeIndex nodes,
+        IReadOnlyList<WorldPosition> positions,
+        Func<int, WorldMapCell> getCell)
     {
-        foreach (WorldResourceNode node in state.ResourceNodes.Values)
-        {
-            if (node.Position.GetDistance(position) <= 1)
-            {
-                queue.Enqueue(node.Position);
+        HashSet<int> visitedCells = [];
+        Queue<WorldPosition> queue = new(positions);
+        List<int> indexes = [];
 
-                foreach (WorldPosition adjacent in node.Position.GetAdjacentPositions())
+        while (queue.Count > 0)
+        {
+            WorldPosition position = queue.Dequeue();
+
+            if (map.IsValidPosition(position))
+            {
+                int index = GetIndex(map, position);
+
+                if (visitedCells.Add(index))
                 {
-                    queue.Enqueue(adjacent);
+                    if (IsTransformable(getCell(index)))
+                    {
+                        indexes.Add(index);
+                    }
+
+                    nodes.EnqueueNodesNear(queue, position);
+                }
+            }
+        }
+
+        return indexes;
+    }
+
+    internal sealed class ResourceNodeIndex(WorldState state)
+    {
+        private readonly HashSet<WorldPosition> positions = [.. state.ResourceNodes.Values.Select(node => node.Position)];
+
+        public void EnqueueNodesNear(Queue<WorldPosition> queue, WorldPosition position)
+        {
+            if (positions.Count == 0)
+            {
+                return;
+            }
+
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    WorldPosition nodePosition = new(position.X + dx, position.Y + dy);
+
+                    if (positions.Contains(nodePosition))
+                    {
+                        queue.Enqueue(nodePosition);
+
+                        foreach (WorldPosition adjacent in nodePosition.GetAdjacentPositions())
+                        {
+                            queue.Enqueue(adjacent);
+                        }
+                    }
                 }
             }
         }
