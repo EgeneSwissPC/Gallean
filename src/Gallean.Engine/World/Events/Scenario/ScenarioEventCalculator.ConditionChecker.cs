@@ -172,6 +172,29 @@ internal static partial class ScenarioEventCalculator
             // (this runs for every army on every step of a move; same result).
             ScenarioLocationDefinition location = context.Scenario.GetLocation(locationId);
 
+            // Gallean Upgrade (engine speed): a location smaller than the army count is searched tile by tile through
+            // the plan's army-by-tile index (one army per tile) instead of looping over every army of the map.
+            long side = 2L * location.Radius + 1;
+
+            if (side * side < context.State.Stacks.Count)
+            {
+                WorldPlan plan = WorldPlan.For(context.State);
+
+                foreach (WorldPosition tile in ScenarioLocationCalculator.EnumerateTiles(location, context.State.Map))
+                {
+                    if (plan.GetStackAt(tile) is { } stack &&
+                        ScenarioLocationCalculator.Contains(location, stack.Position) &&
+                        IsPlayerStack(stack.Id, playerId, context) &&
+                        IsReferencedStack(stack.Id, reference, context) &&
+                        IsStackAt(stack.Id, locationId, context))
+                    {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             foreach (WorldStack stack in context.State.Stacks.Values)
             {
                 if (ScenarioLocationCalculator.Contains(location, stack.Position) &&
