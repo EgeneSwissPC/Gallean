@@ -566,6 +566,46 @@ public sealed class WorldPlan
         return pathMap;
     }
 
+    // Gallean Upgrade (AI speed): like GetPathMap, but the search stops once every target is settled, which gives the
+    // same paths to them as a full search. A cached map that already settles all targets is reused; the new map only
+    // replaces a cached one that covers less.
+    internal WorldPathMap? GetPathMapToTargets(
+        WorldPosition start,
+        ImmutableBitmap? fogOfWar,
+        WorldMovementCalculator.MovementProfile profile,
+        IReadOnlyCollection<WorldPosition> targets)
+    {
+        PathMapKey key = new(start, fogOfWar, profile);
+
+        if (pathMaps.TryGetValue(key, out WorldPathMap? cached) && (cached is null || targets.All(cached.IsSettled)))
+        {
+            return cached;
+        }
+
+        HashSet<int> stopTargets = [];
+        foreach (WorldPosition target in targets)
+        {
+            stopTargets.Add(target.Y * state.Map.Width + target.X);
+        }
+
+        WorldPathMap? pathMap = PathMapCalculator.Calculate(
+            state.Map,
+            start,
+            fogOfWar,
+            GetBlockedCells(profile),
+            terminalCells.Value,
+            (from, to) => GetStepCost(from, to, profile),
+            int.MaxValue,
+            stopTargets);
+
+        if (cached is null || pathMap is null || pathMap.MaxCost > cached.MaxCost)
+        {
+            pathMaps[key] = pathMap;
+        }
+
+        return pathMap;
+    }
+
     private ImmutableBitmap GetBlockedCells(WorldMovementCalculator.MovementProfile profile)
     {
         if (!blockedCells.TryGetValue(profile, out ImmutableBitmap? cells))

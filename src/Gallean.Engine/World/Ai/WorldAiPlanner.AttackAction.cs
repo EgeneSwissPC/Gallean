@@ -376,7 +376,11 @@ internal sealed partial class WorldAiPlanner
                 yield break;
             }
 
-            WorldPathMap? pathMap = Context.Pathfinding.GetPathMap(context.State, stack);
+            // Gallean Upgrade (AI speed): the search stops once every target is settled (same paths as a full search).
+            List<WorldAiTarget> targetList = [.. targets];
+            targets = targetList;
+
+            WorldPathMap? pathMap = Context.Pathfinding.GetPathMapToTargets(context.State, stack, targetList);
 
             if (pathMap is null)
             {
