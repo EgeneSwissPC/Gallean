@@ -1,6 +1,6 @@
 # Cities overview and city switching
 
-Spec for a gallean-upgrade game feature (not the map editor). Status: **proposal, nothing built yet.**
+Spec for a gallean-upgrade game feature (not the map editor). Status: **questions answered, ready for phase 1.**
 
 ## Decisions
 
@@ -13,6 +13,14 @@ The user's wishes (voice message, 2026-11-28):
 - Clicking a city in that list **enters the city** (the normal city screen).
 - Inside a city screen, a **previous / next ("left / right") control** switches straight to the next city
   without going back to the map.
+
+User answers to the open questions (2026-11-28):
+
+- A: land growth per turn is always shown; on maps with the town income rule the row shows **both** gold per turn and land growth, without the rule only land growth.
+- B: I opens Cities; A / D = previous / next city (plus clickable chevrons); Q / E stay for tabs.
+- C: capital first, then alphabetical; the sort picked in the list is also the cycle order.
+- D: closing a city opened from the list returns to the list.
+- E: enemy badge = distance in tiles to the nearest visible non-allied army of a playable race; neutral armies left out. The red threshold is measured in a real game while building.
 
 Decisions taken while writing the spec (change any of them by saying so):
 
@@ -76,8 +84,8 @@ Decisions taken while writing the spec (change any of them by saying so):
   per turn, e.g. "7 cities · levels 18 · +235 gold · +130 land per turn".
 - **One row per city** (scrolls; capital first, then the order chosen in question C):
   - round city art, **name**, **level** (or "Capital");
-  - **gold per turn** when town income is on (the same number as the city tab's "Gold per turn" row); land growth
-    per turn always (or the alternative chosen in question A);
+  - **land growth** per turn always, plus **gold per turn** when town income is on (the same number as the city
+    tab's "Gold per turn" row);
   - **garrison**: occupied / total slots plus small unit faces; wounded units count (red when any are wounded);
   - **visiting army**: the leader's round face and name when an army stands in the city;
   - **upgrade**: next level and cost, greyed when unaffordable, "upgraded this turn" or "max level" otherwise,
@@ -138,31 +146,4 @@ Decisions taken while writing the spec (change any of them by saying so):
 
 ## Open questions
 
-A. **"Money it brings" on maps without the town income rule** (all original scenarios). A city pays nothing there.
-   - A1: show land growth per turn (+15 ... +25 tiles) instead, and "Gold per turn" only when the rule is on.
-     Honest, no new rules. **Recommended.**
-   - A2: A1 plus "mines nearby": resource nodes on your land within a radius of the city. Approximate (two close
-     cities would both count the same mine), so it needs a label saying so.
-   - A3: none, show gold only when the rule is on.
-
-B. **Keys.**
-   - B1: Cities = I (the letter is in "Cities", free in the world view); previous / next city = A / D plus the
-     clickable chevrons (Q / E stay for tabs). **Recommended.**
-   - B2: Cities = L; previous / next = the Left / Right arrow keys (need a check that list focus doesn't eat them).
-   - B3: B1 plus the arrow keys as a second binding for previous / next.
-
-C. **City order** (list default and cycle).
-   - C1: capital first, then alphabetical; the sort chosen in the list becomes the cycle order. **Recommended.**
-   - C2: capital first, then by level (highest first).
-   - C3: by position on the map (nearest to the capital first).
-
-D. **Closing a city opened from the list.**
-   - D1: back to the list (screen stack; Esc twice to the map). **Recommended.**
-   - D2: straight back to the map.
-
-E. **Enemy-near badge.**
-   - E1: distance in tiles to the nearest visible non-allied army of a playable race (neutral armies left out:
-     most of them stand still), red within a set distance measured in a real game while building. **Recommended.**
-   - E2: E1 with neutral armies included.
-   - E3: "can reach the city next turn" using real path costs: exact, but a path search per enemy army and city,
-     which needs a cost measurement on the 1024 map first.
+All answered (A1 as "both when the rule is on", B1, C1, D1, E1), see Decisions.
