@@ -1,6 +1,6 @@
 # Auto rod planter (rod planters that find rod jobs on their own)
 
-Status: all open questions answered (A1, B3, C1, D1). Phase 1 (engine) merged: 96ad39ed, merge 22080100; phase 2 (client) done.
+Status: all open questions answered (A1, B3, C1, D1). Phase 1 (engine) merged: 96ad39ed, merge 22080100; phase 2 (client) merged: c8504efe, merge 33ed53b4.
 
 Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Builds on auto explore (`docs/auto-explore.md`).
 
@@ -68,6 +68,8 @@ Feature commit 96ad39ed, merged into gallean-upgrade as 22080100. Engine only; n
 - Fog tiles never go dark again, so a hostile rod planted later on an old seen tile counts as known, and a removed one stops being a job at once (the state is read directly, like the explore calculator does for armies and bags).
 
 ## Phase 2 — done
+
+Feature commit c8504efe, merged into gallean-upgrade as 33ed53b4. Not yet tried in the real client.
 
 **What was built** (`Screens/World/WorldScreenViewModel.AutoRod.cs`, small hooks in the auto explore and move-order files)
 
