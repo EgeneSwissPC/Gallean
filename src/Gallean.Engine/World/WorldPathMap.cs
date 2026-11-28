@@ -89,6 +89,12 @@ internal sealed class WorldPathMap
         return result.ToImmutable();
     }
 
+    // Cost to reach the target, int.MaxValue when unreached.
+    public int GetCost(WorldPosition target)
+    {
+        return GetCost(GetIndex(target));
+    }
+
     private bool IsReachable(int index, int movementPoints)
     {
         int entry = index;
