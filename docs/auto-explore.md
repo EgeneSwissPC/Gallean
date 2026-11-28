@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: proposal, open questions F-H below (A-E answered). Nothing built yet.
+Status: proposal, open questions G-H below (A-F answered). Nothing built yet.
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -14,6 +14,7 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **What stops an explorer (question C: C1).** The same as move orders (a battle in reach asks the move-order prompt, bags are picked up, sites ask on arrival), plus: an enemy army newly seen within 3 tiles (tunable, start value 3) stops the explorer for the rest of the turn and puts it in the end-of-turn list of armies that need the player. It keeps exploring next turn unless the player changes it.
 - **Danger (question D: D3).** Targets within the safety distance of a known hostile army (not one standing still in a city) are skipped. The distance is one tunable setting shared with the C1 sighting rule (start value 3), so explorers stay out of the zone where they would stop anyway. If the only hidden land lies inside such zones, the result is NoTargetNow (try again next turn), never "no more land". Interception on the path stays covered by the path's battle check.
 - **Key and button (question E: E1).** Hotkey **L** ("look around") plus a compass button on the selected army's card next to Continue and Stop. L or the button again, X or Stop end exploring. Greyed with a tooltip when there is no more land. (I is taken by the cities list in `docs/cities-overview.md`.)
+- **Saving (question F: F2).** User: "save it". Auto explore AND move orders are saved, so both survive loading (this replaces decision I2 of `docs/move-orders.md`). Planned as engine state on the army (`WorldStack` init props, e.g. the order destination and an explore flag, set by new commands); old saves read them as "no order". The engine owning the flag also lets our AIs use it later. If only explore should be saved, that is option F3 (half the work).
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -66,7 +67,7 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 - Engine: `AutoExploreCalculator.FindTarget(state, stackId, context, lastTarget)` -> `Target(position) | NothingLeft | NoTargetNow` (NoTargetNow = hidden land is reachable but every frontier is blocked right now, e.g. an army stands in a pass: skip this turn, try again next turn, don't say "no more land"). Plus `HasReachableHiddenLand(state, stackId)` for the button state. A read-only engine command wraps both so the client stays a dispatcher.
 - Client: `WorldScreenViewModel.AutoExplore.cs` partial next to `MoveOrders.cs` / `MoveOrderWalk.cs`: a set `exploringStacks`; `ToggleAutoExploreCommand`; in `WalkMoveOrdersAsync`, an exploring army first asks for a target, walks to it, and while it has move points left asks again (up to a cap per turn, like the 4 moves after bag pick-ups) so it does not waste points (user rule from move orders: never waste move points silently). Exploring armies do not trigger decision K (arriving with points left) since they use them themselves.
 - Card: Explore button in the card template in `WorldScreenView.axaml` next to Continue/Stop, `IconVisual` compass, greyed with tooltip when `HasReachableHiddenLand` is false. Strings in all 7 catalogs.
-- Not saved, like orders (question F).
+- Saved (decision F): engine-side order state on `WorldStack`, written by commands; the client's `stackDestinations`/`confirmedOrders`/`exploringStacks` are rebuilt from it on load.
 
 ## Testing
 
@@ -79,7 +80,8 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 
 1. **Engine calculator + tests** (flood fill, frontier, score, NothingLeft/NoTargetNow, a perf bench on 1024). ~1 day. No screen; the visible part is phase 2.
 2. **Client: Explore button, walks on End turn and right away, card look, "no more land" message, disabled button.** ~1.5 days. Real-client check on 1024.
-3. (Optional, question G) **Explore all**: one key that sets every idle scout (leaders of the Explorer category) to explore, or "explore with all armies that have nothing to do". ~0.5 day.
+3. **Saving explore and move orders** (decision F): engine fields + commands, client reads them back on load, old-save test, upstream-merge note. ~1 day.
+4. (Optional, question G) **Explore all**: one key that sets every idle scout (leaders of the Explorer category) to explore, or "explore with all armies that have nothing to do". ~0.5 day.
 
 ## Open questions
 
@@ -88,6 +90,6 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 - ~~**C. What stops an explorer?**~~ Answered: C1, sighting distance starts at 3 (see Decisions).
 - ~~**D. Should it avoid danger?**~~ Answered: D3, shared distance with C1, starts at 3 (see Decisions).
 - ~~**E. Hotkey and button.**~~ Answered: E1, L + compass button (see Decisions).
-- **F. Saving.** F1 (recommended, consistent with move orders): not saved, loading a save forgets it. F2: save it (engine/save-format change, then move orders should be saved too).
+- ~~**F. Saving.**~~ Answered: F2, explore and move orders saved (see Decisions).
 - **G. Explore all.** G1: phase 3 as above. G2 (recommended): skip for now; one button per army first.
 - **H. "No more land" scope.** H1 (recommended): per army (its movement profile decides; a ship and a land army differ), the button re-enables when the map changes. H2: per player: once one army finds nothing, the button is disabled for all (wrong for ships vs land armies, simpler message).
