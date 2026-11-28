@@ -1,6 +1,6 @@
 # Auto rod planter (rod planters that find rod jobs on their own)
 
-Status: all open questions answered (A1, B3, C1, D1). Phase 1 (engine) done; phase 2 (client) next.
+Status: all open questions answered (A1, B3, C1, D1). Phase 1 (engine) merged: 96ad39ed, merge 22080100; phase 2 (client) next.
 
 Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Builds on auto explore (`docs/auto-explore.md`).
 
@@ -46,7 +46,7 @@ Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Buil
 
 ## Phase 1 — done
 
-Engine only; nothing on screen yet.
+Feature commit 96ad39ed, merged into gallean-upgrade as 22080100. Engine only; nothing on screen yet.
 
 **What was built**
 
