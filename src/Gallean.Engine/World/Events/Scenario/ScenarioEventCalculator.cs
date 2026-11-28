@@ -39,6 +39,9 @@ internal static partial class ScenarioEventCalculator
 
         WorldStack? triggererStack = ScenarioEventTriggererCalculator.FindStack(trigger, state);
 
+        // Gallean Upgrade (engine speed): the players once, not a sorted-dictionary walk per event.
+        WorldPlayer[] players = [.. state.Players.Values];
+
         foreach (ScenarioEventDefinition definition in scenario.Events)
         {
             if (triggeredEvents.Contains(definition.Id) || !IsEnabled(state.ScenarioState, definition))
@@ -46,9 +49,16 @@ internal static partial class ScenarioEventCalculator
                 continue;
             }
 
+            // Gallean Upgrade (engine speed): skip events with a condition that is false for this trigger whatever the
+            // state, before checking them for every player (events are checked on every step of every army).
+            if (HasImpossibleCondition(definition, trigger, triggererStack))
+            {
+                continue;
+            }
+
             ImmutableArray<WorldEvent>.Builder events = ImmutableArray.CreateBuilder<WorldEvent>();
 
-            foreach (WorldPlayer player in state.Players.Values)
+            foreach (WorldPlayer player in players)
             {
                 if (definition.VerifiedRaces.Contains(player.Race) &&
                     (triggererStack is null || triggererStack.OwnerId == player.Id))
@@ -81,6 +91,28 @@ internal static partial class ScenarioEventCalculator
         }
 
         return [];
+    }
+
+    // Frequency conditions only pass on a turn start; zone, stack-to-location and item-to-location conditions need the
+    // army that set the trigger off (ConditionChecker.CheckFrequency, CheckEnteredZone, CheckStackAtLocation,
+    // CheckItemAtLocation return false otherwise).
+    private static bool HasImpossibleCondition(ScenarioEventDefinition definition, ScenarioEventTrigger trigger, WorldStack? triggererStack)
+    {
+        foreach (ScenarioEventCondition condition in definition.Conditions)
+        {
+            if (condition is ScenarioEventFrequencyCondition && trigger is not ScenarioEventTurnStartedTrigger)
+            {
+                return true;
+            }
+
+            if (triggererStack is null &&
+                condition is ScenarioEventEnteringZoneCondition or ScenarioEventStackToLocationCondition or ScenarioEventItemToLocationCondition)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool HasBattleEffect(ScenarioEventDefinition definition)

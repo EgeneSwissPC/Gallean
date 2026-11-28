@@ -26,7 +26,7 @@ public sealed class WorldPlan
     private readonly Dictionary<WorldMovementCalculator.MovementProfile, ImmutableBitmap> blockedCells;
     private readonly Lazy<Dictionary<WorldPlayerId, WorldCapital>> capitals;
     private readonly Lazy<HashSet<WorldPlayerId>> defeatedPlayers;
-    private readonly Lazy<Dictionary<WorldPosition, WorldFortification>> fortifications;
+    private readonly Lazy<Dictionary<WorldPosition, WorldFortificationId>> fortifications;
     private readonly Lazy<Dictionary<WorldPosition, WorldLandmark>> landmarks;
     private readonly Lazy<ImmutableBitmap> obstacleCells;
     private readonly Dictionary<ObjectiveKey, ImmutableArray<WorldObjective>> objectives;
@@ -49,7 +49,7 @@ public sealed class WorldPlan
         blockedCells = [];
         capitals = new Lazy<Dictionary<WorldPlayerId, WorldCapital>>(BuildCapitals);
         defeatedPlayers = new Lazy<HashSet<WorldPlayerId>>(BuildDefeatedPlayers);
-        fortifications = new Lazy<Dictionary<WorldPosition, WorldFortification>>(BuildFortifications);
+        fortifications = new Lazy<Dictionary<WorldPosition, WorldFortificationId>>(GetFortificationLayout);
         landmarks = new Lazy<Dictionary<WorldPosition, WorldLandmark>>(BuildLandmarks);
         objectives = [];
         obstacleCells = new Lazy<ImmutableBitmap>(GetObstacleCells);
@@ -61,7 +61,7 @@ public sealed class WorldPlan
         structureCells = new Lazy<ImmutableBitmap>(BuildStructureCells);
         terminalCells = new Lazy<ImmutableBitmap>(BuildTerminalCells);
         tombs = new Lazy<Dictionary<WorldPosition, ImmutableArray<WorldTomb>>>(BuildTombs);
-        zeroCostEntrances = new Lazy<ImmutableBitmap>(BuildZeroCostEntrances);
+        zeroCostEntrances = new Lazy<ImmutableBitmap>(GetZeroCostEntrances);
     }
 
     public static WorldPlan For(WorldState state)
@@ -78,7 +78,12 @@ public sealed class WorldPlan
 
     public WorldFortification? GetFortificationAt(WorldPosition position)
     {
-        fortifications.Value.TryGetValue(position, out WorldFortification? fortification);
+        WorldFortification? fortification = null;
+
+        if (fortifications.Value.TryGetValue(position, out WorldFortificationId id))
+        {
+            state.Fortifications.TryGetValue(id, out fortification);
+        }
 
         return fortification;
     }
@@ -182,24 +187,99 @@ public sealed class WorldPlan
     }
 
     // Keyed by the map and the object collections the obstacles come from; a state that shares all of them shares these.
+    // Gallean Upgrade (engine speed): a state with new collections but the same positions and footprints (a garrison
+    // or a node owner changed, which happens on almost every step) shares them too, where the original rebuilt the
+    // map-wide bitmaps for it (~15 % of AI turn time on 1024 maps). The obstacles only come from those positions.
     private sealed class StaticCells(WorldState state)
     {
-        private readonly object resourceNodes = state.ResourceNodes;
-        private readonly object rods = state.Rods;
-        private readonly object fortifications = state.Fortifications;
-        private readonly object sites = state.Sites;
-        private readonly object landmarks = state.Landmarks;
+        private object resourceNodes = state.ResourceNodes;
+        private object rods = state.Rods;
+        private object fortifications = state.Fortifications;
+        private object sites = state.Sites;
+        private object landmarks = state.Landmarks;
+        private readonly int[] layout = GetLayout(state);
         private readonly Dictionary<WorldMovementCalculator.MovementProfile, ImmutableBitmap> impassable = [];
 
         public ImmutableBitmap? Obstacles { get; set; }
 
+        public ImmutableBitmap? ZeroCostEntrances { get; set; }
+
         public bool Matches(WorldState other)
         {
-            return ReferenceEquals(resourceNodes, other.ResourceNodes) &&
-                   ReferenceEquals(rods, other.Rods) &&
-                   ReferenceEquals(fortifications, other.Fortifications) &&
-                   ReferenceEquals(sites, other.Sites) &&
-                   ReferenceEquals(landmarks, other.Landmarks);
+            if (ReferenceEquals(resourceNodes, other.ResourceNodes) &&
+                ReferenceEquals(rods, other.Rods) &&
+                ReferenceEquals(fortifications, other.Fortifications) &&
+                ReferenceEquals(sites, other.Sites) &&
+                ReferenceEquals(landmarks, other.Landmarks))
+            {
+                return true;
+            }
+
+            if (!GetLayout(other).AsSpan().SequenceEqual(layout))
+            {
+                return false;
+            }
+
+            resourceNodes = other.ResourceNodes;
+            rods = other.Rods;
+            fortifications = other.Fortifications;
+            sites = other.Sites;
+            landmarks = other.Landmarks;
+
+            return true;
+        }
+
+        // Everything the cached bitmaps read: node and rod positions, fortification footprints and kinds (cities and
+        // capitals have free entrances), site and landmark footprints.
+        private static int[] GetLayout(WorldState state)
+        {
+            List<int> layout = [];
+
+            foreach (WorldResourceNode node in state.ResourceNodes.Values)
+            {
+                layout.Add(node.Position.X);
+                layout.Add(node.Position.Y);
+            }
+
+            layout.Add(-1);
+
+            foreach (WorldRod rod in state.Rods.Values)
+            {
+                layout.Add(rod.Position.X);
+                layout.Add(rod.Position.Y);
+            }
+
+            layout.Add(-1);
+
+            foreach (WorldFortification fortification in state.Fortifications.Values)
+            {
+                layout.Add(fortification is WorldCapital or WorldCity ? 1 : 0);
+                AddFootprint(fortification.Footprint);
+            }
+
+            layout.Add(-1);
+
+            foreach (WorldSite site in state.Sites.Values)
+            {
+                AddFootprint(site.Footprint);
+            }
+
+            layout.Add(-1);
+
+            foreach (WorldLandmark landmark in state.Landmarks.Values)
+            {
+                AddFootprint(landmark.Footprint);
+            }
+
+            return [.. layout];
+
+            void AddFootprint(WorldFootprint footprint)
+            {
+                layout.Add(footprint.TopLeft.X);
+                layout.Add(footprint.TopLeft.Y);
+                layout.Add(footprint.Width);
+                layout.Add(footprint.Height);
+            }
         }
 
         public ImmutableBitmap GetObstaclesAndImpassable(WorldMovementCalculator.MovementProfile profile, Func<ImmutableBitmap> build)
@@ -287,24 +367,72 @@ public sealed class WorldPlan
         return result;
     }
 
-    private Dictionary<WorldPosition, WorldFortification> BuildFortifications()
-    {
-        Dictionary<WorldPosition, WorldFortification> result = [];
+    // Gallean Upgrade (engine speed): which fortification covers which tile only depends on the fortifications' IDs
+    // and footprints, which never change during a game, while the collection itself changes on almost every step
+    // (garrisons, unit modifiers). The tile index is kept across states with the same layout instead of being rebuilt
+    // for every state (~7 % of AI turn time on 1024 maps); the fortification itself is still taken from each state.
+    private static readonly ConditionalWeakTable<WorldMap, FortificationLayout> FortificationLayoutCache = [];
 
-        foreach (WorldFortification fortification in state.Fortifications.Values)
+    private Dictionary<WorldPosition, WorldFortificationId> GetFortificationLayout()
+    {
+        lock (FortificationLayoutCache)
         {
-            foreach (WorldPosition tile in fortification.Footprint.EnumerateTiles())
+            if (!FortificationLayoutCache.TryGetValue(state.Map, out FortificationLayout? layout) || !layout.Matches(state))
             {
-                result[tile] = fortification;
+                layout = new FortificationLayout(state);
+                FortificationLayoutCache.AddOrUpdate(state.Map, layout);
+            }
+
+            return layout.Tiles;
+        }
+    }
+
+    private sealed class FortificationLayout
+    {
+        private readonly (WorldFortificationId Id, WorldFootprint Footprint)[] fortifications;
+
+        public FortificationLayout(WorldState state)
+        {
+            fortifications = [.. state.Fortifications.Values.Select(fortification => (fortification.Id, fortification.Footprint))];
+            Tiles = [];
+
+            foreach (WorldFortification fortification in state.Fortifications.Values)
+            {
+                foreach (WorldPosition tile in fortification.Footprint.EnumerateTiles())
+                {
+                    Tiles[tile] = fortification.Id;
+                }
+            }
+
+            foreach (WorldFortification fortification in state.Fortifications.Values)
+            {
+                Tiles[fortification.Entrance] = fortification.Id;
             }
         }
 
-        foreach (WorldFortification fortification in state.Fortifications.Values)
-        {
-            result[fortification.Entrance] = fortification;
-        }
+        public Dictionary<WorldPosition, WorldFortificationId> Tiles { get; }
 
-        return result;
+        public bool Matches(WorldState state)
+        {
+            if (state.Fortifications.Count != fortifications.Length)
+            {
+                return false;
+            }
+
+            int index = 0;
+
+            foreach (WorldFortification fortification in state.Fortifications.Values)
+            {
+                (WorldFortificationId id, WorldFootprint footprint) = fortifications[index++];
+
+                if (fortification.Id != id || fortification.Footprint != footprint)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
     }
 
     private Dictionary<WorldPosition, WorldResourceNode> BuildResourceNodes()
@@ -398,6 +526,18 @@ public sealed class WorldPlan
         foreach (WorldPosition tile in footprint.EnumerateTiles())
         {
             cells.Set(tile.X, tile.Y);
+        }
+    }
+
+    private ImmutableBitmap GetZeroCostEntrances()
+    {
+        StaticCells cells = GetStaticCells();
+
+        lock (cells)
+        {
+            cells.ZeroCostEntrances ??= BuildZeroCostEntrances();
+
+            return cells.ZeroCostEntrances;
         }
     }
 
