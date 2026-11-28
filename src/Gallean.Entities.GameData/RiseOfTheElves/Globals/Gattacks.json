@@ -2963,6 +2963,27 @@
       "CRIT_HIT": null
     },
     {
+      "ATT_ID": "g000aa5990",
+      "NAME_TXT": "x000tg5228",
+      "DESC_TXT": "x000tg5228",
+      "INITIATIVE": 50,
+      "SOURCE": 0,
+      "CLASS": 1,
+      "POWER": 80,
+      "REACH": 3,
+      "QTY_HEAL": null,
+      "QTY_DAM": 25,
+      "LEVEL": null,
+      "ALT_ATTACK": "g000000000",
+      "INFINITE": null,
+      "QTY_WARDS": null,
+      "WARD1": null,
+      "WARD2": null,
+      "WARD3": null,
+      "WARD4": null,
+      "CRIT_HIT": null
+    },
+    {
       "ATT_ID": "g000aa0150",
       "NAME_TXT": "x000tg5150",
       "DESC_TXT": "x000tg5150",
