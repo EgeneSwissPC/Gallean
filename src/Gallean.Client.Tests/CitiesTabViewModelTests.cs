@@ -361,6 +361,7 @@ public sealed class CitiesTabViewModelTests
         {
             Assert.That(Title(alpha), Is.EqualTo("Alpha"));
             Assert.That(alpha.CityPositionText, Is.EqualTo("2 / 3"));
+            Assert.That(alpha.CityName, Is.EqualTo("Alpha"));
         }
 
         alpha.SelectNextCityCommand.Execute(null);

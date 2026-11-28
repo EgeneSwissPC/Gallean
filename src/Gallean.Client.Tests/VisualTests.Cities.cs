@@ -109,7 +109,7 @@ public sealed partial class VisualTests
         settings.Language = Language.English;
     }
 
-    // Phase 2: the A / D keycaps and the "2 / 6" counter beside the city name; the capital, then the next town, then
+    // Phase 2: the A / D keycaps with the city name and the "2 / 6" counter at the left of the tab bar; the capital, then the next town, then
     // the same town in Russian.
     [AvaloniaTest]
     public async Task CitySwitchTest()
@@ -152,10 +152,15 @@ public sealed partial class VisualTests
         TestContext.Out.WriteLine($"town {town.CityPositionText}");
         await CaptureAsync(window, "2-next");
 
+        town.SelectNextTabCommand.Execute(null);
+        await SkipFramesAsync(20);
+        await CaptureAsync(window, "2b-next-party");
+
         gameViewModel.CloseScreen(town);
         SettingsScreenViewModel settings = new(gameViewModel) { Language = Language.Russian };
         viewModel.OpenCapitalCommand.Execute(null);
         await SkipFramesAsync(30);
+        await CaptureAsync(window, "3a-capital-ru");
         Assert.IsOfType<ManagementScreenViewModel>(gameViewModel.TopScreen).SelectNextCityCommand.Execute(null);
         await SkipFramesAsync(30);
         await CaptureAsync(window, "3-next-ru");

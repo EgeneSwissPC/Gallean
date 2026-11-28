@@ -3,7 +3,7 @@ using Gallean.Engine;
 
 namespace Gallean.Client;
 
-// Gallean Upgrade (docs/cities-overview.md, phase 2): previous / next city (A / D, or the keycaps beside the city name)
+// Gallean Upgrade (docs/cities-overview.md, phase 2): previous / next city (A / D, or the keycaps at the left of the tab bar, with the city name and "2 / 7")
 // on a city or capital screen, in the cities list's order. The next city's screen replaces this one in the screen stack,
 // so Esc still goes back to where the player came from (the list or the map).
 internal sealed partial class ManagementScreenViewModel
@@ -12,6 +12,7 @@ internal sealed partial class ManagementScreenViewModel
 
     public bool HasCityCycle { get; private set; }
     public string CityPositionText { get; private set; } = string.Empty;
+    public string CityName { get; private set; } = string.Empty;
 
     private void InitializeCityCycle(WorldFortificationId fortificationId)
     {
@@ -28,6 +29,7 @@ internal sealed partial class ManagementScreenViewModel
         cycleCityId = fortificationId;
         HasCityCycle = index >= 0 && cycle.Count > 1;
         CityPositionText = HasCityCycle ? $"{index + 1} / {cycle.Count}" : string.Empty;
+        CityName = GameModel.Texts.GetScenarioText(fortification.NameTextId);
 
         RegisterSnapshotGatedCommands(SelectPreviousCityCommand, SelectNextCityCommand);
         SelectPreviousCityCommand.NotifyCanExecuteChanged();

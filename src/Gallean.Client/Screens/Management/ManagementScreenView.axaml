@@ -186,6 +186,20 @@
       </local:OrnamentRule>
 
       <Grid ColumnDefinitions="*,Auto,*" Height="67" VerticalAlignment="Top">
+        <!-- Gallean Upgrade: previous / next city on every tab of a city screen (docs/cities-overview.md). -->
+        <Grid Grid.Column="0"
+              ColumnDefinitions="Auto,*,Auto"
+              Margin="24,0,16,0"
+              HorizontalAlignment="Left"
+              IsVisible="{Binding HasCityCycle}">
+          <Button Grid.Column="0" Classes="hotkey" Margin="0,20,10,0" Content="{local:Text 'A'}" ToolTip.Tip="{local:Text 'Previous city'}" Command="{Binding SelectPreviousCityCommand}" />
+          <StackPanel Grid.Column="1" Margin="0,12,0,0" VerticalAlignment="Top" MaxWidth="200">
+            <TextBlock Text="{Binding CityName}" Classes="body" Foreground="{StaticResource PrimaryTextBrush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock Text="{Binding CityPositionText}" Classes="caption" Foreground="{StaticResource SecondaryTextBrush}" />
+          </StackPanel>
+          <Button Grid.Column="2" Classes="hotkey" Margin="10,20,0,0" Content="{local:Text 'D'}" ToolTip.Tip="{local:Text 'Next city'}" Command="{Binding SelectNextCityCommand}" />
+        </Grid>
+
         <StackPanel Grid.Column="1" Orientation="Horizontal">
           <Button Classes="hotkey" IsVisible="{Binding $self.IsEffectivelyEnabled}" Content="{local:Text 'Q'}" Margin="0,20,24,0" Command="{Binding SelectPreviousTabCommand}" />
           <ItemsControl x:Name="TabStrip"
