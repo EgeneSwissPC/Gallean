@@ -22,6 +22,7 @@ internal sealed class WorldEventActionBuilder(
         return entry switch
         {
             Entry.StackMove data => BuildStackMove(data),
+            Entry.StackMoveGroup data => BuildStackMoveGroup(data),
             Entry.StackDestroy data => BuildStackDestroy(data),
             Entry.StackRemove data => BuildStackRemove(data),
             Entry.StackCreate data => BuildStackCreate(data),
@@ -61,6 +62,20 @@ internal sealed class WorldEventActionBuilder(
         if (visibility.IsAnyRevealed(stackMove.Steps.Select(step => step.Position)))
         {
             return Animate(stackMove, visibility);
+        }
+        else
+        {
+            return WorldEventAction.None;
+        }
+    }
+
+    private WorldEventAction BuildStackMoveGroup(Entry.StackMoveGroup group)
+    {
+        WorldVisibility visibility = WorldVisibility.Create(group.State, ViewPlayerId, fogEnabled);
+
+        if (visibility.IsAnyRevealed(group.Moves.SelectMany(move => move.Steps).Select(step => step.Position)))
+        {
+            return Animate(group, visibility);
         }
         else
         {

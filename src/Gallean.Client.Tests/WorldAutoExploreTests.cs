@@ -293,4 +293,62 @@ public sealed class WorldAutoExploreTests
 
         Assert.That(setup.World.IsEndTurnHighlighted, Is.True);
     }
+    // User decision after phase 2: on End turn all explorers walk at the same time, as one group animation, and the
+    // camera stays where it was.
+    [Test]
+    public async Task ExplorersWalkTogetherOnEndTurnTest()
+    {
+        Setup setup = CreateWorld(width: 30, movementPoints: 8);
+
+        await ExploreAsync(setup);
+        setup.World.SelectStackItemCommand.Execute(Other);
+        await RunAsync(setup, setup.World.ToggleAutoExploreCommand.ExecuteAsync(null));
+        await NextTurnAsync(setup);
+
+        WorldPosition explorerBefore = StackOf(setup, Explorer).Position;
+        WorldPosition otherBefore = StackOf(setup, Other).Position;
+        WorldPosition? cameraBefore = setup.World.CameraFocus;
+        int cameraJumps = 0;
+        setup.World.CameraFocusRequested += (_, _) => cameraJumps++;
+
+        Task endTurn = setup.World.EndTurnCommand.ExecuteAsync(null);
+
+        WorldEventQueue.Entry.StackMoveGroup? group = setup.World.PlayingEntry as WorldEventQueue.Entry.StackMoveGroup;
+        Assert.That(group, Is.Not.Null, $"playing {setup.World.PlayingEntry?.GetType().Name ?? "nothing"}");
+        Assert.That(group!.Moves.Select(move => move.StackId), Is.EquivalentTo(new[] { Explorer, Other }));
+        Assert.That(group.Moves.Single(move => move.StackId == Explorer).Steps.Count, Is.GreaterThan(2), "each army's legs are one walk");
+        Assert.That(setup.World.RenderRequest.Animation, Is.TypeOf<WorldAnimationState.StackMoveGroup>());
+        Assert.That(setup.World.CameraFocus, Is.EqualTo(cameraBefore), "the camera doesn't follow the explorers");
+        Assert.That(cameraJumps, Is.Zero);
+
+        await RunAsync(setup, endTurn);
+
+        Assert.That(StackOf(setup, Explorer).Position.X, Is.GreaterThan(explorerBefore.X));
+        Assert.That(StackOf(setup, Other).Position.X, Is.GreaterThan(otherBefore.X));
+        Assert.That(setup.World.IsExploring(Explorer), Is.True);
+        Assert.That(setup.World.IsExploring(Other), Is.True);
+    }
+
+    [Test]
+    public async Task MoveOrdersStillWalkOneByOneTest()
+    {
+        // Decision A (not C): only explorers walk in the background; an ordinary move order keeps its own animation.
+        Setup setup = CreateWorld(width: 30, seenUpTo: 29, movementPoints: 4);
+
+        setup.World.SelectStackItemCommand.Execute(Explorer);
+        setup.World.UpdateHover(new WorldPosition(12, 0), null);
+        await setup.World.HandleMapClickAsync(new WorldPosition(12, 0), null, 1);
+        setup.World.CompleteAnimation();
+        setup.World.CompleteAnimation();
+        await NextTurnAsync(setup);
+
+        setup.World.SelectStackItemCommand.Execute(Other);
+        setup.World.FinishStackCommand.Execute(null);
+
+        Task endTurn = setup.World.EndTurnCommand.ExecuteAsync(null);
+
+        Assert.That(setup.World.PlayingEntry, Is.TypeOf<WorldEventQueue.Entry.StackMove>());
+
+        await RunAsync(setup, endTurn);
+    }
 }

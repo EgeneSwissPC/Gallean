@@ -22,6 +22,16 @@ internal static partial class WorldAssetPreloadPlan
             return Empty.Value;
         }
 
+        public Empty Visit(StackMoveGroup animation, Empty context)
+        {
+            foreach (StackMove move in animation.Moves)
+            {
+                Visit(move, context);
+            }
+
+            return Empty.Value;
+        }
+
         public Empty Visit(Effect animation, Empty context)
         {
             if (animation.SoundKey is not null)

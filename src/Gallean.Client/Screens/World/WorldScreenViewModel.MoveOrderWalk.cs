@@ -86,12 +86,14 @@ internal sealed partial class WorldScreenViewModel
             }
 
             // 2. The walks, then the retry pass for armies blocked by our own armies.
-            Dictionary<WorldStackId, OrderStop> stops = [];
+            // Explorers first, all at the same time in the background (auto explore), then the move orders one by one.
+            List<WorldStackId> explorers = [.. ordered.Where(IsExploring)];
+            Dictionary<WorldStackId, OrderStop> stops = explorers.Count > 0 ? await WalkExplorersInBackgroundAsync(explorers, attention) : [];
             List<WorldStackId> blocked = [];
 
-            foreach (WorldStackId stackId in ordered)
+            foreach (WorldStackId stackId in ordered.Where(stackId => !IsExploring(stackId) && !stops.ContainsKey(stackId)))
             {
-                OrderStop stop = IsExploring(stackId) ? await WalkExplorerAsync(stackId, attention) : await WalkMoveOrderAsync(stackId);
+                OrderStop stop = await WalkMoveOrderAsync(stackId);
 
                 if (stop == OrderStop.Blocked)
                 {
@@ -103,7 +105,7 @@ internal sealed partial class WorldScreenViewModel
 
             foreach (WorldStackId stackId in blocked)
             {
-                stops[stackId] = IsExploring(stackId) ? await WalkExplorerAsync(stackId, attention) : await WalkMoveOrderAsync(stackId);
+                stops[stackId] = await WalkMoveOrderAsync(stackId);
             }
 
             // 3. What needs the player, in bar order.

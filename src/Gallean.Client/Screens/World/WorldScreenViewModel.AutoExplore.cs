@@ -19,6 +19,7 @@ internal sealed partial class WorldScreenViewModel
     private readonly HashSet<WorldStackId> exploringStacks = [];
     private (WorldState State, WorldStackId StackId, bool CanExplore)? exploreCheck;
     private bool isSettingExploreDestination;
+    private bool holdEventQueue;
 
     public bool IsExploring(WorldStackId stackId)
     {
@@ -205,6 +206,141 @@ internal sealed partial class WorldScreenViewModel
         }
 
         return OrderStop.None;
+    }
+
+    // Decision (user, after phase 2): during End turn all explorers walk in the background at the same time. Their
+    // moves are made in the engine first with the event queue held, then their walks play as one group animation
+    // without moving the camera. Questions (battle, site) still come one by one afterwards, like move orders.
+    private async Task<Dictionary<WorldStackId, OrderStop>> WalkExplorersInBackgroundAsync(
+        IReadOnlyList<WorldStackId> explorers,
+        List<OrderAttention> attention)
+    {
+        Dictionary<WorldStackId, OrderStop> stops = [];
+        HashSet<WorldStackId> walked = [];
+
+        await WaitForIdleAsync();
+
+        holdEventQueue = true;
+
+        try
+        {
+            HashSet<WorldStackId> knownEnemies = FindSeenHostileStacks();
+
+            foreach (WorldStackId stackId in explorers)
+            {
+                stops[stackId] = await StepExplorerAsync(stackId, attention, knownEnemies, walked);
+            }
+
+            // Retry pass for explorers blocked by our own armies, as for move orders.
+            foreach (WorldStackId stackId in explorers)
+            {
+                if (stops[stackId] == OrderStop.Blocked)
+                {
+                    stops[stackId] = await StepExplorerAsync(stackId, attention, knownEnemies, walked);
+                }
+            }
+        }
+        finally
+        {
+            holdEventQueue = false;
+            eventQueue.GroupStackMoves(walked);
+            ProcessEventQueue();
+        }
+
+        await WaitForIdleAsync();
+
+        return stops;
+    }
+
+    private async Task<OrderStop> StepExplorerAsync(
+        WorldStackId stackId,
+        List<OrderAttention> attention,
+        HashSet<WorldStackId> knownEnemies,
+        HashSet<WorldStackId> walked)
+    {
+        for (int leg = 0; leg < MaxExploreLegsPerTurn; leg++)
+        {
+            if (!WorldState.Stacks.TryGetValue(stackId, out WorldStack? stack) ||
+                stack.OwnerId != ViewPlayerId ||
+                !IsExploring(stackId) ||
+                stack.MovementPoints <= 0 ||
+                IsFinished(stack) ||
+                reportedOrders.Contains(stackId))
+            {
+                return leg == 0 ? OrderStop.Skipped : OrderStop.None;
+            }
+
+            if (!HasMoveOrder(stack) && !TryAssignExploreTarget(stack, attention))
+            {
+                return leg == 0 ? OrderStop.Skipped : OrderStop.None;
+            }
+
+            if (await StepToDestinationAsync(stackId, stackDestinations[stackId], attention, knownEnemies, walked) is { } stop)
+            {
+                return stop;
+            }
+        }
+
+        return OrderStop.None;
+    }
+
+    // Steps without animation until the army stops. Null = arrived with move points left (the next leg follows).
+    private async Task<OrderStop?> StepToDestinationAsync(
+        WorldStackId stackId,
+        WorldPosition destination,
+        List<OrderAttention> attention,
+        HashSet<WorldStackId> knownEnemies,
+        HashSet<WorldStackId> walked)
+    {
+        while (true)
+        {
+            if (FindAutoWalkStop(stackId, destination) is { } before)
+            {
+                return before;
+            }
+
+            WorldCommandResult result = await GameModel.World.DispatchCommandAsync(new WorldStepStackCommand(stackId, destination));
+
+            if (result.Failed)
+            {
+                return result.Error == WorldCommandError.InsufficientMovement ? OrderStop.None : OrderStop.Blocked;
+            }
+
+            walked.Add(stackId);
+
+            if (!WorldState.Stacks.TryGetValue(stackId, out WorldStack? after) || after.OwnerId != ViewPlayerId)
+            {
+                return OrderStop.None;
+            }
+
+            if (SpottedNewEnemy(after, knownEnemies))
+            {
+                AddOrderAttention(attention, after, Tr("{0} spotted an enemy army.", ResolveLeaderName(after)));
+
+                return OrderStop.None;
+            }
+
+            if (after.Position == destination)
+            {
+                if (WorldPlan.For(WorldState).GetSiteAt(destination) is not null)
+                {
+                    return OrderStop.Site;
+                }
+
+                return after.MovementPoints > 0 ? null : OrderStop.None;
+            }
+
+            // Stopped by something other than a step (a scenario event, a bag): the player is told.
+            if (result.Events is not [.., WorldStackMovedEvent moved] || moved.StackId != stackId)
+            {
+                return after.MovementPoints > 0 ? OrderStop.Other : OrderStop.None;
+            }
+
+            if (after.MovementPoints <= 0)
+            {
+                return OrderStop.None;
+            }
+        }
     }
 
     // Returns true when the army got a destination.

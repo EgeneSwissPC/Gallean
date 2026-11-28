@@ -8,6 +8,7 @@ internal sealed partial class WorldRenderer
     private sealed class BattleTransitionVisitor : IWorldAnimationVisitor<Empty, BattleTransition?>, IStaticInstance<BattleTransitionVisitor>
     {
         public BattleTransition? Visit(StackMove animation, Empty context) => null;
+        public BattleTransition? Visit(StackMoveGroup animation, Empty context) => null;
         public BattleTransition? Visit(Effect animation, Empty context) => null;
         public BattleTransition? Visit(SpellCast animation, Empty context) => null;
         public BattleTransition? Visit(Pause animation, Empty context) => null;

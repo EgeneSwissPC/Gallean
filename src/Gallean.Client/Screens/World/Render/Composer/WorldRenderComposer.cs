@@ -48,6 +48,11 @@ internal sealed partial class WorldRenderComposer(
         WorldAnimation? animation = ResolveAnimation(request, objectives);
         WorldStackId? animatedStackId = animation?.Accept(WorldAnimationStackVisitor.Instance, Empty.Value);
 
+        // Gallean Upgrade: armies walking in a group are drawn by the animation only.
+        ImmutableSortedDictionary<WorldStackId, WorldStack> staticStacks = animation is StackMoveGroup group
+            ? state.Stacks.RemoveRange(group.Moves.Select(move => move.StackId))
+            : state.Stacks;
+
         MapTerrain terrain = terrainPart.Resolve(new Terrain.Input(state.Map));
         TerrainExpansionAnimation? terrainExpansion = ResolveTerrainExpansion(terrain);
         IReadOnlyList<Cloud> clouds = cloudsPart.Resolve(new Clouds.Input(state.Map.Width, state.Map.Height));
@@ -61,7 +66,7 @@ internal sealed partial class WorldRenderComposer(
         IReadOnlyList<MapObject> tombs = tombsPart.Resolve(new Tombs.Input(state.Tombs, state.Map, visibility));
         IReadOnlyList<MapObject> bags = bagsPart.Resolve(new Bags.Input(state.Bags, state.Map, visibility));
         IReadOnlyList<MapObject> fortifications = fortificationsPart.Resolve(new Fortifications.Input(state.Fortifications, playerRaces, visibility));
-        IReadOnlyList<MapObject> stacks = stacksPart.Resolve(new Stacks.Input(state.Stacks, state.Subraces, state.Fortifications, playerRaces, state.Map, visibility, request.ViewPlayerId, animatedStackId));
+        IReadOnlyList<MapObject> stacks = stacksPart.Resolve(new Stacks.Input(staticStacks, state.Subraces, state.Fortifications, playerRaces, state.Map, visibility, request.ViewPlayerId, animatedStackId));
         IReadOnlyList<MapObject> mapObjects = mapObjectsPart.Resolve(new MapObjects.Input(landmarks, mountains, sites, mapFeatures, resourceNodes, rods, tombs, bags, fortifications));
         IReadOnlyList<ObjectiveMarker> objectiveMarkers = objectivesPart.Resolve(new Objectives.Input(objectives, visibility, animatedStackId));
         IReadOnlyList<AmbientSound> ambientSounds = ambientSoundsPart.Resolve(new AmbientSounds.Input(state.Fortifications, state.Landmarks, state.Sites, state.ResourceNodes, playerRaces, visibility));
@@ -184,6 +189,18 @@ internal sealed partial class WorldRenderComposer(
                     data.Steps,
                     objectives.Any(objective => objective.StackId == data.StackId),
                     request.Cursor.StackId == data.StackId ? Theme.World.Highlight.SelectedColor : null),
+                WorldAnimationState.StackMoveGroup data => new StackMoveGroup([.. data.Moves
+                    .Select(move => AnimationBuilder.BuildStackMove(
+                        request.State.Stacks,
+                        request.State.Subraces,
+                        request.State.Map,
+                        definitions,
+                        assets,
+                        move.StackId,
+                        move.Steps,
+                        objectives.Any(objective => objective.StackId == move.StackId),
+                        null))
+                    .OfType<StackMove>()]),
                 WorldAnimationState.StackDestroy data => AnimationBuilder.BuildStackDestroy(definitions, assets, data.Position, data.LeaderDefinitionId),
                 WorldAnimationState.StackRemove data => AnimationBuilder.BuildStackRemove(definitions, assets, data.Position, data.LeaderDefinitionId),
                 WorldAnimationState.StackCreate data => AnimationBuilder.BuildStackCreate(assets, data.Position),

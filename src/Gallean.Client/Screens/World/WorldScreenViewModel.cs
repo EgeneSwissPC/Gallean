@@ -1349,7 +1349,8 @@ internal sealed partial class WorldScreenViewModel :
 
     private void ProcessEventQueue()
     {
-        if (IsActive)
+        // Gallean Upgrade: held while explorers make their background moves (WorldScreenViewModel.AutoExplore.cs).
+        if (IsActive && !holdEventQueue)
         {
             WorldEventActionBuilder builder = new(
                 GameModel.Definitions,

@@ -86,6 +86,31 @@ internal sealed partial record WorldRenderState
         }
     }
 
+    // Gallean Upgrade: several armies walking at the same time (auto explore, docs/auto-explore.md).
+    public sealed record StackMoveGroup(IReadOnlyList<StackMove> Moves) : WorldAnimation
+    {
+        public override TimeSpan Duration => Moves.Count == 0 ? TimeSpan.Zero : Moves.Max(move => move.Duration);
+
+        public override TResult Accept<TContext, TResult>(IWorldAnimationVisitor<TContext, TResult> visitor, TContext context)
+        {
+            return visitor.Visit(this, context);
+        }
+
+        public bool Equals(StackMoveGroup? other)
+        {
+            return other is not null && (ReferenceEquals(this, other) || Moves.SequenceEqual(other.Moves));
+        }
+
+        public override int GetHashCode()
+        {
+            HashCode hash = new();
+
+            hash.AddSequence(Moves);
+
+            return hash.ToHashCode();
+        }
+    }
+
     public sealed record Effect(
         AssetSoundKey? SoundKey,
         WorldPosition Position,
