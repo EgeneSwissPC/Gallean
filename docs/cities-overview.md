@@ -1,6 +1,6 @@
 # Cities overview and city switching
 
-Spec for a gallean-upgrade game feature (not the map editor). Status: **phase 1 (cities list) done, merged 932de178; phase 2 (previous / next in the city screen) next.**
+Spec for a gallean-upgrade game feature (not the map editor). Status: **done.** Phase 1 (cities list) merged 932de178, phase 2 (previous / next city) merged 7321de8b.
 
 ## Decisions
 
@@ -21,6 +21,19 @@ User answers to the open questions (2026-11-28):
 - C: capital first, then alphabetical; the sort picked in the list is also the cycle order.
 - D: closing a city opened from the list returns to the list.
 - E: enemy badge = distance in tiles to the nearest visible non-allied army of a playable race; neutral armies left out. The red threshold is measured in a real game while building.
+
+Decisions taken while building phase 2 (change any of them by saying so):
+
+- The A / D keycaps, the city name and the "2 / 7" counter sit at the left of the tab bar, not beside the name in the
+  City tab's panel as the spec said: the real-client check showed the Party tab of a city without an army had nothing
+  saying which city it was. In the tab bar they show on every tab. The name trims ("Tar…") when the capital's six
+  Russian tabs leave little room.
+- Esc after switching goes back to where the first city screen was opened from (the list or the map): each switch
+  replaces the screen instead of stacking a new one.
+- Switching is ignored while the tab is busy: typing in a text box, dragging a unit or item, or picking a unit to
+  heal / resurrect / dismiss.
+- The cycle is rebuilt on every press (a city lost or won in between is skipped / included), in the list's last sort
+  order; without opening the list it is Name order (capital first, then alphabetical).
 
 Decisions taken while building phase 1 (change any of them by saying so):
 
@@ -160,8 +173,8 @@ Decisions taken while writing the spec (change any of them by saying so):
 
 1. ~~**Cities list** (button + hotkey, screen, rows with all columns above, Upgrade in the row, Enter, Show on map,
    sorting). ~1.5 days.~~ Done, see "Phase 1 — done".
-2. **Previous / next in the city screen** (chevrons + keys, order shared with the list, tab kept, guards).
-   ~0.5-1 day. Independent of phase 1's layout; can go first if wanted.
+2. ~~**Previous / next in the city screen** (chevrons + keys, order shared with the list, tab kept, guards).
+   ~0.5-1 day.~~ Done, see "Phase 2 — done". Independent of phase 1's layout; can go first if wanted.
 
 ## Open questions
 
@@ -218,4 +231,43 @@ Known limits:
 - Riot, enemy, wounded and dead badges weren't reachable on the test map in the real client; they are covered by the
   engine / client tests and the riot badge shows in the S107 visual test.
 - The sort order is kept until the game closes, not saved.
+
+## Phase 2 — done
+
+Commits 3cef89c7 (switching) and 5dea4d01 (keycaps moved into the tab bar after the real-client check), merged into
+gallean-upgrade as 7321de8b.
+
+What was built:
+
+- `ManagementScreenViewModel.CityCycle.cs`: city and capital screens of the player get `SelectPreviousCity` /
+  `SelectNextCity` (A / D in `ManagementScreenView.axaml`, Q / E stay the tabs), `HasCityCycle`, `CityName`,
+  `CityPositionText` ("2 / 7"). The order comes from `CitiesTabViewModel.GetCycle` (the list's rows sorted by
+  `LastSortOrder`); `CreateForFortification` sets it up, so it works whichever way the city was opened (list, map
+  click, C, an army entering). With only one city / capital there is no cycle and nothing is shown.
+- A switch opens the next city's screen and closes the current one. The Party tab stays the Party tab; any other tab
+  (capital-only Buildings, Spellbook, Diplomacy, Spell groups) lands on the City tab.
+- The tab bar's left side: A keycap, city name over the counter, D keycap (clickable too, tooltips "Previous city" /
+  "Next city").
+- 3 new strings in the 7 catalogues.
+
+Tests:
+
+- Client `CitiesTabViewModelTests` +5 (13 in all): cycle forward with wrap-around both ways and Esc to the map, tab kept
+  (Party) or reset (Buildings -> City), order follows the list's Level sort and Esc returns to the list, ignored while
+  typing, no cycle with a single capital.
+- Visual `CitySwitchTest`: capital "1 / 6", next town on the City and Party tabs, the Russian capital (name trimmed) and
+  next town.
+- Full non-visual suite 5626 passed (5 new), and 5641 after merging in the parallel auto-explore phase 1 (5636 + 5); visual `CitiesListTest`, `CitiesButtonWideResourcesTest`, `CitySwitchTest`
+  and all 16 map editor visual tests passed.
+
+Real-client check (AOT build, 1366x768, the same mapgen map with four cities): from the list, Ford opened as "Ford 4 / 4";
+E to the Party tab and D went to "The Empire Capital 1 / 4" still on the Party tab; a click on the A keycap went back to
+Ford's Party tab; Esc returned to the cities list. The first build had the keycaps only in the City tab's panel; that
+check is what moved them into the tab bar (fixed in 5dea4d01, rechecked in the second AOT build).
+
+Known limits:
+
+- The targeted-action guard (heal / resurrect / dismiss picking) and the drag guard are code paths without their own
+  test; typing is tested.
+- A very long city name is trimmed in the tab bar; the full name is in the City tab's panel.
 

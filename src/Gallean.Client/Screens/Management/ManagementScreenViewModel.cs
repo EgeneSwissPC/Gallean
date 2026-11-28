@@ -41,7 +41,7 @@ internal sealed partial class ManagementScreenViewModel : AbstractGameScreenView
         ScreenMusic music = ResolveFortificationMusic(gameModel, fortificationId);
         AssetSoundKey? openSound = ResolveFortificationOpenSound(gameModel, fortificationId);
 
-        return new ManagementScreenViewModel(gameModel, gameViewModel, music, openSound, screen =>
+        ManagementScreenViewModel created = new(gameModel, gameViewModel, music, openSound, screen =>
         {
             WorldState world = gameModel.Snapshot.WorldState;
 
@@ -64,6 +64,11 @@ internal sealed partial class ManagementScreenViewModel : AbstractGameScreenView
 
             return tabs;
         });
+
+        // Gallean Upgrade: previous / next city (docs/cities-overview.md).
+        created.InitializeCityCycle(fortificationId);
+
+        return created;
     }
 
     public static ManagementScreenViewModel CreateForStack(GameModel gameModel, GameViewModel gameViewModel, WorldStackId stackId)
