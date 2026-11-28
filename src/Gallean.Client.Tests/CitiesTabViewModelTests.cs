@@ -327,4 +327,149 @@ public sealed class CitiesTabViewModelTests
 
         Assert.That(world.OpenCitiesCommand.CanExecute(null), Is.False);
     }
+
+    // Phase 2: previous / next city on a city screen.
+    private static ManagementScreenViewModel OpenCapital(Setup setup)
+    {
+        setup.World.OpenCapitalCommand.Execute(null);
+
+        return Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+    }
+
+    private static string Title(ManagementScreenViewModel screen)
+    {
+        return screen.Tabs.OfType<CityTabViewModel>().Single().CityTitle;
+    }
+
+    [Test]
+    public void CycleTest()
+    {
+        Setup setup = Build();
+        ManagementScreenViewModel castle = OpenCapital(setup);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(castle.HasCityCycle, Is.True);
+            Assert.That(castle.CityPositionText, Is.EqualTo("1 / 3"));
+            Assert.That(castle.SelectNextCityCommand.CanExecute(null), Is.True);
+        }
+
+        castle.SelectNextCityCommand.Execute(null);
+        ManagementScreenViewModel alpha = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(Title(alpha), Is.EqualTo("Alpha"));
+            Assert.That(alpha.CityPositionText, Is.EqualTo("2 / 3"));
+            Assert.That(alpha.CityName, Is.EqualTo("Alpha"));
+        }
+
+        alpha.SelectNextCityCommand.Execute(null);
+        ManagementScreenViewModel zeta = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+        Assert.That(Title(zeta), Is.EqualTo("Zeta"));
+
+        // Wraps around both ways.
+        zeta.SelectNextCityCommand.Execute(null);
+        ManagementScreenViewModel again = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+        Assert.That(Title(again), Is.EqualTo("Castle"));
+
+        again.SelectPreviousCityCommand.Execute(null);
+        ManagementScreenViewModel back = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+        Assert.That(Title(back), Is.EqualTo("Zeta"));
+
+        // The switched screens replace each other: closing the last one is back on the map.
+        setup.Game.CloseScreen(back);
+        Assert.That(setup.Game.TopScreen, Is.SameAs(setup.World));
+    }
+
+    [Test]
+    public void CycleKeepsTabTest()
+    {
+        Setup setup = Build();
+        ManagementScreenViewModel castle = OpenCapital(setup);
+
+        // From a capital-only tab (Buildings) the next city opens on its City tab.
+        castle.SelectNextTabCommand.Execute(null);
+        castle.SelectNextTabCommand.Execute(null);
+        Assert.That(castle.SelectedTab.TabHeader, Is.EqualTo("Buildings"));
+
+        castle.SelectNextCityCommand.Execute(null);
+        ManagementScreenViewModel alpha = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+        Assert.IsOfType<CityTabViewModel>(alpha.SelectedTab);
+
+        // The Party tab stays the Party tab.
+        alpha.SelectNextTabCommand.Execute(null);
+        Assert.IsOfType<VisitingStackTabViewModel>(alpha.SelectedTab);
+
+        alpha.SelectNextCityCommand.Execute(null);
+        ManagementScreenViewModel zeta = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(Title(zeta), Is.EqualTo("Zeta"));
+            Assert.That(zeta.SelectedTab, Is.InstanceOf<VisitingStackTabViewModel>());
+        }
+    }
+
+    [Test]
+    public void CycleFollowsListOrderTest()
+    {
+        Setup setup = Build();
+        (ManagementScreenViewModel list, CitiesTabViewModel cities) = OpenCities(setup);
+
+        cities.SortByCommand.Execute(CitySortOrder.Level);
+        cities.EnterCityCommand.Execute(Row(cities, ZetaId));
+
+        ManagementScreenViewModel zeta = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+        Assert.That(zeta.CityPositionText, Is.EqualTo("2 / 3"));
+
+        zeta.SelectNextCityCommand.Execute(null);
+        ManagementScreenViewModel alpha = Assert.IsOfType<ManagementScreenViewModel>(setup.Game.TopScreen);
+        Assert.That(Title(alpha), Is.EqualTo("Alpha"));
+
+        // Esc from a switched city still goes back to the list it was opened from.
+        setup.Game.CloseScreen(alpha);
+        Assert.That(setup.Game.TopScreen, Is.SameAs(list));
+    }
+
+    [Test]
+    public void CycleBlockedWhileTypingTest()
+    {
+        Setup setup = Build();
+        ManagementScreenViewModel castle = OpenCapital(setup);
+
+        castle.SelectedTab.IsTyping = true;
+        castle.SelectNextCityCommand.Execute(null);
+
+        Assert.That(setup.Game.TopScreen, Is.SameAs(castle));
+    }
+
+    [Test]
+    public void NoCycleWithOneCityTest()
+    {
+        WorldMap map = TestHelpers.SimpleMap(8, 8);
+        WorldPlayer player = TestHelpers.SimplePlayer(new WorldPlayerId(1), WorldRace.Human, map);
+        WorldCapital capital = TestHelpers.SimpleCapital(CastleId, player.Id, new WorldPosition(4, 4), UnitGrid<WorldUnit>.Empty);
+
+        (GameSession session, _) = new TestWorldEngineBuilder()
+            .WithMap(map)
+            .WithDefinition(TestHelpers.SimpleLord(player.LordId, player.Race, LordCategory.Warrior))
+            .WithPlayer(player)
+            .WithCapital(capital)
+            .BuildSession();
+
+        session.World.DispatchCommand(new WorldStartGameCommand());
+
+        GameModel gameModel = new(session, TestGameTextProvider.Instance, NullLog.Instance, SynchronousTaskScheduler.Instance);
+        GameViewModel gameViewModel = new TestGameViewModelBuilder().Build();
+        ManagementScreenViewModel screen = ManagementScreenViewModel.CreateForFortification(gameModel, gameViewModel, CastleId);
+
+        using (Assert.EnterMultipleScope())
+        {
+            Assert.That(screen.HasCityCycle, Is.False);
+            Assert.That(screen.CityPositionText, Is.Empty);
+            Assert.That(screen.SelectNextCityCommand.CanExecute(null), Is.False);
+        }
+    }
 }
+
