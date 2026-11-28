@@ -14,7 +14,8 @@ internal static class PathMapCalculator
         ImmutableBitmap blockedCells,
         ImmutableBitmap terminalCells,
         Func<WorldPosition, WorldPosition, int> stepCost,
-        int maxCost = int.MaxValue)
+        int maxCost = int.MaxValue,
+        HashSet<int>? stopTargets = null)
     {
         if (blockedCells.Get(start.X, start.Y))
         {
@@ -25,7 +26,7 @@ internal static class PathMapCalculator
 
         try
         {
-            return Search(map, start, fogOfWar, blockedCells, terminalCells, stepCost, maxCost, scratch);
+            return Search(map, start, fogOfWar, blockedCells, terminalCells, stepCost, maxCost, scratch, stopTargets);
         }
         finally
         {
@@ -41,7 +42,8 @@ internal static class PathMapCalculator
         ImmutableBitmap terminalCells,
         Func<WorldPosition, WorldPosition, int> stepCost,
         int maxCost,
-        Scratch scratch)
+        Scratch scratch,
+        HashSet<int>? stopTargets = null)
     {
         Span<WorldPosition> neighbors = stackalloc WorldPosition[8];
 
@@ -71,6 +73,12 @@ internal static class PathMapCalculator
             }
 
             scratch.Close(currentIndex);
+
+            // Once every target is settled, finish the cells of the same cost and stop (a bounded map up to that cost).
+            if (stopTargets is not null && stopTargets.Remove(currentIndex) && stopTargets.Count == 0)
+            {
+                maxCost = (int)(priority >> 32);
+            }
 
             if (current != start && terminalCells.Get(current.X, current.Y))
             {
