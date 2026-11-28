@@ -1758,6 +1758,12 @@
     "Sort by": "Sort by",
     "To level {0}": "To level {0}",
     "Upgrade {0} to {1:*}": "Upgrade {0} to {1:*}",
-    "Upgraded this turn": "Upgraded this turn"
+    "Upgraded this turn": "Upgraded this turn",
+    "L": "L",
+    "No more land this army can reach": "No more land this army can reach",
+    "No more land to explore": "No more land to explore",
+    "{0} has no more land it can reach.": "{0} has no more land it can reach.",
+    "{0} has no more land to explore.": "{0} has no more land to explore.",
+    "{0} spotted an enemy army.": "{0} spotted an enemy army."
   }
 }

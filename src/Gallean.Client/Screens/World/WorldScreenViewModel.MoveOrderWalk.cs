@@ -49,14 +49,24 @@ internal sealed partial class WorldScreenViewModel
             acceptedAttacks.Clear();
         }
 
-        List<WorldStackId> ordered = [.. StackItems.Where(item => item.HasMoveOrder).Select(item => item.StackId)];
+        List<OrderAttention> attention = [];
+
+        // Auto explore: explorers without a destination pick their next one first.
+        PrepareExplorers(attention);
+
+        List<WorldStackId> ordered = [.. StackItems.Where(item => item.HasMoveOrder && HasMoveOrder(item.StackId)).Select(item => item.StackId)];
 
         if (ordered.Count == 0)
         {
-            return true;
-        }
+            if (attention.Count == 0)
+            {
+                return true;
+            }
 
-        List<OrderAttention> attention = [];
+            ReportOrderAttention(attention);
+
+            return false;
+        }
 
         cancelledOrders.Clear();
         SetAutoWalking(true);
@@ -81,7 +91,7 @@ internal sealed partial class WorldScreenViewModel
 
             foreach (WorldStackId stackId in ordered)
             {
-                OrderStop stop = await WalkMoveOrderAsync(stackId);
+                OrderStop stop = IsExploring(stackId) ? await WalkExplorerAsync(stackId, attention) : await WalkMoveOrderAsync(stackId);
 
                 if (stop == OrderStop.Blocked)
                 {
@@ -93,7 +103,7 @@ internal sealed partial class WorldScreenViewModel
 
             foreach (WorldStackId stackId in blocked)
             {
-                stops[stackId] = await WalkMoveOrderAsync(stackId);
+                stops[stackId] = IsExploring(stackId) ? await WalkExplorerAsync(stackId, attention) : await WalkMoveOrderAsync(stackId);
             }
 
             // 3. What needs the player, in bar order.
@@ -331,6 +341,7 @@ internal sealed partial class WorldScreenViewModel
                 return true;
 
             case MoveOrderPromptChoice.CancelOrder:
+                StopExploring(stack.Id);
                 SetSelectedPath(stack, null);
                 cancelledOrders.Add(stack.Id);
 
