@@ -33,6 +33,7 @@ internal sealed class TestWorldEngineBuilder
     private WorldScenarioState scenarioState = WorldScenarioState.Empty;
     private int suggestedLevel;
     private WorldTurnInfo? turnInfo;
+    private ImmutableArray<int> townIncome = [];
 
     private static ScenarioInfoTexts MakeTexts(ScenarioId scenarioId)
     {
@@ -97,6 +98,13 @@ internal sealed class TestWorldEngineBuilder
     public TestWorldEngineBuilder WithMaxCityLevel(int newMaxCityLevel)
     {
         maxCityLevel = newMaxCityLevel;
+        return this;
+    }
+
+    // Gallean Upgrade: map rule "town income" (docs/town-income.md).
+    public TestWorldEngineBuilder WithTownIncome(ImmutableArray<int> newTownIncome)
+    {
+        townIncome = newTownIncome;
         return this;
     }
 
@@ -369,7 +377,7 @@ internal sealed class TestWorldEngineBuilder
 
         TestWorldStateValidator.Validate(state, definitions);
 
-        ScenarioDefinition scenarioDefinition = new(scenarioId, MakeTexts(scenarioId), suggestedLevel, maxLeaderLevel, maxCityLevel, NextScenarioId: null);
+        ScenarioDefinition scenarioDefinition = new(scenarioId, MakeTexts(scenarioId), suggestedLevel, maxLeaderLevel, maxCityLevel, NextScenarioId: null) { TownIncome = townIncome };
         EngineContext context = new(random, definitions, new UnitStatsProvider(definitions, globals, scenarioDefinition), new GameScenarioProvider(scenarioEvents, scenarioLocations, scenarioStackTemplates, scenarioVariables, scenarioDefinition), globals);
 
         return (new WorldEngine(context, state), context);
@@ -417,7 +425,7 @@ internal sealed class TestWorldEngineBuilder
 
         TestWorldStateValidator.Validate(state, definitions);
 
-        ScenarioDefinition scenarioDefinition = new(scenarioId, MakeTexts(scenarioId), suggestedLevel, maxLeaderLevel, maxCityLevel, NextScenarioId: null);
+        ScenarioDefinition scenarioDefinition = new(scenarioId, MakeTexts(scenarioId), suggestedLevel, maxLeaderLevel, maxCityLevel, NextScenarioId: null) { TownIncome = townIncome };
         EngineContext context = new(random, definitions, new UnitStatsProvider(definitions, globals, scenarioDefinition), new GameScenarioProvider(scenarioEvents, scenarioLocations, scenarioStackTemplates, scenarioVariables, scenarioDefinition), globals);
         GameSession session = new(context, state);
 
