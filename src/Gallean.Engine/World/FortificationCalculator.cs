@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Runtime.CompilerServices;
 
 namespace Gallean.Engine;
 
@@ -204,7 +205,29 @@ internal static partial class FortificationCalculator
         return SetProtection(units, modifierId: null);
     }
 
+    // Gallean Upgrade (engine speed): UpdateUnitModifiers runs after every step for every army and garrison of the map,
+    // and almost all of them keep the same unit grid object between states. A grid already found to carry exactly
+    // this protection is remembered, so the units are only checked again when the grid or the protection changes.
+    private static readonly ConditionalWeakTable<UnitGrid<WorldUnit>, StrongBox<UnitModifierDefinitionId?>> VerifiedProtections = [];
+
     private static bool HasProtection(UnitGrid<WorldUnit> units, UnitModifierDefinitionId? modifierId)
+    {
+        if (VerifiedProtections.TryGetValue(units, out StrongBox<UnitModifierDefinitionId?>? verified) && verified.Value == modifierId)
+        {
+            return true;
+        }
+
+        if (HasProtectionCore(units, modifierId))
+        {
+            VerifiedProtections.AddOrUpdate(units, new StrongBox<UnitModifierDefinitionId?>(modifierId));
+
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool HasProtectionCore(UnitGrid<WorldUnit> units, UnitModifierDefinitionId? modifierId)
     {
         foreach ((WorldUnit unit, _) in units.GetUnits())
         {
