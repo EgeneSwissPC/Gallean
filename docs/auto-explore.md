@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: all open questions answered (A1, B1, C1, D3, E1, F1, G3, H1). Both phases merged: 1 (c28c0ba1, merge f8548b96), 2 (211b099c, merge 75b136fd).
+Status: all open questions answered (A1, B1, C1, D3, E1, F1, G3, H1). Both phases merged: 1 (c28c0ba1, merge f8548b96), 2 (211b099c, merge 75b136fd); background walks on End turn (ad3e626c, merge 11f7c21e).
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -24,6 +24,7 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **When the player takes over (decided while building phase 2).** Any new path picked for the army (hover click, two-click path, re-plan) ends exploring; Continue (M) on the explorer's own path doesn't. Arrivals don't end it.
 - **Legs per turn (decided while building phase 2).** With move points left after arriving, the explorer picks the next edge and walks on, up to 64 legs per turn (a loop guard only: each leg is often a tile or two because the next edge is right ahead).
 - **"No more land" during the walks (decided while building phase 2).** It goes into the move orders' end-of-turn list ("<leader> has no more land to explore."), so the turn stays open once, like any other army that needs the player; pressing Explore on such an army shows the same as a popup and doesn't start.
+- **Explorers walk at the same time on End turn (user request after phase 2, option A).** The camera stays where the player left it; all explorers' walks play together as one animation instead of one after another with the camera following each. Only explorers: ordinary move orders keep walking one by one with the camera (the user chose A over C, "move orders too"; no switch). Pressing Explore still walks that one army right away with its normal animation.
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -160,3 +161,27 @@ Feature commit 211b099c, merged into gallean-upgrade as 75b136fd (after merging 
 - The weights (10 / 3 / road 10 / distance 3) are still the start values: no tuning run on a big map yet. Watching an explorer for a few turns in a real game is the useful next check; all four are `AutoExploreSettings` and can become per-map settings if needed.
 - Not saved (decision F1): loading a save turns explorers into normal armies.
 - Sighting checks hostile armies on seen tiles, not only those in current vision, so an enemy remembered on a seen tile counts as known.
+
+## Background walks on End turn — done
+
+User request after phase 2: with many scouts, End turn waited for every explorer's walk in turn and the camera jumped around. Options offered: A explorers walk together in the background (taken), B no animation at all, C as A plus move orders. Feature commit ad3e626c, merged as 11f7c21e.
+
+**What was built**
+
+- `WalkMoveOrdersAsync` walks the explorers first, in `WalkExplorersInBackgroundAsync`: with the event queue held (`holdEventQueue`, checked in `ProcessEventQueue`), each explorer steps through the engine without animation (`StepExplorerAsync`: legs, next target on arrival, the guarded stop before battles / thief / site, the sighting stop, a retry pass for armies blocked by our own). Then `WorldEventQueue.GroupStackMoves` replaces the explorers' queued moves with one `Entry.StackMoveGroup` (each army's legs joined into one walk) and the queue plays.
+- `Entry.StackMoveGroup` -> `WorldAnimationState.StackMoveGroup` -> render `StackMoveGroup` (one `StackMove` per army; the renderer draws them all, the composer leaves those armies out of the static layer, preload covers every army, one step sound for the group). No focus, so the camera doesn't move.
+- Move orders then walk as before; questions (battle prompt, site, thief) come one by one after the walks, as before.
+
+**Tests**
+
+- `ExplorersWalkTogetherOnEndTurnTest`: two explorers, End turn plays one group with both (the explorer's legs joined into one walk of more than 2 steps), the render request carries the group animation, the camera doesn't move, both walked and still explore. Mutation: without `GroupStackMoves` the test fails (a single army's move plays instead).
+- `MoveOrdersStillWalkOneByOneTest`: an ordinary order still plays as a normal single-army move.
+- Visual `WorldAutoExploreTogetherTest` (S107, the hero and two copies exploring): one group of 3 (11, 11 and 12 steps), all three drawn walking at the same time, 0 camera jumps while the group played.
+- Full non-visual suite 5654 on our branch (5652 + 2); 5656 after merging in the parallel AI-speed work.
+
+**Real client**: AOT publish builds and runs. On the 5th Column quest a computer army attacks right after End turn, so the group walk couldn't be watched there (same as phase 2); the visual test with the real pack is the check. Recipe: several explorers on a big map (War of the Ring), then End turn.
+
+**Known limits**
+
+- Scenario messages or other events that happen during an explorer's background steps play after the group, not at the moment the army stepped.
+- Explorers that walk off-screen are not shown; the turn still waits for the longest walk (all walks play in parallel, so the wait is one walk, not the sum).
