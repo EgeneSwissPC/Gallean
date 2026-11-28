@@ -34,13 +34,13 @@ public sealed class LanguageDatabaseLoaderTests
         Assert.That(other.TextScenarios, Is.Empty);
     }
 
-    [TestCase("cs", 2292, 251, 70)]
-    [TestCase("de", 2292, 251, 63)]
-    [TestCase("es", 2292, 251, 58)]
-    [TestCase("fr", 2292, 251, 51)]
-    [TestCase("it", 2292, 251, 58)]
-    [TestCase("pl", 2292, 251, 86)]
-    [TestCase("ru", 2293, 251, 111)]
+    [TestCase("cs", 2294, 251, 70)]
+    [TestCase("de", 2294, 251, 63)]
+    [TestCase("es", 2294, 251, 58)]
+    [TestCase("fr", 2294, 251, 51)]
+    [TestCase("it", 2294, 251, 58)]
+    [TestCase("pl", 2294, 251, 86)]
+    [TestCase("ru", 2295, 251, 111)]
     public void LanguagesTest(string code, int textGlobals, int textLeaders, int scenarioInfos)
     {
         GlobalDatabaseIndex globalDb = GlobalDatabaseLoader.LoadIndex(RiseOfTheElves.GlobalDatabasePath);

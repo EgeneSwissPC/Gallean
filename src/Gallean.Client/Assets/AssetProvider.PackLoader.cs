@@ -15,17 +15,30 @@ internal sealed partial class AssetProvider
 
         public static IReadOnlyList<AssetPack>? Load()
         {
-            return LoadFrom(GetAssetsDirectory(AppContext.BaseDirectory)) ??
-                   LoadFrom(AppContext.BaseDirectory) ??
-                   LoadFrom(AppDirectories.Assets);
+            return LoadFrom([GetAssetsDirectory(AppContext.BaseDirectory), AppContext.BaseDirectory, AppDirectories.Assets]);
         }
 
-        private static IReadOnlyList<AssetPack>? LoadFrom(string directory)
+        // The base pack comes from the first directory that has one (a user's installed pack next to the
+        // game wins over the one in the data folder). Overlay (sparse) packs are taken from every
+        // directory, so packs shipped with the game, e.g. new units' art in Assets/, also apply to a
+        // base pack installed in the data folder.
+        internal static IReadOnlyList<AssetPack>? LoadFrom(IReadOnlyList<string> directories)
         {
-            List<AssetPack> packs = ReadPacks(directory);
-            List<AssetPack> selectedPacks = SelectPacks(packs);
+            List<AssetPack> all = [];
+            AssetPack? basePack = null;
 
-            foreach (AssetPack pack in packs)
+            foreach (string directory in directories.Distinct(StringComparer.Ordinal))
+            {
+                List<AssetPack> packs = ReadPacks(directory);
+                all.AddRange(packs);
+                basePack ??= SelectPacks(packs).FirstOrDefault();
+            }
+
+            List<AssetPack> selectedPacks = basePack is null
+                ? []
+                : [basePack, .. all.Where(static pack => pack.Manifest.Sparse).OrderBy(static pack => pack.Manifest.CreatedAt)];
+
+            foreach (AssetPack pack in all)
             {
                 if (!selectedPacks.Contains(pack))
                 {

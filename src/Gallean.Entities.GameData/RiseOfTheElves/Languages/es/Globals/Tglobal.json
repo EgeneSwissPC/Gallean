@@ -6704,8 +6704,20 @@
       "CONTEXT": null
     },
     {
+      "TXT_ID": "x000tg9990",
+      "TEXT": "Tide Warden",
+      "VERIFIED": false,
+      "CONTEXT": null
+    },
+    {
       "TXT_ID": "x000tg2828",
       "TEXT": "El trit\u00F3n descansa esperando a los marineros perdidos, captur\u00E1ndolos y devor\u00E1ndolos cuando est\u00E1n indefensos en el mar.",
+      "VERIFIED": false,
+      "CONTEXT": null
+    },
+    {
+      "TXT_ID": "x000tg9991",
+      "TEXT": "A warrior of the deep who guards the drowned shrines. He leaves the water only to drive his coral trident through those who come too close.",
       "VERIFIED": false,
       "CONTEXT": null
     },

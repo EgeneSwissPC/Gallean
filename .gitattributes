@@ -10,3 +10,4 @@
 *.safetensors binary
 *.ttf binary
 *.webp binary
+*.galleanpack binary
