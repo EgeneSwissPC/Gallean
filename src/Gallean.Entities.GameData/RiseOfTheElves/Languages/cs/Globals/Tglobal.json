@@ -6704,8 +6704,20 @@
       "CONTEXT": null
     },
     {
+      "TXT_ID": "x000tg9990",
+      "TEXT": "Tide Warden",
+      "VERIFIED": false,
+      "CONTEXT": null
+    },
+    {
       "TXT_ID": "x000tg2828",
       "TEXT": "Mo\u0159sk\u00FD mu\u017E \u010D\u00EDh\u00E1 na ztracen\u00E9 n\u00E1mo\u0159n\u00EDky, kter\u00E9 zaj\u00EDm\u00E1 je a po\u017E\u00EDr\u00E1 ve chv\u00EDli, kdy se na mo\u0159i ocitnou sami a bezbrann\u00ED.",
+      "VERIFIED": false,
+      "CONTEXT": null
+    },
+    {
+      "TXT_ID": "x000tg9991",
+      "TEXT": "A warrior of the deep who guards the drowned shrines. He leaves the water only to drive his coral trident through those who come too close.",
       "VERIFIED": false,
       "CONTEXT": null
     },

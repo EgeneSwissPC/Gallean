@@ -6704,8 +6704,20 @@
       "CONTEXT": null
     },
     {
+      "TXT_ID": "x000tg9990",
+      "TEXT": "Tide Warden",
+      "VERIFIED": false,
+      "CONTEXT": null
+    },
+    {
       "TXT_ID": "x000tg2828",
       "TEXT": "Utopiec czai si\u0119 na zagubionych, bezbronnych \u017Ceglarzy, by ich schwyta\u0107 i po\u017Cre\u0107.",
+      "VERIFIED": false,
+      "CONTEXT": null
+    },
+    {
+      "TXT_ID": "x000tg9991",
+      "TEXT": "A warrior of the deep who guards the drowned shrines. He leaves the water only to drive his coral trident through those who come too close.",
       "VERIFIED": false,
       "CONTEXT": null
     },

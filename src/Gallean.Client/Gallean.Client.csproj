@@ -31,6 +31,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Overlay art packs shipped with gallean-upgrade (new units); loaded on top of the installed base pack. -->
+    <Content Include="..\..\assets\packs\*.galleanpack" Link="Assets\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\Gallean.Assets\Gallean.Assets.csproj" />
     <ProjectReference Include="..\Gallean.Client.Shaders\Gallean.Client.Shaders.csproj" />
     <ProjectReference Include="..\Gallean.Client.Texts\Gallean.Client.Texts.csproj" />
