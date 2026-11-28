@@ -57,38 +57,9 @@ public sealed record WorldCreateRodCommand(
             return WorldCommandResult.Fail(WorldCommandError.TargetTooFar);
         }
 
-        foreach (WorldRod rod in state.Rods.Values)
+        if (GetSpotError(state, plan, context.Globals, currentPlayer, TargetPosition) is { } spotError)
         {
-            if (rod.Position.GetDistance(TargetPosition) <= context.Globals.RodSpacingRange)
-            {
-                return WorldCommandResult.Fail(WorldCommandError.RodInvalidLocation);
-            }
-        }
-
-        WorldMapCell cell = state.Map.GetCellAt(TargetPosition);
-
-        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain)
-        {
-            return WorldCommandResult.Fail(WorldCommandError.TargetUnpassable);
-        }
-
-        if (plan.HasStructureAt(TargetPosition) ||
-            plan.GetStackAt(TargetPosition) is not null ||
-            plan.GetBagAt(TargetPosition) is not null)
-        {
-            return WorldCommandResult.Fail(WorldCommandError.TargetOccupied);
-        }
-
-        WorldPlayerId? landOwnerId = plan.GetLandOwner(TargetPosition);
-
-        if (landOwnerId is not null && landOwnerId != currentPlayer)
-        {
-            WorldRelation relation = DiplomacyCalculator.GetRelation(state, currentPlayer, landOwnerId.Value);
-
-            if (relation.Alliance)
-            {
-                return WorldCommandResult.Fail(WorldCommandError.RodInvalidLocation);
-            }
+            return WorldCommandResult.Fail(spotError);
         }
 
         WorldRodId rodId = GenerateRodId(state);
@@ -96,6 +67,47 @@ public sealed record WorldCreateRodCommand(
         return WorldCommandResult.Success(
             Empty.Value,
             [new WorldRodCreatedEvent(rodId, currentPlayer, TargetPosition), new WorldStackMovementConsumedEvent(StackId, 0)]);
+    }
+
+    // Can a rod go on this tile at all (spacing, terrain, free tile, not ally land)? Shared with auto rod
+    // (docs/auto-rod.md), which looks for spots before the planter stands next to them.
+    internal static WorldCommandError? GetSpotError(WorldState state, WorldPlan plan, GlobalVariables globals, WorldPlayerId playerId, WorldPosition target)
+    {
+        foreach (WorldRod rod in state.Rods.Values)
+        {
+            if (rod.Position.GetDistance(target) <= globals.RodSpacingRange)
+            {
+                return WorldCommandError.RodInvalidLocation;
+            }
+        }
+
+        WorldMapCell cell = state.Map.GetCellAt(target);
+
+        if (cell.Terrain == WorldMapTerrain.Water || cell.Feature == WorldMapFeature.Mountain)
+        {
+            return WorldCommandError.TargetUnpassable;
+        }
+
+        if (plan.HasStructureAt(target) ||
+            plan.GetStackAt(target) is not null ||
+            plan.GetBagAt(target) is not null)
+        {
+            return WorldCommandError.TargetOccupied;
+        }
+
+        WorldPlayerId? landOwnerId = plan.GetLandOwner(target);
+
+        if (landOwnerId is not null && landOwnerId != playerId)
+        {
+            WorldRelation relation = DiplomacyCalculator.GetRelation(state, playerId, landOwnerId.Value);
+
+            if (relation.Alliance)
+            {
+                return WorldCommandError.RodInvalidLocation;
+            }
+        }
+
+        return null;
     }
 
     private static WorldRodId GenerateRodId(WorldState state)
