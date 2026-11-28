@@ -1,6 +1,6 @@
 # Auto rod planter (rod planters that find rod jobs on their own)
 
-Status: all open questions answered (A1, B3, C1, D1). Ready for phase 1.
+Status: all open questions answered (A1, B3, C1, D1). Phase 1 (engine) done; phase 2 (client) next.
 
 Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Builds on auto explore (`docs/auto-explore.md`).
 
@@ -34,7 +34,7 @@ Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Buil
 
 ## Phases
 
-1. Engine calculator + tests (~1 day).
+1. ~~Engine calculator + tests (~1 day).~~ Done, see "Phase 1 — done".
 2. Client: button, hotkey, walks on End turn and right away, card look, messages (~1 day). Real-client check.
 
 ## Open questions
@@ -43,3 +43,25 @@ Gallean Upgrade only. Human players only; the AI keeps its own `RodAction`. Buil
 - ~~**B. Plant by itself or ask first?**~~ Answered: B3 (see Decisions).
 - ~~**C. Not enough gold to plant?**~~ Answered: C1 (see Decisions).
 - ~~**D. Hotkey and button.**~~ Answered: D1 (see Decisions).
+
+## Phase 1 — done
+
+Engine only; nothing on screen yet.
+
+**What was built**
+
+- `World/AutoRodCalculator.cs`: `FindJob(state, stack, context, skippedSpots, previousExploreTarget, settings, exploreSettings)` returns `AutoRodPick(Job, ShortOfGold)`. Job is `Plant(Target, StandAt, PathCost, Resource, IsNeededMana)`, `Remove(Target, StandAt, PathCost)`, `Explore(AutoExploreResult.Target)`, `NothingLeft`, `NoTargetNow` or `NotRodPlanter`.
+  1. Jobs (A1), only on seen tiles: hostile rods (seen tile) and plant spots around seen resource nodes on neutral or hostile land with no rod around them; spots the player skipped this run are left out (B3); plant jobs only when the player can pay `RodCost` (C1, `ShortOfGold` tells the client to say so once).
+  2. Score like `RodAction`: interest x share of the move budget left (budget = max move points x 10 turns, 30 for a needed mana). Interests are the original GAI values, plant 120 (needed mana x2, max 200), remove 105 (`AutoRodSettings`). "Needed mana" = the AI's rule (mana short for the cheapest level-3 spell the lord can research), computed for the human player.
+  3. Stand tiles: within range of the target (1), not the target, seen, free to stand on, not a city or site, outside explore's danger zone (D3 of auto explore, shared `SafetyDistance`); the planter's own tile counts with cost 0 unless it stands in a city. Best first, the path must have no battle or thief encounter (bags are fine).
+  4. No job: falls back to `AutoExploreCalculator.FindTarget` (Explore / NothingLeft / NoTargetNow).
+- `World/Commands/WorldGetAutoRodJobCommand.cs`: read-only command for the client.
+- `WorldCreateRodCommand.GetSpotError`: the spot rules (spacing, terrain, free tile, not ally land) moved into one helper used by both the command and the calculator, so a spot auto rod picks is always one the real command accepts. The command's checks and their order are unchanged.
+- `AutoExploreCalculator.BuildDangerZone` is now internal (shared).
+
+**Tests** (`AutoRodCalculatorTests`, 15): walks to a seen resource / plants without moving when in range / the picked spot is accepted by the real command; resource or hostile rod in the fog is unknown -> explores; removes a seen hostile rod; short of gold still removes rods / skips plant jobs and explores (ShortOfGold set); skipped spots are not picked again (all skipped -> explores); resource with a rod next to it and own rods are no job; everything seen and no job -> NothingLeft; job next to a known enemy army skipped; leader without the Rod ability -> NotRodPlanter; a removal next door beats a plant 3-4 turns away.
+
+**Known limits**
+
+- Like `RodAction`, distance only scales the interest down: a plant spot one turn away still beats a removal next door.
+- Fog tiles never go dark again, so a hostile rod planted later on an old seen tile counts as known, and a removed one stops being a job at once (the state is read directly, like the explore calculator does for armies and bags).

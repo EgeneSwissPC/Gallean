@@ -214,7 +214,7 @@ internal static class AutoExploreCalculator
     // Tiles within the safety distance of a known hostile army that moves around: on a seen tile, not in a city, not
     // of the explorer's own subrace (the armies that could intercept a path, see
     // PathTraversalCalculator.FindInterceptingStack).
-    private static ImmutableBitmap BuildDangerZone(
+    internal static ImmutableBitmap BuildDangerZone(
         WorldState state,
         WorldPlan plan,
         ImmutableBitmap seen,
