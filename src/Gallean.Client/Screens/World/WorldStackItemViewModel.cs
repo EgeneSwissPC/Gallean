@@ -41,6 +41,10 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
     [ObservableProperty]
     public partial int? OrderTurns { get; private set; }
 
+    // Gallean Upgrade: auto explore (docs/auto-explore.md).
+    [ObservableProperty]
+    public partial bool IsExploring { get; private set; }
+
     public void Update(
         WorldStack stack,
         WorldPlan plan,
@@ -50,7 +54,8 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
         int? orderTurns,
         IGameDefinitionProvider definitions,
         IGameTextProvider texts,
-        IUnitStatsProvider stats)
+        IUnitStatsProvider stats,
+        bool isExploring = false)
     {
         (WorldUnit leader, GridPosition _, UnitDefinition _) = stack.GetLeader(definitions);
         StackStats stackStats = stats.GetWorldStackStats(stack);
@@ -67,5 +72,6 @@ internal sealed partial class WorldStackItemViewModel(WorldStackId stackId) : Ob
         IsInFortification = fortification is not null && fortification.Owner == stack.OwnerId;
         HasMoveOrder = hasMoveOrder;
         OrderTurns = orderTurns;
+        IsExploring = isExploring;
     }
 }

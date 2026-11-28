@@ -1761,6 +1761,12 @@
     "Upgraded this turn": "Отстроен в этом ходу",
     "Previous city": "Предыдущий город",
     "Next city": "Следующий город",
-    "A": "A"
+    "A": "A",
+    "L": "L",
+    "No more land this army can reach": "Этой армии больше некуда идти",
+    "No more land to explore": "Больше нечего исследовать",
+    "{0} has no more land it can reach.": "{0}: больше нет земель, до которых можно дойти.",
+    "{0} has no more land to explore.": "{0}: больше нечего исследовать.",
+    "{0} spotted an enemy army.": "{0} заметил вражескую армию."
   }
 }

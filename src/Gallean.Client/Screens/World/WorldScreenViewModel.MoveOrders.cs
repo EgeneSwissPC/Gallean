@@ -77,6 +77,8 @@ internal sealed partial class WorldScreenViewModel
 
     private void ForgetMissingMoveOrders()
     {
+        ForgetMissingExplorers();
+
         foreach (WorldStackId stackId in confirmedOrders.ToList())
         {
             if (!WorldState.Stacks.ContainsKey(stackId))
@@ -148,6 +150,7 @@ internal sealed partial class WorldScreenViewModel
         }
 
         replanStackId = null;
+        StopExploring(stack.Id);
         SetSelectedPath(stack, null);
     }
 
@@ -160,7 +163,7 @@ internal sealed partial class WorldScreenViewModel
 
         WorldStack? stack = ResolveSelectedStack();
 
-        return stack is not null && HasMoveOrder(stack);
+        return stack is not null && (HasMoveOrder(stack) || IsExploring(stack.Id));
     }
 
     [RelayCommand(CanExecute = nameof(CanSelectNextOrderedStack))]
@@ -215,6 +218,7 @@ internal sealed partial class WorldScreenViewModel
     private void NotifyMoveOrderCommandsChanged()
     {
         CancelMoveOrderCommand.NotifyCanExecuteChanged();
+        ToggleAutoExploreCommand.NotifyCanExecuteChanged();
         SelectNextOrderedStackCommand.NotifyCanExecuteChanged();
         SelectPreviousOrderedStackCommand.NotifyCanExecuteChanged();
     }

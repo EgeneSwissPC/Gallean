@@ -71,6 +71,7 @@ internal sealed partial class WorldScreenViewModel :
             SelectPreviousStackCommand,
             SelectNextStackCommand,
             CancelMoveOrderCommand,
+            ToggleAutoExploreCommand,
             SelectNextOrderedStackCommand,
             SelectPreviousOrderedStackCommand,
             OpenCapitalCommand,
@@ -1032,6 +1033,12 @@ internal sealed partial class WorldScreenViewModel :
         // doesn't jump to the front of the bar and back.
         bool replanning = path is not null && IsReplanning(stack);
 
+        // Gallean Upgrade: a path the player picks ends auto explore (Continue on the explorer's own path doesn't).
+        if (path is not null && (!stackDestinations.TryGetValue(stack.Id, out WorldPosition explored) || explored != path.Destination))
+        {
+            StopExploring(stack.Id);
+        }
+
         if (!replanning && (!stackDestinations.TryGetValue(stack.Id, out WorldPosition oldDestination) || path is null || oldDestination != path.Destination))
         {
             ForgetMoveOrder(stack.Id);
@@ -1572,7 +1579,7 @@ internal sealed partial class WorldScreenViewModel :
     {
         foreach (WorldStack stack in WorldState.Stacks.Values)
         {
-            if (stack.OwnerId == ViewPlayerId && stack.MovementPoints > 0 && !IsFinished(stack) && !HasMoveOrder(stack))
+            if (stack.OwnerId == ViewPlayerId && stack.MovementPoints > 0 && !IsFinished(stack) && !HasMoveOrder(stack) && !IsExploring(stack.Id))
             {
                 return true;
             }
@@ -1595,11 +1602,12 @@ internal sealed partial class WorldScreenViewModel :
                 plan,
                 stack.Id == cursor.StackId,
                 IsFinished(stack),
-                HasMoveOrder(stack),
-                GetOrderTurns(stack),
+                HasMoveOrder(stack) || IsExploring(stack.Id),
+                IsExploring(stack.Id) ? null : GetOrderTurns(stack),
                 GameModel.Definitions,
                 GameModel.Texts,
-                GameModel.Stats);
+                GameModel.Stats,
+                IsExploring(stack.Id));
 
             newItems.Add(newItem);
         }
@@ -1626,11 +1634,12 @@ internal sealed partial class WorldScreenViewModel :
                     plan,
                     stack.Id == cursor.StackId,
                     IsFinished(stack),
-                    HasMoveOrder(stack),
-                    GetOrderTurns(stack),
+                    HasMoveOrder(stack) || IsExploring(stack.Id),
+                    IsExploring(stack.Id) ? null : GetOrderTurns(stack),
                     GameModel.Definitions,
                     GameModel.Texts,
-                    GameModel.Stats);
+                    GameModel.Stats,
+                    IsExploring(stack.Id));
 
                 index++;
             }
