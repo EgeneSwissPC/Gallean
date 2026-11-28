@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: proposal, open questions E-H below (A-D answered). Nothing built yet.
+Status: proposal, open questions F-H below (A-E answered). Nothing built yet.
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -13,6 +13,7 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **Roads (question B: B1).** Only roads that lead into the unknown get a score bonus: the seen end of a road that continues into the fog. Roads ending at known places get none. The bonus is a tunable constant, starting at 10 tiles' worth, to be tuned on the 1024 War of the Ring map.
 - **What stops an explorer (question C: C1).** The same as move orders (a battle in reach asks the move-order prompt, bags are picked up, sites ask on arrival), plus: an enemy army newly seen within 3 tiles (tunable, start value 3) stops the explorer for the rest of the turn and puts it in the end-of-turn list of armies that need the player. It keeps exploring next turn unless the player changes it.
 - **Danger (question D: D3).** Targets within the safety distance of a known hostile army (not one standing still in a city) are skipped. The distance is one tunable setting shared with the C1 sighting rule (start value 3), so explorers stay out of the zone where they would stop anyway. If the only hidden land lies inside such zones, the result is NoTargetNow (try again next turn), never "no more land". Interception on the path stays covered by the path's battle check.
+- **Key and button (question E: E1).** Hotkey **L** ("look around") plus a compass button on the selected army's card next to Continue and Stop. L or the button again, X or Stop end exploring. Greyed with a tooltip when there is no more land. (I is taken by the cities list in `docs/cities-overview.md`.)
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -30,7 +31,7 @@ On 512 and 1024 maps most of the map stays hidden for dozens of turns. Scouting 
 
 ## What the player would see
 
-1. Select an army. Next to Continue and Stop on its card there is an **Explore** button (compass icon), hotkey proposal **L** (question E).
+1. Select an army. Next to Continue and Stop on its card there is an **Explore** button (compass icon), hotkey **L** (decision E).
 2. Click it: the army walks at once with the move points it has left, toward the best unknown area, and keeps exploring every turn when you press End turn. Its card gets the order look (soft green move points) plus a compass mark instead of the turns count.
 3. When it reaches a target it picks the next one by itself; the path drawn when you select it is the current target.
 4. Anything you would want to decide stops it, like a move order: a battle in reach asks the move-order prompt (Attack / Plan another path / Cancel order), a site asks on arrival.
@@ -86,7 +87,7 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 - ~~**B. How strongly to prefer roads?**~~ Answered: B1, bonus starts at 10 tiles (see Decisions).
 - ~~**C. What stops an explorer?**~~ Answered: C1, sighting distance starts at 3 (see Decisions).
 - ~~**D. Should it avoid danger?**~~ Answered: D3, shared distance with C1, starts at 3 (see Decisions).
-- **E. Hotkey and button.** E1 (recommended): L ("look around") + compass button on the card. E2: another free letter (F, G, H, I, K, Q, R, V, Y, Z).
+- ~~**E. Hotkey and button.**~~ Answered: E1, L + compass button (see Decisions).
 - **F. Saving.** F1 (recommended, consistent with move orders): not saved, loading a save forgets it. F2: save it (engine/save-format change, then move orders should be saved too).
 - **G. Explore all.** G1: phase 3 as above. G2 (recommended): skip for now; one button per army first.
 - **H. "No more land" scope.** H1 (recommended): per army (its movement profile decides; a ship and a land army differ), the button re-enables when the map changes. H2: per player: once one army finds nothing, the button is disabled for all (wrong for ships vs land armies, simpler message).
