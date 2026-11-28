@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: proposal, open question H below (A-G answered). Nothing built yet.
+Status: all open questions answered (A1, B1, C1, D3, E1, F1, G3, H1). Nothing built yet; phase 1 is next.
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -16,6 +16,7 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **Key and button (question E: E1).** Hotkey **L** ("look around") plus a compass button on the selected army's card next to Continue and Stop. L or the button again, X or Stop end exploring. Greyed with a tooltip when there is no more land. (I is taken by the cities list in `docs/cities-overview.md`.)
 - **Saving (question F: F1).** Not saved, like move orders: loading a save forgets auto explore and the army becomes a normal army again (user: "do not save it"). The feature stays client-only, no engine or save-format change.
 - **Explore all (question G: G3).** No "explore all" command for now (user's choice); one army at a time with L or the card button.
+- **"No more land" scope (question H: H1).** Per army: the check uses that army's movement profile (a ship and a land army differ). The message names the army, only its button greys out, and it comes back when the map changes. Land blocked only by the D3 safety distance never counts as "no more land".
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -91,4 +92,4 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 - ~~**E. Hotkey and button.**~~ Answered: E1, L + compass button (see Decisions).
 - ~~**F. Saving.**~~ Answered: F1, not saved (see Decisions).
 - ~~**G. Explore all.**~~ Answered: G3, not for now (see Decisions).
-- **H. "No more land" scope.** H1 (recommended): per army (its movement profile decides; a ship and a land army differ), the button re-enables when the map changes. H2: per player: once one army finds nothing, the button is disabled for all (wrong for ships vs land armies, simpler message).
+- ~~**H. "No more land" scope.**~~ Answered: H1, per army (see Decisions).
