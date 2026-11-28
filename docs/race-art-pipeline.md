@@ -45,7 +45,7 @@ Status: research, nothing built. First step towards a race creator (a new "water
 5. **Rest of the race:** soldier lines, capital art, buildings, land tiles (separate spec when we get there).
 
 ## Open questions
-- A. GPU: buy/borrow a 16-24 GB card for the desktop or a VM, or rent? (Recommend a used RTX 3090 24 GB in a passthrough VM; renting conflicts with "local only".)
+- ~~A. GPU~~: the user chose to **rent hourly** (open-source tools still, rented machine only for the GPU steps). Prices read 2026-11-27 from price trackers: Vast.ai RTX 3090 from ~$0.09-0.20/h, RTX 4090 ~$0.27/h; RunPod Community Cloud RTX 4090 $0.34/h (Secure Cloud $0.89/h). Both bill per second, give SSH and have a CLI/API, so the agent can start a box, run a job and stop it. Salad (~$0.09-0.33/h) is batch containers without a normal SSH box; Hetzner GEX is monthly dedicated, not hourly. Pick: Vast.ai for price, RunPod for reliability; template image with ComfyUI + Hunyuan3D/TRELLIS + Blender, models on a persistent volume so start-up takes minutes.
 - B. Faithful look vs new look: match the original dark painted style closely (recommended, the units must sit next to existing ones), or allow a fresher style?
 - C. First unit: a new soldier made from scratch, or a re-skin/re-pose of the Mermaid to prove the pipeline end-to-end faster? (Recommend the re-skin first, then from scratch.)
 - D. Animation source: hand-keyed in Blender by us, or retargeted motion sets? (Recommend retargeting for walk/idle, hand-keyed attacks.)
