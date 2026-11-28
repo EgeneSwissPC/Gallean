@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: proposal, open questions D-H below (A-C answered). Nothing built yet.
+Status: proposal, open questions E-H below (A-D answered). Nothing built yet.
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -12,6 +12,7 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **When it walks (question A: A1).** Right away when Explore is pressed, with the move points the army has left, and then on every End turn together with the move orders (user: "right away and on every end turn").
 - **Roads (question B: B1).** Only roads that lead into the unknown get a score bonus: the seen end of a road that continues into the fog. Roads ending at known places get none. The bonus is a tunable constant, starting at 10 tiles' worth, to be tuned on the 1024 War of the Ring map.
 - **What stops an explorer (question C: C1).** The same as move orders (a battle in reach asks the move-order prompt, bags are picked up, sites ask on arrival), plus: an enemy army newly seen within 3 tiles (tunable, start value 3) stops the explorer for the rest of the turn and puts it in the end-of-turn list of armies that need the player. It keeps exploring next turn unless the player changes it.
+- **Danger (question D: D3).** Targets within the safety distance of a known hostile army (not one standing still in a city) are skipped. The distance is one tunable setting shared with the C1 sighting rule (start value 3), so explorers stay out of the zone where they would stop anyway. If the only hidden land lies inside such zones, the result is NoTargetNow (try again next turn), never "no more land". Interception on the path stays covered by the path's battle check.
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -84,7 +85,7 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 - ~~**A. When does an exploring army walk?**~~ Answered: A1 (see Decisions).
 - ~~**B. How strongly to prefer roads?**~~ Answered: B1, bonus starts at 10 tiles (see Decisions).
 - ~~**C. What stops an explorer?**~~ Answered: C1, sighting distance starts at 3 (see Decisions).
-- **D. Should it avoid danger?** D1 (recommended): never target a tile next to a known hostile army (interception would start a fight). D2: avoid only tiles where the path ends in battle (the AI's rule).
+- ~~**D. Should it avoid danger?**~~ Answered: D3, shared distance with C1, starts at 3 (see Decisions).
 - **E. Hotkey and button.** E1 (recommended): L ("look around") + compass button on the card. E2: another free letter (F, G, H, I, K, Q, R, V, Y, Z).
 - **F. Saving.** F1 (recommended, consistent with move orders): not saved, loading a save forgets it. F2: save it (engine/save-format change, then move orders should be saved too).
 - **G. Explore all.** G1: phase 3 as above. G2 (recommended): skip for now; one button per army first.
