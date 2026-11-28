@@ -1758,6 +1758,9 @@
     "Sort by": "Sort by",
     "To level {0}": "To level {0}",
     "Upgrade {0} to {1:*}": "Upgrade {0} to {1:*}",
-    "Upgraded this turn": "Upgraded this turn"
+    "Upgraded this turn": "Upgraded this turn",
+    "Previous city": "Previous city",
+    "Next city": "Next city",
+    "A": "A"
   }
 }

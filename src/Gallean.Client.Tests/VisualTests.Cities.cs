@@ -108,4 +108,59 @@ public sealed partial class VisualTests
 
         settings.Language = Language.English;
     }
+
+    // Phase 2: the A / D keycaps and the "2 / 6" counter beside the city name; the capital, then the next town, then
+    // the same town in Russian.
+    [AvaloniaTest]
+    public async Task CitySwitchTest()
+    {
+        using Sandbox sb = Sandbox.Create();
+
+        GameModel loaded = LoadScenario(null);
+        WorldState state = loaded.World.State;
+        WorldPlayerId viewer = loaded.Snapshot.ViewPlayerId;
+        var fortifications = state.Fortifications;
+
+        foreach (WorldCity owned in state.Fortifications.Values.OfType<WorldCity>())
+        {
+            fortifications = fortifications.SetItem(owned.Id, owned with { OwnerId = viewer });
+        }
+
+        GameModel gameModel = LoadScenario(state with { Fortifications = fortifications });
+        (GameViewModel gameViewModel, GameView window) = Initialize(sb, BaseWidth, BaseHeight);
+
+        await gameModel.World.DispatchCommandAsync(new WorldStartGameCommand());
+        WorldScreenViewModel viewModel = new(gameModel, gameViewModel, new RandomProvider(0));
+        gameViewModel.ShowScreen(viewModel);
+        await WaitForWorldAsync(window);
+
+        for (int i = 0; i < 100 && !viewModel.OpenCapitalCommand.CanExecute(null); i++)
+        {
+            await SkipFramesAsync(10);
+        }
+
+        viewModel.OpenCapitalCommand.Execute(null);
+        await SkipFramesAsync(30);
+        ManagementScreenViewModel capital = Assert.IsOfType<ManagementScreenViewModel>(gameViewModel.TopScreen);
+        TestContext.Out.WriteLine($"capital {capital.CityPositionText}");
+        Assert.That(capital.HasCityCycle, Is.True);
+        await CaptureAsync(window, "1-capital");
+
+        capital.SelectNextCityCommand.Execute(null);
+        await SkipFramesAsync(30);
+        ManagementScreenViewModel town = Assert.IsOfType<ManagementScreenViewModel>(gameViewModel.TopScreen);
+        TestContext.Out.WriteLine($"town {town.CityPositionText}");
+        await CaptureAsync(window, "2-next");
+
+        gameViewModel.CloseScreen(town);
+        SettingsScreenViewModel settings = new(gameViewModel) { Language = Language.Russian };
+        viewModel.OpenCapitalCommand.Execute(null);
+        await SkipFramesAsync(30);
+        Assert.IsOfType<ManagementScreenViewModel>(gameViewModel.TopScreen).SelectNextCityCommand.Execute(null);
+        await SkipFramesAsync(30);
+        await CaptureAsync(window, "3-next-ru");
+
+        settings.Language = Language.English;
+    }
 }
+

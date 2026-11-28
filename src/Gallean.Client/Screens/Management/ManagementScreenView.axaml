@@ -8,6 +8,9 @@
   <UserControl.KeyBindings>
     <KeyBinding Gesture="Q" Command="{Binding SelectPreviousTabCommand}" />
     <KeyBinding Gesture="E" Command="{Binding SelectNextTabCommand}" />
+    <!-- Gallean Upgrade: previous / next city. -->
+    <KeyBinding Gesture="A" Command="{Binding SelectPreviousCityCommand}" />
+    <KeyBinding Gesture="D" Command="{Binding SelectNextCityCommand}" />
   </UserControl.KeyBindings>
 
   <UserControl.Resources>

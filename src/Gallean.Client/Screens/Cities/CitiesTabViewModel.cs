@@ -151,26 +151,15 @@ internal sealed partial class CitiesTabViewModel : ManagementTabViewModel
         return !IsBusy;
     }
 
+    // The player's cities in the list's current order (capital first); the city screen's previous / next walks it.
+    public static IReadOnlyList<WorldFortificationId> GetCycle(GameModel gameModel)
+    {
+        return Sort(BuildRows(gameModel, out _), LastSortOrder).Select(row => row.Id).ToList();
+    }
+
     private void RefreshView()
     {
-        ICommandResult<WorldCommandError, WorldEvent, WorldGetCitiesOverviewCommand.Result> result =
-            GameModel.World.DryRunCommand(new WorldGetCitiesOverviewCommand());
-        List<CityRowViewModel> rows = [];
-        bool hasTownIncome = false;
-
-        if (!result.Failed && WorldState.TurnInfo.CurrentPlayerId == ViewPlayerId)
-        {
-            WorldPlan plan = WorldPlan.For(WorldState);
-
-            foreach (WorldGetCitiesOverviewCommand.City info in result.Data.Cities)
-            {
-                if (WorldState.Fortifications.GetValueOrDefault(info.FortificationId) is { } fortification)
-                {
-                    rows.Add(BuildRow(fortification, info, plan));
-                    hasTownIncome |= info.TownIncome is not null;
-                }
-            }
-        }
+        IReadOnlyList<CityRowViewModel> rows = BuildRows(GameModel, out bool hasTownIncome);
 
         HasTownIncome = hasTownIncome;
         Rows = Sort(rows, SortOrder);
@@ -184,15 +173,47 @@ internal sealed partial class CitiesTabViewModel : ManagementTabViewModel
         LandText = Tr("Land: +{0} per turn", rows.Sum(row => row.Land));
     }
 
-    private CityRowViewModel BuildRow(WorldFortification fortification, WorldGetCitiesOverviewCommand.City info, WorldPlan plan)
+    private static IReadOnlyList<CityRowViewModel> BuildRows(GameModel gameModel, out bool hasTownIncome)
     {
-        string name = GameModel.Texts.GetScenarioText(fortification.NameTextId);
+        GameSnapshot snapshot = gameModel.Snapshot;
+        ICommandResult<WorldCommandError, WorldEvent, WorldGetCitiesOverviewCommand.Result> result =
+            gameModel.World.DryRunCommand(new WorldGetCitiesOverviewCommand());
+        List<CityRowViewModel> rows = [];
+
+        hasTownIncome = false;
+
+        if (!result.Failed && snapshot.WorldState.TurnInfo.CurrentPlayerId == snapshot.ViewPlayerId)
+        {
+            WorldPlan plan = WorldPlan.For(snapshot.WorldState);
+
+            foreach (WorldGetCitiesOverviewCommand.City info in result.Data.Cities)
+            {
+                if (snapshot.WorldState.Fortifications.GetValueOrDefault(info.FortificationId) is { } fortification)
+                {
+                    rows.Add(BuildRow(gameModel, snapshot.WorldState, snapshot.ViewPlayerId, fortification, info, plan));
+                    hasTownIncome |= info.TownIncome is not null;
+                }
+            }
+        }
+
+        return rows;
+    }
+
+    private static CityRowViewModel BuildRow(
+        GameModel gameModel,
+        WorldState state,
+        WorldPlayerId viewer,
+        WorldFortification fortification,
+        WorldGetCitiesOverviewCommand.City info,
+        WorldPlan plan)
+    {
+        string name = gameModel.Texts.GetScenarioText(fortification.NameTextId);
         bool isCapital = fortification is WorldCapital;
         int level = fortification is WorldCity city ? city.DefinitionId.Level : 0;
 
         AssetSpriteKey? imageKey = fortification switch
         {
-            WorldCapital capital => new AssetSpriteKey.CapitalImage(WorldState.Players[capital.OwnerId].Race),
+            WorldCapital capital => new AssetSpriteKey.CapitalImage(state.Players[capital.OwnerId].Race),
             WorldCity town => new AssetSpriteKey.CityImage(town.DefinitionId.Level),
             _ => null
         };
@@ -201,7 +222,7 @@ internal sealed partial class CitiesTabViewModel : ManagementTabViewModel
 
         foreach ((WorldUnit unit, _) in fortification.Garrison.GetUnits())
         {
-            bool isWounded = unit.IsAlive && unit.Hitpoints < GameModel.Stats.GetWorldUnitStats(unit).MaxHitpoints;
+            bool isWounded = unit.IsAlive && unit.Hitpoints < gameModel.Stats.GetWorldUnitStats(unit).MaxHitpoints;
 
             faces.Add(new CityGarrisonFaceViewModel(new AssetSpriteKey.UnitFace(unit.DefinitionId), !unit.IsAlive, isWounded));
         }
@@ -209,11 +230,11 @@ internal sealed partial class CitiesTabViewModel : ManagementTabViewModel
         string? visitorName = null;
         AssetSpriteKey.UnitFace? visitorFace = null;
 
-        if (plan.GetStackAt(fortification.Entrance) is { } stack && stack.OwnerId == ViewPlayerId)
+        if (plan.GetStackAt(fortification.Entrance) is { } stack && stack.OwnerId == viewer)
         {
-            (WorldUnit leader, _, _) = stack.GetLeader(GameModel.Definitions);
+            (WorldUnit leader, _, _) = stack.GetLeader(gameModel.Definitions);
 
-            visitorName = UnitNameResolver.Resolve(leader, GameModel.Definitions, GameModel.Texts);
+            visitorName = UnitNameResolver.Resolve(leader, gameModel.Definitions, gameModel.Texts);
             visitorFace = new AssetSpriteKey.UnitFace(leader.DefinitionId);
         }
 
@@ -244,7 +265,7 @@ internal sealed partial class CitiesTabViewModel : ManagementTabViewModel
             center);
     }
 
-    private (string? Text, ResourceSetViewModel? Cost, bool CanUpgrade) FormatUpgrade(WorldGetCityInfoCommand.Growth? growth, int level)
+    private static (string? Text, ResourceSetViewModel? Cost, bool CanUpgrade) FormatUpgrade(WorldGetCityInfoCommand.Growth? growth, int level)
     {
         if (growth is null)
         {

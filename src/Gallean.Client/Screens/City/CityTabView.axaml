@@ -211,13 +211,32 @@
         <Grid Grid.Column="2" Classes.inactive="{Binding TargetedAction, Converter={x:Static ObjectConverters.IsNotNull}}" RowDefinitions="Auto,*,Auto">
           <ContentControl Grid.Row="0" Classes="ornament-panel">
             <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="6,6">
-              <local:OutlinedTextBlock Grid.Column="0"
-                                       Grid.ColumnSpan="2"
-                                       Grid.Row="0"
-                                       Margin="0,0,0,8"
-                                       Text="{Binding CityTitle}"
-                                       Classes="object-name title"
-                                       TextWrapping="Wrap" />
+              <!-- Gallean Upgrade: previous / next city keycaps around the name (docs/cities-overview.md). -->
+              <Grid Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="0" Margin="0,0,0,8" ColumnDefinitions="Auto,*,Auto">
+                <Button Grid.Column="0"
+                        Classes="hotkey"
+                        Margin="0,2,10,0"
+                        Content="{local:Text 'A'}"
+                        ToolTip.Tip="{local:Text 'Previous city'}"
+                        IsVisible="{Binding Screen.HasCityCycle}"
+                        Command="{Binding Screen.SelectPreviousCityCommand}" />
+                <StackPanel Grid.Column="1" Spacing="0">
+                  <local:OutlinedTextBlock Text="{Binding CityTitle}"
+                                           Classes="object-name title"
+                                           TextWrapping="Wrap" />
+                  <TextBlock Text="{Binding Screen.CityPositionText}"
+                             Classes="caption"
+                             Foreground="{StaticResource SecondaryTextBrush}"
+                             IsVisible="{Binding Screen.HasCityCycle}" />
+                </StackPanel>
+                <Button Grid.Column="2"
+                        Classes="hotkey"
+                        Margin="10,2,0,0"
+                        Content="{local:Text 'D'}"
+                        ToolTip.Tip="{local:Text 'Next city'}"
+                        IsVisible="{Binding Screen.HasCityCycle}"
+                        Command="{Binding Screen.SelectNextCityCommand}" />
+              </Grid>
               <Panel Grid.Column="0" Grid.Row="1" Width="96" Height="96" VerticalAlignment="Top">
                 <local:SpriteVisual SpriteKey="{Binding CityImageKey}" Stretch="UniformToFill">
                   <local:SpriteVisual.Clip>
