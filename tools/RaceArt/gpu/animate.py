@@ -32,43 +32,134 @@ for o in list(bpy.context.scene.objects):
     if o.type == "MESH" and o.name.startswith("Icosphere"):
         bpy.data.objects.remove(o)
 arm = next(o for o in bpy.context.scene.objects if o.type == "ARMATURE")
-mesh = next(o for o in bpy.context.scene.objects if o.type == "MESH")
+mesh = max((o for o in bpy.context.scene.objects if o.type == "MESH"), key=lambda o: len(o.data.vertices))
+mw = mesh.matrix_world
 arm.animation_data_clear()
 
-# Rigid weapon: move the weapon bones' weights onto the hand/forearm bone.
-parent_group = mesh.vertex_groups[bone_map["weapon_parent"]]
-for name in bone_map["weapon_bones"]:
-    group = mesh.vertex_groups.get(name)
-    if group is None:
-        continue
+PREPARED = bool(bone_map.get("prepared"))   # rig_fix.py output: weapon is its own object, body heat-weighted
+if not PREPARED:
+    # Rigid weapon: move the weapon bones' weights onto the hand/forearm bone.
+    parent_group = mesh.vertex_groups[bone_map["weapon_parent"]]
+    pts = []
+    for name in bone_map["weapon_bones"]:
+        group = mesh.vertex_groups.get(name)
+        for v in mesh.data.vertices:
+            for g in v.groups:
+                if group is not None and g.group == group.index and g.weight > 0.9:
+                    pts.append(mesh.matrix_world @ v.co)
+    for name in bone_map["weapon_bones"]:
+        group = mesh.vertex_groups.get(name)
+        if group is None:
+            continue
+        for v in mesh.data.vertices:
+            for g in v.groups:
+                if g.group == group.index and g.weight > 0:
+                    parent_group.add([v.index], g.weight, "ADD")
+        mesh.vertex_groups.remove(group)
+
+    # The automatic skin also gives parts of a long weapon to nearby leg/hip bones. Capture every vertex
+    # close to the weapon's line (through the weapon bones, extended both ways) fully onto the parent bone.
+    # The line is fitted to the vertices the skin gave to the weapon bones (the bones themselves don't run
+    # through the shaft), then extended over the whole mesh height.
+    mw = mesh.matrix_world
+    centre = sum(pts, Vector()) / len(pts)
+    cov = Matrix(((0, 0, 0), (0, 0, 0), (0, 0, 0)))
+    for p in pts:
+        d = p - centre
+        for i in range(3):
+            for j in range(3):
+                cov[i][j] += d[i] * d[j]
+    axis = Vector((0, 0, 1))
+    for _ in range(50):                      # power iteration -> main direction
+        axis = (cov @ axis).normalized()
+    grip = centre
+    dists = sorted((p - (centre + axis * (p - centre).dot(axis))).length for p in pts)
+    shaft_r = bone_map.get("weapon_radius") or dists[len(dists) // 2] * 1.6
+    ts = [(p - centre).dot(axis) for p in pts]
+    head_from = max(ts) - bone_map.get("weapon_head_length", 0.25)
+    head_r = bone_map.get("weapon_head_radius", 0.12)
+    print("weapon line", tuple(round(c, 3) for c in axis), "shaft radius", round(shaft_r, 3), "points", len(pts))
+    captured = 0
+    for v in mesh.data.vertices:
+        p = mw @ v.co
+        t = (p - grip).dot(axis)
+        dist = (p - (grip + axis * t)).length
+        radius = head_r if t > head_from else shaft_r
+        if dist < radius:
+            for g in list(v.groups):
+                mesh.vertex_groups[g.group].remove([v.index])
+            parent_group.add([v.index], 1.0, "REPLACE")
+            captured += 1
+    print("weapon vertices captured", captured)
+    weapon_verts = set()
     for v in mesh.data.vertices:
         for g in v.groups:
-            if g.group == group.index and g.weight > 0:
-                parent_group.add([v.index], g.weight, "ADD")
-    mesh.vertex_groups.remove(group)
+            if g.group == parent_group.index and g.weight >= 0.999 and len(v.groups) == 1:
+                weapon_verts.add(v.index)
 
-# The automatic skin also gives parts of a long weapon to nearby leg/hip bones. Capture every vertex
-# close to the weapon's line (through the weapon bones, extended both ways) fully onto the parent bone.
-bones = arm.data.bones
-top = arm.matrix_world @ bones[bone_map["weapon_bones"][-1]].tail_local
-grip = arm.matrix_world @ bones[bone_map["weapon_bones"][0]].head_local
-axis = (top - grip).normalized()
-length = (top - grip).length
-shaft_r = bone_map.get("weapon_radius", 0.04)
-head_r = bone_map.get("weapon_head_radius", 0.15)
-captured = 0
-mw = mesh.matrix_world
-for v in mesh.data.vertices:
-    p = mw @ v.co
-    t = (p - grip).dot(axis)
-    dist = (p - (grip + axis * t)).length
-    radius = head_r if t > length * 0.75 else shaft_r
-    if dist < radius and t > -3 * length:
+    # Capsule cleanup: the automatic skin lets bones own vertices far away from them (the hanging arm owns
+    # part of the kelp skirt, a leg owns the heel of the other foot). Drop every weight whose vertex is
+    # farther from that bone's segment than the bone's reach, renormalise, and give orphans to the
+    # nearest bone.
+    segs = {}
+    for b in arm.data.bones:
+        h, t = arm.matrix_world @ b.head_local, arm.matrix_world @ b.tail_local
+        segs[b.name] = (h, t, max(0.10, (t - h).length * 0.6))
+
+
+    def seg_dist(p, h, t):
+        d = t - h
+        k = 0.0 if d.length_squared == 0 else max(0.0, min(1.0, (p - h).dot(d) / d.length_squared))
+        return (p - (h + d * k)).length
+
+
+    reach = bone_map.get("reach_factor", 1.0)
+    names = {g.index: g.name for g in mesh.vertex_groups}
+    dropped = orphans = 0
+    for v in mesh.data.vertices:
+        if v.index in weapon_verts:
+            continue
+        p = mw @ v.co
+        keep = []
+        for g in list(v.groups):
+            name = names.get(g.group)
+            if name not in segs or g.weight <= 0:
+                continue
+            h, t, r = segs[name]
+            if seg_dist(p, h, t) <= r * reach:
+                keep.append((g.group, g.weight))
+            else:
+                dropped += 1
         for g in list(v.groups):
             mesh.vertex_groups[g.group].remove([v.index])
-        parent_group.add([v.index], 1.0, "REPLACE")
-        captured += 1
-print("weapon vertices captured", captured)
+        if not keep:
+            orphans += 1
+            best = min((n for n in segs if n not in bone_map["weapon_bones"] and n in mesh.vertex_groups),
+                       key=lambda n: seg_dist(p, segs[n][0], segs[n][1]))
+            keep = [(mesh.vertex_groups[best].index, 1.0)]
+        total = sum(w for _, w in keep)
+        for gi, w in keep:
+            mesh.vertex_groups[gi].add([v.index], w / total, "REPLACE")
+    print("capsule cleanup: dropped", dropped, "weights, orphans", orphans)
+    if os.environ.get("DEBUG_WEAPON"):   # paint the captured weapon red to check the capture
+        red = bpy.data.materials.new("debug_red")
+        red.diffuse_color = (1, 0, 0, 1)
+        red.use_nodes = True
+        red.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 0, 0, 1)
+        mesh.data.materials.append(red)
+        slot = len(mesh.data.materials) - 1
+        for poly in mesh.data.polygons:
+            if all(i in weapon_verts for i in poly.vertices):
+                poly.material_index = slot
+
+if PREPARED and os.environ.get("DEBUG_WEAPON"):
+    red = bpy.data.materials.new("debug_red")
+    red.use_nodes = True
+    red.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (1, 0, 0, 1)
+    for o in bpy.context.scene.objects:
+        if o.type == "MESH" and o is not mesh:
+            o.data.materials.clear()
+            o.data.materials.append(red)
 
 pb = arm.pose.bones
 for b in pb:
@@ -123,7 +214,7 @@ def attack(t):
 
 def hit(t):
     k = math.sin(math.pi * min(1.0, t * 1.25))
-    return [("spine", X, -10 * k), ("chest", X, -10 * k), ("head", X, -15 * k),
+    return [("spine", X, -10 * k), ("chest", X, -10 * k), ("head", X, -5 * k),
             ("weapon_arm.1", X, 15 * k), ("shield_arm.1", X, -20 * k)], (0, 0.08 * k, 0)
 
 
@@ -188,6 +279,8 @@ for side, azimuth in SIDES.items():
     key.rotation_euler = (math.radians(40), 0, a - math.radians(50))
     fill.rotation_euler = (math.radians(60), 0, a + math.radians(70))
     for name, (count, fn) in ANIMS.items():
+        if os.environ.get("ONLY") and name != os.environ["ONLY"]:
+            continue
         os.makedirs(f"{out}/{side}/{name}", exist_ok=True)
         quick = os.environ.get("QUICK")   # e.g. QUICK=attack:6,12 renders only those attacker frames
         for i in range(count):
