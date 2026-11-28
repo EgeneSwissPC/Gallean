@@ -1,6 +1,6 @@
 # Auto explore (armies that uncover the map on their own)
 
-Status: proposal, open questions G-H below (A-F answered). Nothing built yet.
+Status: proposal, open question H below (A-G answered). Nothing built yet.
 
 Gallean Upgrade only. Human players only; the AI is not touched (it has its own explore order, see below).
 
@@ -15,6 +15,7 @@ Gallean Upgrade only. Human players only; the AI is not touched (it has its own 
 - **Danger (question D: D3).** Targets within the safety distance of a known hostile army (not one standing still in a city) are skipped. The distance is one tunable setting shared with the C1 sighting rule (start value 3), so explorers stay out of the zone where they would stop anyway. If the only hidden land lies inside such zones, the result is NoTargetNow (try again next turn), never "no more land". Interception on the path stays covered by the path's battle check.
 - **Key and button (question E: E1).** Hotkey **L** ("look around") plus a compass button on the selected army's card next to Continue and Stop. L or the button again, X or Stop end exploring. Greyed with a tooltip when there is no more land. (I is taken by the cities list in `docs/cities-overview.md`.)
 - **Saving (question F: F1).** Not saved, like move orders: loading a save forgets auto explore and the army becomes a normal army again (user: "do not save it"). The feature stays client-only, no engine or save-format change.
+- **Explore all (question G: G3).** No "explore all" command for now (user's choice); one army at a time with L or the card button.
 - **Built on move orders.** Auto explore reuses the move-order machinery (`docs/move-orders.md`): the walk on End turn, the battle prompt, bag pick-ups, the bar look. An exploring army is a special kind of order whose destination is re-picked every time it is reached.
 
 ## The problem today
@@ -80,7 +81,6 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 
 1. **Engine calculator + tests** (flood fill, frontier, score, NothingLeft/NoTargetNow, a perf bench on 1024). ~1 day. No screen; the visible part is phase 2.
 2. **Client: Explore button, walks on End turn and right away, card look, "no more land" message, disabled button.** ~1.5 days. Real-client check on 1024.
-3. (Optional, question G) **Explore all**: one key that sets every idle scout (leaders of the Explorer category) to explore, or "explore with all armies that have nothing to do". ~0.5 day.
 
 ## Open questions
 
@@ -90,5 +90,5 @@ All in one engine calculator, `AutoExploreCalculator` (new file, Engine/World), 
 - ~~**D. Should it avoid danger?**~~ Answered: D3, shared distance with C1, starts at 3 (see Decisions).
 - ~~**E. Hotkey and button.**~~ Answered: E1, L + compass button (see Decisions).
 - ~~**F. Saving.**~~ Answered: F1, not saved (see Decisions).
-- **G. Explore all.** G1: phase 3 as above. G2 (recommended): skip for now; one button per army first.
+- ~~**G. Explore all.**~~ Answered: G3, not for now (see Decisions).
 - **H. "No more land" scope.** H1 (recommended): per army (its movement profile decides; a ship and a land army differ), the button re-enables when the map changes. H2: per player: once one army finds nothing, the button is disabled for all (wrong for ships vs land armies, simpler message).
