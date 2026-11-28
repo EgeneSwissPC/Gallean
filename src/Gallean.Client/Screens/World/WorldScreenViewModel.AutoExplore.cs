@@ -36,6 +36,9 @@ internal sealed partial class WorldScreenViewModel
             return;
         }
 
+        // Auto rod and Explore are separate modes: Explore on a planter on auto rod switches it to exploring.
+        bool wasRodding = IsAutoRodding(stack.Id);
+
         if (IsExploring(stack.Id))
         {
             StopExploring(stack.Id);
@@ -47,7 +50,10 @@ internal sealed partial class WorldScreenViewModel
 
             RefreshAutoExploreState();
 
-            return;
+            if (!wasRodding)
+            {
+                return;
+            }
         }
 
         ICommandResult<WorldCommandError, WorldEvent, AutoExploreResult> result =
@@ -90,7 +96,7 @@ internal sealed partial class WorldScreenViewModel
             return false;
         }
 
-        return IsExploring(stack.Id) || CanExplore(stack);
+        return (IsExploring(stack.Id) && !IsAutoRodding(stack.Id)) || CanExplore(stack);
     }
 
     // Cached per state and army: the button's CanExecute is asked often.
@@ -127,11 +133,27 @@ internal sealed partial class WorldScreenViewModel
 
         try
         {
-            OrderStop stop = await WalkExplorerAsync(stackId, attention);
-
-            if (!await HandleOrderStopAsync(stackId, stop, attention))
+            // Auto rod: a skipped plant spot sends the planter on to its next job right away.
+            for (int round = 0; round < MaxRodJobsPerTurn; round++)
             {
-                return;
+                OrderStop stop = await WalkExplorerAsync(stackId, attention);
+
+                if (stop == OrderStop.RodJob)
+                {
+                    if (await HandleRodJobAsync(stackId, attention))
+                    {
+                        continue;
+                    }
+
+                    break;
+                }
+
+                if (!await HandleOrderStopAsync(stackId, stop, attention))
+                {
+                    return;
+                }
+
+                break;
             }
         }
         finally
@@ -181,7 +203,7 @@ internal sealed partial class WorldScreenViewModel
 
             if (!HasMoveOrder(stack) && !TryAssignExploreTarget(stack, attention))
             {
-                return leg == 0 ? OrderStop.Skipped : OrderStop.None;
+                return StopAfterNoTarget(stackId, leg);
             }
 
             stop = await WalkMoveOrderAsync(stackId);
@@ -272,7 +294,7 @@ internal sealed partial class WorldScreenViewModel
 
             if (!HasMoveOrder(stack) && !TryAssignExploreTarget(stack, attention))
             {
-                return leg == 0 ? OrderStop.Skipped : OrderStop.None;
+                return StopAfterNoTarget(stackId, leg);
             }
 
             if (await StepToDestinationAsync(stackId, stackDestinations[stackId], attention, knownEnemies, walked) is { } stop)
@@ -346,6 +368,11 @@ internal sealed partial class WorldScreenViewModel
     // Returns true when the army got a destination.
     private bool TryAssignExploreTarget(WorldStack stack, List<OrderAttention>? attention)
     {
+        if (IsAutoRodding(stack.Id))
+        {
+            return TryAssignRodJob(stack, attention);
+        }
+
         ICommandResult<WorldCommandError, WorldEvent, AutoExploreResult> result =
             GameModel.World.DryRunCommand(new WorldGetAutoExploreTargetCommand(stack.Id));
 
@@ -410,6 +437,7 @@ internal sealed partial class WorldScreenViewModel
     {
         if (!isSettingExploreDestination && exploringStacks.Remove(stackId))
         {
+            ForgetAutoRod(stackId);
             orderTurnsState = null;
             NotifyMoveOrderCommandsChanged();
             UpdateStackActions();
@@ -420,12 +448,15 @@ internal sealed partial class WorldScreenViewModel
     private void ForgetMissingExplorers()
     {
         exploringStacks.RemoveWhere(stackId => !WorldState.Stacks.ContainsKey(stackId));
+        roddingStacks.RemoveWhere(stackId => !WorldState.Stacks.ContainsKey(stackId));
     }
 
     private void RefreshAutoExploreState()
     {
         exploreCheck = null;
+        rodCheck = null;
         ToggleAutoExploreCommand.NotifyCanExecuteChanged();
+        ToggleAutoRodCommand.NotifyCanExecuteChanged();
         UpdateStackActions();
         UpdateEndTurnHighlighted();
     }

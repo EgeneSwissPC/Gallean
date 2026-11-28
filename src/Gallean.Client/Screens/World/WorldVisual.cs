@@ -217,6 +217,8 @@ internal sealed partial class WorldVisual : AbstractAnimatedVisual
             (Key.I, KeyModifiers.None) => [ViewModel.OpenCitiesCommand],
             // Gallean Upgrade: auto explore (L = look around).
             (Key.L, KeyModifiers.None) => [ViewModel.ToggleAutoExploreCommand],
+            // Gallean Upgrade: auto rod (R = rod, docs/auto-rod.md).
+            (Key.R, KeyModifiers.None) => [ViewModel.ToggleAutoRodCommand],
             _ => []
         };
     }

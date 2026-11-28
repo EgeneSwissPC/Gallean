@@ -1767,6 +1767,15 @@
     "No more land to explore": "Больше нечего исследовать",
     "{0} has no more land it can reach.": "{0}: больше нет земель, до которых можно дойти.",
     "{0} has no more land to explore.": "{0}: больше нечего исследовать.",
-    "{0} spotted an enemy army.": "{0} заметил вражескую армию."
+    "{0} spotted an enemy army.": "{0} заметил вражескую армию.",
+    "Nothing left for the rod planter": "Жезлоносцу больше нечего делать",
+    "{0} has no rod jobs and no more land to explore.": "{0}: нет мест для жезлов и больше нечего исследовать.",
+    "{0}: not enough gold to plant rods.": "{0}: не хватает золота, чтобы водружать жезлы.",
+    "{0} pulled up an enemy rod.": "{0} выкорчевал вражеский жезл.",
+    "{0} can plant a rod here.": "{0} может водрузить здесь жезл.",
+    "Skip this spot": "Пропустить это место",
+    "Stop auto rod": "Остановить автожезл",
+    "Auto rod": "Автожезл",
+    "No rod jobs or land left": "Нет мест для жезлов и неисследованных земель"
   }
 }

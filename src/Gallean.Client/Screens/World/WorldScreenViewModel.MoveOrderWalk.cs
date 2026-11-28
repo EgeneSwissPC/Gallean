@@ -25,7 +25,9 @@ internal sealed partial class WorldScreenViewModel
         Thief,
         Site,
         MovesLeft,
-        Other
+        Other,
+        // Auto rod: the planter stands next to its rod job (docs/auto-rod.md).
+        RodJob
     }
 
     private sealed record OrderAttention(WorldStackId StackId, string Text);
@@ -53,6 +55,9 @@ internal sealed partial class WorldScreenViewModel
 
         // Auto explore: explorers without a destination pick their next one first.
         PrepareExplorers(attention);
+
+        // Auto rod: planters already next to a job do it (or are asked) first.
+        await HandlePendingRodJobsAsync(attention);
 
         List<WorldStackId> ordered = [.. StackItems.Where(item => item.HasMoveOrder && HasMoveOrder(item.StackId)).Select(item => item.StackId)];
 
@@ -304,6 +309,11 @@ internal sealed partial class WorldScreenViewModel
 
                 return true;
             }
+
+            case OrderStop.RodJob:
+                await HandleRodJobAsync(stackId, attention);
+
+                return true;
 
             case OrderStop.MovesLeft:
                 AddOrderAttention(attention, stack, Tr("{0} arrived with {1} move points left.", name, stack.MovementPoints));

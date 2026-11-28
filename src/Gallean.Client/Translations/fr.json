@@ -1767,6 +1767,15 @@
     "No more land to explore": "No more land to explore",
     "{0} has no more land it can reach.": "{0} has no more land it can reach.",
     "{0} has no more land to explore.": "{0} has no more land to explore.",
-    "{0} spotted an enemy army.": "{0} spotted an enemy army."
+    "{0} spotted an enemy army.": "{0} spotted an enemy army.",
+    "Nothing left for the rod planter": "Nothing left for the rod planter",
+    "{0} has no rod jobs and no more land to explore.": "{0} has no rod jobs and no more land to explore.",
+    "{0}: not enough gold to plant rods.": "{0}: not enough gold to plant rods.",
+    "{0} pulled up an enemy rod.": "{0} pulled up an enemy rod.",
+    "{0} can plant a rod here.": "{0} can plant a rod here.",
+    "Skip this spot": "Skip this spot",
+    "Stop auto rod": "Stop auto rod",
+    "Auto rod": "Auto rod",
+    "No rod jobs or land left": "No rod jobs or land left"
   }
 }
