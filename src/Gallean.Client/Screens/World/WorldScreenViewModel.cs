@@ -76,7 +76,9 @@ internal sealed partial class WorldScreenViewModel :
             OpenCapitalCommand,
             OpenSpellbookCommand,
             OpenQuestCommand,
-            OpenStackCommand);
+            OpenStackCommand,
+            // Gallean Upgrade: cities list.
+            OpenCitiesCommand);
     }
 
     [ObservableProperty]

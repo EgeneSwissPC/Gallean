@@ -213,6 +213,8 @@ internal sealed partial class WorldVisual : AbstractAnimatedVisual
             (Key.B, KeyModifiers.None) => [ViewModel.OpenSpellbookCommand],
             (Key.U or Key.J, KeyModifiers.None) => [ViewModel.OpenQuestCommand],
             (Key.P, KeyModifiers.None) => [ViewModel.OpenStackCommand],
+            // Gallean Upgrade: cities list.
+            (Key.I, KeyModifiers.None) => [ViewModel.OpenCitiesCommand],
             _ => []
         };
     }

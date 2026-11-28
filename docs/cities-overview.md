@@ -1,6 +1,6 @@
 # Cities overview and city switching
 
-Spec for a gallean-upgrade game feature (not the map editor). Status: **questions answered, ready for phase 1.**
+Spec for a gallean-upgrade game feature (not the map editor). Status: **phase 1 (cities list) done, merged 932de178; phase 2 (previous / next in the city screen) next.**
 
 ## Decisions
 
@@ -21,6 +21,25 @@ User answers to the open questions (2026-11-28):
 - C: capital first, then alphabetical; the sort picked in the list is also the cycle order.
 - D: closing a city opened from the list returns to the list.
 - E: enemy badge = distance in tiles to the nearest visible non-allied army of a playable race; neutral armies left out. The red threshold is measured in a real game while building.
+
+Decisions taken while building phase 1 (change any of them by saying so):
+
+- Upgrade from a row asks the same confirmation as the city tab ("Upgrade Ashby to level 2", cost, Upgrade / Cancel),
+  so a misclick in the list can't spend gold.
+- Enemy badge: shown up to 24 tiles, red from 12 tiles. Measured from the unit data rather than a game: leaders have
+  15-35 movement points (119 leaders: 15 x5, 20 x41, 25 x27, 30 x28, 35 x18) and an open tile costs 2, so 12 tiles is
+  about one turn's walk for the usual leader and 24 two turns. Constants `CitiesTabViewModel.DangerDistance` /
+  `ShownEnemyDistance`.
+- The capital stays the first row in every sort order, not only by name.
+- Extra statuses besides riot and enemy: dead units, wounded units (red ring on the face too), "No garrison",
+  items stored in the city.
+- A small read-only engine query (`WorldGetCitiesOverviewCommand`) instead of "client only": land growth, garrison
+  capacity, wounded counts, diplomacy (who is hostile) and the upgrade check are engine-internal. No rule, save or AI
+  change.
+- The resource plate in the top centre slides right when it would touch the buttons: with all six resources (gold and
+  five manas) at 1366x768 it overlapped the new Cities button in the visual test. It stays centred whenever there is room.
+- Russian: the column header is "Land growth" / "Рост земель", since the existing key "Land" means land vs water
+  ("Суша") in the editor.
 
 Decisions taken while writing the spec (change any of them by saying so):
 
@@ -139,11 +158,64 @@ Decisions taken while writing the spec (change any of them by saying so):
 
 ## Phases
 
-1. **Cities list** (button + hotkey, screen, rows with all columns above, Upgrade in the row, Enter, Show on map,
-   sorting). ~1.5 days.
+1. ~~**Cities list** (button + hotkey, screen, rows with all columns above, Upgrade in the row, Enter, Show on map,
+   sorting). ~1.5 days.~~ Done, see "Phase 1 — done".
 2. **Previous / next in the city screen** (chevrons + keys, order shared with the list, tab kept, guards).
    ~0.5-1 day. Independent of phase 1's layout; can go first if wanted.
 
 ## Open questions
 
 All answered (A1 as "both when the rule is on", B1, C1, D1, E1), see Decisions.
+
+## Phase 1 — done
+
+Feature commit 32c6b9b6, merged into gallean-upgrade as 932de178.
+
+What was built:
+
+- **Cities button** (fourth pill in the top-left row, Fortification icon, hotkey I, underlined in the label) and the
+  **Cities screen**: a management screen with one tab (`ManagementScreenViewModel.CreateForCities`,
+  `Screens/Cities/CitiesTabViewModel.cs`, `CitiesTabView.axaml`, `CityRowViewModel.cs`;
+  `WorldScreenViewModel.Cities.cs` for the command and `ShowPosition`). The button is disabled while the game is busy
+  and when the player owns no city or capital.
+- **Summary line**: number of cities, total levels, town gold per turn (only with the town income rule), land growth
+  per turn.
+- **Rows** in the scenario list's row style: round city art, name, level (or "Capital"), Gold (column hidden when the
+  rule is off), Land growth, garrison slots with round unit faces (dead faded, wounded with a red ring), the army inside
+  (round face + leader name), upgrade (next level and cost, an Upgrade button; "Upgraded this turn", "Max level"),
+  statuses (riot turns, enemy distance, dead and wounded units, no garrison, items stored) and an eye button
+  "Show on map".
+- Clicking a row opens that city; closing it returns to the list. Show on map closes the list and centres the camera.
+- **Sorting**: Name / Level / Gold (rule on only) / Danger pills; capital first in each; the choice is kept for the
+  session (`CitiesTabViewModel.LastSortOrder`, for phase 2's cycle order).
+- Engine: `WorldGetCitiesOverviewCommand` (rows for the current player: land growth, capacity, wounded / dead,
+  upgrade cost and error, town gold, distance to the nearest hostile playable-race army on an explored tile, invisible
+  armies skipped). Test helper `TestWorldEngineBuilder.WithTownIncome`.
+- 25 new strings in all 7 catalogues (Russian translated, others English placeholders).
+
+Tests:
+
+- Engine `WorldGetCitiesOverviewCommandTests` (10: rows, town income, hidden enemy, upgraded this turn, 6 distance cases;
+  allies, neutrals, concealed armies and foreign cities left out).
+- Client `CitiesTabViewModelTests` (8: rows, town income, statuses, sorting kept on reopen, upgrade from a row with the
+  prompt and the refresh, enter + back to the list, show on map, no button without cities).
+- Visual `CitiesListTest` (S107 with every town given to the player, English and Russian, Danger sort) and
+  `CitiesButtonWideResourcesTest` (all six resources at 9999 next to the four buttons, English and Russian).
+- Full non-visual suite 5621 passed (18 of them new); all 16 map editor visual tests passed.
+
+Real-client check (AOT build, 1366x768, the mapgen map plus two extra Empire villages, town income on): I opens the
+list; rows show the capital +100 gold, Ashby +10, Brent +50, Ford +25, land +10 / +15 / +20 / +15, the Pegasus Knight in
+the capital and in Ford; Upgrade on Ashby asked for 150 gold, the row turned to level 2 / +25 / "Upgraded this turn",
+gold 835 -> 685 and the summary +185 -> +200; clicking Ford opened Ford's city screen and Esc returned to the list;
+the eye on Brent closed the list and centred the map on Brent. The income tooltip's Towns column showed 200, the same
+as the list's total.
+
+Known limits:
+
+- Gold per city is the town's own value before difficulty and AI scaling, like the city tab's "Gold per turn" row.
+  At Average difficulty (the check above) it equals the income tooltip; on other difficulties the tooltip total differs
+  by the difficulty bonus.
+- Riot, enemy, wounded and dead badges weren't reachable on the test map in the real client; they are covered by the
+  engine / client tests and the riot badge shows in the S107 visual test.
+- The sort order is kept until the game closes, not saved.
+
