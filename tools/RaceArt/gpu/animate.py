@@ -20,10 +20,10 @@ from mathutils import Matrix, Vector
 args = sys.argv[sys.argv.index("--") + 1:]
 glb, out, bone_map = args[0], args[1], json.load(open(args[2]))
 
-CANVAS_W, CANVAS_H, FOOT_FROM_BOTTOM = 300, 260, 20   # logical px
+CANVAS_W, CANVAS_H, FOOT_FROM_BOTTOM = 340, 280, 30   # logical px
 PIXEL_SCALE = 2
-UNIT_HEIGHT_PX = 140                                     # logical px for the whole figure
-SIDES = {"attacker": 35, "defender": 215}                # camera azimuth from the unit's front
+UNIT_HEIGHT_PX = 150                                     # logical px for the whole figure
+SIDES = {"attacker": -35, "defender": 145}               # camera azimuth from the unit front; checked in game: thrusts must point at the enemy (attacker screen-right, defender screen-left)
 ELEVATION = 28
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -195,43 +195,78 @@ def ease(t):
 
 def idle(t):
     s = math.sin(2 * math.pi * t)
-    return [("spine", X, 1.5 * s), ("chest", X, 1.5 * s), ("head", Z, 3 * s),
-            ("weapon_arm.1", X, -2 * s), ("shield_arm.1", X, 2 * s)], (0, 0, 0.006 * s)
+    c = math.cos(2 * math.pi * t)
+    # breathing: hips sink a little (knees bend, feet stay planted by IK), chest and head follow late
+    return [("spine", X, 2 * s), ("chest", X, 2.5 * c), ("head", Z, 4 * s), ("head", X, -2 * c),
+            ("weapon_arm.1", X, -3 * s), ("shield_arm.1", X, 3 * c)], (0, 0, -0.012 * (1 + s) / 2), {}
 
 
 def attack(t):
-    # anticipation (0-0.3), lunge + thrust (0.3-0.5, impact at 0.5), hold (0.5-0.65), recover (0.65-1)
+    # anticipation (0-0.3), step + thrust (0.3-0.5, impact at 0.5), hold (0.5-0.65), recover (0.65-1)
     wind = ease(t / 0.3) * (1 - ease((t - 0.3) / 0.2))
     lunge = ease((t - 0.3) / 0.2) * (1 - ease((t - 0.65) / 0.35))
-    lean = -10 * wind + 22 * lunge
-    # The weapon is held upright: tilt the forearm forward (+X) so the trident points at the enemy.
+    lean = -10 * wind + 20 * lunge
+    # front (left) foot steps forward with a lift in the middle of the step, back foot stays planted
+    step = lunge
+    lift = 0.07 * math.sin(math.pi * ease((t - 0.3) / 0.2)) if 0.3 < t < 0.5 else \
+        0.05 * math.sin(math.pi * ease((t - 0.65) / 0.35)) if 0.65 < t < 1 else 0.0
     return [("spine", X, lean * 0.5), ("chest", X, lean * 0.5), ("chest", Z, 15 * wind - 20 * lunge),
-            ("weapon_arm.1", X, 20 * wind - 35 * lunge), ("weapon_arm.2", X, -20 * wind + 75 * lunge),
-            ("shield_arm.1", X, -15 * lunge), ("head", X, -lean * 0.4),
-            ("leg_l.0", X, -30 * lunge), ("leg_l.1", X, 25 * lunge), ("leg_r.0", X, 15 * lunge)], \
-        (0, 0.06 * wind - 0.22 * lunge, -0.04 * lunge)
+            ("weapon_arm.1", X, 20 * wind - 35 * lunge), ("weapon_arm.2", X, -20 * wind + 88 * lunge),
+            ("shield_arm.1", X, -15 * lunge), ("head", X, -lean * 0.4)], \
+        (0, 0.05 * wind - 0.14 * lunge, -0.01 * wind - 0.07 * lunge), {"leg_l": (0, -0.40 * step, lift)}
 
 
 def hit(t):
     k = math.sin(math.pi * min(1.0, t * 1.25))
     return [("spine", X, -10 * k), ("chest", X, -10 * k), ("head", X, -5 * k),
-            ("weapon_arm.1", X, 15 * k), ("shield_arm.1", X, -20 * k)], (0, 0.08 * k, 0)
+            ("weapon_arm.1", X, 15 * k), ("shield_arm.1", X, -20 * k)], (0, 0.06 * k, -0.02 * k), {}
 
 
 ANIMS = {"idle": (16, idle), "attack": (24, attack), "hit": (8, hit)}
 TRIGGER = {"attack": 12}
+
+# Leg IK: feet stay where they are unless the animation moves their target.
+ik = {}
+for leg in ("leg_l", "leg_r"):
+    thigh, shin = pb[bone_map[leg][0]], pb[bone_map[leg][1]]
+    ankle = arm.matrix_world @ shin.bone.tail_local
+    knee = arm.matrix_world @ shin.bone.head_local
+    target = bpy.data.objects.new(f"{leg}_ik", None)
+    pole = bpy.data.objects.new(f"{leg}_pole", None)
+    scene_coll = bpy.context.scene.collection
+    scene_coll.objects.link(target)
+    scene_coll.objects.link(pole)
+    target.location = ankle
+    pole.location = knee + Vector((0, -0.6, 0))
+    con = shin.constraints.new("IK")
+    con.target, con.pole_target, con.chain_count = target, pole, 2
+    # pick the pole angle that leaves the rest pose unchanged
+    best = None
+    for ang in (0, 90, -90, 180):
+        con.pole_angle = math.radians(ang)
+        bpy.context.view_layer.update()
+        err = ((arm.matrix_world @ shin.head) - knee).length
+        if best is None or err < best[0]:
+            best = (err, ang)
+    con.pole_angle = math.radians(best[1])
+    print("ik", leg, "pole angle", best[1], "knee error", round(best[0], 4))
+    ik[leg] = (target, ankle.copy(), pole, pole.location.copy())
 
 
 def pose(fn, t):
     for b in pb:
         b.rotation_quaternion = (1, 0, 0, 0)
         b.location = (0, 0, 0)
-    rots, offset = fn(t)
+    rots, offset, feet = fn(t)
     for key, axis, deg in rots:
         b = get(key)
         b.rotation_quaternion = world_rot(b, axis, deg) @ b.rotation_quaternion
     hips = get("hips")
     hips.location = world_loc(hips, offset)
+    for leg, (target, ankle, pole, pole_rest) in ik.items():
+        d = Vector(feet.get(leg, (0, 0, 0)))
+        target.location = ankle + d
+        pole.location = pole_rest + Vector((0, d.y, 0))
 
 
 scene = bpy.context.scene
@@ -266,34 +301,65 @@ scene.collection.objects.link(cam)
 scene.camera = cam
 key = bpy.data.objects.new("key", bpy.data.lights.new("key", "SUN"))
 key.data.energy = 4.0
+key.data.angle = math.radians(6)
 fill = bpy.data.objects.new("fill", bpy.data.lights.new("fill", "SUN"))
 fill.data.energy = 1.2
+fill.data.cycles.cast_shadow = False
 scene.collection.objects.link(key)
 scene.collection.objects.link(fill)
+
+# Ground shadow: a shadow-catcher plane, rendered in a second pass with the unit hidden from the camera.
+bpy.ops.mesh.primitive_plane_add(size=6, location=(0, 0, zmin))
+ground = bpy.context.active_object
+ground.is_shadow_catcher = True
+meshes = [o for o in bpy.context.scene.objects if o.type == "MESH" and o is not ground]
+
+
+shadow_sun = bpy.data.objects.new("shadow_sun", bpy.data.lights.new("shadow_sun", "SUN"))
+shadow_sun.data.energy = 4.0
+shadow_sun.data.angle = math.radians(12)
+bpy.context.scene.collection.objects.link(shadow_sun)
+SHADOW_TILT = float(os.environ.get("SHADOW_TILT", 20))      # degrees from straight down
+SHADOW_TURN = float(os.environ.get("SHADOW_TURN", -50))     # light azimuth relative to the camera
+
+
+def render(path, shadow):
+    ground.hide_render = not shadow
+    key.hide_render = fill.hide_render = shadow
+    shadow_sun.hide_render = not shadow
+    for o in meshes:
+        o.visible_camera = not shadow
+    scene.render.filepath = path
+    bpy.ops.render.render(write_still=True)
+
 
 for side, azimuth in SIDES.items():
     a, e = math.radians(azimuth), math.radians(ELEVATION)
     direction = Vector((math.sin(a) * math.cos(e), -math.cos(a) * math.cos(e), math.sin(e)))
     cam.location = foot + direction * 20
     cam.rotation_euler = (-direction).to_track_quat("-Z", "Y").to_euler()
-    key.rotation_euler = (math.radians(40), 0, a - math.radians(50))
+    # light from the screen's upper left in both views, so the shadow falls to the lower right
+    key.rotation_euler = (math.radians(45), 0, a - math.radians(50))
     fill.rotation_euler = (math.radians(60), 0, a + math.radians(70))
+    shadow_sun.rotation_euler = (math.radians(SHADOW_TILT), 0, a + math.radians(SHADOW_TURN))
     for name, (count, fn) in ANIMS.items():
         if os.environ.get("ONLY") and name != os.environ["ONLY"]:
             continue
         os.makedirs(f"{out}/{side}/{name}", exist_ok=True)
+        os.makedirs(f"{out}/{side}/{name}_shadow", exist_ok=True)
         quick = os.environ.get("QUICK")   # e.g. QUICK=attack:6,12 renders only those attacker frames
         for i in range(count):
             if quick:
                 qa, _, qf = quick.partition(":")
-                if side != "attacker" or name != qa or str(i) not in qf.split(","):
+                if side != os.environ.get("QUICK_SIDE", "attacker") or name != qa or str(i) not in qf.split(","):
                     continue
             pose(fn, i / count)
             bpy.context.view_layer.update()
-            scene.render.filepath = f"{out}/{side}/{name}/{i:03d}.png"
-            bpy.ops.render.render(write_still=True)
+            render(f"{out}/{side}/{name}/{i:03d}.png", False)
+            if not os.environ.get("NO_SHADOW"):
+                render(f"{out}/{side}/{name}_shadow/{i:03d}.png", True)
         print("rendered", side, name, count, flush=True)
 
 json.dump({"canvas": [CANVAS_W, CANVAS_H], "foot_from_bottom": FOOT_FROM_BOTTOM, "pixel_scale": PIXEL_SCALE,
-           "anims": {n: c for n, (c, _) in ANIMS.items()}, "trigger": TRIGGER},
+           "anims": {n: c for n, (c, _) in ANIMS.items()}, "trigger": TRIGGER, "shadow": True},
           open(f"{out}/frames.json", "w"), indent=1)

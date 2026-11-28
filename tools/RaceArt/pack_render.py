@@ -6,7 +6,7 @@ usage: python3 -I pack_render.py <render dir> <unit id> <out.galleanpack> <ffmpe
 <render dir> holds frames.json and <side>/<anim>/<NNN>.png (side attacker/defender, anim idle/attack/hit).
 PNGs are converted to lossless WebP with ffmpeg. The frame's foot point goes on the game's anchor
 (bottom centre of the animation box); see SpriteAtlasSource.CreateAnchoredTransform.
-With --base, every battle-unit-shadow / -aura animation the base pack has for the unit is replaced
+With --base, every battle-unit-shadow / -aura animation not rendered (<anim>_shadow dirs) the base pack has for the unit is replaced
 by empty frames, so the old unit's shadow doesn't show under the new one.
 No Normal layer is written yet.
 """
@@ -55,6 +55,7 @@ def main():
     anim_box = {"Width": cw, "Height": ch - foot, "OffsetX": ANCHOR_X - cw // 2, "OffsetY": ANCHOR_Y - (ch - foot)}
     writer = PackWriter(a.out, sparse=True)
     counts = {}
+    shadowed = set()
     for side in ("attacker", "defender"):
         for anim, count in info["anims"].items():
             frames = []
@@ -69,13 +70,27 @@ def main():
             writer.add_animation(f"battle-unit/{unit}/{anim}/{side}", meta, frames, [])
             counts[(anim, side)] = count
             print(f"battle-unit/{unit}/{anim}/{side}: {count} frames")
+            shadow_dir = os.path.join(a.render, side, f"{anim}_shadow")
+            if os.path.isdir(shadow_dir) and len(os.listdir(shadow_dir)) >= count:
+                shadows = []
+                for i in range(count):
+                    data = to_webp(a.ffmpeg, os.path.join(shadow_dir, f"{i:03d}.png"))
+                    pw, ph = webp_size(data)
+                    shadows.append({"Metadata": {"Width": cw, "Height": ch, "PixelWidth": pw, "PixelHeight": ph,
+                                                 "OffsetX": anim_box["OffsetX"], "OffsetY": anim_box["OffsetY"],
+                                                 "Additive": False}, "data": data})
+                smeta = dict(anim_box, FrameCount=count, TriggerFrame=None, SecondTriggerFrame=None)
+                writer.add_animation(f"battle-unit-shadow/{unit}/{anim}/{side}", smeta, shadows, [])
+                shadowed.add((anim, side))
+                print(f"battle-unit-shadow/{unit}/{anim}/{side}: {count} frames")
 
     if a.base:
         blank = empty_webp(a.ffmpeg)
         base = PackReader(a.base)
         for anim in base.manifest["Animations"]:
             parts = anim["Id"].split("/")
-            if parts[0] in ("battle-unit-shadow", "battle-unit-aura") and parts[1].lower() == unit:
+            if parts[0] in ("battle-unit-shadow", "battle-unit-aura") and parts[1].lower() == unit \
+                    and not (parts[0] == "battle-unit-shadow" and (parts[2], parts[3]) in shadowed):
                 count = counts.get((parts[2], parts[3]), anim["Metadata"]["FrameCount"])
                 md = {"Width": 1, "Height": 1, "PixelWidth": 1, "PixelHeight": 1, "OffsetX": ANCHOR_X, "OffsetY": ANCHOR_Y,
                       "Additive": False}
