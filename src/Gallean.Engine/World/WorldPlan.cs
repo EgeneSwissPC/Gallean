@@ -691,19 +691,45 @@ public sealed class WorldPlan
 
         if (!pathMaps.TryGetValue(key, out WorldPathMap? pathMap) || (pathMap is not null && pathMap.MaxCost < maxCost))
         {
-            pathMap = PathMapCalculator.Calculate(
-                state.Map,
-                start,
-                fogOfWar,
-                GetBlockedCells(profile),
-                terminalCells.Value,
-                (from, to) => GetStepCost(from, to, profile),
-                maxCost);
+            WorldPathMapReuse.Inputs inputs = GetReuseInputs(start, fogOfWar, profile);
+            pathMap = WorldPathMapReuse.TryReuse(inputs, cached => cached.MaxCost >= maxCost);
+
+            if (pathMap is null)
+            {
+                pathMap = PathMapCalculator.Calculate(
+                    state.Map,
+                    start,
+                    fogOfWar,
+                    inputs.Blocked,
+                    inputs.Terminal,
+                    inputs.StepCost,
+                    maxCost);
+
+                WorldPathMapReuse.Store(inputs, pathMap);
+            }
+            else if (WorldPathMapReuse.Verify)
+            {
+                WorldPathMapReuse.Check(pathMap, PathMapCalculator.Calculate(state.Map, start, fogOfWar, inputs.Blocked, inputs.Terminal, inputs.StepCost));
+            }
 
             pathMaps[key] = pathMap;
         }
 
         return pathMap;
+    }
+
+    // Gallean Upgrade (AI speed): everything a search reads, for WorldPathMapReuse.
+    private WorldPathMapReuse.Inputs GetReuseInputs(WorldPosition start, ImmutableBitmap? fogOfWar, WorldMovementCalculator.MovementProfile profile)
+    {
+        return new WorldPathMapReuse.Inputs(
+            state.Map,
+            start,
+            fogOfWar,
+            profile,
+            GetBlockedCells(profile),
+            terminalCells.Value,
+            zeroCostEntrances.Value,
+            (from, to) => GetStepCost(from, to, profile));
     }
 
     // Gallean Upgrade (AI speed): like GetPathMap, but the search stops once every target is settled, which gives the
@@ -722,21 +748,36 @@ public sealed class WorldPlan
             return cached;
         }
 
-        HashSet<int> stopTargets = [];
-        foreach (WorldPosition target in targets)
-        {
-            stopTargets.Add(target.Y * state.Map.Width + target.X);
-        }
+        WorldPathMapReuse.Inputs inputs = GetReuseInputs(start, fogOfWar, profile);
+        WorldPathMap? pathMap = WorldPathMapReuse.TryReuse(inputs, reused => targets.All(reused.IsSettled));
 
-        WorldPathMap? pathMap = PathMapCalculator.Calculate(
-            state.Map,
-            start,
-            fogOfWar,
-            GetBlockedCells(profile),
-            terminalCells.Value,
-            (from, to) => GetStepCost(from, to, profile),
-            int.MaxValue,
-            stopTargets);
+        if (pathMap is not null)
+        {
+            if (WorldPathMapReuse.Verify)
+            {
+                WorldPathMapReuse.Check(pathMap, PathMapCalculator.Calculate(state.Map, start, fogOfWar, inputs.Blocked, inputs.Terminal, inputs.StepCost));
+            }
+        }
+        else
+        {
+            HashSet<int> stopTargets = [];
+            foreach (WorldPosition target in targets)
+            {
+                stopTargets.Add(target.Y * state.Map.Width + target.X);
+            }
+
+            pathMap = PathMapCalculator.Calculate(
+                state.Map,
+                start,
+                fogOfWar,
+                inputs.Blocked,
+                inputs.Terminal,
+                inputs.StepCost,
+                int.MaxValue,
+                stopTargets);
+
+            WorldPathMapReuse.Store(inputs, pathMap);
+        }
 
         if (cached is null || pathMap is null || pathMap.MaxCost > cached.MaxCost)
         {

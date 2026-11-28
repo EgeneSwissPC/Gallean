@@ -34,6 +34,21 @@ internal sealed class WorldPathMap
 
     public int MaxCost => maxCost;
 
+    // Gallean Upgrade (AI speed): read access for WorldPathMapReuse, by cell index.
+    internal WorldMap Map => map;
+
+    internal WorldPosition Start => start;
+
+    internal int GetCostAt(int index)
+    {
+        return GetCost(index);
+    }
+
+    internal int GetPredecessorAt(int index)
+    {
+        return GetPredecessor(index);
+    }
+
     // True when the map holds the final answer for the target: an unbounded map always does, a bounded map only for
     // targets it reached within its cost bound.
     public bool IsSettled(WorldPosition target)
